@@ -1,20 +1,36 @@
 /// Custom asset:// protocol handler.
 ///
-/// Serves files from `%APPDATA%\TrinityLyrics\media\` to the WebView.
-/// The URI scheme is registered as "asset" in lib.rs.
+/// Serves files from `<app_data_dir>/media/` to the WebView. The directory
+/// is created and canonicalized once during `lib.rs` setup, then stored in
+/// the `CANONICAL_MEDIA_DIR` `OnceLock` below. The handler closure looks
+/// the path up lazily on each request.
 ///
 /// URL format (Windows): `http://asset.localhost/media/filename.ext`
 /// URI path seen by handler: `/media/filename.ext` → resolves to `{media_dir}/filename.ext`
 ///
-/// Security: validates that the resolved canonical path starts with the media directory
-/// to prevent path traversal attacks (e.g., `asset://../../Windows/System32`).
+/// Security: validates that the resolved canonical file path starts with the
+/// canonical media directory to prevent path traversal attacks (`..` literals
+/// and symlinks pointing outside the media root).
 use http::{header::CONTENT_TYPE, status::StatusCode};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
-/// Resolve the media directory for the application.
-/// On Windows: `%APPDATA%\TrinityLyrics\media\`
-pub fn media_dir(app_data_dir: &PathBuf) -> PathBuf {
+/// Single source of truth for the media directory, set during Tauri setup.
+/// `OnceLock` lets us register the protocol before setup runs and still
+/// read the path lazily once setup populates it.
+static CANONICAL_MEDIA_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+/// Resolve the media subdirectory inside the application data directory.
+/// On Windows: `<app_data_dir>/media/`
+pub fn media_dir(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join("media")
+}
+
+/// Set the canonical media directory. Call once from `lib.rs` setup after
+/// `std::fs::create_dir_all` + `canonicalize`. Subsequent calls are ignored
+/// (returns `Err`).
+pub fn set_media_dir(dir: PathBuf) -> Result<(), PathBuf> {
+    CANONICAL_MEDIA_DIR.set(dir)
 }
 
 /// Determine MIME type from file extension.
@@ -31,13 +47,9 @@ fn mime_type_for_ext(ext: &str) -> &'static str {
     }
 }
 
-/// Build the asset protocol handler closure.
-///
-/// The closure captures the media directory path and serves files from it.
-/// Returns a function compatible with `Builder::register_uri_scheme_protocol`.
-pub fn build_handler(
-    media_dir: PathBuf,
-) -> impl Fn(
+/// Build the asset protocol handler closure. Reads the canonical media dir
+/// from `CANONICAL_MEDIA_DIR` on each request — by then `setup` has populated it.
+pub fn build_handler() -> impl Fn(
     tauri::UriSchemeContext<'_, tauri::Wry>,
     http::Request<Vec<u8>>,
 ) -> http::Response<Vec<u8>>
@@ -45,15 +57,21 @@ pub fn build_handler(
        + Sync
        + 'static {
     move |_ctx, request| {
+        let Some(canonical_media) = CANONICAL_MEDIA_DIR.get() else {
+            return http::Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(CONTENT_TYPE, "text/plain")
+                .body(b"500 Media directory not initialized".to_vec())
+                .unwrap();
+        };
+
         let uri_path = request.uri().path();
-        // Strip leading slash and optional "media/" prefix
         // URI: /media/filename.ext  →  filename.ext
         // URI: /filename.ext        →  filename.ext
         let relative = uri_path
             .trim_start_matches('/')
             .trim_start_matches("media/");
 
-        // Reject empty or suspicious paths immediately
         if relative.is_empty() || relative.contains("..") {
             return http::Response::builder()
                 .status(StatusCode::FORBIDDEN)
@@ -62,18 +80,7 @@ pub fn build_handler(
                 .unwrap();
         }
 
-        let file_path = media_dir.join(relative);
-
-        // Path traversal protection: canonicalize both and check prefix
-        let canonical_media = match media_dir.canonicalize() {
-            Ok(p) => p,
-            Err(_) => {
-                return http::Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .body(b"404 Media directory not found".to_vec())
-                    .unwrap();
-            }
-        };
+        let file_path = canonical_media.join(relative);
 
         let canonical_file = match file_path.canonicalize() {
             Ok(p) => p,
@@ -86,7 +93,7 @@ pub fn build_handler(
             }
         };
 
-        if !canonical_file.starts_with(&canonical_media) {
+        if !canonical_file.starts_with(canonical_media) {
             return http::Response::builder()
                 .status(StatusCode::FORBIDDEN)
                 .header(CONTENT_TYPE, "text/plain")
@@ -149,10 +156,7 @@ mod tests {
 
     #[test]
     fn path_traversal_blocked_by_dotdot() {
-        let tmp = make_temp_media_dir();
-        let media = tmp.path().to_path_buf();
-        // The handler checks for ".." before trying to canonicalize
-        // We test the dotdot-contains check directly
+        // The handler rejects any URI path containing ".." before canonicalization.
         let relative = "../../Windows/System32/cmd.exe";
         assert!(relative.contains(".."), "test path should contain ..");
     }
@@ -166,23 +170,20 @@ mod tests {
 
     #[test]
     fn path_traversal_stopped_by_canonical_check() {
-        // Create two independent temp dirs to simulate media/ and an outside location
+        // Create two independent temp dirs to simulate media/ and an outside location.
         let media_tmp = make_temp_media_dir();
         let outside_tmp = make_temp_media_dir();
 
         let media = media_tmp.path().to_path_buf();
         std::fs::create_dir_all(&media).unwrap();
 
-        // Create a legit file inside media dir
         let legit_path = media.join("test.png");
         std::fs::File::create(&legit_path).unwrap().write_all(b"PNG").unwrap();
 
-        // The canonical check: file inside media dir → starts_with succeeds
         let canonical_media = media.canonicalize().unwrap();
         let canonical_legit = legit_path.canonicalize().unwrap();
         assert!(canonical_legit.starts_with(&canonical_media));
 
-        // A file in a completely separate temp dir → starts_with fails
         let outside = outside_tmp.path().join("secret.txt");
         std::fs::File::create(&outside).unwrap().write_all(b"secret").unwrap();
         let canonical_outside = outside.canonicalize().unwrap();

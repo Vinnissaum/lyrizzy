@@ -5,6 +5,7 @@
   "windows": ["operator", "presentation"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "core:webview:allow-create-webview-window"
   ]
 }

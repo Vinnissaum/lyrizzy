@@ -1,7 +1,7 @@
 # Phase 0: Skeleton Tasks
 
 **Spec:** `.specs/features/phase0-skeleton/spec.md`
-**Status:** T1–T6 done (work shipped in commits `3628385..8103663`). T7–T12 polish in flight.
+**Status:** T1–T12 all done. Phase 0 complete.
 **Last updated:** 2026-05-18
 
 ---
@@ -28,7 +28,7 @@ T3 complete, then:
 T4 + T5 → T6 (cleanup)
 ```
 
-### Phase D: Polish (Parallel-safe) — IN FLIGHT
+### Phase D: Polish (Parallel-safe) — DONE
 
 ```
 T7 [P] (serde rename)
@@ -233,9 +233,9 @@ Shipped in `80f3954` / `8103663`.
 **Requirement:** P0-05 (extends the baseline)
 
 **Done when:**
-- [ ] Test renders `<OperatorApp />`, asserts counter shows `0`, clicks the button, asserts mocked `invoke` was called with `"increment_counter"`.
-- [ ] Test for "Open Presentation Window" button: clicks, asserts mocked `invoke("open_presentation_window")` was called.
-- [ ] `npx vitest run` exits 0 with ≥ 5 frontend tests.
+- [x] Test renders `<OperatorApp />`, asserts counter shows `0`, clicks the button, asserts mocked `invoke` was called with `"increment_counter"`.
+- [x] Test for "Open Presentation Window" button: clicks, asserts mocked `invoke("open_presentation_window")` was called.
+- [x] `npx vitest run` exits 0 with ≥ 5 frontend tests. (8 tests total: 3 counter + 5 OperatorApp)
 
 **Tests:** component (Vitest + Testing Library)
 **Gate:** full (cargo + vitest)
@@ -249,7 +249,7 @@ Shipped in `80f3954` / `8103663`.
 Phases A–C — DONE
   T1 → T2 → T3 → (T4 ∥ T5) → T6
 
-Phase D — IN FLIGHT
+Phase D — DONE
   (T7 ∥ T8 ∥ T9) → T10 → T11 → T12 (optional)
 ```
 

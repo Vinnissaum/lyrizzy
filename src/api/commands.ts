@@ -19,6 +19,15 @@ export const toggleBlank = () => invoke<void>("toggle_blank");
 export const toggleFreeze = () => invoke<void>("toggle_freeze");
 export const stopPresentation = () => invoke<void>("stop_presentation");
 
+// ─── Window management ──────────────────────────────────────────────────────
+
+/**
+ * Open (or focus) the presentation window. Idempotent — calling twice
+ * focuses the existing window instead of creating a duplicate.
+ */
+export const openPresentationWindow = () =>
+  invoke<void>("open_presentation_window");
+
 // ─── Phase 0: counter demo ──────────────────────────────────────────────────
 
 /**

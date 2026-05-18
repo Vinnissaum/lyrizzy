@@ -7,6 +7,7 @@ use crate::state::AppState;
 /// Phase 0: carries only the counter value.
 /// Phase 1+: will carry the full PresentationState.
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StateChangedPayload {
     pub counter: i32,
 }

@@ -1,23 +1,26 @@
 # Trinity Lyrics v2 — Roadmap
 
-## Phase 0: Skeleton (Week 1–2) — CURRENT
+## Phase 0: Skeleton (Week 1–2) — DONE (polish in flight)
 
 **Goal:** Prove the hardest integration points before feature work.
 
 | Task | Status |
 |------|--------|
 | Tauri scaffold + two-window setup | Done |
-| Two-window IPC: counter demo via "state_changed" | TODO |
-| sqlx connected, migration running, SQLite working | TODO |
-| asset:// protocol serving local image | TODO |
-| MP4 video via asset:// in presentation window | TODO |
-| Tests green (cargo test + npx vitest) | TODO |
+| Two-window IPC: counter demo via "state_changed" | Done |
+| sqlx connected, migration running, SQLite working | Done |
+| asset:// protocol serving local image | Done |
+| MP4 video via asset:// in presentation window | Done |
+| Tests green (cargo test + npx vitest) | Done |
+| Polish: serde rename, canonicalize once, media dir pre-create | In flight (T7–T9) |
+| Polish: DB fail-fast + pool in AppState | In flight (T10) |
+| Polish: open_presentation_window command | In flight (T11) |
 
-**Deliverable:** Two-window skeleton that syncs a counter, plays video, serves local assets.
+**Deliverable:** Two-window skeleton that syncs a counter, plays video, serves local assets. *(Achieved; second window currently requires manual `tauri.conf.json` declaration — replaced by T11.)*
 
 ---
 
-## Phase 1: MVP — Lyrics + Holyrics Import (Week 3–8)
+## Phase 1: MVP — Lyrics + Holyrics Import (Week 3–8) — CURRENT
 
 **Goal:** Replace Holyrics for Sunday morning lyrics presentation.
 

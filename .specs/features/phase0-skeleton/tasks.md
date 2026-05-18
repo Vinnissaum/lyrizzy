@@ -1,37 +1,48 @@
 # Phase 0: Skeleton Tasks
 
 **Spec:** `.specs/features/phase0-skeleton/spec.md`
-**Status:** Done
+**Status:** T1–T6 done (work shipped in commits `3628385..8103663`). T7–T12 polish in flight.
+**Last updated:** 2026-05-18
 
 ---
 
 ## Execution Plan
 
-### Phase A: Foundation (Sequential)
+### Phase A: Foundation (Sequential) — DONE
 
 ```
 T1 → T2 → T3
 ```
 
-T1 (AppState + counter command) must exist before T2 (DB pool in state) can extend AppState.
-T2 (DB setup) must exist before T3 (asset:// protocol) since T3 also uses the app handle setup.
-
-### Phase B: Core (Parallel OK)
+### Phase B: Core (Parallel) — DONE
 
 ```
 T3 complete, then:
-  ├── T4 [P]   (asset:// protocol handler)
-  └── T5 [P]   (tests: Rust unit test + Vitest setup)
+  ├── T4 [P]   (frontend wiring)
+  └── T5 [P]   (vitest config + baseline tests)
 ```
 
-T4 and T5 are independent once T3 (lib.rs wiring) is stable.
-
-### Phase C: Integration (Sequential)
+### Phase C: Integration — DONE
 
 ```
-T4 + T5 complete, then:
-  T6  (OperatorApp + PresentationApp wired to state_changed event)
+T4 + T5 → T6 (cleanup)
 ```
+
+### Phase D: Polish (Parallel-safe) — IN FLIGHT
+
+```
+T7 [P] (serde rename)
+T8 [P] (canonicalize once)
+T9 [P] (pre-create media dir)
+  ↓
+T10 (DB fail-fast + pool in AppState)  — touches lib.rs setup; do after T9
+  ↓
+T11 (open_presentation_window + UI)    — touches lib.rs, commands, capabilities, OperatorApp
+  ↓
+T12 [P] (OperatorApp component test)   — optional; can run after T11
+```
+
+T7/T8/T9 are independent file edits (counter.rs / asset.rs / lib.rs setup). T10 and T11 both edit `lib.rs`, so run sequentially to avoid trivial conflicts.
 
 ---
 
@@ -39,208 +50,207 @@ T4 + T5 complete, then:
 
 ---
 
-### T1: Add AppState with Arc<RwLock<i32>> counter + increment_counter command
+### T1: AppState + increment_counter command — DONE
 
-**What:** Create `src-tauri/src/state.rs` with `AppState { counter: Arc<RwLock<i32>> }`. Wire it into `lib.rs` via `.manage(AppState::default())`. Add `increment_counter` Tauri command in `src-tauri/src/commands/counter.rs`. Register command in `lib.rs` invoke_handler![].
-**Where:**
-- `src-tauri/src/state.rs` (create)
-- `src-tauri/src/commands/counter.rs` (create)
-- `src-tauri/src/commands/mod.rs` (modify — uncomment/add pub mod counter)
-- `src-tauri/src/lib.rs` (modify — add mod state, .manage(), register command)
-**Depends on:** None
-**Reuses:** Existing `lib.rs` Tauri builder skeleton
-**Requirement:** P0-01
-
-**Tools:**
-- MCP: NONE
-- Skill: NONE
-
-**Done when:**
-- [ ] `state.rs` defines `AppState { counter: Arc<RwLock<i32>> }` with `Default` impl (starts at 0)
-- [ ] `commands/counter.rs` has `#[tauri::command] async fn increment_counter(state: tauri::State<'_, AppState>, app: tauri::AppHandle) -> Result<i32, String>` that increments, drops lock, emits `"state_changed"` with `{ counter: N }`, returns new value
-- [ ] Write guard dropped BEFORE `app.emit()` (invariant: no deadlock)
-- [ ] `lib.rs` wires `.manage(AppState::default())` and `invoke_handler![increment_counter]`
-- [ ] Gate check passes: `cargo test --manifest-path src-tauri/Cargo.toml`
-- [ ] Test count: at least 1 Rust test passes (the `counter_starts_at_zero` test in state.rs)
-
-**Tests:** unit (Rust — `#[cfg(test)]` in state.rs)
-**Gate:** quick
+Shipped in commit `873f495` (and refined later). `state.rs`, `commands/counter.rs`, and `lib.rs` wired. Two Rust unit tests pass.
 
 **Commit:** `feat(ipc): add AppState counter and increment_counter command`
 
 ---
 
-### T2: Initialize sqlx SqlitePool and run migrations at startup
+### T2: sqlx pool + migrations at startup — DONE
 
-**What:** Add `init_db()` async function in `src-tauri/src/db/mod.rs` that creates the app data directory, opens the SQLite pool at `%APPDATA%\TrinityLyrics\database.db`, and runs `sqlx::migrate!("../migrations")`. Store the pool in `AppState`. Wire `init_db()` into `lib.rs` `setup()`.
-**Where:**
-- `src-tauri/src/db/mod.rs` (modify — add init_db function)
-- `src-tauri/src/state.rs` (modify — add `db: sqlx::SqlitePool` field)
-- `src-tauri/src/lib.rs` (modify — call init_db in setup, manage updated AppState)
-**Depends on:** T1 (AppState exists)
-**Reuses:** `src-tauri/migrations/001_initial.sql` (already complete)
-**Requirement:** P0-02
-
-**Tools:**
-- MCP: NONE
-- Skill: NONE
-
-**Done when:**
-- [ ] `db/mod.rs` has `pub async fn init_db() -> Result<sqlx::SqlitePool, sqlx::Error>` that creates the data dir and opens the pool with `SqliteConnectOptions`
-- [ ] `sqlx::migrate!("../migrations")` runs against the pool without error
-- [ ] `AppState` holds `db: sqlx::SqlitePool`
-- [ ] `lib.rs` setup() calls `init_db().await` and `.manage()` the pool
-- [ ] App compiles and starts without panic (verified by `cargo test --manifest-path src-tauri/Cargo.toml`)
-- [ ] Gate check passes: `cargo test --manifest-path src-tauri/Cargo.toml`
-- [ ] Test count: existing tests still pass + 0 new failures
-
-**Tests:** unit (Rust — compile + existing test still green)
-**Gate:** quick
+Shipped. `db/mod.rs::init_db` opens the pool at `app_data_dir/database.db` and runs `sqlx::migrate!("./migrations")`. Pool currently `manage()`d separately from `AppState` — **see T10 for refactor**.
 
 **Commit:** `feat(db): initialize sqlx SqlitePool and run migrations at startup`
 
 ---
 
-### T3: Register asset:// protocol handler in lib.rs and tauri.conf.json CSP
+### T3: asset:// protocol handler + CSP — DONE
 
-**What:** Create `src-tauri/src/protocol/asset.rs` with the `asset_protocol_handler` function. Register it in `lib.rs` via `.register_uri_scheme_protocol("asset", ...)`. Update `tauri.conf.json` security.csp to allow `asset:` sources.
-**Where:**
-- `src-tauri/src/protocol/asset.rs` (create)
-- `src-tauri/src/protocol/mod.rs` (modify — add pub mod asset)
-- `src-tauri/src/lib.rs` (modify — register protocol + add mod protocol)
-- `src-tauri/tauri.conf.json` (modify — set security.csp)
-**Depends on:** T2 (lib.rs setup complete — avoids merge conflicts)
-**Reuses:** Tauri 2 `register_uri_scheme_protocol` API
-**Requirement:** P0-03, P0-04
-
-**Tools:**
-- MCP: NONE
-- Skill: NONE
-
-**Done when:**
-- [ ] `protocol/asset.rs` handles `asset://media/{filename}` requests
-- [ ] Handler resolves path relative to `%APPDATA%\TrinityLyrics\media\`
-- [ ] Path traversal protection: canonical path is verified to start with media_dir; returns HTTP 403 if not
-- [ ] Correct Content-Type headers set (video/mp4 for .mp4, image/* for images)
-- [ ] `tauri.conf.json` CSP set to: `"default-src 'self'; img-src 'self' asset: https:; media-src asset:; script-src 'self'; style-src 'self' 'unsafe-inline'"`
-- [ ] Rust unit test for path traversal rejection passes
-- [ ] Gate check passes: `cargo test --manifest-path src-tauri/Cargo.toml`
-- [ ] Test count: path traversal test + all prior tests green
-
-**Tests:** unit (Rust — `#[cfg(test)]` in protocol/asset.rs)
-**Gate:** quick
+Shipped in `873f495`. `protocol/asset.rs` plus CSP in `tauri.conf.json`. Path traversal tests green.
 
 **Commit:** `feat(protocol): register asset:// handler with path traversal protection`
 
 ---
 
-### T4: Wire PresentationApp to show video via asset:// [P]
+### T4: Frontend wiring (operator counter + presentation video) — DONE
 
-**What:** Update `src/windows/presentation/PresentationApp.tsx` to render a `<video>` element pointing to `asset://media/test.mp4`. Also update `OperatorApp.tsx` to show the counter value and a button that calls `incrementCounter()` from commands.ts. Add `incrementCounter` to `src/api/commands.ts`.
-**Where:**
-- `src/api/commands.ts` (modify — add incrementCounter, add CounterState type)
-- `src/windows/operator/OperatorApp.tsx` (modify — add counter display + increment button)
-- `src/windows/presentation/PresentationApp.tsx` (modify — add video element + counter display)
-**Depends on:** T3 (protocol registered; lib.rs stable)
-**Reuses:** `src/api/commands.ts` existing pattern
-**Requirement:** P0-01, P0-04
-
-**Tools:**
-- MCP: NONE
-- Skill: NONE
-
-**Done when:**
-- [ ] `commands.ts` exports `incrementCounter(): Promise<number>` using `invoke<number>("increment_counter")`
-- [ ] `commands.ts` exports `onStateChanged` typed with `{ counter: number }` payload
-- [ ] `OperatorApp.tsx` uses `onStateChanged` to display counter; has button calling `incrementCounter()`
-- [ ] `PresentationApp.tsx` uses `onStateChanged` to display counter; renders `<video src="asset://media/test.mp4" controls autoPlay loop muted>`
-- [ ] All `invoke()` calls are in commands.ts only — no raw `invoke()` in component files
-- [ ] Gate check passes: `npx vitest run` (component renders without crash)
-- [ ] Test count: frontend test for OperatorApp renders correctly
-
-**Tests:** component (Vitest + Testing Library)
-**Gate:** quick
+Shipped in `3628385`. Counter button + presentation video player + state_changed listener in both windows.
 
 **Commit:** `feat(frontend): wire operator counter button and presentation video player`
 
 ---
 
-### T5: Add vitest config and first unit tests (Rust + frontend) [P]
+### T5: vitest config + baseline tests — DONE
 
-**What:** Add `vitest.config.ts` with jsdom environment. Add a Vitest test for a `formatCounter` utility in `src/utils/counter.ts`. The Rust `state.rs` `#[cfg(test)]` block (counter_starts_at_zero) was added in T1 — this task confirms it passes and adds a second test for the increment behavior tested independently.
-**Where:**
-- `vitest.config.ts` (create)
-- `src/utils/counter.ts` (create — `formatCounter(n: number): string`)
-- `src/utils/counter.test.ts` (create — 2 Vitest tests)
-- `src-tauri/src/state.rs` (modify — add second unit test for default value)
-**Depends on:** T3 (lib.rs compiles without errors)
-**Reuses:** Existing Vitest + @testing-library/react devDependencies
-**Requirement:** P0-05
-
-**Tools:**
-- MCP: NONE
-- Skill: NONE
-
-**Done when:**
-- [ ] `vitest.config.ts` exists with `environment: 'jsdom'`, `globals: true`, `setupFiles` pointing to `@testing-library/jest-dom`
-- [ ] `src/utils/counter.ts` exports `formatCounter(n: number): string` (returns `"Counter: N"`)
-- [ ] `src/utils/counter.test.ts` has 2 passing tests: `formatCounter(0)` and `formatCounter(5)`
-- [ ] `npx vitest run` exits with code 0; 2+ tests pass
-- [ ] `cargo test --manifest-path src-tauri/Cargo.toml` exits with code 0; 1+ Rust tests pass
-- [ ] Gate check passes: `cargo test --manifest-path src-tauri/Cargo.toml && npx vitest run`
-- [ ] Test count: Rust ≥ 1 test, Frontend ≥ 2 tests
-
-**Tests:** unit (both Rust + Vitest)
-**Gate:** full
+Shipped in `2ec2fd4`. 3 Vitest tests + 9 Rust tests green.
 
 **Commit:** `test(phase0): add vitest config and green baseline tests for Rust and frontend`
 
 ---
 
-### T6: Final integration — cleanup and phase gate
+### T6: Cleanup (dead App.tsx removed, phase gate green) — DONE
 
-**What:** Remove dead file `src/App.tsx`. Verify both windows compile and render without errors. Run the full gate check. Update tasks.md and STATE.md.
-**Where:**
-- `src/App.tsx` (delete)
-- `.specs/features/phase0-skeleton/tasks.md` (update status)
-- `.specs/project/STATE.md` (update Phase 0 status, add lessons learned)
-**Depends on:** T4 (frontend wired), T5 (tests green)
-**Reuses:** All prior work
-**Requirement:** P0-01 through P0-05
-
-**Tools:**
-- MCP: NONE
-- Skill: NONE
-
-**Done when:**
-- [ ] `src/App.tsx` deleted (dead scaffold file)
-- [ ] `cargo test --manifest-path src-tauri/Cargo.toml` — all Rust tests pass
-- [ ] `npx vitest run` — all frontend tests pass (≥ 2)
-- [ ] No TypeScript errors (`tsc --noEmit`)
-- [ ] STATE.md updated: Phase 0 marked Done, lessons learned recorded
-- [ ] Gate check passes: `cargo test --manifest-path src-tauri/Cargo.toml && npx vitest run`
-
-**Tests:** none (cleanup + verification only)
-**Gate:** build
+Shipped in `80f3954` / `8103663`.
 
 **Commit:** `chore(phase0): remove dead App.tsx, mark phase 0 complete`
+
+---
+
+### T7: Stamp `#[serde(rename_all = "camelCase")]` on StateChangedPayload [P]
+
+**What:** Add `#[serde(rename_all = "camelCase")]` to `StateChangedPayload`. Single-field today; the rule must be in place before Phase 1 adds multi-word fields (e.g., `current_slide_index`).
+**Where:**
+- `src-tauri/src/commands/counter.rs` (modify)
+**Depends on:** None
+**Requirement:** P0-01
+
+**Done when:**
+- [ ] `StateChangedPayload` has `#[serde(rename_all = "camelCase")]` attribute.
+- [ ] `cargo test --manifest-path src-tauri/Cargo.toml` still green.
+- [ ] No TS-side change needed yet (field is already `counter` — same in camelCase).
+
+**Tests:** unit (existing Rust tests still pass)
+**Gate:** quick (cargo test)
+**Commit:** `chore(ipc): apply camelCase serde rename to StateChangedPayload`
+
+---
+
+### T8: Canonicalize media_dir once at handler construction [P]
+
+**What:** In `protocol/asset.rs::build_handler`, canonicalize `media_dir` **once** when the closure is built, capture the canonical `PathBuf`. Drop the per-request `media_dir.canonicalize()` call. Keep per-request canonicalize on the *file* (still needed for symlink resolution).
+**Where:**
+- `src-tauri/src/protocol/asset.rs` (modify `build_handler`)
+**Depends on:** None
+**Requirement:** P0-03
+
+**Done when:**
+- [ ] `build_handler` calls `media_dir.canonicalize()` once before constructing the closure; if it fails, the closure unconditionally returns 500 with a clear body (the dir should always exist after T9, but defense in depth).
+- [ ] Closure no longer canonicalizes `media_dir` per request.
+- [ ] All existing protocol unit tests still pass.
+
+**Tests:** unit (existing `path_traversal_*` tests cover the behavior)
+**Gate:** quick
+**Commit:** `perf(protocol): canonicalize asset media_dir once at handler construction`
+
+---
+
+### T9: Pre-create media dir AND align asset:// path with app_data_dir [P]
+
+**What:** Two coupled fixes:
+1. **Pre-create**: in `lib.rs` setup, `std::fs::create_dir_all(app_data_dir/"media")` so the asset handler can canonicalize it immediately. (Currently a missing dir → every asset request silently 404s.)
+2. **Path alignment**: today `register_uri_scheme_protocol` hardcodes `%APPDATA%\TrinityLyrics\` while `db::init_db` uses `app.path().app_data_dir()` (resolves to `%APPDATA%\com.igreja-trindade.trinity-lyrics\` per the bundle identifier). The two stores are split across different folders. Unify by:
+   - Adding `static CANONICAL_MEDIA_DIR: OnceLock<PathBuf>` to `protocol/asset.rs` with `pub fn set_media_dir(dir: PathBuf)` and `pub fn build_handler()` (no args — reads from the static).
+   - In `lib.rs` setup, compute `media_dir = app.path().app_data_dir()?.join("media")`, create it, canonicalize, then `protocol::asset::set_media_dir(canonical)`.
+   - Remove the env-var-based path computation from the `register_uri_scheme_protocol` block.
+
+**Where:**
+- `src-tauri/src/protocol/asset.rs` (modify — add OnceLock + setter; change build_handler signature)
+- `src-tauri/src/lib.rs` (modify setup — create media dir, set OnceLock; change protocol registration)
+
+**Depends on:** None (independent of T7/T8)
+**Requirement:** P0-08
+
+**Done when:**
+- [ ] `protocol::asset::CANONICAL_MEDIA_DIR` (OnceLock) replaces the closure-captured path.
+- [ ] `setup` creates `app_data_dir/"media"`, canonicalizes it, and calls `set_media_dir`.
+- [ ] No more `%APPDATA%\TrinityLyrics\` literal anywhere — single source of truth via `app.path().app_data_dir()`.
+- [ ] If creation fails, the failure propagates to the dialog/exit path established in T10.
+- [ ] Manual check: delete the media dir, start the app, observe it is recreated.
+- [ ] All `protocol/asset.rs` unit tests still pass (mime tests + path traversal test; the static-based handler test may need a `set_media_dir` call in test setup, OR keep `build_handler(PathBuf)` as a test-friendly overload).
+
+**Tests:** unit (existing); update tests if `build_handler` signature changes
+**Gate:** quick (cargo test)
+**Commit:** `feat(storage): pre-create media dir and align asset:// to app_data_dir`
+
+---
+
+### T10: DB init fail-fast + move pool into AppState
+
+**What:** Two changes in one task because they touch the same setup block:
+1. Move the pool into `AppState` behind `tokio::sync::OnceCell<SqlitePool>` (replacing the separate `app_handle.manage(pool)`).
+2. Replace `tauri::async_runtime::spawn { eprintln! }` with `tauri::async_runtime::block_on(init_db(&handle))` so the pool is ready before invoke handlers register. On `Err`, show a `tauri-plugin-dialog` blocking error and `std::process::exit(1)`.
+
+**Where:**
+- `src-tauri/src/state.rs` (modify — add `db: OnceCell<SqlitePool>`)
+- `src-tauri/src/lib.rs` (modify setup — block_on + dialog + exit)
+- `src-tauri/src/db/mod.rs` (unchanged signature; verify it still compiles after AppState change)
+
+**Depends on:** T9 (so the dialog-on-error path is the only failure mode left)
+**Requirement:** P0-02, P0-07
+
+**Done when:**
+- [ ] `AppState` exposes `db: tokio::sync::OnceCell<SqlitePool>` (set once during setup).
+- [ ] `lib.rs` setup calls `tauri::async_runtime::block_on(db::init_db(&handle))`; on `Ok`, sets the cell via `state.db.set(pool).ok()`.
+- [ ] On `Err`: `tauri_plugin_dialog::DialogExt::dialog(&handle).message(format!("...")).blocking_show()` then `std::process::exit(1)`.
+- [ ] No second `manage()` call for the pool — single managed object.
+- [ ] `cargo test` green (the existing counter test does not depend on the pool).
+
+**Tests:** none new; failure path is verified manually by pointing the app at a read-only DB path
+**Gate:** quick
+**Commit:** `feat(db): fail-fast on init error and move pool into AppState`
+
+---
+
+### T11: open_presentation_window command + Operator button
+
+**What:** Add the missing command to actually open the presentation window. Wire it from the operator UI. Grant the webview-create capability.
+
+**Where:**
+- `src-tauri/src/commands/window.rs` (create) — `#[tauri::command] pub async fn open_presentation_window(app: AppHandle) -> Result<(), String>` using `WebviewWindowBuilder` + `WebviewUrl::App("presentation.html".into())`, idempotent (find existing by label first via `app.get_webview_window("presentation")`)
+- `src-tauri/src/commands/mod.rs` (modify — `pub mod window;`)
+- `src-tauri/src/lib.rs` (modify — register in `invoke_handler![]`)
+- `src-tauri/capabilities/default.json` (modify — add `"core:webview:allow-create-webview-window"`)
+- `src/api/commands.ts` (modify — export `openPresentationWindow`)
+- `src/windows/operator/OperatorApp.tsx` (modify — add button below the counter)
+
+**Depends on:** T10 (clean setup block to extend)
+**Requirement:** P0-06
+
+**Done when:**
+- [ ] Command exists, registered, idempotent (calling twice does not error and focuses the existing window on the second call).
+- [ ] Capability grants the new permission; `tauri info` (or `npm run tauri dev`) starts without permission errors.
+- [ ] `openPresentationWindow` available via `commands.ts`; OperatorApp button calls it.
+- [ ] Manual verification: click button → second window opens → both windows show the same counter on increment.
+- [ ] `cargo test` and `npx vitest run` both green.
+
+**Tests:** none directly (Tauri window APIs require a running runtime; covered by manual verification)
+**Gate:** quick (cargo + vitest)
+**Commit:** `feat(window): add open_presentation_window command and operator button`
+
+---
+
+### T12: OperatorApp component test (with Tauri API mocks) [P, OPTIONAL]
+
+**What:** Add a Vitest + Testing Library test for `OperatorApp` that mocks `@tauri-apps/api/core` (`invoke`) and `@tauri-apps/api/event` (`listen`). Assert: counter renders, button calls `invoke("increment_counter")`, listener cleanup runs on unmount. This closes T4's stale "frontend test for OperatorApp renders correctly" criterion that was never delivered.
+
+**Where:**
+- `src/windows/operator/OperatorApp.test.tsx` (create)
+- `src/test-setup.ts` (modify — add Tauri API mock helpers if needed)
+
+**Depends on:** T11 (button + new command exist; test covers them)
+**Requirement:** P0-05 (extends the baseline)
+
+**Done when:**
+- [ ] Test renders `<OperatorApp />`, asserts counter shows `0`, clicks the button, asserts mocked `invoke` was called with `"increment_counter"`.
+- [ ] Test for "Open Presentation Window" button: clicks, asserts mocked `invoke("open_presentation_window")` was called.
+- [ ] `npx vitest run` exits 0 with ≥ 5 frontend tests.
+
+**Tests:** component (Vitest + Testing Library)
+**Gate:** full (cargo + vitest)
+**Commit:** `test(operator): add component test with Tauri API mocks`
 
 ---
 
 ## Parallel Execution Map
 
 ```
-Phase A (Sequential):
-  T1 ──→ T2 ──→ T3
+Phases A–C — DONE
+  T1 → T2 → T3 → (T4 ∥ T5) → T6
 
-Phase B (Parallel — after T3):
-  T3 complete, then:
-    ├── T4 [P]  (frontend wiring)
-    └── T5 [P]  (vitest config + tests)
-
-Phase C (Sequential — after T4 + T5):
-  T4 + T5 complete, then:
-    T6 (cleanup + gate)
+Phase D — IN FLIGHT
+  (T7 ∥ T8 ∥ T9) → T10 → T11 → T12 (optional)
 ```
 
 ---
@@ -249,25 +259,26 @@ Phase C (Sequential — after T4 + T5):
 
 | Task | Scope | Status |
 |------|-------|--------|
-| T1: AppState + counter command | 2 files + lib.rs mod | OK — cohesive single feature |
-| T2: DB pool + migrations | db/mod.rs + state.rs + lib.rs | OK — single integration point |
-| T3: asset:// protocol | protocol/asset.rs + mod + lib.rs + conf | OK — single feature |
-| T4: Frontend wiring | commands.ts + 2 window components | OK — one IPC connection |
-| T5: Test config + baseline tests | vitest.config + utils + test file | OK — single testing concern |
-| T6: Cleanup + phase gate | 1 delete + spec updates | OK — single cleanup |
+| T1–T6 | (shipped — see commits) | Done |
+| T7: serde rename | one attribute, one file | Single-line edit ✓ |
+| T8: canonicalize once | one function, one file | Single concern ✓ |
+| T9: pre-create media dir | one setup hook, one file | Single concern ✓ |
+| T10: fail-fast + pool in AppState | setup block + state.rs | Two coupled changes; same setup block forces fusion ✓ |
+| T11: open_presentation_window | command file + caps + UI button | Cross-layer but one feature ✓ |
+| T12: component test | one test file | Single concern ✓ |
 
 ---
 
 ## Diagram-Definition Cross-Check
 
-| Task | Depends On (task body) | Diagram Shows | Status |
-|------|------------------------|---------------|--------|
-| T1 | None | Start of chain | OK |
-| T2 | T1 | T1 → T2 | OK |
-| T3 | T2 | T2 → T3 | OK |
-| T4 [P] | T3 | T3 → T4 parallel | OK |
-| T5 [P] | T3 | T3 → T5 parallel | OK |
-| T6 | T4, T5 | T4 + T5 → T6 | OK |
+| Task | Depends On (body) | Diagram Shows | Status |
+|------|-------------------|---------------|--------|
+| T7 [P] | None | Start of Phase D parallel band | OK |
+| T8 [P] | None | Start of Phase D parallel band | OK |
+| T9 [P] | None | Start of Phase D parallel band | OK |
+| T10 | T9 | T9 → T10 | OK |
+| T11 | T10 | T10 → T11 | OK |
+| T12 | T11 | T11 → T12 (optional) | OK |
 
 ---
 
@@ -275,11 +286,9 @@ Phase C (Sequential — after T4 + T5):
 
 | Task | Code Layer Created/Modified | Matrix Requires | Task Says | Status |
 |------|----------------------------|-----------------|-----------|--------|
-| T1 | `src-tauri/src/state.rs` (domain-ish) | unit | unit | OK |
-| T1 | `src-tauri/src/commands/counter.rs` | none (commands layer) | — (included in T1 unit test) | OK |
-| T2 | `src-tauri/src/db/mod.rs` | integration (sqlx::test) | unit (compile gate) | NOTE: full sqlx::test integration added in Phase 1 when DB queries exist; Phase 0 gate is compile |
-| T3 | `src-tauri/src/protocol/asset.rs` | unit | unit | OK |
-| T4 | `src/windows/operator/OperatorApp.tsx` | component | component | OK |
-| T4 | `src/windows/presentation/PresentationApp.tsx` | component | component | OK |
-| T5 | `src/utils/counter.ts` | unit | unit | OK |
-| T6 | Cleanup only | none | none | OK |
+| T7 | `commands/counter.rs` (commands layer) | none (tested via integration) | existing unit test still passes | OK |
+| T8 | `protocol/asset.rs` | unit | existing unit tests cover | OK |
+| T9 | `lib.rs` setup | none (app wiring) | manual | OK |
+| T10 | `state.rs` + `lib.rs` setup | none / domain-ish | manual + existing | OK |
+| T11 | `commands/window.rs` + `OperatorApp.tsx` | none / component | manual + T12 component test | OK |
+| T12 | `OperatorApp.test.tsx` | component | component | OK |

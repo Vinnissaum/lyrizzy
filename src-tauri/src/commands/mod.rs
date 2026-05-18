@@ -1,5 +1,6 @@
 // Commands module — Tauri command handlers
 pub mod counter;
+pub mod window;
 
 // Submodules will be added as features are implemented:
 // pub mod presentation;
@@ -8,4 +9,3 @@ pub mod counter;
 // pub mod media;
 // pub mod settings;
 // pub mod import;
-// pub mod window;

@@ -130,3 +130,79 @@ async fn fts_body_updates_when_section_is_added() {
             .unwrap();
     assert_eq!(after.len(), 1, "section insert trigger must refresh FTS body");
 }
+
+// ─── T8: FTS5 search via db_list_songs ───────────────────────────────────────
+
+use tauri_app_lib::commands::song::{
+    db_create_song, db_list_songs, CreateSongPayload, ListSongsParams, SectionPayload,
+};
+use tauri_app_lib::domain::song::SectionType;
+
+fn make_song(title: &str, body: &str) -> CreateSongPayload {
+    CreateSongPayload {
+        title: title.to_string(),
+        artist: None,
+        ccli_number: None,
+        key_signature: None,
+        language: None,
+        notes: None,
+        background_id: None,
+        slide_config: None,
+        source: None,
+        sections: vec![SectionPayload {
+            label: "Estrofe 1".to_string(),
+            section_type: SectionType::Verse,
+            body: body.to_string(),
+            sort_order: 0,
+            repeat_count: None,
+        }],
+    }
+}
+
+#[tokio::test]
+async fn fts_search_finds_body_only_match_via_db_list_songs() {
+    let pool = open_test_db().await;
+
+    db_create_song(&pool, make_song("Título Genérico", "palavra_unica_xyzzy no corpo da música"))
+        .await
+        .unwrap();
+    db_create_song(&pool, make_song("Outro Título", "corpo completamente diferente"))
+        .await
+        .unwrap();
+
+    let results = db_list_songs(
+        &pool,
+        ListSongsParams {
+            search: Some("palavra_unica_xyzzy".to_string()),
+            limit: None,
+            offset: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].title, "Título Genérico");
+}
+
+#[tokio::test]
+async fn fts_invalid_query_falls_back_to_like_and_returns_no_error() {
+    let pool = open_test_db().await;
+
+    db_create_song(&pool, make_song("Graça de Deus", "corpo qualquer"))
+        .await
+        .unwrap();
+
+    // Unbalanced quote — invalid FTS5 syntax, should fall back to LIKE.
+    let results = db_list_songs(
+        &pool,
+        ListSongsParams {
+            search: Some("\"unbalanced".to_string()),
+            limit: None,
+            offset: None,
+        },
+    )
+    .await;
+
+    assert!(results.is_ok(), "invalid FTS5 query must not return an error");
+}

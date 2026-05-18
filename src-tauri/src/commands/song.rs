@@ -1,4 +1,5 @@
 use crate::domain::song::{Song, SongSection, SectionType};
+use crate::services::fts_query::{self, FtsQuery};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
@@ -334,21 +335,42 @@ pub async fn db_list_songs(
     let offset = params.offset.unwrap_or(0);
 
     let song_rows = match params.search.as_deref() {
-        Some(s) if !s.trim().is_empty() => {
-            let pattern = format!("%{}%", s.trim());
-            sqlx::query(
-                "SELECT id, title, artist, ccli_number, key_signature, language, notes,
-                         background_id, slide_config, source, created_at, updated_at, deleted_at
-                 FROM songs WHERE deleted_at IS NULL AND title LIKE ?
-                 ORDER BY title ASC LIMIT ? OFFSET ?",
+        Some(s) if !s.trim().is_empty() => match fts_query::sanitize(s) {
+            FtsQuery::Fts5(q) => sqlx::query(
+                "SELECT s.id, s.title, s.artist, s.ccli_number, s.key_signature, s.language,
+                         s.notes, s.background_id, s.slide_config, s.source,
+                         s.created_at, s.updated_at, s.deleted_at
+                 FROM songs s
+                 JOIN songs_fts ON songs_fts.rowid = s.rowid
+                 WHERE songs_fts MATCH ? AND s.deleted_at IS NULL
+                 ORDER BY bm25(songs_fts), s.title ASC
+                 LIMIT ? OFFSET ?",
             )
-            .bind(pattern)
+            .bind(q)
             .bind(limit)
             .bind(offset)
             .fetch_all(pool)
             .await
-            .map_err(|e| format!("Falha ao listar músicas: {e}"))?
-        }
+            .map_err(|e| format!("Falha ao pesquisar músicas: {e}"))?,
+
+            FtsQuery::Like(term) => {
+                let pattern = format!("%{term}%");
+                sqlx::query(
+                    "SELECT id, title, artist, ccli_number, key_signature, language, notes,
+                             background_id, slide_config, source, created_at, updated_at, deleted_at
+                     FROM songs WHERE deleted_at IS NULL
+                       AND (title LIKE ? OR artist LIKE ?)
+                     ORDER BY title ASC LIMIT ? OFFSET ?",
+                )
+                .bind(&pattern)
+                .bind(&pattern)
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(pool)
+                .await
+                .map_err(|e| format!("Falha ao pesquisar músicas: {e}"))?
+            }
+        },
         _ => sqlx::query(
             "SELECT id, title, artist, ccli_number, key_signature, language, notes,
                      background_id, slide_config, source, created_at, updated_at, deleted_at

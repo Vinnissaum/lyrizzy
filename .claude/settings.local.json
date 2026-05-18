@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem C:\\\\git\\\\triade\\\\src-tauri -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem C:\\\\git\\\\triade\\\\src -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
+      "PowerShell(& \"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -all -format json 2>&1)"
+    ]
+  }
+}

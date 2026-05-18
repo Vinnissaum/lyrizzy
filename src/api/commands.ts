@@ -1,51 +1,68 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-/**
- * Phase 0 state payload.
- * Will be replaced by the full PresentationState union in Phase 1.
- */
-export interface CounterState {
-  counter: number;
-}
-
-// ─── Presentation commands ──────────────────────────────────────────────────
-
-export const advanceSlide = () => invoke<void>("advance_slide");
-export const previousSlide = () => invoke<void>("previous_slide");
-export const toggleBlank = () => invoke<void>("toggle_blank");
-export const toggleFreeze = () => invoke<void>("toggle_freeze");
-export const stopPresentation = () => invoke<void>("stop_presentation");
+import type { Song } from "../types";
 
 // ─── Window management ──────────────────────────────────────────────────────
 
-/**
- * Open (or focus) the presentation window. Idempotent — calling twice
- * focuses the existing window instead of creating a duplicate.
- */
 export const openPresentationWindow = () =>
   invoke<void>("open_presentation_window");
 
 // ─── Phase 0: counter demo ──────────────────────────────────────────────────
 
-/**
- * Increment the shared counter in Rust state.
- * Returns the new counter value.
- * Also triggers a "state_changed" event broadcast to all windows.
- */
 export const incrementCounter = () => invoke<number>("increment_counter");
+
+// ─── Song CRUD ──────────────────────────────────────────────────────────────
+
+export interface SectionPayload {
+  label: string;
+  type: Song["sections"][number]["type"];
+  body: string;
+  sortOrder: number;
+  repeatCount?: number;
+}
+
+export interface CreateSongPayload {
+  title: string;
+  artist?: string;
+  ccliNumber?: string;
+  keySignature?: string;
+  language?: string;
+  notes?: string;
+  backgroundId?: string;
+  slideConfig?: string;
+  source?: string;
+  sections: SectionPayload[];
+}
+
+export interface UpdateSongPayload extends CreateSongPayload {
+  id: string;
+}
+
+export interface ListSongsParams {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const createSong = (payload: CreateSongPayload) =>
+  invoke<Song>("create_song", { payload });
+
+export const updateSong = (payload: UpdateSongPayload) =>
+  invoke<Song>("update_song", { payload });
+
+export const deleteSong = (id: string) =>
+  invoke<void>("delete_song", { id });
+
+export const listSongs = (params?: ListSongsParams) =>
+  invoke<Song[]>("list_songs", { params });
+
+export const getSong = (id: string) =>
+  invoke<Song>("get_song", { id });
 
 // ─── Events ─────────────────────────────────────────────────────────────────
 
-/**
- * Listen for state changes broadcast by the Rust backend.
- * Phase 0: payload is CounterState { counter: number }
- * Phase 1+: payload will be the full PresentationState union.
- */
-export const onStateChanged = (cb: (state: CounterState) => void) =>
-  listen<CounterState>("state_changed", (e) => cb(e.payload));
+export const onSongsChanged = (cb: () => void) =>
+  listen<void>("songs_changed", () => cb());
 
 export const onCountdownTick = (cb: (remaining_ms: number) => void) =>
   listen<{ remaining_ms: number }>("countdown_tick", (e) =>

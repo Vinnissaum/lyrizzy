@@ -1,11 +1,12 @@
-mod commands;
+pub mod commands;
 mod db;
-mod domain;
+pub mod domain;
 mod protocol;
-mod services;
+pub mod services;
 mod state;
 
 use commands::counter::increment_counter;
+use commands::song::{create_song, delete_song, get_song, list_songs, update_song};
 use commands::window::open_presentation_window;
 use state::AppState;
 use tauri::Manager;
@@ -75,6 +76,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             increment_counter,
             open_presentation_window,
+            create_song,
+            update_song,
+            delete_song,
+            list_songs,
+            get_song,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

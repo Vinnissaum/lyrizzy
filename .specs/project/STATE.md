@@ -1,7 +1,7 @@
 # Trinity Lyrics v2 — State
 
 **Last updated:** 2026-05-18
-**Current phase:** Phase 1 — MVP (Phase 0 complete)
+**Current phase:** Phase 1 — MVP (Phase 0 complete; B-1 resolved 2026-05-18)
 
 ---
 
@@ -21,7 +21,7 @@
 
 | # | Blocker | Status | Notes |
 |---|---------|--------|-------|
-| B-1 | OQ-1: Holyrics export format unknown | Open — Phase 1 blocker | Do not implement parser without real export file |
+| B-1 | OQ-1: Holyrics export format unknown | Resolved 2026-05-18 | User supplied sample export. Format: top-level array of song objects; each song has `title`, `artist`, `lyrics.paragraphs[]` where each paragraph is `{number, description, text}`. `description` holds section labels (empty in samples — importer must auto-label or leave blank). `full_text` duplicates joined paragraphs (use paragraphs as source of truth). `order`/`arrangements`/`bpm`/`key`/`streaming` mostly empty stubs (drop for MVP). Holyrics `id` is a JS timestamp — generate our own PKs. |
 
 ---
 
@@ -29,7 +29,7 @@
 
 | # | Question | Status |
 |---|----------|--------|
-| OQ-1 | Holyrics exact JSON structure? | Blocker for Phase 1 parser |
+| OQ-1 | Holyrics exact JSON structure? | Resolved 2026-05-18 — see B-1 row |
 | OQ-2 | Video thumbnail library: video-rs vs ffmpeg spawn vs placeholder | Deferred to Phase 2 |
 | OQ-3 | Multi-window entry: single index.html vs separate HTML | Decided: single (D-1) |
 | OQ-4 | Font rendering on projectors with older Windows | Needs hardware test in Phase 1 |

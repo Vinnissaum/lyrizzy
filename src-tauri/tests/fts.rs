@@ -1,0 +1,132 @@
+use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
+use std::str::FromStr;
+use tempfile::tempdir;
+
+async fn open_test_db() -> SqlitePool {
+    let dir = tempdir().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    let url = format!("sqlite://{}?mode=rwc", db_path.to_string_lossy());
+    let options = SqliteConnectOptions::from_str(&url)
+        .unwrap()
+        .create_if_missing(true);
+    let pool = SqlitePool::connect_with(options).await.unwrap();
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    // Keep temp dir alive by leaking it — acceptable for tests.
+    std::mem::forget(dir);
+    pool
+}
+
+#[tokio::test]
+async fn fts_finds_song_by_lyric_body_only() {
+    let pool = open_test_db().await;
+
+    // Insert a song whose title/artist do NOT contain the search term.
+    sqlx::query(
+        "INSERT INTO songs (id, title, artist, language, created_at, updated_at)
+         VALUES ('s1', 'Louvor ao Senhor', 'Artista Desconhecido', 'pt', 1000, 1000)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Insert a section with a unique phrase not present in title/artist.
+    sqlx::query(
+        "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count)
+         VALUES ('sec1', 's1', 'Estrofe 1', 'verse',
+                 'o tronco mais alto da floresta canta ao criador', 0, 1)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // FTS query on a body-only term.
+    let rows: Vec<(i64,)> =
+        sqlx::query_as("SELECT rowid FROM songs_fts WHERE songs_fts MATCH 'tronco'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    assert_eq!(rows.len(), 1, "expected exactly one FTS match");
+
+    // Confirm the rowid maps back to our song.
+    let (title,): (String,) =
+        sqlx::query_as("SELECT title FROM songs WHERE rowid = ?")
+            .bind(rows[0].0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    assert_eq!(title, "Louvor ao Senhor");
+}
+
+#[tokio::test]
+async fn fts_excludes_soft_deleted_songs() {
+    let pool = open_test_db().await;
+
+    sqlx::query(
+        "INSERT INTO songs (id, title, language, created_at, updated_at)
+         VALUES ('s2', 'Música Removida', 'pt', 1000, 1000)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count)
+         VALUES ('sec2', 's2', 'Estrofe 1', 'verse', 'palavra única exclusiva removida', 0, 1)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Soft-delete the song — songs_au trigger should remove it from FTS.
+    sqlx::query("UPDATE songs SET deleted_at = 9999 WHERE id = 's2'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let rows: Vec<(i64,)> =
+        sqlx::query_as("SELECT rowid FROM songs_fts WHERE songs_fts MATCH 'exclusiva'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    assert_eq!(rows.len(), 0, "soft-deleted song must not appear in FTS");
+}
+
+#[tokio::test]
+async fn fts_body_updates_when_section_is_added() {
+    let pool = open_test_db().await;
+
+    sqlx::query(
+        "INSERT INTO songs (id, title, language, created_at, updated_at)
+         VALUES ('s3', 'Hino da Fé', 'pt', 1000, 1000)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // At insert, body is empty — unique term not findable yet.
+    let before: Vec<(i64,)> =
+        sqlx::query_as("SELECT rowid FROM songs_fts WHERE songs_fts MATCH 'esperança'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(before.len(), 0);
+
+    // Add a section containing the unique term.
+    sqlx::query(
+        "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count)
+         VALUES ('sec3', 's3', 'Estrofe 1', 'verse', 'canta com esperança ao eterno', 0, 1)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let after: Vec<(i64,)> =
+        sqlx::query_as("SELECT rowid FROM songs_fts WHERE songs_fts MATCH 'esperança'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(after.len(), 1, "section insert trigger must refresh FTS body");
+}

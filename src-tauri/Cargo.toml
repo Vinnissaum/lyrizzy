@@ -29,6 +29,7 @@ tokio = { version = "1", features = ["full"] }
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 http = "1"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
+zip = "2"
 
 [dev-dependencies]
 tempfile = "3"

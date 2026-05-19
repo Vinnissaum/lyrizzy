@@ -1,4 +1,5 @@
 // Services module — business logic and background tasks
+pub mod archive;
 pub mod fts_query;
 pub mod holyrics_parser;
 pub mod media_probe;

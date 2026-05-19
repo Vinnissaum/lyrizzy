@@ -5,6 +5,9 @@ mod protocol;
 pub mod services;
 mod state;
 
+use commands::backup::{
+    abort_restore, check_restore_in_progress, export_library, inspect_archive, restore_library,
+};
 use commands::countdown::{
     get_countdown_state, pause_countdown, reset_countdown, set_countdown_duration, start_countdown,
 };
@@ -86,6 +89,11 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            export_library,
+            inspect_archive,
+            restore_library,
+            check_restore_in_progress,
+            abort_restore,
             open_presentation_window,
             list_monitors,
             create_song,

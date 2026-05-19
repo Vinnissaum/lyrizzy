@@ -269,6 +269,68 @@ export const resetCountdown = () =>
 export const getCountdownState = () =>
   invoke<CountdownState>("get_countdown_state");
 
+// ─── Backup / restore ────────────────────────────────────────────────────────
+
+export interface ManifestCounts {
+  songs: number;
+  sections: number;
+  sets: number;
+  setItems: number;
+  media: number;
+  settings: number;
+}
+
+export interface ExportSummary {
+  outPath: string;
+  byteSize: number;
+  counts: ManifestCounts;
+}
+
+export interface ArchiveInspection {
+  schemaVersion: number;
+  exportedAt: number;
+  appVersion: string;
+  counts: ManifestCounts;
+}
+
+export interface ImportSummary {
+  songsImported: number;
+  songsSkipped: number;
+  sectionsImported: number;
+  setsImported: number;
+  setItemsImported: number;
+  mediaImported: number;
+  mediaSkipped: number;
+  mediaFailed: number;
+  settingsImported: number;
+}
+
+export type ImportMode = "replace" | "merge";
+
+export interface ExportProgress {
+  currentFile: string;
+  filesDone: number;
+  filesTotal: number;
+}
+
+export const exportLibrary = (outPath: string) =>
+  invoke<ExportSummary>("export_library", { outPath });
+
+export const inspectArchive = (path: string) =>
+  invoke<ArchiveInspection>("inspect_archive", { path });
+
+export const restoreLibrary = (path: string, mode: ImportMode) =>
+  invoke<ImportSummary>("restore_library", { path, mode });
+
+export const checkRestoreInProgress = () =>
+  invoke<boolean>("check_restore_in_progress");
+
+export const abortRestore = () =>
+  invoke<void>("abort_restore");
+
+export const onBackupProgress = (cb: (p: ExportProgress) => void) =>
+  listen<ExportProgress>("backup_progress", (e) => cb(e.payload));
+
 // ─── Events ─────────────────────────────────────────────────────────────────
 
 export const onSongsChanged = (cb: () => void) =>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  checkRestoreInProgress,
   listMonitors,
   onSetChanged,
   onSongsChanged,
@@ -14,6 +15,8 @@ import { SetBuilder } from "../../components/set/SetBuilder";
 import { SlideController } from "../../components/presentation/SlideController";
 import { CountdownPanel } from "../../components/countdown/CountdownPanel";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
+import { BackupScreen } from "../../components/backup/BackupScreen";
+import { RestoreInProgressDialog } from "../../components/backup/RestoreInProgressDialog";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
@@ -33,6 +36,7 @@ export const OperatorApp: React.FC = () => {
 
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [selectedMonitor, setSelectedMonitor] = useState<number | undefined>(undefined);
+  const [restoreInProgress, setRestoreInProgress] = useState(false);
 
   useEffect(() => {
     const unlistenSongs = onSongsChanged(() => {
@@ -43,6 +47,8 @@ export const OperatorApp: React.FC = () => {
     });
     const unsubPresentation = subscribePresentation();
     const unsubCountdown = subscribeCountdown();
+
+    checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
 
     listMonitors()
       .then((ms) => {
@@ -87,11 +93,16 @@ export const OperatorApp: React.FC = () => {
 
   const isCountdownSection = currentView === "countdown";
   const isMediaSection = currentView === "media";
+  const isBackupSection = currentView === "backup";
 
   const serviceSet = presState?.set;
 
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col">
+      {restoreInProgress && (
+        <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />
+      )}
+
       {/* Top bar */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-gray-700 shrink-0">
         <div className="flex items-center gap-1">
@@ -134,6 +145,16 @@ export const OperatorApp: React.FC = () => {
             }`}
           >
             Mídia
+          </button>
+          <button
+            onClick={() => setView("backup")}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+              isBackupSection
+                ? "bg-gray-700 text-white"
+                : "text-gray-400 hover:text-white hover:bg-gray-800"
+            }`}
+          >
+            Backup
           </button>
         </div>
 
@@ -214,6 +235,8 @@ export const OperatorApp: React.FC = () => {
         {currentView === "countdown" && <CountdownPanel />}
 
         {currentView === "media" && <MediaLibrary />}
+
+        {currentView === "backup" && <BackupScreen />}
       </main>
     </div>
   );

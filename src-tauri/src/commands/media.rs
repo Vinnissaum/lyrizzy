@@ -256,6 +256,16 @@ pub async fn delete_media(
 }
 
 #[tauri::command]
+pub fn check_ffprobe() -> bool {
+    let cmd = std::env::var("FFPROBE_PATH").unwrap_or_else(|_| "ffprobe".to_string());
+    std::process::Command::new(cmd)
+        .arg("-version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+#[tauri::command]
 pub async fn get_media_references(
     state: State<'_, AppState>,
     id: String,

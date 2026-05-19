@@ -227,6 +227,9 @@ export interface ListMediaParams {
   offset?: number;
 }
 
+export const checkFfprobe = () =>
+  invoke<boolean>("check_ffprobe");
+
 export const importMedia = (sourcePath: string) =>
   invoke<Media>("import_media", { sourcePath });
 

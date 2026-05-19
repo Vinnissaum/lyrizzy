@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Upload } from "lucide-react";
 import { useMediaStore } from "../../stores/media";
+import { FfmpegBanner } from "./FfmpegBanner";
 import { MediaCard } from "./MediaCard";
 import { MediaUploadDropzone } from "./MediaUploadDropzone";
 import { MediaDetailPanel } from "./MediaDetailPanel";
@@ -121,6 +122,9 @@ export const MediaLibrary: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* ffmpeg availability warning */}
+        <FfmpegBanner />
 
         {/* Toast */}
         {toast && (

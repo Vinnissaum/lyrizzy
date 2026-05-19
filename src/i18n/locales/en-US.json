@@ -240,6 +240,11 @@
     "picker": {
       "noMedia": "No media available.",
       "defaultLabel": "Select media"
+    },
+    "ffmpegBanner": {
+      "title": "ffmpeg not found",
+      "body": "Video thumbnails and metadata require ffmpeg. Download it at ffmpeg.org and restart the app.",
+      "dismiss": "Dismiss"
     }
   },
   "import": {

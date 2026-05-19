@@ -240,6 +240,11 @@
     "picker": {
       "noMedia": "Nenhuma mídia disponível.",
       "defaultLabel": "Selecionar mídia"
+    },
+    "ffmpegBanner": {
+      "title": "ffmpeg não encontrado",
+      "body": "Miniaturas e metadados de vídeo precisam do ffmpeg. Baixe em ffmpeg.org e reinicie o app.",
+      "dismiss": "Fechar"
     }
   },
   "import": {

@@ -132,6 +132,7 @@ mod tests {
                 duration_ms: 600_000,
                 message: Some("Serviço em breve".into()),
                 end_behavior: CountdownEndBehavior::HoldZero,
+                background_media_id: None,
             }),
             webview_config: None,
             sort_order: 0,

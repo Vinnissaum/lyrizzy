@@ -4,6 +4,7 @@ use crate::domain::media::{MediaItemOptions, MediaKind};
 use crate::domain::set::{ServiceSet, SetItem, SetItemType, WebViewConfig};
 use crate::state::AppState;
 use serde::Deserialize;
+use serde_json;
 use sqlx::{Row, SqlitePool};
 use tauri::{AppHandle, Emitter, State};
 
@@ -138,6 +139,20 @@ pub struct AddSetItemPayload {
     pub set_id: String,
     pub item_type: String,
     pub song_id: Option<String>,
+    pub media_id: Option<String>,
+    pub media_options: Option<serde_json::Value>,
+    pub countdown_config: Option<serde_json::Value>,
+    pub webview_config: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSetItemPayload {
+    pub id: String,
+    pub countdown_config: Option<serde_json::Value>,
+    pub webview_config: Option<serde_json::Value>,
+    pub media_options: Option<serde_json::Value>,
+    pub notes: Option<String>,
 }
 
 // ─── Tauri commands ──────────────────────────────────────────────────────────
@@ -267,6 +282,50 @@ pub async fn get_set(state: State<'_, AppState>, id: String) -> Result<ServiceSe
     db_load_set(pool, &id).await
 }
 
+pub async fn db_load_set_item(pool: &SqlitePool, id: &str) -> Result<SetItem, ErrorPayload> {
+    let row = sqlx::query(
+        "SELECT si.id, si.set_id, si.item_type, si.song_id, si.media_id,
+                m.kind AS media_kind,
+                si.media_options, si.countdown_config, si.webview_config,
+                si.sort_order, si.notes
+         FROM set_items si
+         LEFT JOIN media m ON si.media_id = m.id AND m.deleted_at IS NULL
+         WHERE si.id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?
+    .ok_or_else(|| ErrorPayload::new("set.item_not_found"))?;
+
+    let type_str: String = row.get("item_type");
+    Ok(SetItem {
+        id: row.get("id"),
+        set_id: row.get("set_id"),
+        item_type: item_type_from_db(&type_str),
+        song_id: row.get("song_id"),
+        media_id: row.get("media_id"),
+        media_kind: row
+            .get::<Option<String>, _>("media_kind")
+            .as_deref()
+            .and_then(media_kind_from_db),
+        media_options: row
+            .get::<Option<String>, _>("media_options")
+            .as_deref()
+            .and_then(|s| serde_json::from_str::<MediaItemOptions>(s).ok()),
+        countdown_config: row
+            .get::<Option<String>, _>("countdown_config")
+            .as_deref()
+            .and_then(|s| serde_json::from_str(s).ok()),
+        webview_config: row
+            .get::<Option<String>, _>("webview_config")
+            .as_deref()
+            .and_then(|s| serde_json::from_str::<WebViewConfig>(s).ok()),
+        sort_order: row.get("sort_order"),
+        notes: row.get("notes"),
+    })
+}
+
 #[tauri::command]
 pub async fn add_set_item(
     state: State<'_, AppState>,
@@ -288,32 +347,86 @@ pub async fn add_set_item(
     let item_type = item_type_from_db(&payload.item_type);
     let item_type_str = item_type_to_db(&item_type);
 
+    let countdown_config_str = payload
+        .countdown_config
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+    let media_options_str = payload
+        .media_options
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+    let webview_config_str = payload
+        .webview_config
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+
     sqlx::query(
-        "INSERT INTO set_items (id, set_id, item_type, song_id, sort_order)
-         VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO set_items (id, set_id, item_type, song_id, media_id, media_options, countdown_config, webview_config, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&item_id)
     .bind(&payload.set_id)
     .bind(item_type_str)
     .bind(&payload.song_id)
+    .bind(&payload.media_id)
+    .bind(&media_options_str)
+    .bind(&countdown_config_str)
+    .bind(&webview_config_str)
     .bind(sort_order)
     .execute(pool)
     .await
     .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
 
-    let item = SetItem {
-        id: item_id,
-        set_id: payload.set_id,
-        item_type,
-        song_id: payload.song_id,
-        media_id: None,
-        media_kind: None,
-        media_options: None,
-        countdown_config: None,
-        webview_config: None,
-        sort_order,
-        notes: None,
-    };
+    let item = db_load_set_item(pool, &item_id).await?;
+    app.emit("set_changed", ())
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    Ok(item)
+}
+
+#[tauri::command]
+pub async fn update_set_item(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    payload: UpdateSetItemPayload,
+) -> Result<SetItem, ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
+
+    let countdown_config_str = payload
+        .countdown_config
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+    let webview_config_str = payload
+        .webview_config
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+    let media_options_str = payload
+        .media_options
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+
+    // Use COALESCE so callers can update one config field without nulling the others.
+    let result = sqlx::query(
+        "UPDATE set_items SET
+           countdown_config = COALESCE(?, countdown_config),
+           webview_config   = COALESCE(?, webview_config),
+           media_options    = COALESCE(?, media_options),
+           notes            = ?
+         WHERE id = ?",
+    )
+    .bind(&countdown_config_str)
+    .bind(&webview_config_str)
+    .bind(&media_options_str)
+    .bind(&payload.notes)
+    .bind(&payload.id)
+    .execute(pool)
+    .await
+    .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ErrorPayload::new("set.item_not_found"));
+    }
+
+    let item = db_load_set_item(pool, &payload.id).await?;
     app.emit("set_changed", ())
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(item)
@@ -339,6 +452,71 @@ pub async fn remove_set_item(
     app.emit("set_changed", ())
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn duplicate_set_item(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    item_id: String,
+) -> Result<SetItem, ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
+
+    let original = db_load_set_item(pool, &item_id).await?;
+    let all_items = load_set_items(pool, &original.set_id).await?;
+
+    let pos = all_items
+        .iter()
+        .position(|i| i.id == item_id)
+        .ok_or_else(|| ErrorPayload::new("set.item_not_found"))?;
+
+    // Shift sort_order of all items after `pos` up by one to make room.
+    for item in all_items.iter().skip(pos + 1) {
+        sqlx::query("UPDATE set_items SET sort_order = sort_order + 1 WHERE id = ?")
+            .bind(&item.id)
+            .execute(pool)
+            .await
+            .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+    }
+
+    let new_id = new_id();
+    let new_sort = original.sort_order + 1;
+    let item_type_str = item_type_to_db(&original.item_type);
+    let countdown_json = original
+        .countdown_config
+        .as_ref()
+        .map(|c| serde_json::to_string(c).unwrap_or_default());
+    let webview_json = original
+        .webview_config
+        .as_ref()
+        .map(|c| serde_json::to_string(c).unwrap_or_default());
+    let media_opts_json = original
+        .media_options
+        .as_ref()
+        .map(|c| serde_json::to_string(c).unwrap_or_default());
+
+    sqlx::query(
+        "INSERT INTO set_items
+           (id, set_id, item_type, song_id, media_id, media_options, countdown_config, webview_config, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&new_id)
+    .bind(&original.set_id)
+    .bind(item_type_str)
+    .bind(&original.song_id)
+    .bind(&original.media_id)
+    .bind(&media_opts_json)
+    .bind(&countdown_json)
+    .bind(&webview_json)
+    .bind(new_sort)
+    .execute(pool)
+    .await
+    .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+
+    let item = db_load_set_item(pool, &new_id).await?;
+    app.emit("set_changed", ())
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    Ok(item)
 }
 
 #[tauri::command]

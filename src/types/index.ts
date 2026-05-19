@@ -1,6 +1,11 @@
 // Domain types mirroring src-tauri/src/domain/*.rs
 // Field names match the camelCase wire format (serde rename_all = "camelCase").
 
+export interface ErrorPayload {
+  code: string;
+  params: Record<string, string>;
+}
+
 export type SectionType =
   | 'verse'
   | 'chorus'
@@ -67,6 +72,9 @@ export interface PresentationState {
   currentSlideIndex: number;
   mode: PresentationMode;
   frozenAt?: [number, number];
+  currentSlide?: Slide;
+  itemSlideCounts: number[];
+  backgroundPath?: string;
 }
 
 export interface Slide {
@@ -78,4 +86,19 @@ export interface Slide {
 export interface SlideConfig {
   maxLines: number;
   maxCharsPerLine: number;
+}
+
+export interface CountdownState {
+  durationMs: number;
+  remainingMs: number;
+  isRunning: boolean;
+}
+
+export interface MonitorInfo {
+  name?: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  scaleFactor: number;
 }

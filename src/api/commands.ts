@@ -1,15 +1,36 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Song } from "../types";
+import type {
+  CountdownState,
+  ErrorPayload,
+  MonitorInfo,
+  PresentationMode,
+  PresentationState,
+  ServiceSet,
+  SetItem,
+  Song,
+} from "../types";
+
+export function normalizeError(err: unknown): ErrorPayload {
+  if (
+    err !== null &&
+    typeof err === "object" &&
+    "code" in err &&
+    "params" in err &&
+    typeof (err as ErrorPayload).code === "string"
+  ) {
+    return err as ErrorPayload;
+  }
+  return { code: "legacy", params: { message: String(err) } };
+}
 
 // ─── Window management ──────────────────────────────────────────────────────
 
-export const openPresentationWindow = () =>
-  invoke<void>("open_presentation_window");
+export const openPresentationWindow = (monitorIndex?: number) =>
+  invoke<void>("open_presentation_window", { monitorIndex });
 
-// ─── Phase 0: counter demo ──────────────────────────────────────────────────
-
-export const incrementCounter = () => invoke<number>("increment_counter");
+export const listMonitors = () =>
+  invoke<MonitorInfo[]>("list_monitors");
 
 // ─── Song CRUD ──────────────────────────────────────────────────────────────
 
@@ -106,12 +127,106 @@ export interface ParsedTextSection {
 export const parsePlainTextImport = (input: string) =>
   invoke<ParsedTextSection[]>("parse_plain_text_import", { input });
 
+// ─── Service Set CRUD ────────────────────────────────────────────────────────
+
+export interface CreateSetPayload {
+  name: string;
+  serviceDate?: string;
+  notes?: string;
+}
+
+export interface UpdateSetPayload {
+  id: string;
+  name: string;
+  serviceDate?: string;
+  notes?: string;
+}
+
+export interface AddSetItemPayload {
+  setId: string;
+  itemType: 'song' | 'blank';
+  songId?: string;
+}
+
+export const createSet = (payload: CreateSetPayload) =>
+  invoke<ServiceSet>("create_set", { payload });
+
+export const updateSet = (payload: UpdateSetPayload) =>
+  invoke<ServiceSet>("update_set", { payload });
+
+export const deleteSet = (id: string) =>
+  invoke<void>("delete_set", { id });
+
+export const listSets = () =>
+  invoke<ServiceSet[]>("list_sets");
+
+export const getSet = (id: string) =>
+  invoke<ServiceSet>("get_set", { id });
+
+export const addSetItem = (payload: AddSetItemPayload) =>
+  invoke<SetItem>("add_set_item", { payload });
+
+export const removeSetItem = (itemId: string) =>
+  invoke<void>("remove_set_item", { itemId });
+
+export const reorderSetItems = (setId: string, itemIds: string[]) =>
+  invoke<ServiceSet>("reorder_set_items", { setId, itemIds });
+
+// ─── Presentation control ────────────────────────────────────────────────────
+
+export const loadSetForPresentation = (setId: string) =>
+  invoke<PresentationState>("load_set_for_presentation", { setId });
+
+export const nextSlide = () =>
+  invoke<PresentationState>("next_slide");
+
+export const prevSlide = () =>
+  invoke<PresentationState>("prev_slide");
+
+export const goToItem = (itemIndex: number, slideIndex?: number) =>
+  invoke<PresentationState>("go_to_item", { itemIndex, slideIndex });
+
+export const setPresentationMode = (mode: PresentationMode) =>
+  invoke<PresentationState>("set_presentation_mode", { mode });
+
+export const getPresentationState = () =>
+  invoke<PresentationState>("get_presentation_state");
+
+// ─── Media backgrounds ───────────────────────────────────────────────────────
+
+export const importMediaFile = (sourcePath: string) =>
+  invoke<string>("import_media_file", { sourcePath });
+
+export const setBackground = (assetUrl: string | null) =>
+  invoke<PresentationState>("set_background", { assetUrl });
+
+// ─── Countdown timer ─────────────────────────────────────────────────────────
+
+export const setCountdownDuration = (durationMs: number) =>
+  invoke<CountdownState>("set_countdown_duration", { durationMs });
+
+export const startCountdown = () =>
+  invoke<CountdownState>("start_countdown");
+
+export const pauseCountdown = () =>
+  invoke<CountdownState>("pause_countdown");
+
+export const resetCountdown = () =>
+  invoke<CountdownState>("reset_countdown");
+
+export const getCountdownState = () =>
+  invoke<CountdownState>("get_countdown_state");
+
 // ─── Events ─────────────────────────────────────────────────────────────────
 
 export const onSongsChanged = (cb: () => void) =>
   listen<void>("songs_changed", () => cb());
 
-export const onCountdownTick = (cb: (remaining_ms: number) => void) =>
-  listen<{ remaining_ms: number }>("countdown_tick", (e) =>
-    cb(e.payload.remaining_ms)
-  );
+export const onSetChanged = (cb: () => void) =>
+  listen<void>("set_changed", () => cb());
+
+export const onStateChanged = (cb: (state: PresentationState) => void) =>
+  listen<PresentationState>("state_changed", (e) => cb(e.payload));
+
+export const onCountdownTick = (cb: (state: CountdownState) => void) =>
+  listen<CountdownState>("countdown_tick", (e) => cb(e.payload));

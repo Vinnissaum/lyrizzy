@@ -6,7 +6,8 @@ pub mod services;
 mod state;
 
 use commands::counter::increment_counter;
-use commands::song::{create_song, delete_song, get_song, list_songs, update_song};
+use commands::import::{import_holyrics_batch, parse_holyrics_file};
+use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
 use commands::window::open_presentation_window;
 use state::AppState;
 use tauri::Manager;
@@ -81,6 +82,9 @@ pub fn run() {
             delete_song,
             list_songs,
             get_song,
+            parse_plain_text_import,
+            parse_holyrics_file,
+            import_holyrics_batch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

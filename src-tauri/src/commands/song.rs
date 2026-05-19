@@ -494,3 +494,10 @@ pub async fn get_song(state: State<'_, AppState>, id: String) -> Result<Song, St
     let pool = state.db.get().expect("db initialized");
     db_get_song(pool, &id).await
 }
+
+#[tauri::command]
+pub async fn parse_plain_text_import(
+    input: String,
+) -> Vec<crate::services::text_import::ParsedSection> {
+    crate::services::text_import::parse_plain_text(&input)
+}

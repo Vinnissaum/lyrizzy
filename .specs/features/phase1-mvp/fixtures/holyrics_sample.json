@@ -1,0 +1,35 @@
+[
+  {
+    "title": "Graça Infinita",
+    "artist": "Artista A",
+    "bpm": 120,
+    "key": "G",
+    "streaming": null,
+    "full_text": "ignored",
+    "lyrics": {
+      "paragraphs": [
+        { "number": 1, "description": "Estrofe 1", "text": "Graça infinita do Senhor\nQue me salvou da perdição" },
+        { "number": 2, "description": "Refrão", "text": "Louvado seja o Rei\nEterno e fiel" }
+      ]
+    }
+  },
+  {
+    "title": "Santo Espírito",
+    "artist": "Artista B",
+    "lyrics": {
+      "paragraphs": [
+        { "number": 1, "description": "", "text": "Vem Espírito Santo\nEnche este lugar" },
+        { "number": 2, "description": "Ponte", "text": "Sopra o vento de Deus" }
+      ]
+    }
+  },
+  {
+    "title": "Fiel é o Senhor",
+    "artist": "",
+    "lyrics": {
+      "paragraphs": [
+        { "number": 1, "description": "Estrofe 1", "text": "Fiel é o Senhor para sempre" }
+      ]
+    }
+  }
+]

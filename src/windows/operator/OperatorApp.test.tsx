@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { OperatorApp } from "./OperatorApp";
 
-// Mock Tauri IPC modules — commands.ts uses these under the hood
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
@@ -13,48 +12,73 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import type { Song } from "../../types";
+
+const mockSong = (id: string, title: string, artist?: string): Song => ({
+  id,
+  title,
+  artist,
+  language: "pt",
+  createdAt: 1000,
+  updatedAt: 1000,
+  sections: [{ id: "s1", songId: id, label: "E1", type: "verse", body: "corpo", sortOrder: 0, repeatCount: 1 }],
+});
 
 describe("OperatorApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(listen).mockResolvedValue(() => {});
-    vi.mocked(invoke).mockResolvedValue(undefined);
+    vi.mocked(invoke).mockResolvedValue([]);
   });
 
-  it("renders counter at 0 on initial mount", () => {
+  it("renders the library heading", async () => {
     render(<OperatorApp />);
-    expect(screen.getByText("0")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Biblioteca")).toBeInTheDocument());
   });
 
-  it("calls increment_counter when Increment Counter is clicked", async () => {
+  it("shows both CTAs when songs list is empty", async () => {
+    vi.mocked(invoke).mockResolvedValue([]);
     render(<OperatorApp />);
-    fireEvent.click(screen.getByText("Increment Counter"));
+    await waitFor(() => {
+      expect(screen.getByTestId("cta-import-holyrics")).toBeInTheDocument();
+      expect(screen.getByTestId("cta-create-song")).toBeInTheDocument();
+    });
+  });
+
+  it("renders song rows when listSongs returns songs", async () => {
+    vi.mocked(invoke).mockResolvedValue([
+      mockSong("1", "Graça Infinita", "Artista A"),
+      mockSong("2", "Santo Espírito"),
+    ]);
+    render(<OperatorApp />);
+    await waitFor(() => {
+      expect(screen.getByText("Graça Infinita")).toBeInTheDocument();
+      expect(screen.getByText("Santo Espírito")).toBeInTheDocument();
+    });
+  });
+
+  it("renders the presentation window button", () => {
+    render(<OperatorApp />);
+    expect(screen.getByText("Open Presentation Window")).toBeInTheDocument();
+  });
+
+  it("calls open_presentation_window when the button is clicked", async () => {
+    render(<OperatorApp />);
+    screen.getByText("Open Presentation Window").click();
     await waitFor(() =>
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith("increment_counter")
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith(
+        "open_presentation_window"
+      )
     );
   });
 
-  it("calls open_presentation_window when Open Presentation Window is clicked", async () => {
+  it("subscribes to songs_changed on mount", async () => {
     render(<OperatorApp />);
-    fireEvent.click(screen.getByText("Open Presentation Window"));
     await waitFor(() =>
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith("open_presentation_window")
+      expect(vi.mocked(listen)).toHaveBeenCalledWith(
+        "songs_changed",
+        expect.any(Function)
+      )
     );
-  });
-
-  it("subscribes to state_changed on mount", () => {
-    render(<OperatorApp />);
-    expect(vi.mocked(listen)).toHaveBeenCalledWith(
-      "state_changed",
-      expect.any(Function)
-    );
-  });
-
-  it("calls unlisten on unmount", async () => {
-    const unlisten = vi.fn();
-    vi.mocked(listen).mockResolvedValue(unlisten);
-    const { unmount } = render(<OperatorApp />);
-    unmount();
-    await waitFor(() => expect(unlisten).toHaveBeenCalled());
   });
 });

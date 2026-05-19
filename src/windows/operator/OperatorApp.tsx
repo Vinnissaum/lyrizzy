@@ -1,77 +1,82 @@
-import React, { useEffect, useState } from "react";
-import {
-  incrementCounter,
-  onStateChanged,
-  openPresentationWindow,
-} from "../../api/commands";
+import React, { useEffect } from "react";
+import { openPresentationWindow, onSongsChanged } from "../../api/commands";
+import { SongList } from "../../components/library/SongList";
+import { useLibraryStore } from "../../stores/library";
+import type { Song } from "../../types";
+
+import { SongEditor } from "../../components/library/SongEditor";
+import { PlainTextImport } from "../../components/import/PlainTextImport";
+import { HolyricsImport } from "../../components/import/HolyricsImport";
 
 export const OperatorApp: React.FC = () => {
-  const [counter, setCounter] = useState<number>(0);
-  const [counterLoading, setCounterLoading] = useState(false);
-  const [presentationLoading, setPresentationLoading] = useState(false);
+  const { currentView, openEditor, setView, refresh } = useLibraryStore();
 
   useEffect(() => {
-    const unlistenPromise = onStateChanged((state) => {
-      setCounter(state.counter);
+    const unlistenPromise = onSongsChanged(() => {
+      useLibraryStore.getState().refresh();
     });
-
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
     };
   }, []);
 
-  const handleIncrement = async () => {
-    setCounterLoading(true);
-    try {
-      await incrementCounter();
-    } catch (err) {
-      console.error("Failed to increment counter:", err);
-    } finally {
-      setCounterLoading(false);
-    }
+  const handleSongClick = (song: Song) => {
+    openEditor(song.id);
   };
 
   const handleOpenPresentation = async () => {
-    setPresentationLoading(true);
     try {
       await openPresentationWindow();
     } catch (err) {
-      console.error("Failed to open presentation window:", err);
-    } finally {
-      setPresentationLoading(false);
+      console.error("Falha ao abrir janela de apresentação:", err);
     }
   };
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col items-center justify-center gap-6">
-      <h1 className="text-2xl font-bold">Trinity Lyrics — Operator Console</h1>
-
-      <div className="flex flex-col items-center gap-4 p-8 bg-gray-800 rounded-xl">
-        <p className="text-gray-400 text-sm uppercase tracking-wider">
-          Phase 0 — IPC Demo
-        </p>
-        <p className="text-6xl font-mono font-bold text-green-400">{counter}</p>
-        <p className="text-gray-500 text-xs">counter (synced via state_changed event)</p>
+    <div className="h-screen bg-gray-900 text-white flex flex-col">
+      {/* Top bar */}
+      <header className="flex items-center justify-between px-4 py-2 border-b border-gray-700 shrink-0">
+        <h1 className="text-base font-semibold">Trinity Lyrics</h1>
         <button
-          onClick={handleIncrement}
-          disabled={counterLoading}
-          className="mt-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
+          onClick={handleOpenPresentation}
+          className="px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium transition-colors"
         >
-          {counterLoading ? "..." : "Increment Counter"}
+          Open Presentation Window
         </button>
-      </div>
+      </header>
 
-      <button
-        onClick={handleOpenPresentation}
-        disabled={presentationLoading}
-        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
-      >
-        {presentationLoading ? "..." : "Open Presentation Window"}
-      </button>
+      {/* Main content — state-based router */}
+      <main className="flex-1 min-h-0">
+        {currentView === "library" && (
+          <SongList
+            onSongClick={handleSongClick}
+            onImportHolyrics={() => setView("import-holyrics")}
+            onCreateSong={() => openEditor(undefined)}
+          />
+        )}
 
-      <p className="text-gray-600 text-xs">
-        Both windows will sync when the counter changes.
-      </p>
+        {currentView === "editor" && <SongEditor />}
+
+        {currentView === "import-text" && (
+          <PlainTextImport
+            onImported={(songId) => {
+              refresh();
+              openEditor(songId);
+            }}
+            onCancel={() => setView("library")}
+          />
+        )}
+
+        {currentView === "import-holyrics" && (
+          <HolyricsImport
+            onDone={() => {
+              refresh();
+              setView("library");
+            }}
+            onCancel={() => setView("library")}
+          />
+        )}
+      </main>
     </div>
   );
 };

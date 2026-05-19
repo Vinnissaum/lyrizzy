@@ -59,6 +59,53 @@ export const listSongs = (params?: ListSongsParams) =>
 export const getSong = (id: string) =>
   invoke<Song>("get_song", { id });
 
+// ─── Holyrics import ────────────────────────────────────────────────────────
+
+export interface HolyricsSectionPayload {
+  number: number;
+  description: string;
+  text: string;
+}
+
+export interface HolyricsSongPayload {
+  title: string;
+  artist: string;
+  sections: HolyricsSectionPayload[];
+}
+
+export interface ParsedFileResult {
+  songs: HolyricsSongPayload[];
+  duplicateIndices: number[];
+}
+
+export interface FailedImport {
+  title: string;
+  reason: string;
+}
+
+export interface ImportReport {
+  imported: number;
+  skipped: number;
+  failed: FailedImport[];
+}
+
+export const parseHolyricsFile = (path: string) =>
+  invoke<ParsedFileResult>("parse_holyrics_file", { path });
+
+export const importHolyricsBatch = (payload: HolyricsSongPayload[]) =>
+  invoke<ImportReport>("import_holyrics_batch", { payload });
+
+// ─── Text import ────────────────────────────────────────────────────────────
+
+export interface ParsedTextSection {
+  label: string;
+  sectionType: string;
+  body: string;
+}
+
+export const parsePlainTextImport = (input: string) =>
+  invoke<ParsedTextSection[]>("parse_plain_text_import", { input });
+
 // ─── Events ─────────────────────────────────────────────────────────────────
 
 export const onSongsChanged = (cb: () => void) =>

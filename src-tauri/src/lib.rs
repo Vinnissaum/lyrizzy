@@ -5,10 +5,21 @@ mod protocol;
 pub mod services;
 mod state;
 
-use commands::counter::increment_counter;
+use commands::countdown::{
+    get_countdown_state, pause_countdown, reset_countdown, set_countdown_duration, start_countdown,
+};
 use commands::import::{import_holyrics_batch, parse_holyrics_file};
+use commands::media::{import_media_file, set_background};
+use commands::presentation::{
+    get_presentation_state, go_to_item, load_set_for_presentation, next_slide, prev_slide,
+    set_presentation_mode,
+};
+use commands::set::{
+    add_set_item, create_set, delete_set, get_set, list_sets, remove_set_item, reorder_set_items,
+    update_set,
+};
 use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
-use commands::window::open_presentation_window;
+use commands::window::{list_monitors, open_presentation_window};
 use state::AppState;
 use tauri::Manager;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
@@ -75,8 +86,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            increment_counter,
             open_presentation_window,
+            list_monitors,
             create_song,
             update_song,
             delete_song,
@@ -85,6 +96,27 @@ pub fn run() {
             parse_plain_text_import,
             parse_holyrics_file,
             import_holyrics_batch,
+            create_set,
+            update_set,
+            delete_set,
+            list_sets,
+            get_set,
+            add_set_item,
+            remove_set_item,
+            reorder_set_items,
+            load_set_for_presentation,
+            next_slide,
+            prev_slide,
+            go_to_item,
+            set_presentation_mode,
+            get_presentation_state,
+            import_media_file,
+            set_background,
+            set_countdown_duration,
+            start_countdown,
+            pause_countdown,
+            reset_countdown,
+            get_countdown_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

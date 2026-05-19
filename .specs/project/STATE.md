@@ -1,7 +1,7 @@
 # Trinity Lyrics v2 — State
 
-**Last updated:** 2026-05-18
-**Current phase:** Phase 1 — MVP (Phase 0 complete; B-1 resolved 2026-05-18)
+**Last updated:** 2026-05-19
+**Current phase:** Phase 1 closing → Phase 2 V1 tasks drafted (2026-05-19). Spec + design + tasks at `.specs/features/phase2-v1/`. 33 atomic tasks across 10 phases (Phase 0: error refactor, Phases A–J: feature work + verification). Ready to execute.
 
 ---
 
@@ -14,6 +14,14 @@
 | D-3 | asset:// protocol validates paths by checking canonical path starts with media_dir | Prevents path traversal; keeps handler simple | 2026-05-18 |
 | D-4 | DB stored at `%APPDATA%\TrinityLyrics\database.db`; media at `%APPDATA%\TrinityLyrics\media\` | Standard Windows app data location | 2026-05-18 |
 | D-5 | `sqlx::migrate!()` macro at Tauri setup — compile-time embed of migrations folder | Automatic, versioned, forward-only; no manual migration runner needed | 2026-05-18 |
+| D-6 | Phase 2 video thumbnails: spawn ffmpeg/ffprobe (no bundling); placeholder fallback if not on PATH | Keeps installer < 15 MB; ffmpeg as optional runtime dep degrades gracefully | 2026-05-19 |
+| D-7 | Phase 2 countdown ticker: drift-free wall-clock-target algorithm (compute `remaining = target - now()` each tick, not decrement) | Current Phase 1-D impl decrements by 1000 ms — drifts on OS sleep jitter. Wall-clock target meets spec ±100 ms/60 min | 2026-05-19 |
+| D-8 | Phase 2 backup format: `.tlz` extension (ZIP internally) with media files bundled | Custom extension enables Windows file-association double-click restore; ZIP stays inspectable | 2026-05-19 |
+| D-9 | Phase 2 backend error refactor: **one-shot first task** — migrate every Phase 1 command to `ErrorPayload { code, params }` before any other Phase 2 feature work. Reversed from initial incremental proposal on user confirmation. | Avoids dual error shapes accreting; clean codebase from day 1; estimated ~1 week of focused work | 2026-05-19 |
+| D-10 | Phase 2 WebView sandbox: `allow-scripts allow-same-origin` on iframes | Required for most IP camera UIs and livestream embeds; trades surface area for compatibility | 2026-05-19 |
+| D-13 | Tauri 2 CSP is **global-only** (verified by spike against `schema.tauri.app/config/2` 2026-05-19). Phase 2 uses a relaxed single global CSP; per-window scoping deferred to a future Tauri release. Runtime URL allowlist + iframe sandbox compensate. | Spike showed `WindowConfig` has no `security` field; original design assumed per-window support that does not exist | 2026-05-19 |
+| D-11 | Phase 2 set-item type extension forces compiler-checked exhaustive `match`es everywhere (no `_` arms) | Compile-time guarantee that every dispatch site is reviewed when new variants added | 2026-05-19 |
+| D-12 | Phase 2 per-song scrim opacity stored as `songs.scrim_opacity` TINYINT column (not JSON in `slide_config`) | Queryable + indexable; default 35%; per-song override in editor | 2026-05-19 |
 
 ---
 

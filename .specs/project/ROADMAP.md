@@ -51,17 +51,32 @@
 ## Phase 2: V1 — Media + Countdown + WebView (Week 9–14)
 
 **Goal:** Full Holyrics feature parity minus PPTX.
+**Spec:** `.specs/features/phase2-v1/spec.md` (20 requirements P2-01..P2-20, approved 2026-05-19)
+**Design:** `.specs/features/phase2-v1/design.md` (drafted 2026-05-19)
+**Tasks:** `.specs/features/phase2-v1/tasks.md` (33 atomic tasks, drafted 2026-05-19)
 
-| Task | Status |
-|------|--------|
-| Media library (images + MP4/WebM) with asset:// | TODO |
-| Image and video presentation with CSS transitions | TODO |
-| Video backgrounds for lyrics | TODO |
-| Countdown timer with Tokio tick + optional video bg | TODO |
-| Web/IP camera viewer (<iframe>/<img> MJPEG) | TODO |
-| All set item types: song, media, countdown, webview, blank | TODO |
-| Library ZIP backup/restore | TODO |
-| English language option (i18next) | TODO |
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P2-01 | Media domain types + schema (migration 003) | Pending design |
+| P2-02 | Media CRUD commands (import / list / rename / soft-delete) | Pending design |
+| P2-03 | Video thumbnail generation | Pending design |
+| P2-04 | Media library UI (grid, filter, detail panel) | Pending design |
+| P2-05 | Media upload flow (file dialog + drag-drop) | Pending design |
+| P2-06 | Image set item + fullscreen renderer | Pending design |
+| P2-07 | Video set item (loop / mute / autoplay) | Pending design |
+| P2-08 | Video backgrounds for lyrics (scrim opacity) | Pending design |
+| P2-09 | CSS transitions between slides and items | Pending design |
+| P2-10 | Countdown domain + Tokio backend ticker | Pending design |
+| P2-11 | Countdown set item + editor controls | Pending design |
+| P2-12 | Countdown presentation renderer | Pending design |
+| P2-13 | WebView set item (iframe + MJPEG dual mode) | Pending design |
+| P2-14 | CSP + sandbox rules for embedded content | Pending design |
+| P2-15 | Five set item types unified in runtime | Pending design |
+| P2-16 | Set editor handles all five types | Pending design |
+| P2-17 | Library ZIP export (.tlz, includes media files) | Pending design |
+| P2-18 | Library ZIP import — Replace + Merge modes | Pending design |
+| P2-19 | i18next setup + locale extraction | Pending design |
+| P2-20 | Language picker in settings (pt-BR / en-US) | Pending design |
 
 **Deliverable:** Full V1 used weekly. 4-week feedback period.
 

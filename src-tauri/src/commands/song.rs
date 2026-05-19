@@ -1,3 +1,4 @@
+use crate::domain::error::ErrorPayload;
 use crate::domain::song::{Song, SongSection, SectionType};
 use crate::services::fts_query::{self, FtsQuery};
 use crate::state::AppState;
@@ -44,7 +45,7 @@ pub fn section_type_from_db(s: &str) -> SectionType {
 pub async fn load_sections(
     pool: &SqlitePool,
     song_id: &str,
-) -> Result<Vec<SongSection>, String> {
+) -> Result<Vec<SongSection>, ErrorPayload> {
     let rows = sqlx::query(
         "SELECT id, song_id, label, type, body, sort_order, repeat_count
          FROM song_sections WHERE song_id = ? ORDER BY sort_order ASC",
@@ -52,7 +53,7 @@ pub async fn load_sections(
     .bind(song_id)
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("Falha ao buscar seções: {e}"))?;
+    .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     Ok(rows
         .iter()
@@ -131,7 +132,7 @@ struct SongsChangedEvent;
 pub async fn db_create_song(
     pool: &SqlitePool,
     payload: CreateSongPayload,
-) -> Result<Song, String> {
+) -> Result<Song, ErrorPayload> {
     let id = new_id();
     let now = now_ms();
     let language = payload.language.unwrap_or_else(|| "pt".to_string());
@@ -139,7 +140,7 @@ pub async fn db_create_song(
     let mut tx = pool
         .begin()
         .await
-        .map_err(|e| format!("Falha ao iniciar transação: {e}"))?;
+        .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     sqlx::query(
         "INSERT INTO songs (id, title, artist, ccli_number, key_signature, language, notes,
@@ -160,7 +161,7 @@ pub async fn db_create_song(
     .bind(now)
     .execute(&mut *tx)
     .await
-    .map_err(|e| format!("Falha ao salvar música: {e}"))?;
+    .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     let mut sections = Vec::new();
     for (i, sec) in payload.sections.iter().enumerate() {
@@ -179,7 +180,10 @@ pub async fn db_create_song(
         .bind(repeat_count)
         .execute(&mut *tx)
         .await
-        .map_err(|e| format!("Falha ao salvar seção {}: {e}", i + 1))?;
+        .map_err(|e| {
+            ErrorPayload::new("song.db_error")
+                .with_param("detail", format!("seção {}: {e}", i + 1))
+        })?;
 
         sections.push(SongSection {
             id: sec_id,
@@ -194,7 +198,7 @@ pub async fn db_create_song(
 
     tx.commit()
         .await
-        .map_err(|e| format!("Falha ao confirmar transação: {e}"))?;
+        .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     Ok(Song {
         id,
@@ -217,13 +221,13 @@ pub async fn db_create_song(
 pub async fn db_update_song(
     pool: &SqlitePool,
     payload: UpdateSongPayload,
-) -> Result<Song, String> {
+) -> Result<Song, ErrorPayload> {
     let row = sqlx::query("SELECT created_at FROM songs WHERE id = ? AND deleted_at IS NULL")
         .bind(&payload.id)
         .fetch_optional(pool)
         .await
-        .map_err(|e| format!("Falha ao buscar música: {e}"))?
-        .ok_or_else(|| "Música não encontrada".to_string())?;
+        .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?
+        .ok_or_else(|| ErrorPayload::new("song.not_found"))?;
     let created_at: i64 = row.get("created_at");
     let now = now_ms();
     let language = payload.language.unwrap_or_else(|| "pt".to_string());
@@ -231,7 +235,7 @@ pub async fn db_update_song(
     let mut tx = pool
         .begin()
         .await
-        .map_err(|e| format!("Falha ao iniciar transação: {e}"))?;
+        .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     sqlx::query(
         "UPDATE songs SET title=?, artist=?, ccli_number=?, key_signature=?, language=?,
@@ -251,13 +255,13 @@ pub async fn db_update_song(
     .bind(&payload.id)
     .execute(&mut *tx)
     .await
-    .map_err(|e| format!("Falha ao atualizar música: {e}"))?;
+    .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     sqlx::query("DELETE FROM song_sections WHERE song_id = ?")
         .bind(&payload.id)
         .execute(&mut *tx)
         .await
-        .map_err(|e| format!("Falha ao remover seções antigas: {e}"))?;
+        .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     let mut sections = Vec::new();
     for (i, sec) in payload.sections.iter().enumerate() {
@@ -276,7 +280,10 @@ pub async fn db_update_song(
         .bind(repeat_count)
         .execute(&mut *tx)
         .await
-        .map_err(|e| format!("Falha ao salvar seção {}: {e}", i + 1))?;
+        .map_err(|e| {
+            ErrorPayload::new("song.db_error")
+                .with_param("detail", format!("seção {}: {e}", i + 1))
+        })?;
 
         sections.push(SongSection {
             id: sec_id,
@@ -291,7 +298,7 @@ pub async fn db_update_song(
 
     tx.commit()
         .await
-        .map_err(|e| format!("Falha ao confirmar transação: {e}"))?;
+        .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     Ok(Song {
         id: payload.id,
@@ -311,7 +318,7 @@ pub async fn db_update_song(
     })
 }
 
-pub async fn db_delete_song(pool: &SqlitePool, id: &str) -> Result<(), String> {
+pub async fn db_delete_song(pool: &SqlitePool, id: &str) -> Result<(), ErrorPayload> {
     let now = now_ms();
     let result =
         sqlx::query("UPDATE songs SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL")
@@ -319,10 +326,10 @@ pub async fn db_delete_song(pool: &SqlitePool, id: &str) -> Result<(), String> {
             .bind(id)
             .execute(pool)
             .await
-            .map_err(|e| format!("Falha ao excluir música: {e}"))?;
+            .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
     if result.rows_affected() == 0 {
-        return Err("Música não encontrada".to_string());
+        return Err(ErrorPayload::new("song.not_found"));
     }
     Ok(())
 }
@@ -330,7 +337,7 @@ pub async fn db_delete_song(pool: &SqlitePool, id: &str) -> Result<(), String> {
 pub async fn db_list_songs(
     pool: &SqlitePool,
     params: ListSongsParams,
-) -> Result<Vec<Song>, String> {
+) -> Result<Vec<Song>, ErrorPayload> {
     let limit = params.limit.unwrap_or(200);
     let offset = params.offset.unwrap_or(0);
 
@@ -351,7 +358,7 @@ pub async fn db_list_songs(
             .bind(offset)
             .fetch_all(pool)
             .await
-            .map_err(|e| format!("Falha ao pesquisar músicas: {e}"))?,
+            .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?,
 
             FtsQuery::Like(term) => {
                 let pattern = format!("%{term}%");
@@ -368,7 +375,7 @@ pub async fn db_list_songs(
                 .bind(offset)
                 .fetch_all(pool)
                 .await
-                .map_err(|e| format!("Falha ao pesquisar músicas: {e}"))?
+                .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?
             }
         },
         _ => sqlx::query(
@@ -380,7 +387,7 @@ pub async fn db_list_songs(
         .bind(offset)
         .fetch_all(pool)
         .await
-        .map_err(|e| format!("Falha ao listar músicas: {e}"))?,
+        .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?,
     };
 
     let mut songs = Vec::new();
@@ -407,7 +414,7 @@ pub async fn db_list_songs(
     Ok(songs)
 }
 
-pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, String> {
+pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPayload> {
     let row = sqlx::query(
         "SELECT id, title, artist, ccli_number, key_signature, language, notes,
                 background_id, slide_config, source, created_at, updated_at, deleted_at
@@ -416,8 +423,8 @@ pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, String> {
     .bind(id)
     .fetch_optional(pool)
     .await
-    .map_err(|e| format!("Falha ao buscar música: {e}"))?
-    .ok_or_else(|| "Música não encontrada".to_string())?;
+    .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?
+    .ok_or_else(|| ErrorPayload::new("song.not_found"))?;
 
     let sections = load_sections(pool, id).await?;
 
@@ -446,11 +453,11 @@ pub async fn create_song(
     state: State<'_, AppState>,
     app: AppHandle,
     payload: CreateSongPayload,
-) -> Result<Song, String> {
+) -> Result<Song, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
     let song = db_create_song(pool, payload).await?;
     app.emit("songs_changed", SongsChangedEvent)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(song)
 }
 
@@ -459,11 +466,11 @@ pub async fn update_song(
     state: State<'_, AppState>,
     app: AppHandle,
     payload: UpdateSongPayload,
-) -> Result<Song, String> {
+) -> Result<Song, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
     let song = db_update_song(pool, payload).await?;
     app.emit("songs_changed", SongsChangedEvent)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(song)
 }
 
@@ -472,11 +479,11 @@ pub async fn delete_song(
     state: State<'_, AppState>,
     app: AppHandle,
     id: String,
-) -> Result<(), String> {
+) -> Result<(), ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
     db_delete_song(pool, &id).await?;
     app.emit("songs_changed", SongsChangedEvent)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(())
 }
 
@@ -484,13 +491,13 @@ pub async fn delete_song(
 pub async fn list_songs(
     state: State<'_, AppState>,
     params: Option<ListSongsParams>,
-) -> Result<Vec<Song>, String> {
+) -> Result<Vec<Song>, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
     db_list_songs(pool, params.unwrap_or_default()).await
 }
 
 #[tauri::command]
-pub async fn get_song(state: State<'_, AppState>, id: String) -> Result<Song, String> {
+pub async fn get_song(state: State<'_, AppState>, id: String) -> Result<Song, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
     db_get_song(pool, &id).await
 }

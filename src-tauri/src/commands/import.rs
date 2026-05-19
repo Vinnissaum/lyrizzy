@@ -1,9 +1,9 @@
 use crate::commands::song::{new_id, section_type_to_db};
+use crate::domain::error::ErrorPayload;
 use crate::domain::song::SectionType;
 use crate::services::holyrics_parser;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
 use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,7 +66,7 @@ async fn is_duplicate(
     pool: &sqlx::SqlitePool,
     title: &str,
     artist: &str,
-) -> Result<bool, String> {
+) -> Result<bool, ErrorPayload> {
     let norm_title = normalize(title);
     let norm_artist = normalize(artist);
     let rows = sqlx::query(
@@ -78,7 +78,7 @@ async fn is_duplicate(
     .bind(&norm_artist)
     .fetch_all(pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| ErrorPayload::new("import.parse_error").with_param("detail", e.to_string()))?;
     Ok(!rows.is_empty())
 }
 
@@ -88,13 +88,14 @@ async fn is_duplicate(
 pub async fn parse_holyrics_file(
     state: State<'_, AppState>,
     path: String,
-) -> Result<ParsedFileResult, String> {
+) -> Result<ParsedFileResult, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
 
-    let content =
-        std::fs::read_to_string(&path).map_err(|e| format!("Falha ao ler arquivo: {e}"))?;
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| ErrorPayload::new("import.io_error").with_param("detail", e.to_string()))?;
 
-    let parsed = holyrics_parser::parse(&content).map_err(|e| e.to_string())?;
+    let parsed = holyrics_parser::parse(&content)
+        .map_err(|e| ErrorPayload::new("import.parse_error").with_param("detail", e.to_string()))?;
 
     let mut songs: Vec<HolyricsSongPayload> = Vec::new();
     let mut duplicate_indices: Vec<usize> = Vec::new();
@@ -135,7 +136,7 @@ pub async fn import_holyrics_batch(
     state: State<'_, AppState>,
     app: AppHandle,
     payload: Vec<HolyricsSongPayload>,
-) -> Result<ImportReport, String> {
+) -> Result<ImportReport, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
     let mut imported = 0u32;
     let mut skipped = 0u32;
@@ -165,7 +166,7 @@ pub async fn import_holyrics_batch(
             Ok(_) => imported += 1,
             Err(e) => failed.push(FailedImport {
                 title: title.to_string(),
-                reason: format!("Falha ao inserir: {e}"),
+                reason: format!("Falha ao inserir: {}", e.params.get("detail").map(String::as_str).unwrap_or(&e.code)),
             }),
         }
     }
@@ -181,14 +182,14 @@ pub async fn import_holyrics_batch(
     })
 }
 
-async fn insert_song(pool: &sqlx::SqlitePool, song: &HolyricsSongPayload) -> Result<(), String> {
+async fn insert_song(pool: &sqlx::SqlitePool, song: &HolyricsSongPayload) -> Result<(), ErrorPayload> {
     let song_id = new_id();
     let now = now_ms();
 
     let mut tx = pool
         .begin()
         .await
-        .map_err(|e| format!("Falha ao iniciar transação: {e}"))?;
+        .map_err(|e| ErrorPayload::new("import.parse_error").with_param("detail", e.to_string()))?;
 
     sqlx::query(
         "INSERT INTO songs (id, title, artist, language, source, created_at, updated_at)
@@ -205,7 +206,7 @@ async fn insert_song(pool: &sqlx::SqlitePool, song: &HolyricsSongPayload) -> Res
     .bind(now)
     .execute(&mut *tx)
     .await
-    .map_err(|e| format!("Falha ao salvar música: {e}"))?;
+    .map_err(|e| ErrorPayload::new("import.parse_error").with_param("detail", e.to_string()))?;
 
     for (idx, sec) in song.sections.iter().enumerate() {
         let sec_id = new_id();
@@ -228,12 +229,15 @@ async fn insert_song(pool: &sqlx::SqlitePool, song: &HolyricsSongPayload) -> Res
         .bind(sort_order)
         .execute(&mut *tx)
         .await
-        .map_err(|e| format!("Falha ao salvar seção {idx}: {e}"))?;
+        .map_err(|e| {
+            ErrorPayload::new("import.parse_error")
+                .with_param("detail", format!("seção {idx}: {e}"))
+        })?;
     }
 
     tx.commit()
         .await
-        .map_err(|e| format!("Falha ao confirmar transação: {e}"))?;
+        .map_err(|e| ErrorPayload::new("import.parse_error").with_param("detail", e.to_string()))?;
 
     Ok(())
 }

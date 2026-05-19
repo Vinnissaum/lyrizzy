@@ -165,7 +165,7 @@ async fn update_song_returns_error_for_nonexistent_id() {
     .await;
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("não encontrada"));
+    assert_eq!(result.unwrap_err().code, "song.not_found");
 }
 
 #[tokio::test]

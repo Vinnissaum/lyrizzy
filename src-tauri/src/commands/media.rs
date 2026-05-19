@@ -1,57 +1,287 @@
+use crate::db::media::{
+    db_count_references, db_get_references, db_insert_media, db_list_media, db_rename_media,
+    db_soft_delete_media, unique_display_name, ListMediaParams,
+};
 use crate::domain::error::ErrorPayload;
-use crate::domain::presentation::PresentationState;
+use crate::domain::media::{Media, MediaKind};
 use crate::protocol::asset;
+use crate::services::{media_probe, thumbnail};
 use crate::state::AppState;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64
+}
+
+// ── Response types ────────────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SongRef {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetItemRef {
+    pub set_id: String,
+    pub set_name: String,
+    pub item_id: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaReferences {
+    pub songs: Vec<SongRef>,
+    pub set_items: Vec<SetItemRef>,
+}
+
+// ── Params ────────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListMediaParamsInput {
+    pub kind: Option<MediaKind>,
+    pub search: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+
+/// Import a media file into the library.
+///
+/// Validates extension, copies the file to the media directory under a UUID
+/// filename, probes metadata, generates a video thumbnail if applicable, then
+/// inserts a row into the `media` table.  On DB insert failure the copied
+/// file(s) are deleted so no orphans accumulate on disk.
 #[tauri::command]
-pub async fn import_media_file(
+pub async fn import_media(
     app: AppHandle,
+    state: State<'_, AppState>,
     source_path: String,
-) -> Result<String, ErrorPayload> {
+) -> Result<Media, ErrorPayload> {
     let src = Path::new(&source_path);
+
     let ext = src
         .extension()
         .and_then(|e| e.to_str())
         .map(|e| e.to_lowercase())
         .ok_or_else(|| ErrorPayload::new("media.no_extension"))?;
 
-    match ext.as_str() {
-        "jpg" | "jpeg" | "png" | "webp" | "gif" | "svg" | "mp4" | "webm" => {}
+    let kind = match ext.as_str() {
+        "png" | "jpg" | "jpeg" | "webp" | "gif" => MediaKind::Image,
+        "mp4" | "webm" => MediaKind::Video,
         _ => {
-            return Err(ErrorPayload::new("media.unsupported_type").with_param("ext", ext));
+            return Err(ErrorPayload::new("media.unsupported_container").with_param("ext", &ext))
         }
-    }
+    };
 
     let data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     let media_dir = asset::media_dir(&data_dir);
+    let pool = state.db.get().expect("db must be initialized");
 
-    let filename = format!("{}.{}", Uuid::new_v4(), ext);
-    let dest = media_dir.join(&filename);
+    let uuid = Uuid::new_v4().to_string();
+    let file_name = format!("{uuid}.{ext}");
+    let dest = media_dir.join(&file_name);
 
+    // Copy file before opening the transaction window
     std::fs::copy(&source_path, &dest)
         .map_err(|e| ErrorPayload::new("media.copy_error").with_param("detail", e.to_string()))?;
 
-    Ok(format!("asset://localhost/media/{filename}"))
+    // Probe — non-fatal; fall back to sensible defaults
+    let meta = match media_probe::probe(&dest, kind.clone()) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("[trinity] media probe failed ({file_name}): {e}");
+            media_probe::MediaMetadata {
+                width: if kind == MediaKind::Video {
+                    Some(1920)
+                } else {
+                    None
+                },
+                height: if kind == MediaKind::Video {
+                    Some(1080)
+                } else {
+                    None
+                },
+                duration_ms: None,
+                mime_type: media_probe::mime_for_ext(&ext).to_string(),
+                byte_size: std::fs::metadata(&dest).map(|m| m.len() as i64).unwrap_or(0),
+            }
+        }
+    };
+
+    // Thumbnail — non-fatal; videos get thumbnail_file = None when ffmpeg missing
+    let thumbnail_file = if kind == MediaKind::Video {
+        let thumb_name = format!("{uuid}.thumb.jpg");
+        let thumb_path = media_dir.join(&thumb_name);
+        match thumbnail::generate(&dest, &thumb_path).await {
+            Ok(_) => Some(thumb_name),
+            Err(e) => {
+                eprintln!("[trinity] thumbnail failed ({file_name}): {e}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let original_name = src
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&file_name)
+        .to_string();
+
+    let display_name = unique_display_name(pool, &original_name)
+        .await
+        .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))?;
+
+    let now = now_ms();
+    let media = Media {
+        id: uuid,
+        file_name: file_name.clone(),
+        display_name,
+        kind,
+        mime_type: meta.mime_type,
+        width: meta.width.map(|w| w as i64),
+        height: meta.height.map(|h| h as i64),
+        duration_ms: meta.duration_ms,
+        thumbnail_file: thumbnail_file.clone(),
+        byte_size: meta.byte_size,
+        created_at: now,
+        updated_at: now,
+        deleted_at: None,
+    };
+
+    if let Err(e) = db_insert_media(pool, &media).await {
+        let _ = std::fs::remove_file(&dest);
+        if let Some(thumb) = &thumbnail_file {
+            let _ = std::fs::remove_file(media_dir.join(thumb));
+        }
+        return Err(
+            ErrorPayload::new("media.db_error").with_param("detail", e.to_string())
+        );
+    }
+
+    app.emit("media_library_changed", ())
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+
+    Ok(media)
 }
 
 #[tauri::command]
-pub async fn set_background(
+pub async fn list_media(
     state: State<'_, AppState>,
+    params: Option<ListMediaParamsInput>,
+) -> Result<Vec<Media>, ErrorPayload> {
+    let pool = state.db.get().expect("db must be initialized");
+    let p = params.unwrap_or(ListMediaParamsInput {
+        kind: None,
+        search: None,
+        limit: None,
+        offset: None,
+    });
+    db_list_media(
+        pool,
+        &ListMediaParams {
+            kind: p.kind,
+            search: p.search,
+            limit: p.limit,
+            offset: p.offset,
+        },
+    )
+    .await
+    .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))
+}
+
+#[tauri::command]
+pub async fn rename_media(
     app: AppHandle,
-    asset_url: Option<String>,
-) -> Result<PresentationState, ErrorPayload> {
-    let new_state = {
-        let mut pres = state.presentation.write().await;
-        pres.background_path = asset_url;
-        pres.clone()
-    };
-    app.emit("state_changed", &new_state)
+    state: State<'_, AppState>,
+    id: String,
+    display_name: String,
+) -> Result<Media, ErrorPayload> {
+    if display_name.trim().is_empty() {
+        return Err(ErrorPayload::new("media.validation.name_required"));
+    }
+    let pool = state.db.get().expect("db must be initialized");
+    let updated = db_rename_media(pool, &id, &display_name, now_ms())
+        .await
+        .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))?
+        .ok_or_else(|| ErrorPayload::new("media.not_found").with_param("id", &id))?;
+
+    app.emit("media_library_changed", ())
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(new_state)
+
+    Ok(updated)
+}
+
+#[tauri::command]
+pub async fn delete_media(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), ErrorPayload> {
+    let pool = state.db.get().expect("db must be initialized");
+
+    let (song_count, set_item_count) = db_count_references(pool, &id)
+        .await
+        .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))?;
+
+    if song_count > 0 || set_item_count > 0 {
+        return Err(ErrorPayload::new("media.in_use")
+            .with_param("songCount", song_count.to_string())
+            .with_param("setItemCount", set_item_count.to_string()));
+    }
+
+    db_soft_delete_media(pool, &id, now_ms())
+        .await
+        .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))?;
+
+    app.emit("media_library_changed", ())
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_media_references(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<MediaReferences, ErrorPayload> {
+    let pool = state.db.get().expect("db must be initialized");
+    let refs = db_get_references(pool, &id)
+        .await
+        .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))?;
+
+    Ok(MediaReferences {
+        songs: refs
+            .songs
+            .into_iter()
+            .map(|s| SongRef {
+                id: s.id,
+                title: s.title,
+            })
+            .collect(),
+        set_items: refs
+            .set_items
+            .into_iter()
+            .map(|si| SetItemRef {
+                set_id: si.set_id,
+                set_name: si.set_name,
+                item_id: si.item_id,
+            })
+            .collect(),
+    })
 }

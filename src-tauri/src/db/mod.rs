@@ -1,10 +1,5 @@
 // Database module — sqlx SQLite pool and migration runner
-// Submodules will be added as features are implemented:
-// pub mod songs;
-// pub mod sets;
-// pub mod media;
-// pub mod settings;
-// pub mod fts;
+pub mod media;
 
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;

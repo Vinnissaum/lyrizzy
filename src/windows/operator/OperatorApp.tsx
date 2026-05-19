@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   checkRestoreInProgress,
   listMonitors,
+  onLocaleChanged,
   onSetChanged,
   onSongsChanged,
   openPresentationWindow,
@@ -16,14 +18,17 @@ import { SlideController } from "../../components/presentation/SlideController";
 import { CountdownPanel } from "../../components/countdown/CountdownPanel";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
 import { BackupScreen } from "../../components/backup/BackupScreen";
+import { SettingsScreen } from "../../components/settings/SettingsScreen";
 import { RestoreInProgressDialog } from "../../components/backup/RestoreInProgressDialog";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
+import { useSettingsStore } from "../../stores/settings";
 import type { MonitorInfo, Song } from "../../types";
 
 export const OperatorApp: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const {
     currentView,
     editingSetId,
@@ -33,6 +38,7 @@ export const OperatorApp: React.FC = () => {
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const { subscribe: subscribeCountdown } = useCountdownStore();
+  const { setLocale } = useSettingsStore();
 
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [selectedMonitor, setSelectedMonitor] = useState<number | undefined>(undefined);
@@ -47,13 +53,16 @@ export const OperatorApp: React.FC = () => {
     });
     const unsubPresentation = subscribePresentation();
     const unsubCountdown = subscribeCountdown();
+    const unlistenLocale = onLocaleChanged((locale) => {
+      i18n.changeLanguage(locale);
+      setLocale(locale);
+    });
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
 
     listMonitors()
       .then((ms) => {
         setMonitors(ms);
-        // Pre-select the first non-primary monitor if available
         if (ms.length > 1) {
           setSelectedMonitor(1);
         }
@@ -65,6 +74,7 @@ export const OperatorApp: React.FC = () => {
       unlistenSet.then((u) => u());
       unsubPresentation.then((u) => u());
       unsubCountdown.then((u) => u());
+      unlistenLocale.then((u) => u());
     };
   }, []);
 
@@ -76,7 +86,7 @@ export const OperatorApp: React.FC = () => {
     try {
       await openPresentationWindow(selectedMonitor);
     } catch (err) {
-      console.error("Falha ao abrir janela de apresentação:", err);
+      console.error("open presentation window failed:", err);
     }
   };
 
@@ -94,6 +104,7 @@ export const OperatorApp: React.FC = () => {
   const isCountdownSection = currentView === "countdown";
   const isMediaSection = currentView === "media";
   const isBackupSection = currentView === "backup";
+  const isSettingsSection = currentView === "settings";
 
   const serviceSet = presState?.set;
 
@@ -114,7 +125,7 @@ export const OperatorApp: React.FC = () => {
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            Biblioteca
+            {t("nav.library")}
           </button>
           <button
             onClick={() => setView("sets")}
@@ -124,7 +135,7 @@ export const OperatorApp: React.FC = () => {
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            Conjuntos
+            {t("nav.sets")}
           </button>
           <button
             onClick={() => setView("countdown")}
@@ -134,7 +145,7 @@ export const OperatorApp: React.FC = () => {
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            Cronômetro
+            {t("nav.countdown")}
           </button>
           <button
             onClick={() => setView("media")}
@@ -144,7 +155,7 @@ export const OperatorApp: React.FC = () => {
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            Mídia
+            {t("nav.media")}
           </button>
           <button
             onClick={() => setView("backup")}
@@ -154,7 +165,17 @@ export const OperatorApp: React.FC = () => {
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            Backup
+            {t("nav.backup")}
+          </button>
+          <button
+            onClick={() => setView("settings")}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+              isSettingsSection
+                ? "bg-gray-700 text-white"
+                : "text-gray-400 hover:text-white hover:bg-gray-800"
+            }`}
+          >
+            {t("nav.settings")}
           </button>
         </div>
 
@@ -181,7 +202,7 @@ export const OperatorApp: React.FC = () => {
             onClick={handleOpenPresentation}
             className="px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium transition-colors"
           >
-            Janela de Apresentação
+            {t("nav.presentationWindow")}
           </button>
         </div>
       </header>
@@ -228,7 +249,7 @@ export const OperatorApp: React.FC = () => {
           <SlideController serviceSet={serviceSet} />
         ) : currentView === "set-player" ? (
           <div className="h-full flex items-center justify-center text-gray-500 text-sm">
-            Nenhum conjunto carregado.
+            {t("presentation.noSetLoaded")}
           </div>
         ) : null}
 
@@ -237,6 +258,8 @@ export const OperatorApp: React.FC = () => {
         {currentView === "media" && <MediaLibrary />}
 
         {currentView === "backup" && <BackupScreen />}
+
+        {currentView === "settings" && <SettingsScreen />}
       </main>
     </div>
   );

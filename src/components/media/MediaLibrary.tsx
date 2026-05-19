@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Upload } from "lucide-react";
 import { useMediaStore } from "../../stores/media";
 import { MediaCard } from "./MediaCard";
@@ -12,6 +13,7 @@ interface ImportToast {
 }
 
 export const MediaLibrary: React.FC = () => {
+  const { t } = useTranslation();
   const { media, isLoading, filter, search, setFilter, setSearch, subscribe } =
     useMediaStore();
 
@@ -60,13 +62,12 @@ export const MediaLibrary: React.FC = () => {
     toastTimerRef.current = setTimeout(() => setToast(null), 4000);
   };
 
-  const filterOptions: { label: string; value: MediaKind | undefined }[] = [
-    { label: "Todos", value: undefined },
-    { label: "Imagens", value: "image" },
-    { label: "Vídeos", value: "video" },
+  const filterOptions: { labelKey: string; value: MediaKind | undefined }[] = [
+    { labelKey: "media.filter.all", value: undefined },
+    { labelKey: "media.filter.images", value: "image" },
+    { labelKey: "media.filter.videos", value: "video" },
   ];
 
-  // Keep selectedMedia in sync when media list changes (e.g. after rename)
   const selectedMediaUpdated = selectedMedia
     ? (media.find((m) => m.id === selectedMedia.id) ?? null)
     : null;
@@ -78,14 +79,14 @@ export const MediaLibrary: React.FC = () => {
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-gray-700 shrink-0">
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-lg font-semibold flex-1">Mídia</h2>
+            <h2 className="text-lg font-semibold flex-1">{t("media.title")}</h2>
             <button
               onClick={() => setShowDropzone((v) => !v)}
               data-testid="add-media-button"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
             >
               <Upload className="w-3.5 h-3.5" />
-              Adicionar mídia
+              {t("media.addButton")}
             </button>
           </div>
 
@@ -93,16 +94,16 @@ export const MediaLibrary: React.FC = () => {
           <div className="flex items-center gap-2 mb-3">
             {filterOptions.map((opt) => (
               <button
-                key={opt.label}
+                key={opt.labelKey}
                 onClick={() => handleFilterClick(opt.value)}
-                data-testid={`filter-${opt.label.toLowerCase()}`}
+                data-testid={`filter-${opt.value ?? "all"}`}
                 className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
                   filter === opt.value
                     ? "bg-blue-600 text-white"
                     : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                 }`}
               >
-                {opt.label}
+                {t(opt.labelKey)}
               </button>
             ))}
           </div>
@@ -114,7 +115,7 @@ export const MediaLibrary: React.FC = () => {
               type="search"
               value={localSearch}
               onChange={handleSearchChange}
-              placeholder="Pesquisar mídia…"
+              placeholder={t("media.searchPlaceholder")}
               data-testid="search-input"
               className="w-full pl-8 pr-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
@@ -127,8 +128,8 @@ export const MediaLibrary: React.FC = () => {
             data-testid="import-toast"
             className="mx-4 mt-3 px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-gray-200 shrink-0"
           >
-            {toast.imported} importada{toast.imported !== 1 ? "s" : ""}
-            {toast.skipped > 0 && `, ${toast.skipped} ignorada${toast.skipped !== 1 ? "s" : ""}`}
+            {t("media.importToast", { count: toast.imported })}
+            {toast.skipped > 0 && `, ${t("media.importToastSkipped", { count: toast.skipped })}`}
           </div>
         )}
 
@@ -143,21 +144,21 @@ export const MediaLibrary: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
             <p className="text-gray-500 text-sm text-center py-12">
-              Carregando…
+              {t("loading")}
             </p>
           ) : media.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-16 gap-4"
               data-testid="empty-state"
             >
-              <p className="text-gray-500 text-sm">Nenhuma mídia encontrada.</p>
+              <p className="text-gray-500 text-sm">{t("media.empty")}</p>
               <button
                 onClick={() => setShowDropzone(true)}
                 data-testid="cta-add-media"
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
               >
                 <Upload className="w-4 h-4" />
-                Adicionar mídia
+                {t("media.addButton")}
               </button>
             </div>
           ) : (

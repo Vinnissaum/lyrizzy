@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { useMediaStore } from "../../stores/media";
 import type { MediaItemOptions, SetItem } from "../../types";
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
+  const { t } = useTranslation();
   const { media } = useMediaStore();
   const [opts, setOpts] = useState<MediaItemOptions>(item.mediaOptions ?? DEFAULT_OPTS);
   const [saving, setSaving] = useState(false);
@@ -26,7 +28,7 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
     try {
       await updateSetItem({ id: item.id, mediaOptions: newOpts });
     } catch (err) {
-      console.error("Falha ao salvar opções de mídia:", err);
+      console.error("save media opts failed:", err);
     } finally {
       setSaving(false);
     }
@@ -49,7 +51,7 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
           <div className="min-w-0">
             <p className="text-xs text-white truncate">{selectedMedia.displayName}</p>
             <p className="text-xs text-gray-500">
-              {selectedMedia.kind === "video" ? "Vídeo" : "Imagem"}
+              {t(`media.type.${selectedMedia.kind}`)}
               {selectedMedia.durationMs
                 ? ` · ${Math.round(selectedMedia.durationMs / 1000)}s`
                 : ""}
@@ -67,7 +69,7 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
               onChange={(e) => saveOpts({ ...opts, loop: e.target.checked })}
               className="accent-blue-500"
             />
-            <span className="text-sm text-gray-300">Repetir (loop)</span>
+            <span className="text-sm text-gray-300">{t("media.editor.loop")}</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer">
@@ -77,7 +79,7 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
               onChange={(e) => saveOpts({ ...opts, mute: e.target.checked })}
               className="accent-blue-500"
             />
-            <span className="text-sm text-gray-300">Silenciar</span>
+            <span className="text-sm text-gray-300">{t("media.editor.mute")}</span>
           </label>
 
           {!opts.loop && (
@@ -90,7 +92,7 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
                 }
                 className="accent-blue-500"
               />
-              <span className="text-sm text-gray-300">Avançar ao terminar</span>
+              <span className="text-sm text-gray-300">{t("media.editor.autoAdvance")}</span>
             </label>
           )}
         </div>
@@ -98,11 +100,11 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {item.mediaKind === "image" && (
         <p className="text-xs text-gray-500">
-          Imagem — avança ao pressionar Próximo.
+          {t("media.editor.imageNote")}
         </p>
       )}
 
-      {saving && <p className="text-xs text-gray-500">Salvando…</p>}
+      {saving && <p className="text-xs text-gray-500">{t("media.editor.saving")}</p>}
     </div>
   );
 };

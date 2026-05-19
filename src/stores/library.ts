@@ -12,7 +12,8 @@ export type AppView =
   | "set-player"
   | "countdown"
   | "media"
-  | "backup";
+  | "backup"
+  | "settings";
 
 interface LibraryStore {
   songs: Song[];

@@ -331,6 +331,17 @@ export const abortRestore = () =>
 export const onBackupProgress = (cb: (p: ExportProgress) => void) =>
   listen<ExportProgress>("backup_progress", (e) => cb(e.payload));
 
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+export const getSetting = (key: string) =>
+  invoke<string>("get_setting", { key });
+
+export const setSetting = (key: string, value: string) =>
+  invoke<void>("set_setting", { key, value });
+
+export const onLocaleChanged = (cb: (locale: string) => void) =>
+  listen<string>("locale_changed", (e) => cb(e.payload));
+
 // ─── Events ─────────────────────────────────────────────────────────────────
 
 export const onSongsChanged = (cb: () => void) =>

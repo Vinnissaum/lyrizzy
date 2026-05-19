@@ -1,4 +1,6 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { onLocaleChanged } from "../../api/commands";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
@@ -69,21 +71,27 @@ function SongSlide({
 }
 
 export const PresentationApp: React.FC = () => {
+  const { i18n } = useTranslation();
   const { state, subscribe: subscribePresentation, next } = usePresentationStore();
   const { state: countdown, subscribe: subscribeCountdown, start: startCountdown } =
     useCountdownStore();
   const { refresh: refreshMedia, media } = useMediaStore();
-  const { transitionMs, reduceMotion } = useSettingsStore();
+  const { transitionMs, reduceMotion, setLocale } = useSettingsStore();
 
   const currentItem = state?.set?.items[state?.currentItemIndex ?? 0];
 
   useEffect(() => {
     const unsub = subscribePresentation();
     const unsubCd = subscribeCountdown();
+    const unsubLocale = onLocaleChanged((locale) => {
+      i18n.changeLanguage(locale);
+      setLocale(locale);
+    });
     refreshMedia();
     return () => {
       unsub.then((u) => u());
       unsubCd.then((u) => u());
+      unsubLocale.then((u) => u());
     };
   }, []);
 

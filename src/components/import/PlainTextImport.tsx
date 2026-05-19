@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   parsePlainTextImport,
   createSong,
@@ -7,15 +8,15 @@ import {
 import { ImportWizardFrame } from "./ImportWizardFrame";
 import type { SectionType } from "../../types";
 
-const SECTION_TYPE_LABELS: Record<string, string> = {
-  verse: "Estrofe",
-  chorus: "Refrão",
-  bridge: "Ponte",
-  pre_chorus: "Pré-refrão",
-  outro: "Final",
-  interlude: "Interlúdio",
-  tag: "Tag",
-};
+const SECTION_TYPE_VALUES = [
+  "verse",
+  "chorus",
+  "bridge",
+  "pre_chorus",
+  "outro",
+  "interlude",
+  "tag",
+] as const;
 
 interface EditableSection extends ParsedTextSection {
   key: string;
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [songTitle, setSongTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -38,11 +40,11 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
 
   const handleNext = async () => {
     if (!songTitle.trim()) {
-      setError("Título é obrigatório");
+      setError(t("import.plain.errors.titleRequired"));
       return;
     }
     if (!lyrics.trim()) {
-      setError("Cole a letra da música");
+      setError(t("import.plain.errors.lyricsRequired"));
       return;
     }
     setError("");
@@ -54,7 +56,7 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
       );
       setStep(2);
     } catch (err) {
-      setError(`Falha ao processar letra: ${err}`);
+      setError(t("import.plain.errors.parseFailed", { err: String(err) }));
     } finally {
       setIsParsing(false);
     }
@@ -76,7 +78,7 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
       });
       onImported(song.id);
     } catch (err) {
-      setError(`Falha ao importar: ${err}`);
+      setError(t("import.plain.errors.importFailed", { err: String(err) }));
     } finally {
       setIsSaving(false);
     }
@@ -91,12 +93,12 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
   if (step === 1) {
     return (
       <ImportWizardFrame
-        title="Importar letra"
+        title={t("import.plain.step1.title")}
         step={1}
         totalSteps={2}
         onNext={handleNext}
         onCancel={onCancel}
-        nextLabel={isParsing ? "Processando…" : "Pré-visualizar"}
+        nextLabel={isParsing ? t("import.plain.step1.processing") : t("import.plain.step1.nextLabel")}
         nextDisabled={isParsing || !songTitle.trim() || !lyrics.trim()}
       >
         <div className="space-y-4">
@@ -104,40 +106,39 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
 
           <div>
             <label className="block text-sm text-gray-400 mb-1">
-              Título *
+              {t("import.plain.step1.titleLabel")}
             </label>
             <input
               value={songTitle}
               onChange={(e) => setSongTitle(e.target.value)}
-              placeholder="Nome da música"
+              placeholder={t("import.plain.step1.titlePlaceholder")}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
             <label className="block text-sm text-gray-400 mb-1">
-              Artista (opcional)
+              {t("import.plain.step1.artistLabel")}
             </label>
             <input
               value={artist}
               onChange={(e) => setArtist(e.target.value)}
-              placeholder="Nome do artista ou banda"
+              placeholder={t("import.plain.step1.artistPlaceholder")}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
             <label className="block text-sm text-gray-400 mb-1">
-              Letra
+              {t("import.plain.step1.lyricsLabel")}
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              Cole a letra aqui. Use linhas em branco para separar seções.
-              Use colchetes para nomear seções: [Refrão], [Ponte], etc.
+              {t("import.plain.step1.lyricsHint")}
             </p>
             <textarea
               value={lyrics}
               onChange={(e) => setLyrics(e.target.value)}
-              placeholder="Cole a letra aqui…"
+              placeholder={t("import.plain.step1.lyricsPlaceholder")}
               rows={14}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 font-mono text-sm resize-y focus:outline-none focus:border-blue-500"
             />
@@ -149,13 +150,13 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
 
   return (
     <ImportWizardFrame
-      title="Pré-visualizar seções"
+      title={t("import.plain.step2.title")}
       step={2}
       totalSteps={2}
       onBack={() => setStep(1)}
       onNext={handleImport}
       onCancel={onCancel}
-      nextLabel={isSaving ? "Importando…" : "Importar"}
+      nextLabel={isSaving ? t("import.plain.step2.importing") : t("import.plain.step2.nextLabel")}
       nextDisabled={isSaving}
     >
       <div className="space-y-3">
@@ -180,9 +181,9 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
                 }
                 className="text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1"
               >
-                {Object.entries(SECTION_TYPE_LABELS).map(([v, l]) => (
+                {SECTION_TYPE_VALUES.map((v) => (
                   <option key={v} value={v}>
-                    {l}
+                    {t(`sectionTypes.${v}`)}
                   </option>
                 ))}
               </select>

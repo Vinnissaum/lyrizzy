@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Film, Image } from "lucide-react";
 import type { Media } from "../../types";
 
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
+  const { t } = useTranslation();
   const thumbUrl = media.thumbnailFile
     ? `http://asset.localhost/media/${media.thumbnailFile}`
     : media.kind === "image"
@@ -67,7 +69,7 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
           ) : (
             <Image className="w-3 h-3" />
           )}
-          {media.kind === "video" ? "Vídeo" : "Imagem"}
+          {t(`media.type.${media.kind}`)}
         </span>
       </div>
     </button>

@@ -1,14 +1,8 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import type { PresentationMode, ServiceSet } from "../../types";
-
-const MODE_LABELS: Record<PresentationMode, string> = {
-  idle: "Inativo",
-  live: "Ao Vivo",
-  blank: "Tela Preta",
-  frozen: "Congelado",
-};
 
 const MODE_COLORS: Record<PresentationMode, string> = {
   idle: "bg-gray-600",
@@ -63,6 +57,7 @@ interface Props {
 }
 
 export const SlideController: React.FC<Props> = ({ serviceSet }) => {
+  const { t } = useTranslation();
   const { state, next, prev, jumpToItem, setMode } = usePresentationStore();
   const { setView, songs, refresh } = useLibraryStore();
   const songMap = new Map(songs.map((s) => [s.id, s]));
@@ -74,7 +69,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
   if (!state) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500 text-sm">
-        Sem apresentação ativa.
+        {t("presentation.noPresentation")}
       </div>
     );
   }
@@ -97,7 +92,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
           <span
             className={`text-xs px-2 py-0.5 rounded font-medium ${MODE_COLORS[currentMode]}`}
           >
-            {MODE_LABELS[currentMode]}
+            {t(`presentation.mode.${currentMode}`)}
           </span>
         </div>
 
@@ -113,11 +108,10 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
                   : "bg-gray-700 hover:bg-gray-600 text-gray-300"
               }`}
             >
-              {MODE_LABELS[m]}
+              {t(`presentation.mode.${m}`)}
             </button>
           ))}
         </div>
-
       </div>
 
       {/* Item list */}
@@ -128,7 +122,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
           const song = item.songId ? songMap.get(item.songId) : undefined;
           const label =
             item.itemType === "blank"
-              ? "Tela em branco"
+              ? t("presentation.blankSlide")
               : song?.title ?? `Item ${idx + 1}`;
           const subtitle = song?.artist;
 
@@ -151,7 +145,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
         {state.currentSlide && (
           <div className="mb-3 px-3 py-2 bg-gray-800 rounded-lg">
             <p className="text-xs text-gray-500 mb-1">
-              {state.currentSlide.sectionLabel || "Slide atual"}
+              {state.currentSlide.sectionLabel || t("presentation.currentSlide")}
             </p>
             <div className="space-y-0.5">
               {state.currentSlide.lines.length > 0 ? (
@@ -161,7 +155,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
                   </p>
                 ))
               ) : (
-                <p className="text-sm text-gray-600 italic">Tela em branco</p>
+                <p className="text-sm text-gray-600 italic">{t("presentation.blankSlide")}</p>
               )}
             </div>
           </div>
@@ -172,13 +166,13 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
             onClick={prev}
             className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
           >
-            ← Anterior
+            {t("presentation.prev")}
           </button>
           <button
             onClick={next}
             className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
           >
-            Próximo →
+            {t("presentation.next")}
           </button>
         </div>
       </div>

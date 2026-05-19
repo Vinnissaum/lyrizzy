@@ -1,0 +1,399 @@
+{
+  "nav": {
+    "library": "Biblioteca",
+    "sets": "Conjuntos",
+    "countdown": "Cronômetro",
+    "media": "Mídia",
+    "backup": "Backup",
+    "settings": "Configurações",
+    "presentationWindow": "Janela de Apresentação"
+  },
+  "loading": "Carregando…",
+  "saving": "Salvando…",
+  "sectionTypes": {
+    "verse": "Estrofe",
+    "chorus": "Refrão",
+    "bridge": "Ponte",
+    "pre_chorus": "Pré-refrão",
+    "outro": "Final",
+    "interlude": "Interlúdio",
+    "tag": "Tag"
+  },
+  "library": {
+    "title": "Biblioteca",
+    "searchPlaceholder": "Pesquisar músicas…",
+    "empty": {
+      "title": "Nenhuma música",
+      "subtitle": "Comece importando músicas ou criando uma nova.",
+      "importHolyrics": "Importar do Holyrics",
+      "createSong": "Criar música manualmente"
+    }
+  },
+  "editor": {
+    "back": "← Biblioteca",
+    "delete": "Excluir",
+    "save": "Salvar",
+    "titlePlaceholder": "Título da música *",
+    "artistPlaceholder": "Artista / Banda",
+    "notesPlaceholder": "Observações (opcional)",
+    "lang": {
+      "pt": "Português",
+      "en": "English",
+      "es": "Español"
+    },
+    "background": "Fundo",
+    "sections": "Seções",
+    "addSection": "+ Adicionar seção",
+    "bg": {
+      "none": "Nenhum",
+      "change": "Trocar",
+      "choose": "Escolher",
+      "remove": "Remover",
+      "scrimLabel": "Opacidade do fundo escuro",
+      "modalTitle": "Escolher fundo",
+      "noMedia": "Nenhuma mídia importada"
+    },
+    "deleteConfirm": {
+      "title": "Excluir música",
+      "message": "Excluir esta música? Esta ação pode ser desfeita.",
+      "confirm": "Excluir"
+    },
+    "validation": {
+      "titleRequired": "Título é obrigatório",
+      "bodyRequired": "Pelo menos uma seção deve ter letra"
+    },
+    "toast": {
+      "saved": "Música salva com sucesso",
+      "deleted": "Música excluída"
+    }
+  },
+  "sectionCard": {
+    "labelPlaceholder": "Rótulo da seção",
+    "bodyPlaceholder": "Letra da seção…",
+    "dragAriaLabel": "Arrastar seção",
+    "removeAriaLabel": "Remover seção"
+  },
+  "sets": {
+    "title": "Conjuntos de Culto",
+    "newButton": "+ Novo",
+    "namePlaceholder": "Nome do conjunto…",
+    "createButton": "Criar",
+    "cancelButton": "Cancelar",
+    "empty": {
+      "message": "Nenhum conjunto criado.",
+      "hint": "Clique em \"Novo\" para começar."
+    },
+    "item_one": "{{count}} item",
+    "item_other": "{{count}} itens",
+    "delete": {
+      "title": "Excluir conjunto",
+      "message": "Deseja excluir \"{{name}}\"? Esta ação não pode ser desfeita.",
+      "confirm": "Excluir"
+    }
+  },
+  "builder": {
+    "empty": "Adicione itens com os botões abaixo.",
+    "item_one": "{{count}} item",
+    "item_other": "{{count}} itens",
+    "renameTip": "Clique para renomear",
+    "invalidRef": "⚠ Referência inválida",
+    "blank": "Tela em branco",
+    "countdownSummary": "Contagem — {{dur}}",
+    "noUrl": "sem URL",
+    "add": {
+      "song": "♪ Música",
+      "media": "▶ Mídia",
+      "countdown": "⏱ Contagem",
+      "webView": "🌐 WebView",
+      "blank": "▪ Branco"
+    },
+    "songSearch": "Pesquisar música…",
+    "noMedia": "Nenhuma mídia disponível.",
+    "mediaFilter": {
+      "all": "Todos",
+      "image": "Imagens",
+      "video": "Vídeos"
+    },
+    "present": "Apresentar",
+    "loading": "Carregando…",
+    "actions": {
+      "duplicate": "Duplicar",
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo",
+      "remove": "Remover",
+      "edit": "Editar"
+    }
+  },
+  "presentation": {
+    "noPresentation": "Sem apresentação ativa.",
+    "noSetLoaded": "Nenhum conjunto carregado.",
+    "mode": {
+      "idle": "Inativo",
+      "live": "Ao Vivo",
+      "blank": "Tela Preta",
+      "frozen": "Congelado"
+    },
+    "currentSlide": "Slide atual",
+    "blankSlide": "Tela em branco",
+    "prev": "← Anterior",
+    "next": "Próximo →"
+  },
+  "countdown": {
+    "title": "Cronômetro",
+    "setDuration": "Definir duração",
+    "min": "Min",
+    "sec": "Seg",
+    "setButton": "Definir",
+    "pause": "Pausar",
+    "start": "Iniciar",
+    "reset": "Resetar",
+    "finished": "Tempo esgotado!",
+    "editor": {
+      "duration": "Duração (mm:ss)",
+      "message": "Mensagem",
+      "endBehavior": "Ao terminar",
+      "background": "Fundo (vídeo)",
+      "saving": "Salvando…",
+      "durationError": "Formato inválido. Use mm:ss ou hh:mm:ss",
+      "defaultMessage": "O culto começa em…",
+      "bgLabel": "Selecionar vídeo de fundo…"
+    },
+    "endBehavior": {
+      "holdZero": "Manter 00:00",
+      "blackout": "Tela preta",
+      "advanceSet": "Avançar conjunto"
+    }
+  },
+  "webview": {
+    "editor": {
+      "mode": "Modo",
+      "url": "URL",
+      "auth": "Autenticação básica (opcional)",
+      "user": "Usuário",
+      "pass": "Senha",
+      "saving": "Salvando…",
+      "modes": {
+        "iframe": "Iframe (URL)",
+        "mjpeg": "MJPEG (câmera)"
+      },
+      "errors": {
+        "urlRequired": "URL obrigatória",
+        "urlInvalid": "URL inválida"
+      },
+      "warnings": {
+        "http": "Conexões http podem ser bloqueadas pelo navegador."
+      }
+    }
+  },
+  "media": {
+    "type": {
+      "video": "Vídeo",
+      "image": "Imagem"
+    },
+    "title": "Mídia",
+    "addButton": "Adicionar mídia",
+    "filter": {
+      "all": "Todos",
+      "images": "Imagens",
+      "videos": "Vídeos"
+    },
+    "searchPlaceholder": "Pesquisar mídia…",
+    "empty": "Nenhuma mídia encontrada.",
+    "importToast_one": "{{count}} importada",
+    "importToast_other": "{{count}} importadas",
+    "importToastSkipped_one": "{{count}} ignorada",
+    "importToastSkipped_other": "{{count}} ignoradas",
+    "detail": {
+      "title": "Detalhes",
+      "name": "Nome",
+      "type": "Tipo",
+      "dimensions": "Dimensões",
+      "duration": "Duração",
+      "size": "Tamanho",
+      "delete": "Excluir",
+      "errors": {
+        "renameEmpty": "Nome não pode estar vazio.",
+        "renameFailed": "Falha ao renomear.",
+        "deleteFailed": "Falha ao excluir.",
+        "refCheckFailed": "Falha ao verificar referências."
+      }
+    },
+    "delete": {
+      "inUseTitle": "Mídia em uso",
+      "inUseMessage": "Esta mídia está em uso por {{songs}} música(s) e {{items}} item(s) de conjunto. Remova as referências antes de excluir.",
+      "confirmTitle": "Excluir mídia",
+      "confirmMessage": "Excluir \"{{name}}\"? Esta ação não pode ser desfeita.",
+      "understood": "Entendido"
+    },
+    "dropzone": {
+      "uploading": "Importando {{current}}/{{total}}…",
+      "drop": "Arraste arquivos ou",
+      "clickToSelect": "clique para selecionar"
+    },
+    "editor": {
+      "loop": "Repetir (loop)",
+      "mute": "Silenciar",
+      "autoAdvance": "Avançar ao terminar",
+      "imageNote": "Imagem — avança ao pressionar Próximo.",
+      "saving": "Salvando…"
+    },
+    "picker": {
+      "noMedia": "Nenhuma mídia disponível.",
+      "defaultLabel": "Selecionar mídia"
+    }
+  },
+  "import": {
+    "wizard": {
+      "cancel": "Cancelar",
+      "back": "← Voltar",
+      "step": "Passo {{step}} de {{total}}"
+    },
+    "plain": {
+      "step1": {
+        "title": "Importar letra",
+        "nextLabel": "Pré-visualizar",
+        "processing": "Processando…",
+        "titleLabel": "Título *",
+        "titlePlaceholder": "Nome da música",
+        "artistLabel": "Artista (opcional)",
+        "artistPlaceholder": "Nome do artista ou banda",
+        "lyricsLabel": "Letra",
+        "lyricsHint": "Cole a letra aqui. Use linhas em branco para separar seções. Use colchetes para nomear seções: [Refrão], [Ponte], etc.",
+        "lyricsPlaceholder": "Cole a letra aqui…"
+      },
+      "step2": {
+        "title": "Pré-visualizar seções",
+        "nextLabel": "Importar",
+        "importing": "Importando…"
+      },
+      "errors": {
+        "titleRequired": "Título é obrigatório",
+        "lyricsRequired": "Cole a letra da música",
+        "parseFailed": "Falha ao processar letra: {{err}}",
+        "importFailed": "Falha ao importar: {{err}}"
+      }
+    },
+    "holyrics": {
+      "step1": {
+        "title": "Importar do Holyrics",
+        "hint": "Selecione um arquivo de exportação do Holyrics (.json)",
+        "chooseFile": "Escolher arquivo…",
+        "loading": "Carregando…"
+      },
+      "step2": {
+        "title": "Selecionar músicas",
+        "nextLabel": "Importar selecionadas ({{count}})",
+        "importing": "Importando…",
+        "duplicate": "(duplicada — desmarcada por padrão)"
+      },
+      "step3": {
+        "title": "Importação concluída",
+        "imported_one": "{{count}} música importada",
+        "imported_other": "{{count}} músicas importadas",
+        "skipped_one": "{{count}} ignorada (duplicada)",
+        "skipped_other": "{{count}} ignoradas (duplicadas)",
+        "failures_one": "{{count}} falha:",
+        "failures_other": "{{count}} falhas:",
+        "viewLibrary": "Ver biblioteca"
+      },
+      "errors": {
+        "noSongs": "Nenhuma música encontrada no arquivo",
+        "parseFailed": "Falha ao processar arquivo: {{err}}",
+        "importFailed": "Falha ao importar: {{err}}"
+      }
+    }
+  },
+  "backup": {
+    "title": "Backup",
+    "subtitle": "Exporte ou importe a biblioteca completa: músicas, conjuntos, arquivos de mídia e configurações.",
+    "export": {
+      "title": "Exportar biblioteca",
+      "subtitle": "Salva músicas, conjuntos, mídia e configurações em um arquivo .tlz",
+      "preparing": "Preparando…",
+      "success": "Exportado com sucesso",
+      "stats": "{{songs}} músicas · {{sets}} conjuntos · {{media}} arquivos de mídia",
+      "button": "Exportar biblioteca…",
+      "running": "Exportando…"
+    },
+    "import": {
+      "title": "Importar biblioteca",
+      "subtitle": "Restaura a partir de um arquivo .tlz exportado anteriormente",
+      "selectFile": "Selecionar arquivo…",
+      "reading": "Lendo arquivo…",
+      "fileContent": "Conteúdo do arquivo",
+      "exportedAt": "Exportado em: {{date}}",
+      "appVersion": "Versão do app: {{version}}",
+      "stats": "{{songs}} músicas · {{sets}} conjuntos · {{media}} arquivos de mídia",
+      "restoreMode": "Modo de restauração",
+      "modeReplace": {
+        "title": "Substituir tudo",
+        "desc": "— apaga a biblioteca atual e restaura o arquivo"
+      },
+      "modeMerge": {
+        "title": "Mesclar",
+        "desc": "— adiciona apenas itens que não existem"
+      },
+      "typedConfirmHint": "⚠ Esta operação é irreversível. Digite SUBSTITUIR para confirmar:",
+      "confirmWord": "SUBSTITUIR",
+      "restoreButton": "Restaurar",
+      "cancelButton": "Cancelar",
+      "restoring": "Restaurando…",
+      "success": "Restaurado com sucesso",
+      "successStats": "{{songs}} músicas · {{sets}} conjuntos · {{media}} arquivos de mídia",
+      "skippedStats": "{{songs}} músicas ignoradas · {{media}} mídias ignoradas · {{failures}} falhas",
+      "restartHint": "Reinicie o app para ver as alterações refletidas em todos os painéis.",
+      "importAnother": "Importar outro arquivo"
+    },
+    "restore": {
+      "title": "Restauração interrompida",
+      "subtitle": "Uma restauração anterior não foi concluída",
+      "body1": "O Trinity Lyrics detectou que uma restauração anterior foi interrompida antes de concluir. A biblioteca pode estar em um estado incompleto.",
+      "body2": "Clique em \"Cancelar restauração\" para limpar o estado parcial e voltar ao estado de instalação limpa. Você poderá restaurar novamente a partir do arquivo de backup.",
+      "cancelButton": "Cancelar restauração",
+      "irreversibleWarning": "⚠ Isso apagará todos os dados da biblioteca atual. Esta ação é irreversível.",
+      "confirmButton": "Confirmar e limpar",
+      "cleaningButton": "Limpando…",
+      "backButton": "Voltar"
+    }
+  },
+  "settings": {
+    "title": "Configurações",
+    "general": "Geral",
+    "language": "Idioma",
+    "languageOptions": {
+      "ptBR": "Português (Brasil)",
+      "enUS": "English"
+    }
+  },
+  "errors": {
+    "song": {
+      "notFound": "Música não encontrada",
+      "dbError": "Erro no banco de dados: {{detail}}"
+    },
+    "import": {
+      "ioError": "Falha ao ler arquivo: {{detail}}",
+      "parseError": "Falha ao processar arquivo: {{detail}}"
+    },
+    "set": {
+      "notFound": "Conjunto não encontrado",
+      "itemNotFound": "Item não encontrado",
+      "dbError": "Erro no banco de dados: {{detail}}"
+    },
+    "presentation": {
+      "indexOutOfBounds": "Índice de item fora dos limites"
+    },
+    "countdown": {
+      "durationNotSet": "Defina a duração antes de iniciar"
+    },
+    "media": {
+      "noExtension": "Arquivo sem extensão",
+      "unsupportedType": "Tipo de mídia não suportado: .{{ext}}",
+      "copyError": "Falha ao copiar arquivo de mídia: {{detail}}",
+      "dbError": "Erro no banco de dados: {{detail}}"
+    },
+    "window": {
+      "buildError": "Falha ao criar janela: {{detail}}"
+    },
+    "legacy": "{{message}}"
+  }
+}

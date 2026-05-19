@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   parseHolyricsFile,
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>("pick");
   const [rows, setRows] = useState<SongRow[]>([]);
   const [report, setReport] = useState<ImportReport | null>(null);
@@ -44,7 +46,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
       const result = await parseHolyricsFile(path);
 
       if (result.songs.length === 0) {
-        setError("Nenhuma música encontrada no arquivo");
+        setError(t("import.holyrics.errors.noSongs"));
         setIsLoading(false);
         return;
       }
@@ -58,7 +60,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
       );
       setStep("preview");
     } catch (err) {
-      setError(`Falha ao processar arquivo: ${err}`);
+      setError(t("import.holyrics.errors.parseFailed", { err: String(err) }));
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +75,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
       setReport(result);
       setStep("summary");
     } catch (err) {
-      setError(`Falha ao importar: ${err}`);
+      setError(t("import.holyrics.errors.importFailed", { err: String(err) }));
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +92,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
   if (step === "pick") {
     return (
       <ImportWizardFrame
-        title="Importar do Holyrics"
+        title={t("import.holyrics.step1.title")}
         step={1}
         totalSteps={2}
         onCancel={onCancel}
@@ -98,14 +100,14 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
         <div className="flex flex-col items-center justify-center h-40 gap-4">
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
           <p className="text-gray-400 text-sm text-center">
-            Selecione um arquivo de exportação do Holyrics (.json)
+            {t("import.holyrics.step1.hint")}
           </p>
           <button
             onClick={handlePickFile}
             disabled={isLoading}
             className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 rounded-lg font-medium transition-colors"
           >
-            {isLoading ? "Carregando…" : "Escolher arquivo…"}
+            {isLoading ? t("import.holyrics.step1.loading") : t("import.holyrics.step1.chooseFile")}
           </button>
         </div>
       </ImportWizardFrame>
@@ -115,7 +117,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
   if (step === "preview") {
     return (
       <ImportWizardFrame
-        title="Selecionar músicas"
+        title={t("import.holyrics.step2.title")}
         step={2}
         totalSteps={2}
         onBack={() => setStep("pick")}
@@ -123,8 +125,8 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
         onCancel={onCancel}
         nextLabel={
           isLoading
-            ? "Importando…"
-            : `Importar selecionadas (${checkedCount})`
+            ? t("import.holyrics.step2.importing")
+            : t("import.holyrics.step2.nextLabel", { count: checkedCount })
         }
         nextDisabled={isLoading || checkedCount === 0}
       >
@@ -152,7 +154,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
                 )}
                 {row.isDuplicate && (
                   <p className="text-xs text-yellow-500 mt-0.5">
-                    (duplicada — desmarcada por padrão)
+                    {t("import.holyrics.step2.duplicate")}
                   </p>
                 )}
               </div>
@@ -166,7 +168,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
   // Summary step
   return (
     <ImportWizardFrame
-      title="Importação concluída"
+      title={t("import.holyrics.step3.title")}
       step={2}
       totalSteps={2}
       onCancel={onCancel}
@@ -175,17 +177,17 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
         {report && (
           <div className="space-y-1">
             <p className="text-lg font-semibold">
-              {report.imported} músicas importadas
+              {t("import.holyrics.step3.imported", { count: report.imported })}
             </p>
             {report.skipped > 0 && (
               <p className="text-gray-400 text-sm">
-                {report.skipped} ignoradas (duplicadas)
+                {t("import.holyrics.step3.skipped", { count: report.skipped })}
               </p>
             )}
             {report.failed.length > 0 && (
               <div className="text-left mt-3 space-y-1">
                 <p className="text-red-400 text-sm font-medium">
-                  {report.failed.length} falhas:
+                  {t("import.holyrics.step3.failures", { count: report.failed.length })}
                 </p>
                 {report.failed.map((f, i) => (
                   <p key={i} className="text-xs text-gray-400">
@@ -200,7 +202,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
           onClick={onDone}
           className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
         >
-          Ver biblioteca
+          {t("import.holyrics.step3.viewLibrary")}
         </button>
       </div>
     </ImportWizardFrame>

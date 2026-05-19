@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
   ArchiveInspection,
@@ -12,20 +13,13 @@ import {
   onBackupProgress,
   restoreLibrary,
 } from "../../api/commands";
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDate(epochMs: number): string {
-  return new Date(epochMs).toLocaleString("pt-BR");
-}
+import { formatBytes } from "../media/MediaCard";
+import { formatDatetime } from "../../utils/format";
 
 // ── Export card ───────────────────────────────────────────────────────────────
 
 const ExportCard: React.FC = () => {
+  const { t } = useTranslation();
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [summary, setSummary] = useState<ExportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,15 +62,15 @@ const ExportCard: React.FC = () => {
           </svg>
         </div>
         <div>
-          <h3 className="font-semibold text-white">Exportar biblioteca</h3>
-          <p className="text-xs text-gray-400">Salva músicas, conjuntos, mídia e configurações em um arquivo .tlz</p>
+          <h3 className="font-semibold text-white">{t("backup.export.title")}</h3>
+          <p className="text-xs text-gray-400">{t("backup.export.subtitle")}</p>
         </div>
       </div>
 
       {progress && (
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-gray-400">
-            <span className="truncate max-w-xs">{progress.currentFile || "Preparando…"}</span>
+            <span className="truncate max-w-xs">{progress.currentFile || t("backup.export.preparing")}</span>
             <span>{progress.filesDone}/{progress.filesTotal}</span>
           </div>
           <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -90,8 +84,14 @@ const ExportCard: React.FC = () => {
 
       {summary && (
         <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-lg p-3 text-xs space-y-0.5">
-          <p className="text-emerald-300 font-medium">Exportado com sucesso</p>
-          <p className="text-gray-400">{summary.counts.songs} músicas · {summary.counts.sets} conjuntos · {summary.counts.media} arquivos de mídia</p>
+          <p className="text-emerald-300 font-medium">{t("backup.export.success")}</p>
+          <p className="text-gray-400">
+            {t("backup.export.stats", {
+              songs: summary.counts.songs,
+              sets: summary.counts.sets,
+              media: summary.counts.media,
+            })}
+          </p>
           <p className="text-gray-500">{formatBytes(summary.byteSize)} · {summary.outPath}</p>
         </div>
       )}
@@ -107,7 +107,7 @@ const ExportCard: React.FC = () => {
         disabled={running}
         className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors self-start"
       >
-        {running ? "Exportando…" : "Exportar biblioteca…"}
+        {running ? t("backup.export.running") : t("backup.export.button")}
       </button>
     </div>
   );
@@ -118,6 +118,7 @@ const ExportCard: React.FC = () => {
 type ImportStep = "idle" | "inspecting" | "confirm" | "importing" | "done";
 
 const ImportCard: React.FC = () => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<ImportStep>("idle");
   const [inspection, setInspection] = useState<ArchiveInspection | null>(null);
   const [archivePath, setArchivePath] = useState<string | null>(null);
@@ -173,7 +174,8 @@ const ImportCard: React.FC = () => {
     setMode("replace");
   };
 
-  const replaceConfirmed = mode === "merge" || confirmation.trim().toUpperCase() === "SUBSTITUIR";
+  const confirmWord = t("backup.import.confirmWord");
+  const replaceConfirmed = mode === "merge" || confirmation.trim().toUpperCase() === confirmWord;
 
   return (
     <div className="bg-gray-800 rounded-xl p-6 flex flex-col gap-4">
@@ -185,8 +187,8 @@ const ImportCard: React.FC = () => {
           </svg>
         </div>
         <div>
-          <h3 className="font-semibold text-white">Importar biblioteca</h3>
-          <p className="text-xs text-gray-400">Restaura a partir de um arquivo .tlz exportado anteriormente</p>
+          <h3 className="font-semibold text-white">{t("backup.import.title")}</h3>
+          <p className="text-xs text-gray-400">{t("backup.import.subtitle")}</p>
         </div>
       </div>
 
@@ -196,13 +198,13 @@ const ImportCard: React.FC = () => {
           onClick={handleSelectFile}
           className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors self-start"
         >
-          Selecionar arquivo…
+          {t("backup.import.selectFile")}
         </button>
       )}
 
       {/* Inspecting */}
       {step === "inspecting" && (
-        <p className="text-sm text-gray-400">Lendo arquivo…</p>
+        <p className="text-sm text-gray-400">{t("backup.import.reading")}</p>
       )}
 
       {/* Confirm */}
@@ -210,17 +212,21 @@ const ImportCard: React.FC = () => {
         <div className="space-y-4">
           {/* Inspection summary */}
           <div className="bg-gray-700/50 rounded-lg p-3 text-xs space-y-1">
-            <p className="text-white font-medium">Conteúdo do arquivo</p>
-            <p className="text-gray-400">Exportado em: {formatDate(inspection.exportedAt)}</p>
-            <p className="text-gray-400">Versão do app: {inspection.appVersion}</p>
+            <p className="text-white font-medium">{t("backup.import.fileContent")}</p>
+            <p className="text-gray-400">{t("backup.import.exportedAt", { date: formatDatetime(inspection.exportedAt) })}</p>
+            <p className="text-gray-400">{t("backup.import.appVersion", { version: inspection.appVersion })}</p>
             <p className="text-gray-400">
-              {inspection.counts.songs} músicas · {inspection.counts.sets} conjuntos · {inspection.counts.media} arquivos de mídia
+              {t("backup.import.stats", {
+                songs: inspection.counts.songs,
+                sets: inspection.counts.sets,
+                media: inspection.counts.media,
+              })}
             </p>
           </div>
 
           {/* Mode picker */}
           <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-300">Modo de restauração</p>
+            <p className="text-xs font-medium text-gray-300">{t("backup.import.restoreMode")}</p>
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -231,8 +237,8 @@ const ImportCard: React.FC = () => {
                 className="mt-0.5"
               />
               <span className="text-sm">
-                <span className="text-white font-medium">Substituir tudo</span>
-                <span className="text-gray-400 ml-1">— apaga a biblioteca atual e restaura o arquivo</span>
+                <span className="text-white font-medium">{t("backup.import.modeReplace.title")}</span>
+                <span className="text-gray-400 ml-1">{t("backup.import.modeReplace.desc")}</span>
               </span>
             </label>
             <label className="flex items-start gap-2 cursor-pointer">
@@ -245,8 +251,8 @@ const ImportCard: React.FC = () => {
                 className="mt-0.5"
               />
               <span className="text-sm">
-                <span className="text-white font-medium">Mesclar</span>
-                <span className="text-gray-400 ml-1">— adiciona apenas itens que não existem</span>
+                <span className="text-white font-medium">{t("backup.import.modeMerge.title")}</span>
+                <span className="text-gray-400 ml-1">{t("backup.import.modeMerge.desc")}</span>
               </span>
             </label>
           </div>
@@ -255,13 +261,13 @@ const ImportCard: React.FC = () => {
           {mode === "replace" && (
             <div className="space-y-1.5">
               <p className="text-xs text-amber-400">
-                ⚠ Esta operação é irreversível. Digite <strong>SUBSTITUIR</strong> para confirmar:
+                {t("backup.import.typedConfirmHint")}
               </p>
               <input
                 type="text"
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
-                placeholder="SUBSTITUIR"
+                placeholder={confirmWord}
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -279,13 +285,13 @@ const ImportCard: React.FC = () => {
               disabled={!replaceConfirmed}
               className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
             >
-              Restaurar
+              {t("backup.import.restoreButton")}
             </button>
             <button
               onClick={reset}
               className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
             >
-              Cancelar
+              {t("backup.import.cancelButton")}
             </button>
           </div>
         </div>
@@ -298,7 +304,7 @@ const ImportCard: React.FC = () => {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
-          Restaurando…
+          {t("backup.import.restoring")}
         </div>
       )}
 
@@ -306,19 +312,27 @@ const ImportCard: React.FC = () => {
       {step === "done" && summary && (
         <div className="space-y-3">
           <div className="bg-blue-900/30 border border-blue-700/40 rounded-lg p-3 text-xs space-y-0.5">
-            <p className="text-blue-300 font-medium">Restaurado com sucesso</p>
+            <p className="text-blue-300 font-medium">{t("backup.import.success")}</p>
             <p className="text-gray-400">
-              {summary.songsImported} músicas · {summary.setsImported} conjuntos · {summary.mediaImported} arquivos de mídia
+              {t("backup.import.successStats", {
+                songs: summary.songsImported,
+                sets: summary.setsImported,
+                media: summary.mediaImported,
+              })}
             </p>
             {(summary.songsSkipped > 0 || summary.mediaSkipped > 0 || summary.mediaFailed > 0) && (
               <p className="text-gray-500">
-                {summary.songsSkipped} músicas ignoradas · {summary.mediaSkipped} mídias ignoradas · {summary.mediaFailed} falhas
+                {t("backup.import.skippedStats", {
+                  songs: summary.songsSkipped,
+                  media: summary.mediaSkipped,
+                  failures: summary.mediaFailed,
+                })}
               </p>
             )}
           </div>
-          <p className="text-xs text-gray-400">Reinicie o app para ver as alterações refletidas em todos os painéis.</p>
+          <p className="text-xs text-gray-400">{t("backup.import.restartHint")}</p>
           <button onClick={reset} className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
-            Importar outro arquivo
+            {t("backup.import.importAnother")}
           </button>
         </div>
       )}
@@ -328,17 +342,18 @@ const ImportCard: React.FC = () => {
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
-export const BackupScreen: React.FC = () => (
-  <div className="h-full overflow-y-auto p-6">
-    <div className="max-w-2xl mx-auto space-y-4">
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-white">Backup</h2>
-        <p className="text-sm text-gray-400 mt-1">
-          Exporte ou importe a biblioteca completa: músicas, conjuntos, arquivos de mídia e configurações.
-        </p>
+export const BackupScreen: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="h-full overflow-y-auto p-6">
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white">{t("backup.title")}</h2>
+          <p className="text-sm text-gray-400 mt-1">{t("backup.subtitle")}</p>
+        </div>
+        <ExportCard />
+        <ImportCard />
       </div>
-      <ExportCard />
-      <ImportCard />
     </div>
-  </div>
-);
+  );
+};

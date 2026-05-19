@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   addSetItem,
   duplicateSetItem,
@@ -41,6 +42,7 @@ function isExpandable(item: SetItem): boolean {
 }
 
 export const SetBuilder: React.FC<Props> = ({ setId }) => {
+  const { t } = useTranslation();
   const { setView } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
   const [serviceSet, setServiceSet] = useState<ServiceSet | null>(null);
@@ -63,7 +65,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       setServiceSet(s);
       setNameInput(s.name);
     } catch (err) {
-      console.error("Falha ao carregar conjunto:", err);
+      console.error("load set failed:", err);
     }
   };
 
@@ -73,7 +75,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       setSongs(result);
       setFilteredSongs(result);
     } catch (err) {
-      console.error("Falha ao carregar músicas:", err);
+      console.error("load songs failed:", err);
     }
   };
 
@@ -108,7 +110,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       await updateSet({ id: serviceSet.id, name: nameInput.trim() });
       setEditingName(false);
     } catch (err) {
-      console.error("Falha ao atualizar nome:", err);
+      console.error("update set name failed:", err);
     }
   };
 
@@ -118,7 +120,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       await addSetItem({ setId: serviceSet.id, itemType: "song", songId: song.id });
       setShowSongPicker(false);
     } catch (err) {
-      console.error("Falha ao adicionar música:", err);
+      console.error("add song failed:", err);
     }
   };
 
@@ -134,7 +136,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       setShowMediaPicker(false);
       if (mediaItem.kind === "video") setExpandedItemId(item.id);
     } catch (err) {
-      console.error("Falha ao adicionar mídia:", err);
+      console.error("add media failed:", err);
     }
   };
 
@@ -146,13 +148,13 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         itemType: "countdown",
         countdownConfig: {
           durationMs: 600_000,
-          message: "O culto começa em…",
+          message: t("countdown.editor.defaultMessage"),
           endBehavior: "holdZero",
         },
       });
       setExpandedItemId(item.id);
     } catch (err) {
-      console.error("Falha ao adicionar contagem:", err);
+      console.error("add countdown failed:", err);
     }
   };
 
@@ -166,7 +168,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       });
       setExpandedItemId(item.id);
     } catch (err) {
-      console.error("Falha ao adicionar WebView:", err);
+      console.error("add webview failed:", err);
     }
   };
 
@@ -175,7 +177,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
     try {
       await addSetItem({ setId: serviceSet.id, itemType: "blank" });
     } catch (err) {
-      console.error("Falha ao adicionar tela em branco:", err);
+      console.error("add blank failed:", err);
     }
   };
 
@@ -183,7 +185,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
     try {
       await removeSetItem(item.id);
     } catch (err) {
-      console.error("Falha ao remover item:", err);
+      console.error("remove item failed:", err);
     }
   };
 
@@ -191,7 +193,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
     try {
       await duplicateSetItem(item.id);
     } catch (err) {
-      console.error("Falha ao duplicar item:", err);
+      console.error("duplicate item failed:", err);
     }
   };
 
@@ -204,7 +206,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
     try {
       await reorderSetItems(serviceSet.id, items.map((i) => i.id));
     } catch (err) {
-      console.error("Falha ao reordenar:", err);
+      console.error("reorder failed:", err);
     }
   };
 
@@ -216,7 +218,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       usePresentationStore.getState().syncState();
       setView("set-player");
     } catch (err) {
-      console.error("Falha ao carregar apresentação:", err);
+      console.error("load presentation failed:", err);
     } finally {
       setIsLoading(false);
     }
@@ -240,7 +242,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
   if (!serviceSet) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500 text-sm">
-        Carregando…
+        {t("builder.loading")}
       </div>
     );
   }
@@ -253,7 +255,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
     if (invalid) {
       return (
         <p className="text-xs text-red-400 font-medium">
-          ⚠ Referência inválida
+          {t("builder.invalidRef")}
         </p>
       );
     }
@@ -279,7 +281,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         const durLabel = cfg ? `${Math.floor(cfg.durationMs / 60000)}min` : "10min";
         return (
           <p className="text-sm text-amber-400 font-medium">
-            Contagem — {durLabel}
+            {t("builder.countdownSummary", { dur: durLabel })}
           </p>
         );
       }
@@ -287,7 +289,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         const wv = item.webviewConfig;
         const urlShort = wv?.url
           ? wv.url.replace(/^https?:\/\//, "").slice(0, 30)
-          : "sem URL";
+          : t("builder.noUrl");
         return (
           <p className="text-sm text-purple-400 font-medium truncate">
             {wv?.mode === "mjpeg" ? "Câmera" : "Web"} — {urlShort}
@@ -295,7 +297,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         );
       }
       default:
-        return <p className="text-sm text-gray-400 italic">Tela em branco</p>;
+        return <p className="text-sm text-gray-400 italic">{t("builder.blank")}</p>;
     }
   };
 
@@ -328,7 +330,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                 type="submit"
                 className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors"
               >
-                Salvar
+                ✓
               </button>
               <button
                 type="button"
@@ -345,14 +347,14 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
             <button
               onClick={() => setEditingName(true)}
               className="flex-1 text-left text-base font-semibold hover:text-blue-400 transition-colors"
-              title="Clique para renomear"
+              title={t("builder.renameTip")}
             >
               {serviceSet.name}
             </button>
           )}
         </div>
         <p className="text-xs text-gray-400 pl-7">
-          {serviceSet.items.length} {serviceSet.items.length === 1 ? "item" : "itens"}
+          {t("builder.item", { count: serviceSet.items.length })}
         </p>
       </div>
 
@@ -360,7 +362,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         {serviceSet.items.length === 0 ? (
           <p className="text-center text-gray-500 text-sm py-8">
-            Adicione itens com os botões abaixo.
+            {t("builder.empty")}
           </p>
         ) : (
           serviceSet.items.map((item, idx) => {
@@ -388,7 +390,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                     <button
                       onClick={() => setExpandedItemId(expanded ? null : item.id)}
                       className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 transition-all text-xs"
-                      title="Editar"
+                      title={t("builder.actions.edit")}
                     >
                       {expanded ? "▲" : "▼"}
                     </button>
@@ -397,7 +399,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                     <button
                       onClick={() => handleDuplicate(item)}
                       className="p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-gray-700 transition-all"
-                      title="Duplicar"
+                      title={t("builder.actions.duplicate")}
                     >
                       ⧉
                     </button>
@@ -405,7 +407,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                       onClick={() => handleMove(idx, "up")}
                       disabled={idx === 0}
                       className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
-                      title="Mover para cima"
+                      title={t("builder.actions.moveUp")}
                     >
                       ↑
                     </button>
@@ -413,14 +415,14 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                       onClick={() => handleMove(idx, "down")}
                       disabled={idx === serviceSet.items.length - 1}
                       className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
-                      title="Mover para baixo"
+                      title={t("builder.actions.moveDown")}
                     >
                       ↓
                     </button>
                     <button
                       onClick={() => handleRemoveItem(item)}
                       className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-all"
-                      title="Remover"
+                      title={t("builder.actions.remove")}
                     >
                       ✕
                     </button>
@@ -455,7 +457,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
               type="search"
               value={songSearch}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Pesquisar música…"
+              placeholder={t("builder.songSearch")}
               className="flex-1 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
             <button
@@ -497,7 +499,11 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                       : "bg-gray-700 text-gray-400 hover:bg-gray-600"
                   }`}
                 >
-                  {f === "all" ? "Todos" : f === "image" ? "Imagens" : "Vídeos"}
+                  {f === "all"
+                    ? t("builder.mediaFilter.all")
+                    : f === "image"
+                    ? t("builder.mediaFilter.image")
+                    : t("builder.mediaFilter.video")}
                 </button>
               ))}
             </div>
@@ -512,7 +518,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
           <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 gap-2">
             {filteredMedia.length === 0 ? (
               <p className="col-span-3 text-center text-gray-500 py-6 text-sm">
-                Nenhuma mídia disponível.
+                {t("builder.noMedia")}
               </p>
             ) : (
               filteredMedia.map((m) => (
@@ -558,7 +564,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
             }}
             className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
           >
-            ♪ Música
+            {t("builder.add.song")}
           </button>
           <button
             onClick={() => {
@@ -569,25 +575,25 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
             }}
             className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-blue-400"
           >
-            ▶ Mídia
+            {t("builder.add.media")}
           </button>
           <button
             onClick={handleAddCountdown}
             className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-amber-400"
           >
-            ⏱ Contagem
+            {t("builder.add.countdown")}
           </button>
           <button
             onClick={handleAddWebView}
             className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-purple-400"
           >
-            🌐 WebView
+            {t("builder.add.webView")}
           </button>
           <button
             onClick={handleAddBlank}
             className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-gray-400"
           >
-            ▪ Branco
+            {t("builder.add.blank")}
           </button>
         </div>
         <button
@@ -595,7 +601,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
           disabled={isLoading || serviceSet.items.length === 0}
           className="w-full px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
         >
-          {isLoading ? "Carregando…" : "Apresentar"}
+          {isLoading ? t("builder.loading") : t("builder.present")}
         </button>
       </div>
     </div>

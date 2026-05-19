@@ -75,7 +75,7 @@ describe("MediaLibrary", () => {
 
   it("shows filter chips with Todos active by default", async () => {
     render(<MediaLibrary />);
-    const todosChip = screen.getByTestId("filter-todos");
+    const todosChip = screen.getByTestId("filter-all");
     expect(todosChip).toBeInTheDocument();
     expect(todosChip.className).toMatch(/bg-blue-600/);
   });
@@ -84,7 +84,7 @@ describe("MediaLibrary", () => {
     vi.mocked(invoke).mockResolvedValue([]);
     render(<MediaLibrary />);
 
-    fireEvent.click(screen.getByTestId("filter-imagens"));
+    fireEvent.click(screen.getByTestId("filter-image"));
 
     await waitFor(() =>
       expect(vi.mocked(invoke)).toHaveBeenCalledWith(

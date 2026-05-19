@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useCountdownStore } from "../../stores/countdown";
 
 function formatMs(ms: number): string {
@@ -9,6 +10,7 @@ function formatMs(ms: number): string {
 }
 
 export const CountdownPanel: React.FC = () => {
+  const { t } = useTranslation();
   const { state, setDuration, start, pause, reset } = useCountdownStore();
   const [minutes, setMinutes] = useState("10");
   const [seconds, setSeconds] = useState("00");
@@ -26,7 +28,7 @@ export const CountdownPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full p-6 gap-6">
-      <h2 className="text-base font-semibold text-white">Cronômetro</h2>
+      <h2 className="text-base font-semibold text-white">{t("countdown.title")}</h2>
 
       {/* Big display */}
       <div className="flex-1 flex items-center justify-center">
@@ -46,11 +48,11 @@ export const CountdownPanel: React.FC = () => {
       {/* Duration input */}
       <div className="bg-gray-800 rounded-xl p-4 space-y-3">
         <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-          Definir duração
+          {t("countdown.setDuration")}
         </p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-xs text-gray-500 mb-1 block">Min</label>
+            <label className="text-xs text-gray-500 mb-1 block">{t("countdown.min")}</label>
             <input
               type="number"
               min="0"
@@ -62,7 +64,7 @@ export const CountdownPanel: React.FC = () => {
           </div>
           <span className="text-gray-400 text-2xl font-mono pb-2">:</span>
           <div className="flex-1">
-            <label className="text-xs text-gray-500 mb-1 block">Seg</label>
+            <label className="text-xs text-gray-500 mb-1 block">{t("countdown.sec")}</label>
             <input
               type="number"
               min="0"
@@ -76,7 +78,7 @@ export const CountdownPanel: React.FC = () => {
             onClick={handleSetDuration}
             className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm font-medium transition-colors"
           >
-            Definir
+            {t("countdown.setButton")}
           </button>
         </div>
       </div>
@@ -88,7 +90,7 @@ export const CountdownPanel: React.FC = () => {
             onClick={pause}
             className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 rounded-xl text-sm font-semibold transition-colors"
           >
-            Pausar
+            {t("countdown.pause")}
           </button>
         ) : (
           <button
@@ -96,7 +98,7 @@ export const CountdownPanel: React.FC = () => {
             disabled={state.durationMs === 0}
             className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
           >
-            Iniciar
+            {t("countdown.start")}
           </button>
         )}
         <button
@@ -104,13 +106,13 @@ export const CountdownPanel: React.FC = () => {
           disabled={state.durationMs === 0}
           className="px-5 py-3 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
         >
-          Resetar
+          {t("countdown.reset")}
         </button>
       </div>
 
       {isFinished && (
         <p className="text-center text-red-400 text-sm font-medium animate-pulse">
-          Tempo esgotado!
+          {t("countdown.finished")}
         </p>
       )}
     </div>

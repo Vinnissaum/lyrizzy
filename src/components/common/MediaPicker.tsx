@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMediaStore } from "../../stores/media";
 import type { Media, MediaKind } from "../../types";
 
@@ -20,8 +21,10 @@ export const MediaPicker: React.FC<Props> = ({
   value,
   kind,
   onSelect,
-  label = "Selecionar mídia",
+  label,
 }) => {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t("media.picker.defaultLabel");
   const { media, refresh } = useMediaStore();
   const [open, setOpen] = useState(false);
 
@@ -57,13 +60,13 @@ export const MediaPicker: React.FC<Props> = ({
                 e.stopPropagation();
                 onSelect(null);
               }}
-              title="Remover"
+              title={t("editor.bg.remove")}
             >
               ✕
             </button>
           </>
         ) : (
-          <span className="text-gray-400">{label}</span>
+          <span className="text-gray-400">{resolvedLabel}</span>
         )}
       </button>
 
@@ -71,7 +74,7 @@ export const MediaPicker: React.FC<Props> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="bg-gray-900 rounded-xl shadow-2xl w-[520px] max-h-[70vh] flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <h3 className="text-sm font-semibold text-white">{label}</h3>
+              <h3 className="text-sm font-semibold text-white">{resolvedLabel}</h3>
               <button
                 onClick={() => setOpen(false)}
                 className="text-gray-400 hover:text-white"
@@ -82,7 +85,7 @@ export const MediaPicker: React.FC<Props> = ({
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
               {filtered.length === 0 ? (
                 <p className="col-span-3 text-center text-gray-500 py-8 text-sm">
-                  Nenhuma mídia disponível.
+                  {t("media.picker.noMedia")}
                 </p>
               ) : (
                 filtered.map((m) => (

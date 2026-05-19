@@ -120,7 +120,7 @@ describe("HolyricsImport", () => {
     fireEvent.click(screen.getByText(/Importar selecionadas/));
 
     await waitFor(() =>
-      expect(screen.getByText("1 músicas importadas")).toBeInTheDocument()
+      expect(screen.getByText("1 música importada")).toBeInTheDocument()
     );
     expect(screen.getByText("Ver biblioteca")).toBeInTheDocument();
   });

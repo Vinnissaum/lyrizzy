@@ -1,0 +1,399 @@
+{
+  "nav": {
+    "library": "Library",
+    "sets": "Sets",
+    "countdown": "Countdown",
+    "media": "Media",
+    "backup": "Backup",
+    "settings": "Settings",
+    "presentationWindow": "Presentation Window"
+  },
+  "loading": "Loading…",
+  "saving": "Saving…",
+  "sectionTypes": {
+    "verse": "Verse",
+    "chorus": "Chorus",
+    "bridge": "Bridge",
+    "pre_chorus": "Pre-Chorus",
+    "outro": "Outro",
+    "interlude": "Interlude",
+    "tag": "Tag"
+  },
+  "library": {
+    "title": "Library",
+    "searchPlaceholder": "Search songs…",
+    "empty": {
+      "title": "No songs",
+      "subtitle": "Start by importing songs or creating a new one.",
+      "importHolyrics": "Import from Holyrics",
+      "createSong": "Create song manually"
+    }
+  },
+  "editor": {
+    "back": "← Library",
+    "delete": "Delete",
+    "save": "Save",
+    "titlePlaceholder": "Song title *",
+    "artistPlaceholder": "Artist / Band",
+    "notesPlaceholder": "Notes (optional)",
+    "lang": {
+      "pt": "Português",
+      "en": "English",
+      "es": "Español"
+    },
+    "background": "Background",
+    "sections": "Sections",
+    "addSection": "+ Add section",
+    "bg": {
+      "none": "None",
+      "change": "Change",
+      "choose": "Choose",
+      "remove": "Remove",
+      "scrimLabel": "Dark overlay opacity",
+      "modalTitle": "Choose background",
+      "noMedia": "No media imported"
+    },
+    "deleteConfirm": {
+      "title": "Delete song",
+      "message": "Delete this song? This action can be undone.",
+      "confirm": "Delete"
+    },
+    "validation": {
+      "titleRequired": "Title is required",
+      "bodyRequired": "At least one section must have lyrics"
+    },
+    "toast": {
+      "saved": "Song saved successfully",
+      "deleted": "Song deleted"
+    }
+  },
+  "sectionCard": {
+    "labelPlaceholder": "Section label",
+    "bodyPlaceholder": "Section lyrics…",
+    "dragAriaLabel": "Drag section",
+    "removeAriaLabel": "Remove section"
+  },
+  "sets": {
+    "title": "Worship Sets",
+    "newButton": "+ New",
+    "namePlaceholder": "Set name…",
+    "createButton": "Create",
+    "cancelButton": "Cancel",
+    "empty": {
+      "message": "No sets created.",
+      "hint": "Click \"New\" to get started."
+    },
+    "item_one": "{{count}} item",
+    "item_other": "{{count}} items",
+    "delete": {
+      "title": "Delete set",
+      "message": "Delete \"{{name}}\"? This action cannot be undone.",
+      "confirm": "Delete"
+    }
+  },
+  "builder": {
+    "empty": "Add items using the buttons below.",
+    "item_one": "{{count}} item",
+    "item_other": "{{count}} items",
+    "renameTip": "Click to rename",
+    "invalidRef": "⚠ Invalid reference",
+    "blank": "Blank slide",
+    "countdownSummary": "Countdown — {{dur}}",
+    "noUrl": "no URL",
+    "add": {
+      "song": "♪ Song",
+      "media": "▶ Media",
+      "countdown": "⏱ Countdown",
+      "webView": "🌐 WebView",
+      "blank": "▪ Blank"
+    },
+    "songSearch": "Search song…",
+    "noMedia": "No media available.",
+    "mediaFilter": {
+      "all": "All",
+      "image": "Images",
+      "video": "Videos"
+    },
+    "present": "Present",
+    "loading": "Loading…",
+    "actions": {
+      "duplicate": "Duplicate",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove",
+      "edit": "Edit"
+    }
+  },
+  "presentation": {
+    "noPresentation": "No active presentation.",
+    "noSetLoaded": "No set loaded.",
+    "mode": {
+      "idle": "Idle",
+      "live": "Live",
+      "blank": "Black Screen",
+      "frozen": "Frozen"
+    },
+    "currentSlide": "Current slide",
+    "blankSlide": "Blank slide",
+    "prev": "← Previous",
+    "next": "Next →"
+  },
+  "countdown": {
+    "title": "Countdown",
+    "setDuration": "Set duration",
+    "min": "Min",
+    "sec": "Sec",
+    "setButton": "Set",
+    "pause": "Pause",
+    "start": "Start",
+    "reset": "Reset",
+    "finished": "Time's up!",
+    "editor": {
+      "duration": "Duration (mm:ss)",
+      "message": "Message",
+      "endBehavior": "When finished",
+      "background": "Background (video)",
+      "saving": "Saving…",
+      "durationError": "Invalid format. Use mm:ss or hh:mm:ss",
+      "defaultMessage": "Service starts in…",
+      "bgLabel": "Select background video…"
+    },
+    "endBehavior": {
+      "holdZero": "Hold at 00:00",
+      "blackout": "Black screen",
+      "advanceSet": "Advance set"
+    }
+  },
+  "webview": {
+    "editor": {
+      "mode": "Mode",
+      "url": "URL",
+      "auth": "Basic authentication (optional)",
+      "user": "Username",
+      "pass": "Password",
+      "saving": "Saving…",
+      "modes": {
+        "iframe": "Iframe (URL)",
+        "mjpeg": "MJPEG (camera)"
+      },
+      "errors": {
+        "urlRequired": "URL is required",
+        "urlInvalid": "Invalid URL"
+      },
+      "warnings": {
+        "http": "HTTP connections may be blocked by the browser."
+      }
+    }
+  },
+  "media": {
+    "type": {
+      "video": "Video",
+      "image": "Image"
+    },
+    "title": "Media",
+    "addButton": "Add media",
+    "filter": {
+      "all": "All",
+      "images": "Images",
+      "videos": "Videos"
+    },
+    "searchPlaceholder": "Search media…",
+    "empty": "No media found.",
+    "importToast_one": "{{count}} imported",
+    "importToast_other": "{{count}} imported",
+    "importToastSkipped_one": "{{count}} skipped",
+    "importToastSkipped_other": "{{count}} skipped",
+    "detail": {
+      "title": "Details",
+      "name": "Name",
+      "type": "Type",
+      "dimensions": "Dimensions",
+      "duration": "Duration",
+      "size": "Size",
+      "delete": "Delete",
+      "errors": {
+        "renameEmpty": "Name cannot be empty.",
+        "renameFailed": "Rename failed.",
+        "deleteFailed": "Delete failed.",
+        "refCheckFailed": "Failed to check references."
+      }
+    },
+    "delete": {
+      "inUseTitle": "Media in use",
+      "inUseMessage": "This media is used by {{songs}} song(s) and {{items}} set item(s). Remove references before deleting.",
+      "confirmTitle": "Delete media",
+      "confirmMessage": "Delete \"{{name}}\"? This action cannot be undone.",
+      "understood": "Understood"
+    },
+    "dropzone": {
+      "uploading": "Importing {{current}}/{{total}}…",
+      "drop": "Drop files or",
+      "clickToSelect": "click to select"
+    },
+    "editor": {
+      "loop": "Loop",
+      "mute": "Mute",
+      "autoAdvance": "Advance when finished",
+      "imageNote": "Image — advances on Next press.",
+      "saving": "Saving…"
+    },
+    "picker": {
+      "noMedia": "No media available.",
+      "defaultLabel": "Select media"
+    }
+  },
+  "import": {
+    "wizard": {
+      "cancel": "Cancel",
+      "back": "← Back",
+      "step": "Step {{step}} of {{total}}"
+    },
+    "plain": {
+      "step1": {
+        "title": "Import lyrics",
+        "nextLabel": "Preview",
+        "processing": "Processing…",
+        "titleLabel": "Title *",
+        "titlePlaceholder": "Song name",
+        "artistLabel": "Artist (optional)",
+        "artistPlaceholder": "Artist or band name",
+        "lyricsLabel": "Lyrics",
+        "lyricsHint": "Paste lyrics here. Use blank lines to separate sections. Use brackets to name sections: [Chorus], [Bridge], etc.",
+        "lyricsPlaceholder": "Paste lyrics here…"
+      },
+      "step2": {
+        "title": "Preview sections",
+        "nextLabel": "Import",
+        "importing": "Importing…"
+      },
+      "errors": {
+        "titleRequired": "Title is required",
+        "lyricsRequired": "Paste the song lyrics",
+        "parseFailed": "Failed to parse lyrics: {{err}}",
+        "importFailed": "Import failed: {{err}}"
+      }
+    },
+    "holyrics": {
+      "step1": {
+        "title": "Import from Holyrics",
+        "hint": "Select a Holyrics export file (.json)",
+        "chooseFile": "Choose file…",
+        "loading": "Loading…"
+      },
+      "step2": {
+        "title": "Select songs",
+        "nextLabel": "Import selected ({{count}})",
+        "importing": "Importing…",
+        "duplicate": "(duplicate — unchecked by default)"
+      },
+      "step3": {
+        "title": "Import complete",
+        "imported_one": "{{count}} song imported",
+        "imported_other": "{{count}} songs imported",
+        "skipped_one": "{{count}} skipped (duplicate)",
+        "skipped_other": "{{count}} skipped (duplicates)",
+        "failures_one": "{{count}} failure:",
+        "failures_other": "{{count}} failures:",
+        "viewLibrary": "View library"
+      },
+      "errors": {
+        "noSongs": "No songs found in file",
+        "parseFailed": "Failed to parse file: {{err}}",
+        "importFailed": "Import failed: {{err}}"
+      }
+    }
+  },
+  "backup": {
+    "title": "Backup",
+    "subtitle": "Export or import the full library: songs, sets, media files and settings.",
+    "export": {
+      "title": "Export library",
+      "subtitle": "Saves songs, sets, media and settings in a .tlz file",
+      "preparing": "Preparing…",
+      "success": "Exported successfully",
+      "stats": "{{songs}} songs · {{sets}} sets · {{media}} media files",
+      "button": "Export library…",
+      "running": "Exporting…"
+    },
+    "import": {
+      "title": "Import library",
+      "subtitle": "Restore from a previously exported .tlz file",
+      "selectFile": "Select file…",
+      "reading": "Reading file…",
+      "fileContent": "File contents",
+      "exportedAt": "Exported at: {{date}}",
+      "appVersion": "App version: {{version}}",
+      "stats": "{{songs}} songs · {{sets}} sets · {{media}} media files",
+      "restoreMode": "Restore mode",
+      "modeReplace": {
+        "title": "Replace all",
+        "desc": "— clears the current library and restores from file"
+      },
+      "modeMerge": {
+        "title": "Merge",
+        "desc": "— adds only items that don't already exist"
+      },
+      "typedConfirmHint": "⚠ This operation is irreversible. Type REPLACE to confirm:",
+      "confirmWord": "REPLACE",
+      "restoreButton": "Restore",
+      "cancelButton": "Cancel",
+      "restoring": "Restoring…",
+      "success": "Restored successfully",
+      "successStats": "{{songs}} songs · {{sets}} sets · {{media}} media files",
+      "skippedStats": "{{songs}} songs skipped · {{media}} media skipped · {{failures}} failures",
+      "restartHint": "Restart the app to see changes reflected across all panels.",
+      "importAnother": "Import another file"
+    },
+    "restore": {
+      "title": "Restore interrupted",
+      "subtitle": "A previous restore did not complete",
+      "body1": "Trinity Lyrics detected that a previous restore was interrupted before completing. The library may be in an incomplete state.",
+      "body2": "Click \"Cancel restore\" to clear the partial state and return to a clean install state. You will be able to restore again from the backup file.",
+      "cancelButton": "Cancel restore",
+      "irreversibleWarning": "⚠ This will erase all current library data. This action is irreversible.",
+      "confirmButton": "Confirm and clear",
+      "cleaningButton": "Clearing…",
+      "backButton": "Back"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "language": "Language",
+    "languageOptions": {
+      "ptBR": "Português (Brasil)",
+      "enUS": "English"
+    }
+  },
+  "errors": {
+    "song": {
+      "notFound": "Song not found",
+      "dbError": "Database error: {{detail}}"
+    },
+    "import": {
+      "ioError": "Failed to read file: {{detail}}",
+      "parseError": "Failed to parse file: {{detail}}"
+    },
+    "set": {
+      "notFound": "Set not found",
+      "itemNotFound": "Item not found",
+      "dbError": "Database error: {{detail}}"
+    },
+    "presentation": {
+      "indexOutOfBounds": "Item index out of bounds"
+    },
+    "countdown": {
+      "durationNotSet": "Set a duration before starting"
+    },
+    "media": {
+      "noExtension": "File has no extension",
+      "unsupportedType": "Unsupported media type: .{{ext}}",
+      "copyError": "Failed to copy media file: {{detail}}",
+      "dbError": "Database error: {{detail}}"
+    },
+    "window": {
+      "buildError": "Failed to create window: {{detail}}"
+    },
+    "legacy": "{{message}}"
+  }
+}

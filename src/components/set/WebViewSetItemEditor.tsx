@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { isUrlAllowed } from "../../utils/urlAllowlist";
 import type { SetItem, WebViewConfig, WebViewMode } from "../../types";
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
+  const { t } = useTranslation();
   const cfg = item.webviewConfig;
   const [mode, setMode] = useState<WebViewMode>(cfg?.mode ?? "iframe");
   const [url, setUrl] = useState(cfg?.url ?? "");
@@ -29,12 +31,12 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
   const buildConfig = (): WebViewConfig | null => {
     const trimmed = url.trim();
     if (!trimmed) {
-      setUrlError("URL obrigatória");
+      setUrlError(t("webview.editor.errors.urlRequired"));
       return null;
     }
     const check = isUrlAllowed(trimmed);
     if (!check.ok) {
-      setUrlError(check.reason ?? "URL inválida");
+      setUrlError(check.reason ?? t("webview.editor.errors.urlInvalid"));
       return null;
     }
     setUrlError(null);
@@ -53,7 +55,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     try {
       await updateSetItem({ id: item.id, webViewConfig: config });
     } catch (err) {
-      console.error("Falha ao salvar WebView:", err);
+      console.error("save webview failed:", err);
     } finally {
       setSaving(false);
     }
@@ -79,7 +81,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     <div className="p-3 space-y-3">
       {/* Mode */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">Modo</label>
+        <label className="text-xs text-gray-400 mb-1 block">{t("webview.editor.mode")}</label>
         <div className="flex gap-4">
           {(["iframe", "mjpeg"] as WebViewMode[]).map((m) => (
             <label key={m} className="flex items-center gap-1.5 cursor-pointer">
@@ -92,7 +94,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
                 className="accent-blue-500"
               />
               <span className="text-sm text-gray-300">
-                {m === "iframe" ? "Iframe (URL)" : "MJPEG (câmera)"}
+                {t(`webview.editor.modes.${m === "iframe" ? "iframe" : "mjpeg"}`)}
               </span>
             </label>
           ))}
@@ -101,7 +103,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {/* URL */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">URL</label>
+        <label className="text-xs text-gray-400 mb-1 block">{t("webview.editor.url")}</label>
         <input
           type="text"
           value={url}
@@ -121,7 +123,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
         )}
         {httpWarning && !urlError && (
           <p className="text-xs text-yellow-400 mt-1">
-            Conexões http podem ser bloqueadas pelo navegador.
+            {t("webview.editor.warnings.http")}
           </p>
         )}
       </div>
@@ -130,14 +132,14 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
       {mode === "mjpeg" && (
         <div className="space-y-2">
           <label className="text-xs text-gray-400 block">
-            Autenticação básica (opcional)
+            {t("webview.editor.auth")}
           </label>
           <input
             type="text"
             value={authUser}
             onChange={(e) => setAuthUser(e.target.value)}
             onBlur={handleSave}
-            placeholder="Usuário"
+            placeholder={t("webview.editor.user")}
             className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
           />
           <input
@@ -145,13 +147,13 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
             value={authPass}
             onChange={(e) => setAuthPass(e.target.value)}
             onBlur={handleSave}
-            placeholder="Senha"
+            placeholder={t("webview.editor.pass")}
             className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
           />
         </div>
       )}
 
-      {saving && <p className="text-xs text-gray-500">Salvando…</p>}
+      {saving && <p className="text-xs text-gray-500">{t("webview.editor.saving")}</p>}
     </div>
   );
 };

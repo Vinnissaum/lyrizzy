@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { X, Pencil, Trash2, Check, Film, Image } from "lucide-react";
 import {
   deleteMedia,
@@ -25,6 +26,7 @@ function formatDuration(ms: number): string {
 }
 
 export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
+  const { t } = useTranslation();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(media.displayName);
   const [isSavingName, setIsSavingName] = useState(false);
@@ -35,7 +37,6 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  // Reset state when media changes
   useEffect(() => {
     setNameInput(media.displayName);
     setEditingName(false);
@@ -53,7 +54,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) {
-      setNameError("Nome não pode estar vazio.");
+      setNameError(t("media.detail.errors.renameEmpty"));
       return;
     }
     setIsSavingName(true);
@@ -63,7 +64,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
       setEditingName(false);
     } catch (err) {
       const e = normalizeError(err);
-      setNameError(e.params.detail ?? "Falha ao renomear.");
+      setNameError(e.params.detail ?? t("media.detail.errors.renameFailed"));
     } finally {
       setIsSavingName(false);
     }
@@ -77,7 +78,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
       setShowDeleteConfirm(true);
     } catch (err) {
       const e = normalizeError(err);
-      setDeleteError(e.params.detail ?? "Falha ao verificar referências.");
+      setDeleteError(e.params.detail ?? t("media.detail.errors.refCheckFailed"));
     }
   };
 
@@ -96,7 +97,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
       onClose();
     } catch (err) {
       const e = normalizeError(err);
-      setDeleteError(e.params.detail ?? "Falha ao excluir.");
+      setDeleteError(e.params.detail ?? t("media.detail.errors.deleteFailed"));
       setShowDeleteConfirm(false);
     } finally {
       setIsDeleting(false);
@@ -111,7 +112,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
     <div className="flex flex-col h-full border-l border-gray-700 bg-gray-900 w-72 shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-        <span className="text-sm font-semibold text-gray-200">Detalhes</span>
+        <span className="text-sm font-semibold text-gray-200">{t("media.detail.title")}</span>
         <button
           onClick={onClose}
           data-testid="detail-close"
@@ -145,7 +146,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
         {/* Name */}
         <div>
           <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
-            Nome
+            {t("media.detail.name")}
           </p>
           {editingName ? (
             <div className="flex gap-1">
@@ -196,14 +197,14 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
         {/* Metadata */}
         <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between">
-            <dt className="text-gray-500">Tipo</dt>
+            <dt className="text-gray-500">{t("media.detail.type")}</dt>
             <dd className="text-gray-300">
-              {media.kind === "video" ? "Vídeo" : "Imagem"}
+              {t(`media.type.${media.kind}`)}
             </dd>
           </div>
           {(media.width || media.height) && (
             <div className="flex justify-between">
-              <dt className="text-gray-500">Dimensões</dt>
+              <dt className="text-gray-500">{t("media.detail.dimensions")}</dt>
               <dd className="text-gray-300">
                 {media.width}×{media.height}
               </dd>
@@ -211,12 +212,12 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
           )}
           {media.durationMs !== undefined && media.durationMs > 0 && (
             <div className="flex justify-between">
-              <dt className="text-gray-500">Duração</dt>
+              <dt className="text-gray-500">{t("media.detail.duration")}</dt>
               <dd className="text-gray-300">{formatDuration(media.durationMs)}</dd>
             </div>
           )}
           <div className="flex justify-between">
-            <dt className="text-gray-500">Tamanho</dt>
+            <dt className="text-gray-500">{t("media.detail.size")}</dt>
             <dd className="text-gray-300">{formatBytes(media.byteSize)}</dd>
           </div>
         </dl>
@@ -234,21 +235,24 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-700/30 hover:bg-red-700/50 text-red-400 hover:text-red-300 text-sm transition-colors disabled:opacity-50"
         >
           <Trash2 className="w-4 h-4" />
-          Excluir
+          {t("media.detail.delete")}
         </button>
       </div>
 
       {/* Delete confirmation */}
       <ConfirmDialog
         open={showDeleteConfirm}
-        title={hasRefs ? "Mídia em uso" : "Excluir mídia"}
+        title={hasRefs ? t("media.delete.inUseTitle") : t("media.delete.confirmTitle")}
         message={
           hasRefs
-            ? `Esta mídia está em uso por ${references!.songs.length} música(s) e ${references!.setItems.length} item(s) de conjunto. Remova as referências antes de excluir.`
-            : `Excluir "${media.displayName}"? Esta ação não pode ser desfeita.`
+            ? t("media.delete.inUseMessage", {
+                songs: references!.songs.length,
+                items: references!.setItems.length,
+              })
+            : t("media.delete.confirmMessage", { name: media.displayName })
         }
-        confirmLabel={hasRefs ? "Entendido" : "Excluir"}
-        cancelLabel={hasRefs ? undefined : "Cancelar"}
+        confirmLabel={hasRefs ? t("media.delete.understood") : t("media.detail.delete")}
+        cancelLabel={hasRefs ? undefined : t("sets.cancelButton")}
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />

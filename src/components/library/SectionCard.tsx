@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
@@ -13,14 +14,14 @@ export interface SectionDraft {
   repeatCount: number;
 }
 
-const SECTION_TYPES: { value: SectionType; label: string }[] = [
-  { value: "verse", label: "Estrofe" },
-  { value: "chorus", label: "Refrão" },
-  { value: "bridge", label: "Ponte" },
-  { value: "pre_chorus", label: "Pré-refrão" },
-  { value: "outro", label: "Final" },
-  { value: "interlude", label: "Interlúdio" },
-  { value: "tag", label: "Tag" },
+const SECTION_TYPE_VALUES: SectionType[] = [
+  "verse",
+  "chorus",
+  "bridge",
+  "pre_chorus",
+  "outro",
+  "interlude",
+  "tag",
 ];
 
 interface Props {
@@ -36,6 +37,7 @@ export const SectionCard: React.FC<Props> = ({
   onRemove,
   canRemove,
 }) => {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: section.dndId });
 
@@ -58,7 +60,7 @@ export const SectionCard: React.FC<Props> = ({
         <button
           {...attributes}
           {...listeners}
-          aria-label="Arrastar seção"
+          aria-label={t("sectionCard.dragAriaLabel")}
           className="cursor-grab text-gray-500 hover:text-gray-300 shrink-0"
         >
           <GripVertical size={16} />
@@ -67,7 +69,7 @@ export const SectionCard: React.FC<Props> = ({
         <input
           value={section.label}
           onChange={(e) => update({ label: e.target.value })}
-          placeholder="Rótulo da seção"
+          placeholder={t("sectionCard.labelPlaceholder")}
           className="flex-1 text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
         />
 
@@ -76,9 +78,9 @@ export const SectionCard: React.FC<Props> = ({
           onChange={(e) => update({ type: e.target.value as SectionType })}
           className="text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
         >
-          {SECTION_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {SECTION_TYPE_VALUES.map((v) => (
+            <option key={v} value={v}>
+              {t(`sectionTypes.${v}`)}
             </option>
           ))}
         </select>
@@ -98,7 +100,7 @@ export const SectionCard: React.FC<Props> = ({
         {canRemove && (
           <button
             onClick={onRemove}
-            aria-label="Remover seção"
+            aria-label={t("sectionCard.removeAriaLabel")}
             className="text-gray-500 hover:text-red-400 shrink-0"
           >
             <Trash2 size={16} />
@@ -109,7 +111,7 @@ export const SectionCard: React.FC<Props> = ({
       <textarea
         value={section.body}
         onChange={(e) => update({ body: e.target.value })}
-        placeholder="Letra da seção…"
+        placeholder={t("sectionCard.bodyPlaceholder")}
         rows={4}
         className="w-full text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1.5 resize-y focus:outline-none focus:border-blue-500 font-mono"
       />

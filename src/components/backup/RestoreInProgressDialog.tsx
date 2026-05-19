@@ -1,13 +1,13 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { abortRestore } from "../../api/commands";
 
 interface Props {
   onDismissed: () => void;
 }
 
-/// Modal shown when the app detects a `.restore_in_progress` flag on startup,
-/// indicating a previous restore was interrupted (crash, disk full, etc.).
 export const RestoreInProgressDialog: React.FC<Props> = ({ onDismissed }) => {
+  const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,19 +36,17 @@ export const RestoreInProgressDialog: React.FC<Props> = ({ onDismissed }) => {
             </svg>
           </div>
           <div>
-            <h2 className="font-semibold text-white">Restauração interrompida</h2>
-            <p className="text-xs text-gray-400">Uma restauração anterior não foi concluída</p>
+            <h2 className="font-semibold text-white">{t("backup.restore.title")}</h2>
+            <p className="text-xs text-gray-400">{t("backup.restore.subtitle")}</p>
           </div>
         </div>
 
         <p className="text-sm text-gray-300 mb-4">
-          O Trinity Lyrics detectou que uma restauração anterior foi interrompida antes de concluir.
-          A biblioteca pode estar em um estado incompleto.
+          {t("backup.restore.body1")}
         </p>
 
         <p className="text-sm text-gray-300 mb-6">
-          Clique em <strong className="text-amber-300">Cancelar restauração</strong> para limpar o estado parcial
-          e volcar ao estado de instalação limpa. Você poderá restaurar novamente a partir do arquivo de backup.
+          {t("backup.restore.body2")}
         </p>
 
         {error && (
@@ -62,12 +60,12 @@ export const RestoreInProgressDialog: React.FC<Props> = ({ onDismissed }) => {
             onClick={() => setConfirming(true)}
             className="w-full px-4 py-2 text-sm bg-amber-600 hover:bg-amber-500 rounded-lg font-medium transition-colors"
           >
-            Cancelar restauração
+            {t("backup.restore.cancelButton")}
           </button>
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-red-400">
-              ⚠ Isso apagará todos os dados da biblioteca atual. Esta ação é irreversível.
+              {t("backup.restore.irreversibleWarning")}
             </p>
             <div className="flex gap-2">
               <button
@@ -75,14 +73,14 @@ export const RestoreInProgressDialog: React.FC<Props> = ({ onDismissed }) => {
                 disabled={working}
                 className="flex-1 px-4 py-2 text-sm bg-red-700 hover:bg-red-600 disabled:opacity-50 rounded-lg font-medium transition-colors"
               >
-                {working ? "Limpando…" : "Confirmar e limpar"}
+                {working ? t("backup.restore.cleaningButton") : t("backup.restore.confirmButton")}
               </button>
               <button
                 onClick={() => setConfirming(false)}
                 disabled={working}
                 className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
               >
-                Voltar
+                {t("backup.restore.backButton")}
               </button>
             </div>
           </div>

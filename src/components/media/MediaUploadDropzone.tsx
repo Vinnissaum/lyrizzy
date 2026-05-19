@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Upload } from "lucide-react";
 import { importMedia, normalizeError } from "../../api/commands";
@@ -15,6 +16,7 @@ interface Props {
 const MEDIA_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "mp4", "webm"];
 
 export const MediaUploadDropzone: React.FC<Props> = ({ onImportComplete }) => {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<{
     current: number;
@@ -31,7 +33,7 @@ export const MediaUploadDropzone: React.FC<Props> = ({ onImportComplete }) => {
         imported++;
       } catch (err) {
         const e = normalizeError(err);
-        console.warn("Mídia ignorada:", e.code, paths[i]);
+        console.warn("media skipped:", e.code, paths[i]);
         skipped++;
       }
       setProgress({ current: i + 1, total: paths.length });
@@ -58,7 +60,6 @@ export const MediaUploadDropzone: React.FC<Props> = ({ onImportComplete }) => {
 
   const handleDragLeave = () => setIsDragging(false);
 
-  // Drop opens the file dialog since WebView doesn't expose native file paths
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
@@ -83,7 +84,7 @@ export const MediaUploadDropzone: React.FC<Props> = ({ onImportComplete }) => {
       {progress ? (
         <div className="space-y-2">
           <p className="text-gray-400 text-sm">
-            Importando {progress.current}/{progress.total}…
+            {t("media.dropzone.uploading", { current: progress.current, total: progress.total })}
           </p>
           <div className="w-full bg-gray-700 rounded-full h-1.5">
             <div
@@ -98,8 +99,8 @@ export const MediaUploadDropzone: React.FC<Props> = ({ onImportComplete }) => {
         <>
           <Upload className="w-7 h-7 text-gray-500 mx-auto mb-2" />
           <p className="text-gray-400 text-sm">
-            Arraste arquivos ou{" "}
-            <span className="text-blue-400">clique para selecionar</span>
+            {t("media.dropzone.drop")}{" "}
+            <span className="text-blue-400">{t("media.dropzone.clickToSelect")}</span>
           </p>
           <p className="text-gray-600 text-xs mt-1">
             PNG, JPG, WebP, GIF, MP4, WebM

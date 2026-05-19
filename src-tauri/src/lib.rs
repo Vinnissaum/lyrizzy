@@ -22,6 +22,7 @@ use commands::set::{
     reorder_set_items, update_set, update_set_item,
 };
 use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
+use commands::settings::{get_setting, set_setting};
 use commands::window::{list_monitors, open_presentation_window};
 use state::AppState;
 use tauri::Manager;
@@ -89,6 +90,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            get_setting,
+            set_setting,
             export_library,
             inspect_archive,
             restore_library,

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { MediaPicker } from "../common/MediaPicker";
 import type { CountdownConfig, CountdownEndBehavior, SetItem } from "../../types";
@@ -34,19 +35,16 @@ function durationToMs(value: string): number | null {
   return null;
 }
 
-const END_BEHAVIOR_OPTIONS: { value: CountdownEndBehavior; label: string }[] = [
-  { value: "holdZero", label: "Manter 00:00" },
-  { value: "blackout", label: "Tela preta" },
-  { value: "advanceSet", label: "Avançar conjunto" },
-];
+const END_BEHAVIOR_VALUES: CountdownEndBehavior[] = ["holdZero", "blackout", "advanceSet"];
 
 export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
+  const { t } = useTranslation();
   const config = item.countdownConfig;
 
   const [durationInput, setDurationInput] = useState(
     msToDuration(config?.durationMs ?? 600_000)
   );
-  const [message, setMessage] = useState(config?.message ?? "O culto começa em…");
+  const [message, setMessage] = useState(config?.message ?? t("countdown.editor.defaultMessage"));
   const [endBehavior, setEndBehavior] = useState<CountdownEndBehavior>(
     config?.endBehavior ?? "holdZero"
   );
@@ -56,10 +54,9 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const [durationError, setDurationError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Sync local state when a different item is selected.
   useEffect(() => {
     setDurationInput(msToDuration(config?.durationMs ?? 600_000));
-    setMessage(config?.message ?? "O culto começa em…");
+    setMessage(config?.message ?? t("countdown.editor.defaultMessage"));
     setEndBehavior(config?.endBehavior ?? "holdZero");
     setBackgroundMediaId(config?.backgroundMediaId);
     setDurationError(null);
@@ -79,7 +76,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const handleSave = async () => {
     const newConfig = buildConfig();
     if (!newConfig) {
-      setDurationError("Formato inválido. Use mm:ss ou hh:mm:ss");
+      setDurationError(t("countdown.editor.durationError"));
       return;
     }
     setDurationError(null);
@@ -87,7 +84,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     try {
       await updateSetItem({ id: item.id, countdownConfig: newConfig });
     } catch (err) {
-      console.error("Falha ao salvar contagem:", err);
+      console.error("save countdown failed:", err);
     } finally {
       setSaving(false);
     }
@@ -97,7 +94,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     <div className="p-3 space-y-3">
       {/* Duration */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">Duração (mm:ss)</label>
+        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.duration")}</label>
         <input
           type="text"
           value={durationInput}
@@ -115,7 +112,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {/* Message */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">Mensagem</label>
+        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.message")}</label>
         <input
           type="text"
           value={message}
@@ -128,21 +125,20 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {/* End behavior */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">Ao terminar</label>
+        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.endBehavior")}</label>
         <div className="space-y-1">
-          {END_BEHAVIOR_OPTIONS.map((opt) => (
+          {END_BEHAVIOR_VALUES.map((value) => (
             <label
-              key={opt.value}
+              key={value}
               className="flex items-center gap-2 cursor-pointer"
             >
               <input
                 type="radio"
                 name={`end-behavior-${item.id}`}
-                value={opt.value}
-                checked={endBehavior === opt.value}
+                value={value}
+                checked={endBehavior === value}
                 onChange={() => {
-                  setEndBehavior(opt.value);
-                  // Auto-save on radio change
+                  setEndBehavior(value);
                   const durationMs = durationToMs(durationInput);
                   if (durationMs && durationMs > 0) {
                     updateSetItem({
@@ -150,7 +146,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                       countdownConfig: {
                         durationMs,
                         message: message.trim() || undefined,
-                        endBehavior: opt.value,
+                        endBehavior: value,
                         backgroundMediaId,
                       },
                     }).catch(console.error);
@@ -158,7 +154,9 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                 }}
                 className="accent-blue-500"
               />
-              <span className="text-sm text-gray-300">{opt.label}</span>
+              <span className="text-sm text-gray-300">
+                {t(`countdown.endBehavior.${value}`)}
+              </span>
             </label>
           ))}
         </div>
@@ -166,11 +164,11 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {/* Background media picker */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">Fundo (vídeo)</label>
+        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.background")}</label>
         <MediaPicker
           value={backgroundMediaId}
           kind="video"
-          label="Selecionar vídeo de fundo…"
+          label={t("countdown.editor.bgLabel")}
           onSelect={(media) => {
             const newId = media?.id ?? undefined;
             setBackgroundMediaId(newId);
@@ -191,7 +189,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
       </div>
 
       {saving && (
-        <p className="text-xs text-gray-500">Salvando…</p>
+        <p className="text-xs text-gray-500">{t("countdown.editor.saving")}</p>
       )}
     </div>
   );

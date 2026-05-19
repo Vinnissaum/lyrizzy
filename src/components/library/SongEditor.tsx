@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   closestCenter,
@@ -49,6 +50,7 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
   onOpenPicker,
   onClosePicker,
 }) => {
+  const { t } = useTranslation();
   const current = backgroundId ? media.find((m) => m.id === backgroundId) : undefined;
   const thumbUrl = current?.thumbnailFile
     ? `asset://localhost/media/${current.thumbnailFile}`
@@ -62,12 +64,12 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
         {thumbUrl ? (
           <img
             src={thumbUrl}
-            alt="Fundo"
+            alt={t("editor.bg.none")}
             className="w-16 h-10 object-cover rounded border border-gray-600"
           />
         ) : (
           <div className="w-16 h-10 rounded border border-gray-600 bg-gray-800 flex items-center justify-center text-gray-600 text-xs">
-            Nenhum
+            {t("editor.bg.none")}
           </div>
         )}
         <div className="flex gap-1.5 flex-1">
@@ -75,14 +77,14 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
             onClick={onOpenPicker}
             className="flex-1 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
           >
-            {current ? "Trocar" : "Escolher"}
+            {current ? t("editor.bg.change") : t("editor.bg.choose")}
           </button>
           {current && (
             <button
               onClick={onRemove}
               className="px-2 py-1.5 text-xs bg-gray-800 hover:bg-red-800 text-gray-400 hover:text-white rounded-lg transition-colors"
             >
-              Remover
+              {t("editor.bg.remove")}
             </button>
           )}
         </div>
@@ -91,7 +93,7 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
       {current && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs text-gray-400">
-            <span>Opacidade do fundo escuro</span>
+            <span>{t("editor.bg.scrimLabel")}</span>
             <span>{scrimOpacity}%</span>
           </div>
           <input
@@ -109,7 +111,7 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-gray-900 border border-gray-700 rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <h3 className="text-sm font-semibold">Escolher fundo</h3>
+              <h3 className="text-sm font-semibold">{t("editor.bg.modalTitle")}</h3>
               <button
                 onClick={onClosePicker}
                 className="text-gray-400 hover:text-white text-lg leading-none"
@@ -120,7 +122,7 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
               {media.length === 0 && (
                 <p className="col-span-3 text-center text-gray-500 text-sm py-8">
-                  Nenhuma mídia importada
+                  {t("editor.bg.noMedia")}
                 </p>
               )}
               {media.map((m) => {
@@ -157,24 +159,10 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
   );
 };
 
-function defaultLabel(type: SectionType, sections: SectionDraft[]): string {
-  const count = sections.filter((s) => s.type === type).length + 1;
-  const labels: Record<SectionType, string> = {
-    verse: `Estrofe ${count}`,
-    chorus: `Refrão ${count}`,
-    bridge: `Ponte ${count}`,
-    pre_chorus: `Pré-refrão ${count}`,
-    outro: `Final ${count}`,
-    interlude: `Interlúdio ${count}`,
-    tag: `Tag ${count}`,
-  };
-  return labels[type];
-}
-
-function newSection(type: SectionType = "verse", sections: SectionDraft[]): SectionDraft {
+function newSection(type: SectionType = "verse", _sections?: SectionDraft[]): SectionDraft {
   return {
     dndId: nextDndId(),
-    label: defaultLabel(type, sections),
+    label: "",
     type,
     body: "",
     repeatCount: 1,
@@ -190,6 +178,7 @@ interface Toast {
 let toastCounter = 0;
 
 export const SongEditor: React.FC = () => {
+  const { t } = useTranslation();
   const { editingSongId, closeEditor, refresh } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
 
@@ -242,7 +231,7 @@ export const SongEditor: React.FC = () => {
           }))
         );
       })
-      .catch((err) => addToast(`Falha ao carregar música: ${err}`, "error"))
+      .catch((err) => addToast(`${err}`, "error"))
       .finally(() => setIsLoading(false));
   }, [editingSongId]);
 
@@ -255,13 +244,13 @@ export const SongEditor: React.FC = () => {
   const validate = (): boolean => {
     let ok = true;
     if (!title.trim()) {
-      setTitleError("Título é obrigatório");
+      setTitleError(t("editor.validation.titleRequired"));
       ok = false;
     } else {
       setTitleError("");
     }
     if (!sections.some((s) => s.body.trim())) {
-      setBodyError("Pelo menos uma seção deve ter letra");
+      setBodyError(t("editor.validation.bodyRequired"));
       ok = false;
     } else {
       setBodyError("");
@@ -295,11 +284,11 @@ export const SongEditor: React.FC = () => {
         await createSong(payload);
       }
 
-      addToast("Música salva com sucesso", "success");
+      addToast(t("editor.toast.saved"), "success");
       await refresh();
       closeEditor();
     } catch (err) {
-      addToast(`Falha ao salvar música: ${err}`, "error");
+      addToast(String(err), "error");
     } finally {
       setIsSaving(false);
     }
@@ -309,11 +298,11 @@ export const SongEditor: React.FC = () => {
     if (!editingSongId) return;
     try {
       await deleteSong(editingSongId);
-      addToast("Música excluída", "success");
+      addToast(t("editor.toast.deleted"), "success");
       await refresh();
       closeEditor();
     } catch (err) {
-      addToast(`Falha ao excluir: ${err}`, "error");
+      addToast(String(err), "error");
     }
   };
 
@@ -344,7 +333,7 @@ export const SongEditor: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
-        Carregando…
+        {t("loading")}
       </div>
     );
   }
@@ -353,14 +342,14 @@ export const SongEditor: React.FC = () => {
     <div className="flex flex-col h-full">
       {/* Toasts */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((t) => (
+        {toasts.map((toast) => (
           <div
-            key={t.id}
+            key={toast.id}
             className={`px-4 py-2 rounded-lg text-sm shadow-lg ${
-              t.type === "success" ? "bg-emerald-600" : "bg-red-600"
+              toast.type === "success" ? "bg-emerald-600" : "bg-red-600"
             }`}
           >
-            {t.message}
+            {toast.message}
           </div>
         ))}
       </div>
@@ -371,7 +360,7 @@ export const SongEditor: React.FC = () => {
           onClick={closeEditor}
           className="text-sm text-gray-400 hover:text-white transition-colors"
         >
-          ← Biblioteca
+          {t("editor.back")}
         </button>
         <div className="flex gap-2">
           {editingSongId && (
@@ -379,7 +368,7 @@ export const SongEditor: React.FC = () => {
               onClick={() => setShowDeleteConfirm(true)}
               className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 rounded-lg transition-colors"
             >
-              Excluir
+              {t("editor.delete")}
             </button>
           )}
           <button
@@ -387,7 +376,7 @@ export const SongEditor: React.FC = () => {
             disabled={!isValid || isSaving}
             className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
           >
-            {isSaving ? "Salvando…" : "Salvar"}
+            {isSaving ? t("saving") : t("editor.save")}
           </button>
         </div>
       </div>
@@ -399,7 +388,7 @@ export const SongEditor: React.FC = () => {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Título da música *"
+              placeholder={t("editor.titlePlaceholder")}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-lg font-medium focus:outline-none focus:border-blue-500"
             />
             {titleError && (
@@ -410,7 +399,7 @@ export const SongEditor: React.FC = () => {
           <input
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
-            placeholder="Artista / Banda"
+            placeholder={t("editor.artistPlaceholder")}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
           />
 
@@ -420,16 +409,16 @@ export const SongEditor: React.FC = () => {
               onChange={(e) => setLanguage(e.target.value)}
               className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             >
-              <option value="pt">Português</option>
-              <option value="en">English</option>
-              <option value="es">Español</option>
+              <option value="pt">{t("editor.lang.pt")}</option>
+              <option value="en">{t("editor.lang.en")}</option>
+              <option value="es">{t("editor.lang.es")}</option>
             </select>
           </div>
 
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Observações (opcional)"
+            placeholder={t("editor.notesPlaceholder")}
             rows={2}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-blue-500"
           />
@@ -438,7 +427,7 @@ export const SongEditor: React.FC = () => {
         {/* Background */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
-            Fundo
+            {t("editor.background")}
           </h3>
           <BackgroundPicker
             backgroundId={backgroundId}
@@ -456,7 +445,7 @@ export const SongEditor: React.FC = () => {
         {/* Sections */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
-            Seções
+            {t("editor.sections")}
           </h3>
           {bodyError && (
             <p className="text-red-400 text-xs">{bodyError}</p>
@@ -489,16 +478,16 @@ export const SongEditor: React.FC = () => {
             onClick={addSection}
             className="w-full py-2 text-sm text-gray-400 hover:text-white border border-dashed border-gray-600 hover:border-gray-400 rounded-lg transition-colors"
           >
-            + Adicionar seção
+            {t("editor.addSection")}
           </button>
         </div>
       </div>
 
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="Excluir música"
-        message="Excluir esta música? Esta ação pode ser desfeita."
-        confirmLabel="Excluir"
+        title={t("editor.deleteConfirm.title")}
+        message={t("editor.deleteConfirm.message")}
+        confirmLabel={t("editor.deleteConfirm.confirm")}
         onConfirm={() => {
           setShowDeleteConfirm(false);
           handleDelete();

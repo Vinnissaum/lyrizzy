@@ -1,6 +1,7 @@
 // Domain module — core business types
 pub mod countdown;
 pub mod error;
+pub mod media;
 pub mod presentation;
 pub mod set;
 pub mod slide;

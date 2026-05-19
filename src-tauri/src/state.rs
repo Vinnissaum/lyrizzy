@@ -49,11 +49,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn countdown_starts_zeroed() {
+    async fn countdown_starts_idle() {
+        use crate::domain::countdown::CountdownMode;
         let state = AppState::default();
         let cd = state.countdown.read().await;
         assert_eq!(cd.duration_ms, 0);
         assert_eq!(cd.remaining_ms, 0);
-        assert!(!cd.is_running);
+        assert_eq!(cd.mode, CountdownMode::Idle);
+        assert!(cd.target_epoch_ms.is_none());
     }
 }

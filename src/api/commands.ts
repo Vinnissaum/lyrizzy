@@ -3,6 +3,9 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   CountdownState,
   ErrorPayload,
+  Media,
+  MediaKind,
+  MediaReferences,
   MonitorInfo,
   PresentationMode,
   PresentationState,
@@ -50,6 +53,7 @@ export interface CreateSongPayload {
   language?: string;
   notes?: string;
   backgroundId?: string;
+  scrimOpacity?: number;
   slideConfig?: string;
   source?: string;
   sections: SectionPayload[];
@@ -192,13 +196,32 @@ export const setPresentationMode = (mode: PresentationMode) =>
 export const getPresentationState = () =>
   invoke<PresentationState>("get_presentation_state");
 
-// ─── Media backgrounds ───────────────────────────────────────────────────────
+// ─── Media library ───────────────────────────────────────────────────────────
 
-export const importMediaFile = (sourcePath: string) =>
-  invoke<string>("import_media_file", { sourcePath });
+export interface ListMediaParams {
+  kind?: MediaKind;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
 
-export const setBackground = (assetUrl: string | null) =>
-  invoke<PresentationState>("set_background", { assetUrl });
+export const importMedia = (sourcePath: string) =>
+  invoke<Media>("import_media", { sourcePath });
+
+export const listMedia = (params?: ListMediaParams) =>
+  invoke<Media[]>("list_media", { params });
+
+export const renameMedia = (id: string, displayName: string) =>
+  invoke<Media>("rename_media", { id, displayName });
+
+export const deleteMedia = (id: string) =>
+  invoke<void>("delete_media", { id });
+
+export const getMediaReferences = (id: string) =>
+  invoke<MediaReferences>("get_media_references", { id });
+
+export const onMediaLibraryChanged = (cb: () => void) =>
+  listen<void>("media_library_changed", () => cb());
 
 // ─── Countdown timer ─────────────────────────────────────────────────────────
 

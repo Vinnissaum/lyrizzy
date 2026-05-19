@@ -79,6 +79,7 @@ async fn run_batch(
                 language: Some("pt".to_string()),
                 notes: None,
                 background_id: None,
+                scrim_opacity: None,
                 slide_config: None,
                 source: Some("holyrics".to_string()),
                 sections,
@@ -109,6 +110,7 @@ async fn import_batch_skips_duplicate_and_imports_unique() {
             language: Some("pt".to_string()),
             notes: None,
             background_id: None,
+            scrim_opacity: None,
             slide_config: None,
             source: None,
             sections: vec![SectionPayload {

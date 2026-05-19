@@ -16,12 +16,146 @@ import {
 } from "@dnd-kit/sortable";
 import { createSong, updateSong, deleteSong, getSong } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
+import { useMediaStore } from "../../stores/media";
 import { SectionCard, SectionDraft } from "./SectionCard";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import type { SectionType } from "../../types";
+import type { Media, SectionType } from "../../types";
 
 let dndCounter = 0;
 const nextDndId = () => `sec-${++dndCounter}`;
+
+// ── BackgroundPicker ──────────────────────────────────────────────────────────
+
+interface BackgroundPickerProps {
+  backgroundId?: string;
+  scrimOpacity: number;
+  media: Media[];
+  onSelect: (id: string) => void;
+  onRemove: () => void;
+  onScrimChange: (v: number) => void;
+  showPicker: boolean;
+  onOpenPicker: () => void;
+  onClosePicker: () => void;
+}
+
+const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
+  backgroundId,
+  scrimOpacity,
+  media,
+  onSelect,
+  onRemove,
+  onScrimChange,
+  showPicker,
+  onOpenPicker,
+  onClosePicker,
+}) => {
+  const current = backgroundId ? media.find((m) => m.id === backgroundId) : undefined;
+  const thumbUrl = current?.thumbnailFile
+    ? `asset://localhost/media/${current.thumbnailFile}`
+    : current
+    ? `asset://localhost/media/${current.fileName}`
+    : undefined;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {thumbUrl ? (
+          <img
+            src={thumbUrl}
+            alt="Fundo"
+            className="w-16 h-10 object-cover rounded border border-gray-600"
+          />
+        ) : (
+          <div className="w-16 h-10 rounded border border-gray-600 bg-gray-800 flex items-center justify-center text-gray-600 text-xs">
+            Nenhum
+          </div>
+        )}
+        <div className="flex gap-1.5 flex-1">
+          <button
+            onClick={onOpenPicker}
+            className="flex-1 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            {current ? "Trocar" : "Escolher"}
+          </button>
+          {current && (
+            <button
+              onClick={onRemove}
+              className="px-2 py-1.5 text-xs bg-gray-800 hover:bg-red-800 text-gray-400 hover:text-white rounded-lg transition-colors"
+            >
+              Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      {current && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <span>Opacidade do fundo escuro</span>
+            <span>{scrimOpacity}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={scrimOpacity}
+            onChange={(e) => onScrimChange(Number(e.target.value))}
+            className="w-full accent-blue-500"
+          />
+        </div>
+      )}
+
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <h3 className="text-sm font-semibold">Escolher fundo</h3>
+              <button
+                onClick={onClosePicker}
+                className="text-gray-400 hover:text-white text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
+              {media.length === 0 && (
+                <p className="col-span-3 text-center text-gray-500 text-sm py-8">
+                  Nenhuma mídia importada
+                </p>
+              )}
+              {media.map((m) => {
+                const url = m.thumbnailFile
+                  ? `asset://localhost/media/${m.thumbnailFile}`
+                  : `asset://localhost/media/${m.fileName}`;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => { onSelect(m.id); onClosePicker(); }}
+                    className={`relative rounded-lg overflow-hidden border-2 transition-colors ${
+                      m.id === backgroundId ? "border-blue-500" : "border-transparent hover:border-gray-500"
+                    }`}
+                  >
+                    <img
+                      src={url}
+                      alt={m.displayName}
+                      className="w-full h-20 object-cover"
+                    />
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-xs text-gray-300 truncate">
+                      {m.displayName}
+                    </div>
+                    {m.kind === "video" && (
+                      <div className="absolute top-1 right-1 text-xs bg-black/70 rounded px-1 text-gray-300">▶</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 function defaultLabel(type: SectionType, sections: SectionDraft[]): string {
   const count = sections.filter((s) => s.type === type).length + 1;
@@ -57,11 +191,15 @@ let toastCounter = 0;
 
 export const SongEditor: React.FC = () => {
   const { editingSongId, closeEditor, refresh } = useLibraryStore();
+  const { media, refresh: refreshMedia } = useMediaStore();
 
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
   const [language, setLanguage] = useState("pt");
   const [notes, setNotes] = useState("");
+  const [backgroundId, setBackgroundId] = useState<string | undefined>();
+  const [scrimOpacity, setScrimOpacity] = useState(35);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [sections, setSections] = useState<SectionDraft[]>([
     newSection("verse", []),
   ]);
@@ -80,6 +218,10 @@ export const SongEditor: React.FC = () => {
   );
 
   useEffect(() => {
+    refreshMedia();
+  }, []);
+
+  useEffect(() => {
     if (!editingSongId) return;
     setIsLoading(true);
     getSong(editingSongId)
@@ -88,6 +230,8 @@ export const SongEditor: React.FC = () => {
         setArtist(song.artist ?? "");
         setLanguage(song.language);
         setNotes(song.notes ?? "");
+        setBackgroundId(song.backgroundId);
+        setScrimOpacity(song.scrimOpacity ?? 35);
         setSections(
           song.sections.map((s) => ({
             dndId: nextDndId(),
@@ -134,6 +278,8 @@ export const SongEditor: React.FC = () => {
         artist: artist.trim() || undefined,
         language,
         notes: notes.trim() || undefined,
+        backgroundId: backgroundId || undefined,
+        scrimOpacity,
         sections: sections.map((s, i) => ({
           label: s.label,
           type: s.type,
@@ -286,6 +432,24 @@ export const SongEditor: React.FC = () => {
             placeholder="Observações (opcional)"
             rows={2}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
+        {/* Background */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+            Fundo
+          </h3>
+          <BackgroundPicker
+            backgroundId={backgroundId}
+            scrimOpacity={scrimOpacity}
+            media={media}
+            onSelect={(id) => setBackgroundId(id)}
+            onRemove={() => setBackgroundId(undefined)}
+            onScrimChange={(v) => setScrimOpacity(v)}
+            showPicker={showMediaPicker}
+            onOpenPicker={() => setShowMediaPicker(true)}
+            onClosePicker={() => setShowMediaPicker(false)}
           />
         </div>
 

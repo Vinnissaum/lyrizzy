@@ -1,4 +1,4 @@
-use crate::domain::countdown::CountdownState;
+use crate::domain::countdown::{CountdownMode, CountdownState};
 use crate::domain::error::ErrorPayload;
 use crate::state::AppState;
 use std::sync::Arc;
@@ -6,6 +6,8 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::sync::RwLock;
 use tokio::time::Duration;
 
+// T19 will rewrite this to a drift-free wall-clock-target ticker.
+// For now this is the Phase 1 decrement-based ticker adapted to the new mode field.
 async fn tick_countdown(countdown: Arc<RwLock<CountdownState>>, app: AppHandle) {
     let tick = Duration::from_millis(1000);
     loop {
@@ -14,7 +16,7 @@ async fn tick_countdown(countdown: Arc<RwLock<CountdownState>>, app: AppHandle) 
             let mut s = countdown.write().await;
             if s.remaining_ms <= 1000 {
                 s.remaining_ms = 0;
-                s.is_running = false;
+                s.mode = CountdownMode::Finished;
                 true
             } else {
                 s.remaining_ms -= 1000;
@@ -45,7 +47,8 @@ pub async fn set_countdown_duration(
         let mut s = state.countdown.write().await;
         s.duration_ms = duration_ms;
         s.remaining_ms = duration_ms;
-        s.is_running = false;
+        s.mode = CountdownMode::Idle;
+        s.target_epoch_ms = None;
         s.clone()
     };
     let _ = app.emit("countdown_tick", &snapshot);
@@ -69,7 +72,7 @@ pub async fn start_countdown(
         if s.remaining_ms == 0 {
             return Err(ErrorPayload::new("countdown.duration_not_set"));
         }
-        s.is_running = true;
+        s.mode = CountdownMode::Running;
         s.clone()
     };
 
@@ -99,7 +102,7 @@ pub async fn pause_countdown(
     }
     let snapshot = {
         let mut s = state.countdown.write().await;
-        s.is_running = false;
+        s.mode = CountdownMode::Paused;
         s.clone()
     };
     let _ = app.emit("countdown_tick", &snapshot);
@@ -120,7 +123,8 @@ pub async fn reset_countdown(
     let snapshot = {
         let mut s = state.countdown.write().await;
         s.remaining_ms = s.duration_ms;
-        s.is_running = false;
+        s.mode = CountdownMode::Idle;
+        s.target_epoch_ms = None;
         s.clone()
     };
     let _ = app.emit("countdown_tick", &snapshot);

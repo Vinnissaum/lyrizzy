@@ -8,6 +8,16 @@ pub struct Slide {
     pub section_id: String,
 }
 
+impl Slide {
+    pub fn pseudo(label: &str) -> Self {
+        Self {
+            lines: vec![],
+            section_label: label.to_string(),
+            section_id: String::new(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SlideConfig {

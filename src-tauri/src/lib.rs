@@ -1,5 +1,5 @@
 pub mod commands;
-mod db;
+pub mod db;
 pub mod domain;
 mod protocol;
 pub mod services;
@@ -9,7 +9,7 @@ use commands::countdown::{
     get_countdown_state, pause_countdown, reset_countdown, set_countdown_duration, start_countdown,
 };
 use commands::import::{import_holyrics_batch, parse_holyrics_file};
-use commands::media::{import_media_file, set_background};
+use commands::media::{delete_media, get_media_references, import_media, list_media, rename_media};
 use commands::presentation::{
     get_presentation_state, go_to_item, load_set_for_presentation, next_slide, prev_slide,
     set_presentation_mode,
@@ -110,8 +110,11 @@ pub fn run() {
             go_to_item,
             set_presentation_mode,
             get_presentation_state,
-            import_media_file,
-            set_background,
+            import_media,
+            list_media,
+            rename_media,
+            delete_media,
+            get_media_references,
             set_countdown_duration,
             start_countdown,
             pause_countdown,

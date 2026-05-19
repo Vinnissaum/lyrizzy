@@ -147,6 +147,7 @@ fn make_song(title: &str, body: &str) -> CreateSongPayload {
         language: None,
         notes: None,
         background_id: None,
+        scrim_opacity: None,
         slide_config: None,
         source: None,
         sections: vec![SectionPayload {

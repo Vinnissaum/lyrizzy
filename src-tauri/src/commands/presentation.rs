@@ -1,11 +1,13 @@
 use crate::commands::set::db_load_set;
 use crate::commands::song::load_sections;
 use crate::domain::error::ErrorPayload;
-use crate::domain::presentation::{PresentationMode, PresentationState};
-use crate::domain::set::SetItemType;
+use crate::domain::media::MediaKind;
+use crate::domain::presentation::{BackgroundInfo, PresentationMode, PresentationState};
+use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{Slide, SlideConfig};
 use crate::services::slide_splitter;
 use crate::state::AppState;
+use sqlx::{Row, SqlitePool};
 use tauri::{AppHandle, Emitter, State};
 
 fn blank_slide() -> Slide {
@@ -48,6 +50,49 @@ fn resolve_current_slide(
     }
 }
 
+/// Resolves per-song background for a set item.
+/// Returns `None` for non-song items or songs without a background.
+async fn resolve_background(pool: &SqlitePool, item: &SetItem) -> Option<BackgroundInfo> {
+    if item.item_type != SetItemType::Song {
+        return None;
+    }
+    let song_id = item.song_id.as_deref()?;
+
+    let song_row = sqlx::query(
+        "SELECT background_id, scrim_opacity FROM songs WHERE id = ? AND deleted_at IS NULL",
+    )
+    .bind(song_id)
+    .fetch_optional(pool)
+    .await
+    .ok()??;
+
+    let background_id: Option<String> = song_row.get("background_id");
+    let scrim_opacity: i32 = song_row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35);
+    let bg_id = background_id?;
+
+    let media_row = sqlx::query(
+        "SELECT file_name, kind FROM media WHERE id = ? AND deleted_at IS NULL",
+    )
+    .bind(&bg_id)
+    .fetch_optional(pool)
+    .await
+    .ok()??;
+
+    let file_name: String = media_row.get("file_name");
+    let kind_str: String = media_row.get("kind");
+    let media_kind = if kind_str == "video" {
+        MediaKind::Video
+    } else {
+        MediaKind::Image
+    };
+
+    Some(BackgroundInfo {
+        media_kind,
+        asset_url: format!("asset://localhost/media/{file_name}"),
+        scrim_opacity: scrim_opacity.clamp(0, 100) as u8,
+    })
+}
+
 async fn emit_state(app: &AppHandle, state: &PresentationState) -> Result<(), ErrorPayload> {
     app.emit("state_changed", state)
         .map_err(|e| ErrorPayload::from(e.to_string()))
@@ -77,6 +122,9 @@ pub async fn load_set_for_presentation(
                     vec![blank_slide()]
                 }
             }
+            SetItemType::Media => vec![Slide::pseudo("media")],
+            SetItemType::Countdown => vec![Slide::pseudo("countdown")],
+            SetItemType::WebView => vec![Slide::pseudo("webview")],
             SetItemType::Blank => vec![blank_slide()],
         };
         computed_slides.push(slides);
@@ -85,8 +133,12 @@ pub async fn load_set_for_presentation(
     let item_slide_counts: Vec<usize> = computed_slides.iter().map(|s| s.len()).collect();
     let first_slide = computed_slides.first().and_then(|s| s.first()).cloned();
 
-    // Preserve the active background across set loads
-    let existing_background = state.presentation.read().await.background_path.clone();
+    // T17: resolve background from the first set item
+    let background = if let Some(item) = service_set.items.first() {
+        resolve_background(pool, item).await
+    } else {
+        None
+    };
 
     let new_state = PresentationState {
         set: Some(service_set),
@@ -96,7 +148,7 @@ pub async fn load_set_for_presentation(
         frozen_at: None,
         current_slide: first_slide,
         item_slide_counts,
-        background_path: existing_background,
+        background,
     };
 
     {
@@ -117,8 +169,11 @@ pub async fn next_slide(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<PresentationState, ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
     let slides = state.presentation_slides.read().await;
     let mut pres = state.presentation.write().await;
+
+    let prev_item_idx = pres.current_item_index;
 
     if !slides.is_empty() {
         let item_idx = pres.current_item_index;
@@ -131,7 +186,16 @@ pub async fn next_slide(
             pres.current_item_index = item_idx + 1;
             pres.current_slide_index = 0;
         }
-        // else: already at last slide of last item — stay
+    }
+
+    // T17: resolve background if item changed
+    if pres.current_item_index != prev_item_idx {
+        let item = pres.set.as_ref().and_then(|s| s.items.get(pres.current_item_index)).cloned();
+        pres.background = if let Some(ref item) = item {
+            resolve_background(pool, item).await
+        } else {
+            None
+        };
     }
 
     pres.current_slide = resolve_current_slide(&slides, &pres);
@@ -148,8 +212,11 @@ pub async fn prev_slide(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<PresentationState, ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
     let slides = state.presentation_slides.read().await;
     let mut pres = state.presentation.write().await;
+
+    let prev_item_idx = pres.current_item_index;
 
     if !slides.is_empty() {
         let item_idx = pres.current_item_index;
@@ -162,7 +229,16 @@ pub async fn prev_slide(
             let prev_len = slides.get(item_idx - 1).map(|s| s.len()).unwrap_or(1);
             pres.current_slide_index = prev_len.saturating_sub(1);
         }
-        // else: already at first slide of first item — stay
+    }
+
+    // T17: resolve background if item changed
+    if pres.current_item_index != prev_item_idx {
+        let item = pres.set.as_ref().and_then(|s| s.items.get(pres.current_item_index)).cloned();
+        pres.background = if let Some(ref item) = item {
+            resolve_background(pool, item).await
+        } else {
+            None
+        };
     }
 
     pres.current_slide = resolve_current_slide(&slides, &pres);
@@ -181,6 +257,7 @@ pub async fn go_to_item(
     item_index: usize,
     slide_index: Option<usize>,
 ) -> Result<PresentationState, ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
     let slides = state.presentation_slides.read().await;
     let mut pres = state.presentation.write().await;
 
@@ -191,6 +268,15 @@ pub async fn go_to_item(
 
     pres.current_item_index = item_index;
     pres.current_slide_index = slide_index.unwrap_or(0);
+
+    // T17: always resolve background when jumping to an item
+    let item = pres.set.as_ref().and_then(|s| s.items.get(item_index)).cloned();
+    pres.background = if let Some(ref item) = item {
+        resolve_background(pool, item).await
+    } else {
+        None
+    };
+
     pres.current_slide = resolve_current_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);

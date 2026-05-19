@@ -95,6 +95,7 @@ pub struct CreateSongPayload {
     pub language: Option<String>,
     pub notes: Option<String>,
     pub background_id: Option<String>,
+    pub scrim_opacity: Option<i32>,
     pub slide_config: Option<String>,
     pub source: Option<String>,
     pub sections: Vec<SectionPayload>,
@@ -111,6 +112,7 @@ pub struct UpdateSongPayload {
     pub language: Option<String>,
     pub notes: Option<String>,
     pub background_id: Option<String>,
+    pub scrim_opacity: Option<i32>,
     pub slide_config: Option<String>,
     pub source: Option<String>,
     pub sections: Vec<SectionPayload>,
@@ -142,10 +144,11 @@ pub async fn db_create_song(
         .await
         .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
+    let scrim_opacity = payload.scrim_opacity.unwrap_or(35);
     sqlx::query(
         "INSERT INTO songs (id, title, artist, ccli_number, key_signature, language, notes,
-                            background_id, slide_config, source, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            background_id, scrim_opacity, slide_config, source, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&payload.title)
@@ -155,6 +158,7 @@ pub async fn db_create_song(
     .bind(&language)
     .bind(&payload.notes)
     .bind(&payload.background_id)
+    .bind(scrim_opacity)
     .bind(&payload.slide_config)
     .bind(&payload.source)
     .bind(now)
@@ -209,6 +213,7 @@ pub async fn db_create_song(
         language,
         notes: payload.notes,
         background_id: payload.background_id,
+        scrim_opacity,
         slide_config: payload.slide_config,
         source: payload.source,
         created_at: now,
@@ -237,9 +242,10 @@ pub async fn db_update_song(
         .await
         .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
 
+    let scrim_opacity = payload.scrim_opacity.unwrap_or(35);
     sqlx::query(
         "UPDATE songs SET title=?, artist=?, ccli_number=?, key_signature=?, language=?,
-                          notes=?, background_id=?, slide_config=?, source=?, updated_at=?
+                          notes=?, background_id=?, scrim_opacity=?, slide_config=?, source=?, updated_at=?
          WHERE id=?",
     )
     .bind(&payload.title)
@@ -249,6 +255,7 @@ pub async fn db_update_song(
     .bind(&language)
     .bind(&payload.notes)
     .bind(&payload.background_id)
+    .bind(scrim_opacity)
     .bind(&payload.slide_config)
     .bind(&payload.source)
     .bind(now)
@@ -309,6 +316,7 @@ pub async fn db_update_song(
         language,
         notes: payload.notes,
         background_id: payload.background_id,
+        scrim_opacity,
         slide_config: payload.slide_config,
         source: payload.source,
         created_at,
@@ -345,7 +353,7 @@ pub async fn db_list_songs(
         Some(s) if !s.trim().is_empty() => match fts_query::sanitize(s) {
             FtsQuery::Fts5(q) => sqlx::query(
                 "SELECT s.id, s.title, s.artist, s.ccli_number, s.key_signature, s.language,
-                         s.notes, s.background_id, s.slide_config, s.source,
+                         s.notes, s.background_id, s.scrim_opacity, s.slide_config, s.source,
                          s.created_at, s.updated_at, s.deleted_at
                  FROM songs s
                  JOIN songs_fts ON songs_fts.rowid = s.rowid
@@ -364,7 +372,7 @@ pub async fn db_list_songs(
                 let pattern = format!("%{term}%");
                 sqlx::query(
                     "SELECT id, title, artist, ccli_number, key_signature, language, notes,
-                             background_id, slide_config, source, created_at, updated_at, deleted_at
+                             background_id, scrim_opacity, slide_config, source, created_at, updated_at, deleted_at
                      FROM songs WHERE deleted_at IS NULL
                        AND (title LIKE ? OR artist LIKE ?)
                      ORDER BY title ASC LIMIT ? OFFSET ?",
@@ -380,7 +388,7 @@ pub async fn db_list_songs(
         },
         _ => sqlx::query(
             "SELECT id, title, artist, ccli_number, key_signature, language, notes,
-                     background_id, slide_config, source, created_at, updated_at, deleted_at
+                     background_id, scrim_opacity, slide_config, source, created_at, updated_at, deleted_at
              FROM songs WHERE deleted_at IS NULL ORDER BY title ASC LIMIT ? OFFSET ?",
         )
         .bind(limit)
@@ -403,6 +411,7 @@ pub async fn db_list_songs(
             language: row.get("language"),
             notes: row.get("notes"),
             background_id: row.get("background_id"),
+            scrim_opacity: row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35),
             slide_config: row.get("slide_config"),
             source: row.get("source"),
             created_at: row.get("created_at"),
@@ -417,7 +426,7 @@ pub async fn db_list_songs(
 pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPayload> {
     let row = sqlx::query(
         "SELECT id, title, artist, ccli_number, key_signature, language, notes,
-                background_id, slide_config, source, created_at, updated_at, deleted_at
+                background_id, scrim_opacity, slide_config, source, created_at, updated_at, deleted_at
          FROM songs WHERE id = ?",
     )
     .bind(id)
@@ -437,6 +446,7 @@ pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPaylo
         language: row.get("language"),
         notes: row.get("notes"),
         background_id: row.get("background_id"),
+        scrim_opacity: row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35),
         slide_config: row.get("slide_config"),
         source: row.get("source"),
         created_at: row.get("created_at"),

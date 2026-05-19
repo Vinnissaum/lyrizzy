@@ -18,6 +18,7 @@ const mockSong: Song = {
   title: "Graça de Deus",
   artist: "Artista Teste",
   language: "pt",
+  scrimOpacity: 35,
   createdAt: 1000,
   updatedAt: 1000,
   sections: [

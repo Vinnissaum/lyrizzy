@@ -1,6 +1,7 @@
 use crate::commands::song::new_id;
 use crate::domain::error::ErrorPayload;
-use crate::domain::set::{ServiceSet, SetItem, SetItemType};
+use crate::domain::media::{MediaItemOptions, MediaKind};
+use crate::domain::set::{ServiceSet, SetItem, SetItemType, WebViewConfig};
 use crate::state::AppState;
 use serde::Deserialize;
 use sqlx::{Row, SqlitePool};
@@ -15,6 +16,9 @@ fn now_ms() -> i64 {
 
 fn item_type_from_db(s: &str) -> SetItemType {
     match s {
+        "media" => SetItemType::Media,
+        "countdown" => SetItemType::Countdown,
+        "web_view" | "webview" => SetItemType::WebView,
         "blank" => SetItemType::Blank,
         _ => SetItemType::Song,
     }
@@ -23,14 +27,30 @@ fn item_type_from_db(s: &str) -> SetItemType {
 fn item_type_to_db(t: &SetItemType) -> &'static str {
     match t {
         SetItemType::Song => "song",
+        SetItemType::Media => "media",
+        SetItemType::Countdown => "countdown",
+        SetItemType::WebView => "web_view",
         SetItemType::Blank => "blank",
+    }
+}
+
+fn media_kind_from_db(s: &str) -> Option<MediaKind> {
+    match s {
+        "image" => Some(MediaKind::Image),
+        "video" => Some(MediaKind::Video),
+        _ => None,
     }
 }
 
 pub async fn load_set_items(pool: &SqlitePool, set_id: &str) -> Result<Vec<SetItem>, ErrorPayload> {
     let rows = sqlx::query(
-        "SELECT id, set_id, item_type, song_id, sort_order, notes
-         FROM set_items WHERE set_id = ? ORDER BY sort_order ASC",
+        "SELECT si.id, si.set_id, si.item_type, si.song_id, si.media_id,
+                m.kind AS media_kind,
+                si.media_options, si.countdown_config, si.webview_config,
+                si.sort_order, si.notes
+         FROM set_items si
+         LEFT JOIN media m ON si.media_id = m.id AND m.deleted_at IS NULL
+         WHERE si.set_id = ? ORDER BY si.sort_order ASC",
     )
     .bind(set_id)
     .fetch_all(pool)
@@ -46,6 +66,23 @@ pub async fn load_set_items(pool: &SqlitePool, set_id: &str) -> Result<Vec<SetIt
                 set_id: row.get("set_id"),
                 item_type: item_type_from_db(&type_str),
                 song_id: row.get("song_id"),
+                media_id: row.get("media_id"),
+                media_kind: row
+                    .get::<Option<String>, _>("media_kind")
+                    .as_deref()
+                    .and_then(media_kind_from_db),
+                media_options: row
+                    .get::<Option<String>, _>("media_options")
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str::<MediaItemOptions>(s).ok()),
+                countdown_config: row
+                    .get::<Option<String>, _>("countdown_config")
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str(s).ok()),
+                webview_config: row
+                    .get::<Option<String>, _>("webview_config")
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str::<WebViewConfig>(s).ok()),
                 sort_order: row.get("sort_order"),
                 notes: row.get("notes"),
             }
@@ -269,6 +306,11 @@ pub async fn add_set_item(
         set_id: payload.set_id,
         item_type,
         song_id: payload.song_id,
+        media_id: None,
+        media_kind: None,
+        media_options: None,
+        countdown_config: None,
+        webview_config: None,
         sort_order,
         notes: None,
     };

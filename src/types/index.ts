@@ -34,6 +34,7 @@ export interface Song {
   language: string;
   notes?: string;
   backgroundId?: string;
+  scrimOpacity: number;
   slideConfig?: string;
   source?: string;
   createdAt: number;
@@ -42,14 +43,72 @@ export interface Song {
   sections: SongSection[];
 }
 
-// TODO Phase 2: add 'media' | 'countdown' | 'webview' variants
-export type SetItemType = 'song' | 'blank';
+// ── Media ────────────────────────────────────────────────────────────────────
+
+export type MediaKind = 'image' | 'video';
+
+export interface Media {
+  id: string;
+  fileName: string;
+  displayName: string;
+  kind: MediaKind;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  durationMs?: number;
+  thumbnailFile?: string;
+  byteSize: number;
+  createdAt: number;
+  updatedAt: number;
+  deletedAt?: number;
+}
+
+export interface MediaSongRef {
+  id: string;
+  title: string;
+}
+
+export interface MediaSetItemRef {
+  setId: string;
+  setName: string;
+  itemId: string;
+}
+
+export interface MediaReferences {
+  songs: MediaSongRef[];
+  setItems: MediaSetItemRef[];
+}
+
+/** Per-set-item playback overrides for media items. */
+export interface MediaItemOptions {
+  loop: boolean;
+  mute: boolean;
+  autoAdvanceOnEnd: boolean;
+}
+
+// ── Sets ─────────────────────────────────────────────────────────────────────
+
+export type SetItemType = 'song' | 'media' | 'countdown' | 'web_view' | 'blank';
+
+export type WebViewMode = 'iframe' | 'mjpeg';
+
+export interface WebViewConfig {
+  mode: WebViewMode;
+  url: string;
+  basicAuthUser?: string;
+  basicAuthPass?: string;
+}
 
 export interface SetItem {
   id: string;
   setId: string;
   itemType: SetItemType;
   songId?: string;
+  mediaId?: string;
+  mediaKind?: MediaKind;
+  mediaOptions?: MediaItemOptions;
+  countdownConfig?: CountdownConfig;
+  webviewConfig?: WebViewConfig;
   sortOrder: number;
   notes?: string;
 }
@@ -64,7 +123,15 @@ export interface ServiceSet {
   items: SetItem[];
 }
 
+// ── Presentation ─────────────────────────────────────────────────────────────
+
 export type PresentationMode = 'idle' | 'live' | 'blank' | 'frozen';
+
+export interface BackgroundInfo {
+  mediaKind: MediaKind;
+  assetUrl: string;
+  scrimOpacity: number;
+}
 
 export interface PresentationState {
   set?: ServiceSet;
@@ -74,7 +141,7 @@ export interface PresentationState {
   frozenAt?: [number, number];
   currentSlide?: Slide;
   itemSlideCounts: number[];
-  backgroundPath?: string;
+  background?: BackgroundInfo;
 }
 
 export interface Slide {
@@ -88,11 +155,27 @@ export interface SlideConfig {
   maxCharsPerLine: number;
 }
 
+// ── Countdown ────────────────────────────────────────────────────────────────
+
+export type CountdownMode = 'idle' | 'running' | 'paused' | 'finished';
+export type CountdownEndBehavior = 'holdZero' | 'blackout' | 'advanceSet';
+
+export interface CountdownConfig {
+  durationMs: number;
+  message?: string;
+  endBehavior: CountdownEndBehavior;
+}
+
 export interface CountdownState {
+  mode: CountdownMode;
   durationMs: number;
   remainingMs: number;
-  isRunning: boolean;
+  targetEpochMs?: number;
+  message?: string;
+  endBehavior: CountdownEndBehavior;
 }
+
+// ── Window / monitor ─────────────────────────────────────────────────────────
 
 export interface MonitorInfo {
   name?: string;

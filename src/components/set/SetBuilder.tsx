@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   addSetItem,
+  duplicateSetItem,
   getSet,
   loadSetForPresentation,
   onSetChanged,
@@ -10,15 +11,38 @@ import {
 } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
+import { useMediaStore } from "../../stores/media";
 import { listSongs } from "../../api/commands";
-import type { ServiceSet, SetItem, Song } from "../../types";
+import { CountdownSetItemEditor } from "./CountdownSetItemEditor";
+import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
+import { MediaSetItemEditor } from "./MediaSetItemEditor";
+import type { Media, ServiceSet, SetItem, Song } from "../../types";
 
 interface Props {
   setId: string | null;
 }
 
+function itemIcon(item: SetItem): string {
+  switch (item.itemType) {
+    case "song": return "♪";
+    case "media": return item.mediaKind === "video" ? "▶" : "🖼";
+    case "countdown": return "⏱";
+    case "web_view": return "🌐";
+    default: return "▪";
+  }
+}
+
+function isExpandable(item: SetItem): boolean {
+  return (
+    item.itemType === "countdown" ||
+    item.itemType === "web_view" ||
+    (item.itemType === "media" && item.mediaKind === "video")
+  );
+}
+
 export const SetBuilder: React.FC<Props> = ({ setId }) => {
   const { setView } = useLibraryStore();
+  const { media, refresh: refreshMedia } = useMediaStore();
   const [serviceSet, setServiceSet] = useState<ServiceSet | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [songSearch, setSongSearch] = useState("");
@@ -27,6 +51,9 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [showSongPicker, setShowSongPicker] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSet = async () => {
@@ -53,6 +80,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
   useEffect(() => {
     loadSet();
     loadSongs();
+    refreshMedia();
     const unlistenPromise = onSetChanged(() => loadSet());
     return () => {
       unlistenPromise.then((u) => u());
@@ -94,11 +122,76 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
     }
   };
 
+  const handleAddMedia = async (mediaItem: Media) => {
+    if (!serviceSet) return;
+    try {
+      const item = await addSetItem({
+        setId: serviceSet.id,
+        itemType: "media",
+        mediaId: mediaItem.id,
+        mediaOptions: { loop: false, mute: false, autoAdvanceOnEnd: true },
+      });
+      setShowMediaPicker(false);
+      if (mediaItem.kind === "video") setExpandedItemId(item.id);
+    } catch (err) {
+      console.error("Falha ao adicionar mídia:", err);
+    }
+  };
+
+  const handleAddCountdown = async () => {
+    if (!serviceSet) return;
+    try {
+      const item = await addSetItem({
+        setId: serviceSet.id,
+        itemType: "countdown",
+        countdownConfig: {
+          durationMs: 600_000,
+          message: "O culto começa em…",
+          endBehavior: "holdZero",
+        },
+      });
+      setExpandedItemId(item.id);
+    } catch (err) {
+      console.error("Falha ao adicionar contagem:", err);
+    }
+  };
+
+  const handleAddWebView = async () => {
+    if (!serviceSet) return;
+    try {
+      const item = await addSetItem({
+        setId: serviceSet.id,
+        itemType: "web_view",
+        webViewConfig: { mode: "iframe", url: "" },
+      });
+      setExpandedItemId(item.id);
+    } catch (err) {
+      console.error("Falha ao adicionar WebView:", err);
+    }
+  };
+
+  const handleAddBlank = async () => {
+    if (!serviceSet) return;
+    try {
+      await addSetItem({ setId: serviceSet.id, itemType: "blank" });
+    } catch (err) {
+      console.error("Falha ao adicionar tela em branco:", err);
+    }
+  };
+
   const handleRemoveItem = async (item: SetItem) => {
     try {
       await removeSetItem(item.id);
     } catch (err) {
       console.error("Falha ao remover item:", err);
+    }
+  };
+
+  const handleDuplicate = async (item: SetItem) => {
+    try {
+      await duplicateSetItem(item.id);
+    } catch (err) {
+      console.error("Falha ao duplicar item:", err);
     }
   };
 
@@ -109,10 +202,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
     if (swapIndex < 0 || swapIndex >= items.length) return;
     [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
     try {
-      await reorderSetItems(
-        serviceSet.id,
-        items.map((i) => i.id)
-      );
+      await reorderSetItems(serviceSet.id, items.map((i) => i.id));
     } catch (err) {
       console.error("Falha ao reordenar:", err);
     }
@@ -133,6 +223,19 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
   };
 
   const songById = (id?: string) => songs.find((s) => s.id === id);
+  const mediaById = (id?: string) => media.find((m) => m.id === id);
+
+  const isInvalidRef = (item: SetItem): boolean => {
+    if (item.itemType === "song") return !songById(item.songId);
+    if (item.itemType === "media") return !mediaById(item.mediaId);
+    return false;
+  };
+
+  const filteredMedia = showMediaPicker
+    ? mediaFilter === "all"
+      ? media
+      : media.filter((m) => m.kind === mediaFilter)
+    : [];
 
   if (!serviceSet) {
     return (
@@ -141,6 +244,60 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       </div>
     );
   }
+
+  const itemSummary = (item: SetItem) => {
+    const song = item.itemType === "song" ? songById(item.songId) : undefined;
+    const mediaItem = item.itemType === "media" ? mediaById(item.mediaId) : undefined;
+    const invalid = isInvalidRef(item);
+
+    if (invalid) {
+      return (
+        <p className="text-xs text-red-400 font-medium">
+          ⚠ Referência inválida
+        </p>
+      );
+    }
+
+    switch (item.itemType) {
+      case "song":
+        return (
+          <>
+            <p className="text-sm font-medium text-white truncate">{song!.title}</p>
+            {song!.artist && (
+              <p className="text-xs text-gray-400 truncate">{song!.artist}</p>
+            )}
+          </>
+        );
+      case "media":
+        return (
+          <p className="text-sm text-blue-400 font-medium truncate">
+            {mediaItem?.displayName ?? "Mídia"}
+          </p>
+        );
+      case "countdown": {
+        const cfg = item.countdownConfig;
+        const durLabel = cfg ? `${Math.floor(cfg.durationMs / 60000)}min` : "10min";
+        return (
+          <p className="text-sm text-amber-400 font-medium">
+            Contagem — {durLabel}
+          </p>
+        );
+      }
+      case "web_view": {
+        const wv = item.webviewConfig;
+        const urlShort = wv?.url
+          ? wv.url.replace(/^https?:\/\//, "").slice(0, 30)
+          : "sem URL";
+        return (
+          <p className="text-sm text-purple-400 font-medium truncate">
+            {wv?.mode === "mjpeg" ? "Câmera" : "Web"} — {urlShort}
+          </p>
+        );
+      }
+      default:
+        return <p className="text-sm text-gray-400 italic">Tela em branco</p>;
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -203,58 +360,86 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         {serviceSet.items.length === 0 ? (
           <p className="text-center text-gray-500 text-sm py-8">
-            Adicione músicas com o botão abaixo.
+            Adicione itens com os botões abaixo.
           </p>
         ) : (
           serviceSet.items.map((item, idx) => {
-            const song = item.itemType === "song" ? songById(item.songId) : undefined;
+            const expanded = expandedItemId === item.id;
+            const canExpand = isExpandable(item);
+
             return (
-              <div
-                key={item.id}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 group"
-              >
-                <span className="text-xs text-gray-500 w-5 text-right shrink-0">
-                  {idx + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  {item.itemType === "song" ? (
-                    <>
-                      <p className="text-sm font-medium text-white truncate">
-                        {song?.title ?? "(música removida)"}
-                      </p>
-                      {song?.artist && (
-                        <p className="text-xs text-gray-400 truncate">{song.artist}</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-gray-400 italic">Tela em branco</p>
+              <div key={item.id} className="rounded-lg bg-gray-800 overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 group">
+                  <span className="text-xs text-gray-500 w-5 text-right shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="text-sm shrink-0 w-4 text-center">
+                    {itemIcon(item)}
+                  </span>
+                  <div
+                    className={`flex-1 min-w-0 ${canExpand ? "cursor-pointer" : ""}`}
+                    onClick={() =>
+                      canExpand && setExpandedItemId(expanded ? null : item.id)
+                    }
+                  >
+                    {itemSummary(item)}
+                  </div>
+                  {canExpand && (
+                    <button
+                      onClick={() => setExpandedItemId(expanded ? null : item.id)}
+                      className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 transition-all text-xs"
+                      title="Editar"
+                    >
+                      {expanded ? "▲" : "▼"}
+                    </button>
                   )}
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      onClick={() => handleDuplicate(item)}
+                      className="p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-gray-700 transition-all"
+                      title="Duplicar"
+                    >
+                      ⧉
+                    </button>
+                    <button
+                      onClick={() => handleMove(idx, "up")}
+                      disabled={idx === 0}
+                      className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
+                      title="Mover para cima"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => handleMove(idx, "down")}
+                      disabled={idx === serviceSet.items.length - 1}
+                      className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
+                      title="Mover para baixo"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      onClick={() => handleRemoveItem(item)}
+                      className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-all"
+                      title="Remover"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button
-                    onClick={() => handleMove(idx, "up")}
-                    disabled={idx === 0}
-                    className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
-                    title="Mover para cima"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    onClick={() => handleMove(idx, "down")}
-                    disabled={idx === serviceSet.items.length - 1}
-                    className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
-                    title="Mover para baixo"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    onClick={() => handleRemoveItem(item)}
-                    className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-all"
-                    title="Remover"
-                  >
-                    ✕
-                  </button>
-                </div>
+
+                {expanded && (
+                  <div className="border-t border-gray-700">
+                    {item.itemType === "countdown" && (
+                      <CountdownSetItemEditor item={item} />
+                    )}
+                    {item.itemType === "web_view" && (
+                      <WebViewSetItemEditor item={item} />
+                    )}
+                    {item.itemType === "media" && (
+                      <MediaSetItemEditor item={item} />
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
@@ -297,22 +482,118 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         </div>
       )}
 
+      {/* Media picker panel */}
+      {showMediaPicker && (
+        <div className="border-t border-gray-700 flex flex-col h-64">
+          <div className="px-3 py-2 border-b border-gray-700 flex items-center gap-2">
+            <div className="flex gap-1">
+              {(["all", "image", "video"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setMediaFilter(f)}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    mediaFilter === f
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                  }`}
+                >
+                  {f === "all" ? "Todos" : f === "image" ? "Imagens" : "Vídeos"}
+                </button>
+              ))}
+            </div>
+            <span className="flex-1" />
+            <button
+              onClick={() => setShowMediaPicker(false)}
+              className="text-gray-400 hover:text-white p-1"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 gap-2">
+            {filteredMedia.length === 0 ? (
+              <p className="col-span-3 text-center text-gray-500 py-6 text-sm">
+                Nenhuma mídia disponível.
+              </p>
+            ) : (
+              filteredMedia.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleAddMedia(m)}
+                  className="flex flex-col rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors"
+                >
+                  <div className="aspect-video bg-gray-800 relative">
+                    <img
+                      src={`asset://localhost/media/${m.thumbnailFile ?? m.fileName}`}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                    {m.kind === "video" && (
+                      <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1 rounded">
+                        VIDEO
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-300 truncate px-1 py-0.5">
+                    {m.displayName}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Footer actions */}
-      <div className="px-4 py-3 border-t border-gray-700 flex gap-2">
-        <button
-          onClick={() => {
-            setSongSearch("");
-            setFilteredSongs(songs);
-            setShowSongPicker((v) => !v);
-          }}
-          className="flex-1 px-3 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
-        >
-          + Adicionar música
-        </button>
+      <div className="px-4 py-3 border-t border-gray-700 space-y-2">
+        <div className="grid grid-cols-3 gap-1.5">
+          <button
+            onClick={() => {
+              setSongSearch("");
+              setFilteredSongs(songs);
+              setShowMediaPicker(false);
+              setShowSongPicker((v) => !v);
+            }}
+            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
+          >
+            ♪ Música
+          </button>
+          <button
+            onClick={() => {
+              setShowSongPicker(false);
+              setMediaFilter("all");
+              refreshMedia();
+              setShowMediaPicker((v) => !v);
+            }}
+            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-blue-400"
+          >
+            ▶ Mídia
+          </button>
+          <button
+            onClick={handleAddCountdown}
+            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-amber-400"
+          >
+            ⏱ Contagem
+          </button>
+          <button
+            onClick={handleAddWebView}
+            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-purple-400"
+          >
+            🌐 WebView
+          </button>
+          <button
+            onClick={handleAddBlank}
+            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-gray-400"
+          >
+            ▪ Branco
+          </button>
+        </div>
         <button
           onClick={handleLoadForPresentation}
           disabled={isLoading || serviceSet.items.length === 0}
-          className="flex-1 px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+          className="w-full px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
         >
           {isLoading ? "Carregando…" : "Apresentar"}
         </button>

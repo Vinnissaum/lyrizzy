@@ -5,6 +5,8 @@ import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { SongBackground } from "../../components/presentation/SongBackground";
 import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRenderer";
+import { CountdownRenderer } from "../../components/presentation/CountdownRenderer";
+import { WebViewRenderer } from "../../components/presentation/WebViewRenderer";
 import { TransitionStage } from "../../components/presentation/TransitionStage";
 import type { BackgroundInfo } from "../../types";
 
@@ -68,20 +70,30 @@ function SongSlide({
 
 export const PresentationApp: React.FC = () => {
   const { state, subscribe: subscribePresentation, next } = usePresentationStore();
-  const { state: countdown, subscribe: subscribeCountdown } = useCountdownStore();
+  const { state: countdown, subscribe: subscribeCountdown, start: startCountdown } =
+    useCountdownStore();
   const { refresh: refreshMedia, media } = useMediaStore();
   const { transitionMs, reduceMotion } = useSettingsStore();
+
+  const currentItem = state?.set?.items[state?.currentItemIndex ?? 0];
 
   useEffect(() => {
     const unsub = subscribePresentation();
     const unsubCd = subscribeCountdown();
-    // Ensure media records are available for resolving MediaSlideRenderer URLs
     refreshMedia();
     return () => {
       unsub.then((u) => u());
       unsubCd.then((u) => u());
     };
   }, []);
+
+  // Auto-start countdown when the runtime lands on a countdown set item.
+  useEffect(() => {
+    if (currentItem?.itemType === "countdown" && currentItem.countdownConfig) {
+      const { durationMs, message, endBehavior } = currentItem.countdownConfig;
+      startCountdown({ durationMs, message, endBehavior });
+    }
+  }, [currentItem?.id]);
 
   const mode = state?.mode ?? "idle";
   const slide = state?.currentSlide;
@@ -115,8 +127,6 @@ export const PresentationApp: React.FC = () => {
     return <div className="h-screen bg-black" />;
   }
 
-  // Determine current set item
-  const currentItem = state?.set?.items[state.currentItemIndex];
   const itemType = currentItem?.itemType ?? "blank";
 
   // Compute a stable transition key: changes on item or slide
@@ -125,7 +135,6 @@ export const PresentationApp: React.FC = () => {
   let content: React.ReactNode;
 
   if (itemType === "media") {
-    // Look up media record for the file_name
     const mediaRecord = currentItem?.mediaId
       ? media.find((m) => m.id === currentItem.mediaId)
       : undefined;
@@ -145,8 +154,42 @@ export const PresentationApp: React.FC = () => {
         <p className="text-gray-600 text-sm">Mídia não encontrada</p>
       </div>
     );
+  } else if (itemType === "countdown") {
+    const cdConfig = currentItem?.countdownConfig;
+    // Resolve background for countdown from backgroundMediaId if set
+    let cdBackground: BackgroundInfo | undefined = undefined;
+    if (cdConfig?.backgroundMediaId) {
+      const bgMedia = media.find((m) => m.id === cdConfig.backgroundMediaId);
+      if (bgMedia) {
+        cdBackground = {
+          mediaKind: bgMedia.kind,
+          assetUrl: buildAssetUrl(bgMedia.fileName),
+          scrimOpacity: 35,
+        };
+      }
+    }
+    content = cdConfig ? (
+      <CountdownRenderer
+        config={cdConfig}
+        background={cdBackground}
+        frozen={frozen}
+      />
+    ) : (
+      <div className="h-screen bg-black" />
+    );
+  } else if (itemType === "web_view") {
+    const wvConfig = currentItem?.webviewConfig;
+    content = wvConfig ? (
+      <WebViewRenderer config={wvConfig} />
+    ) : (
+      <div className="h-screen bg-black relative select-none">
+        <p className="absolute bottom-4 right-4 text-xs text-gray-500">
+          WebView não configurada
+        </p>
+      </div>
+    );
   } else {
-    // Song, Blank, Countdown (placeholder), WebView (placeholder)
+    // Song or Blank
     content = (
       <SongSlide
         slideLines={slide?.lines ?? []}

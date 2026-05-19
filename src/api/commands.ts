@@ -1,9 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
+  CountdownConfig,
+  CountdownEndBehavior,
   CountdownState,
   ErrorPayload,
   Media,
+  MediaItemOptions,
   MediaKind,
   MediaReferences,
   MonitorInfo,
@@ -12,6 +15,7 @@ import type {
   ServiceSet,
   SetItem,
   Song,
+  WebViewConfig,
 } from "../types";
 
 export function normalizeError(err: unknown): ErrorPayload {
@@ -148,8 +152,20 @@ export interface UpdateSetPayload {
 
 export interface AddSetItemPayload {
   setId: string;
-  itemType: 'song' | 'blank';
+  itemType: 'song' | 'media' | 'countdown' | 'web_view' | 'blank';
   songId?: string;
+  mediaId?: string;
+  mediaOptions?: MediaItemOptions;
+  countdownConfig?: CountdownConfig;
+  webViewConfig?: WebViewConfig;
+}
+
+export interface UpdateSetItemPayload {
+  id: string;
+  countdownConfig?: CountdownConfig;
+  webViewConfig?: WebViewConfig;
+  mediaOptions?: MediaItemOptions;
+  notes?: string;
 }
 
 export const createSet = (payload: CreateSetPayload) =>
@@ -175,6 +191,12 @@ export const removeSetItem = (itemId: string) =>
 
 export const reorderSetItems = (setId: string, itemIds: string[]) =>
   invoke<ServiceSet>("reorder_set_items", { setId, itemIds });
+
+export const updateSetItem = (payload: UpdateSetItemPayload) =>
+  invoke<SetItem>("update_set_item", { payload });
+
+export const duplicateSetItem = (itemId: string) =>
+  invoke<SetItem>("duplicate_set_item", { itemId });
 
 // ─── Presentation control ────────────────────────────────────────────────────
 
@@ -228,8 +250,15 @@ export const onMediaLibraryChanged = (cb: () => void) =>
 export const setCountdownDuration = (durationMs: number) =>
   invoke<CountdownState>("set_countdown_duration", { durationMs });
 
-export const startCountdown = () =>
-  invoke<CountdownState>("start_countdown");
+export interface StartCountdownParams {
+  durationMs?: number;
+  message?: string;
+  endBehavior?: CountdownEndBehavior;
+  [key: string]: unknown;
+}
+
+export const startCountdown = (params?: StartCountdownParams) =>
+  invoke<CountdownState>("start_countdown", params ?? {});
 
 export const pauseCountdown = () =>
   invoke<CountdownState>("pause_countdown");

@@ -164,6 +164,7 @@ export interface CountdownConfig {
   durationMs: number;
   message?: string;
   endBehavior: CountdownEndBehavior;
+  backgroundMediaId?: string;
 }
 
 export interface CountdownState {

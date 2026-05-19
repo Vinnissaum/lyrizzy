@@ -19,6 +19,7 @@ const mockSong = (id: string, title: string, artist?: string): Song => ({
   title,
   artist,
   language: "pt",
+  scrimOpacity: 35,
   createdAt: 1000,
   updatedAt: 1000,
   sections: [{ id: "s1", songId: id, label: "E1", type: "verse", body: "corpo", sortOrder: 0, repeatCount: 1 }],
@@ -33,7 +34,8 @@ describe("OperatorApp", () => {
 
   it("renders the library heading", async () => {
     render(<OperatorApp />);
-    await waitFor(() => expect(screen.getByText("Biblioteca")).toBeInTheDocument());
+    // Both the nav tab and the SongList heading say "Biblioteca"
+    await waitFor(() => expect(screen.getAllByText("Biblioteca").length).toBeGreaterThan(0));
   });
 
   it("shows both CTAs when songs list is empty", async () => {
@@ -59,15 +61,16 @@ describe("OperatorApp", () => {
 
   it("renders the presentation window button", () => {
     render(<OperatorApp />);
-    expect(screen.getByText("Open Presentation Window")).toBeInTheDocument();
+    expect(screen.getByText("Janela de Apresentação")).toBeInTheDocument();
   });
 
   it("calls open_presentation_window when the button is clicked", async () => {
     render(<OperatorApp />);
-    screen.getByText("Open Presentation Window").click();
+    screen.getByText("Janela de Apresentação").click();
     await waitFor(() =>
       expect(vi.mocked(invoke)).toHaveBeenCalledWith(
-        "open_presentation_window"
+        "open_presentation_window",
+        { monitorIndex: undefined }
       )
     );
   });

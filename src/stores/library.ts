@@ -2,20 +2,31 @@ import { create } from "zustand";
 import { listSongs } from "../api/commands";
 import type { Song } from "../types";
 
-type View = "library" | "editor" | "import-text" | "import-holyrics";
+export type AppView =
+  | "library"
+  | "editor"
+  | "import-text"
+  | "import-holyrics"
+  | "sets"
+  | "set-builder"
+  | "set-player"
+  | "countdown"
+  | "media";
 
 interface LibraryStore {
   songs: Song[];
   isLoading: boolean;
   search: string;
   editingSongId: string | null;
-  currentView: View;
+  editingSetId: string | null;
+  currentView: AppView;
 
   setSearch: (search: string) => void;
   refresh: () => Promise<void>;
   openEditor: (id?: string) => void;
   closeEditor: () => void;
-  setView: (view: View) => void;
+  openSetBuilder: (id?: string) => void;
+  setView: (view: AppView) => void;
 }
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
@@ -23,6 +34,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   isLoading: false,
   search: "",
   editingSongId: null,
+  editingSetId: null,
   currentView: "library",
 
   setSearch: (search) => {
@@ -46,6 +58,10 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   closeEditor: () => {
     set({ editingSongId: null, currentView: "library" });
+  },
+
+  openSetBuilder: (id?: string) => {
+    set({ editingSetId: id ?? null, currentView: "set-builder" });
   },
 
   setView: (view) => {

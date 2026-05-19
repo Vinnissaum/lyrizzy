@@ -1,0 +1,187 @@
+import React, { useEffect, useRef, useState } from "react";
+import { Search, Upload } from "lucide-react";
+import { useMediaStore } from "../../stores/media";
+import { MediaCard } from "./MediaCard";
+import { MediaUploadDropzone } from "./MediaUploadDropzone";
+import { MediaDetailPanel } from "./MediaDetailPanel";
+import type { Media, MediaKind } from "../../types";
+
+interface ImportToast {
+  imported: number;
+  skipped: number;
+}
+
+export const MediaLibrary: React.FC = () => {
+  const { media, isLoading, filter, search, setFilter, setSearch, subscribe } =
+    useMediaStore();
+
+  const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
+  const [showDropzone, setShowDropzone] = useState(false);
+  const [toast, setToast] = useState<ImportToast | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [localSearch, setLocalSearch] = useState(search);
+
+  useEffect(() => {
+    const unsub = subscribe();
+    return () => {
+      unsub.then((u) => u());
+    };
+  }, []);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalSearch(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearch(value);
+    }, 150);
+  };
+
+  const handleFilterClick = (kind: MediaKind | undefined) => {
+    setFilter(kind);
+  };
+
+  const handleCardClick = (item: Media) => {
+    setSelectedMedia((prev) => (prev?.id === item.id ? null : item));
+  };
+
+  const handleImportComplete = ({
+    imported,
+    skipped,
+  }: {
+    imported: number;
+    skipped: number;
+  }) => {
+    setShowDropzone(false);
+    setToast({ imported, skipped });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  };
+
+  const filterOptions: { label: string; value: MediaKind | undefined }[] = [
+    { label: "Todos", value: undefined },
+    { label: "Imagens", value: "image" },
+    { label: "Vídeos", value: "video" },
+  ];
+
+  // Keep selectedMedia in sync when media list changes (e.g. after rename)
+  const selectedMediaUpdated = selectedMedia
+    ? (media.find((m) => m.id === selectedMedia.id) ?? null)
+    : null;
+
+  return (
+    <div className="flex h-full min-h-0">
+      {/* Main area */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Header */}
+        <div className="px-4 pt-4 pb-3 border-b border-gray-700 shrink-0">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-lg font-semibold flex-1">Mídia</h2>
+            <button
+              onClick={() => setShowDropzone((v) => !v)}
+              data-testid="add-media-button"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Adicionar mídia
+            </button>
+          </div>
+
+          {/* Filter chips */}
+          <div className="flex items-center gap-2 mb-3">
+            {filterOptions.map((opt) => (
+              <button
+                key={opt.label}
+                onClick={() => handleFilterClick(opt.value)}
+                data-testid={`filter-${opt.label.toLowerCase()}`}
+                className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                  filter === opt.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+            <input
+              type="search"
+              value={localSearch}
+              onChange={handleSearchChange}
+              placeholder="Pesquisar mídia…"
+              data-testid="search-input"
+              className="w-full pl-8 pr-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Toast */}
+        {toast && (
+          <div
+            data-testid="import-toast"
+            className="mx-4 mt-3 px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-gray-200 shrink-0"
+          >
+            {toast.imported} importada{toast.imported !== 1 ? "s" : ""}
+            {toast.skipped > 0 && `, ${toast.skipped} ignorada${toast.skipped !== 1 ? "s" : ""}`}
+          </div>
+        )}
+
+        {/* Dropzone */}
+        {showDropzone && (
+          <div className="px-4 pt-3 shrink-0">
+            <MediaUploadDropzone onImportComplete={handleImportComplete} />
+          </div>
+        )}
+
+        {/* Grid */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {isLoading ? (
+            <p className="text-gray-500 text-sm text-center py-12">
+              Carregando…
+            </p>
+          ) : media.length === 0 ? (
+            <div
+              className="flex flex-col items-center justify-center py-16 gap-4"
+              data-testid="empty-state"
+            >
+              <p className="text-gray-500 text-sm">Nenhuma mídia encontrada.</p>
+              <button
+                onClick={() => setShowDropzone(true)}
+                data-testid="cta-add-media"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Adicionar mídia
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {media.map((item) => (
+                <MediaCard
+                  key={item.id}
+                  media={item}
+                  onClick={handleCardClick}
+                  isSelected={selectedMedia?.id === item.id}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {selectedMediaUpdated && (
+        <MediaDetailPanel
+          media={selectedMediaUpdated}
+          onClose={() => setSelectedMedia(null)}
+        />
+      )}
+    </div>
+  );
+};

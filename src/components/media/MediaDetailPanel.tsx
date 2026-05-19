@@ -1,0 +1,257 @@
+import React, { useEffect, useState } from "react";
+import { X, Pencil, Trash2, Check, Film, Image } from "lucide-react";
+import {
+  deleteMedia,
+  getMediaReferences,
+  normalizeError,
+  renameMedia,
+} from "../../api/commands";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import { formatBytes } from "./MediaCard";
+import type { Media, MediaReferences } from "../../types";
+
+interface Props {
+  media: Media;
+  onClose: () => void;
+}
+
+function formatDuration(ms: number): string {
+  const totalSec = Math.round(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(media.displayName);
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [nameError, setNameError] = useState("");
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [references, setReferences] = useState<MediaReferences | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  // Reset state when media changes
+  useEffect(() => {
+    setNameInput(media.displayName);
+    setEditingName(false);
+    setNameError("");
+    setReferences(null);
+    setDeleteError("");
+  }, [media.id]);
+
+  const previewUrl =
+    media.kind === "image"
+      ? `http://asset.localhost/media/${media.fileName}`
+      : media.thumbnailFile
+      ? `http://asset.localhost/media/${media.thumbnailFile}`
+      : null;
+
+  const handleSaveName = async () => {
+    if (!nameInput.trim()) {
+      setNameError("Nome não pode estar vazio.");
+      return;
+    }
+    setIsSavingName(true);
+    setNameError("");
+    try {
+      await renameMedia(media.id, nameInput.trim());
+      setEditingName(false);
+    } catch (err) {
+      const e = normalizeError(err);
+      setNameError(e.params.detail ?? "Falha ao renomear.");
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  const handleDeleteClick = async () => {
+    setDeleteError("");
+    try {
+      const refs = await getMediaReferences(media.id);
+      setReferences(refs);
+      setShowDeleteConfirm(true);
+    } catch (err) {
+      const e = normalizeError(err);
+      setDeleteError(e.params.detail ?? "Falha ao verificar referências.");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!references) return;
+    const hasRefs =
+      references.songs.length > 0 || references.setItems.length > 0;
+    if (hasRefs) {
+      setShowDeleteConfirm(false);
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteMedia(media.id);
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (err) {
+      const e = normalizeError(err);
+      setDeleteError(e.params.detail ?? "Falha ao excluir.");
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const hasRefs =
+    references &&
+    (references.songs.length > 0 || references.setItems.length > 0);
+
+  return (
+    <div className="flex flex-col h-full border-l border-gray-700 bg-gray-900 w-72 shrink-0">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+        <span className="text-sm font-semibold text-gray-200">Detalhes</span>
+        <button
+          onClick={onClose}
+          data-testid="detail-close"
+          className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Preview */}
+      <div className="aspect-video bg-black flex items-center justify-center">
+        {previewUrl ? (
+          <img
+            src={previewUrl}
+            alt={media.displayName}
+            className="max-w-full max-h-full object-contain"
+          />
+        ) : (
+          <div className="text-gray-700">
+            {media.kind === "video" ? (
+              <Film className="w-12 h-12" />
+            ) : (
+              <Image className="w-12 h-12" />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Name */}
+        <div>
+          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
+            Nome
+          </p>
+          {editingName ? (
+            <div className="flex gap-1">
+              <input
+                autoFocus
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") {
+                    setNameInput(media.displayName);
+                    setEditingName(false);
+                  }
+                }}
+                data-testid="name-input"
+                className="flex-1 min-w-0 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={isSavingName}
+                className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded text-white transition-colors disabled:opacity-50"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2">
+              <p
+                className="text-sm text-white flex-1 break-words"
+                data-testid="display-name"
+              >
+                {media.displayName}
+              </p>
+              <button
+                onClick={() => setEditingName(true)}
+                data-testid="rename-button"
+                className="p-1 rounded hover:bg-gray-700 text-gray-500 hover:text-white transition-colors shrink-0"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          {nameError && (
+            <p className="text-red-400 text-xs mt-1">{nameError}</p>
+          )}
+        </div>
+
+        {/* Metadata */}
+        <dl className="space-y-1.5 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Tipo</dt>
+            <dd className="text-gray-300">
+              {media.kind === "video" ? "Vídeo" : "Imagem"}
+            </dd>
+          </div>
+          {(media.width || media.height) && (
+            <div className="flex justify-between">
+              <dt className="text-gray-500">Dimensões</dt>
+              <dd className="text-gray-300">
+                {media.width}×{media.height}
+              </dd>
+            </div>
+          )}
+          {media.durationMs !== undefined && media.durationMs > 0 && (
+            <div className="flex justify-between">
+              <dt className="text-gray-500">Duração</dt>
+              <dd className="text-gray-300">{formatDuration(media.durationMs)}</dd>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Tamanho</dt>
+            <dd className="text-gray-300">{formatBytes(media.byteSize)}</dd>
+          </div>
+        </dl>
+
+        {/* Delete error */}
+        {deleteError && (
+          <p className="text-red-400 text-xs">{deleteError}</p>
+        )}
+
+        {/* Delete button */}
+        <button
+          onClick={handleDeleteClick}
+          disabled={isDeleting}
+          data-testid="delete-button"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-700/30 hover:bg-red-700/50 text-red-400 hover:text-red-300 text-sm transition-colors disabled:opacity-50"
+        >
+          <Trash2 className="w-4 h-4" />
+          Excluir
+        </button>
+      </div>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title={hasRefs ? "Mídia em uso" : "Excluir mídia"}
+        message={
+          hasRefs
+            ? `Esta mídia está em uso por ${references!.songs.length} música(s) e ${references!.setItems.length} item(s) de conjunto. Remova as referências antes de excluir.`
+            : `Excluir "${media.displayName}"? Esta ação não pode ser desfeita.`
+        }
+        confirmLabel={hasRefs ? "Entendido" : "Excluir"}
+        cancelLabel={hasRefs ? undefined : "Cancelar"}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+    </div>
+  );
+};

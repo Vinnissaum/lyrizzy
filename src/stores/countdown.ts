@@ -6,6 +6,7 @@ import {
   resetCountdown,
   setCountdownDuration,
   startCountdown,
+  type StartCountdownParams,
 } from "../api/commands";
 import type { CountdownState } from "../types";
 
@@ -14,7 +15,7 @@ interface CountdownStore {
   isSubscribed: boolean;
   subscribe: () => Promise<() => void>;
   setDuration: (durationMs: number) => Promise<void>;
-  start: () => Promise<void>;
+  start: (params?: StartCountdownParams) => Promise<void>;
   pause: () => Promise<void>;
   reset: () => Promise<void>;
 }
@@ -58,9 +59,9 @@ export const useCountdownStore = create<CountdownStore>((set, get) => ({
     }
   },
 
-  start: async () => {
+  start: async (params?) => {
     try {
-      const newState = await startCountdown();
+      const newState = await startCountdown(params);
       set({ state: newState });
     } catch (err) {
       console.error("Falha ao iniciar cronômetro:", err);

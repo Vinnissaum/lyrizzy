@@ -8,7 +8,9 @@ use crate::domain::slide::{Slide, SlideConfig};
 use crate::services::slide_splitter;
 use crate::state::AppState;
 use sqlx::{Row, SqlitePool};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
+use tokio::sync::RwLock;
 
 fn blank_slide() -> Slide {
     Slide {
@@ -52,7 +54,7 @@ fn resolve_current_slide(
 
 /// Resolves per-song background for a set item.
 /// Returns `None` for non-song items or songs without a background.
-async fn resolve_background(pool: &SqlitePool, item: &SetItem) -> Option<BackgroundInfo> {
+pub async fn resolve_background(pool: &SqlitePool, item: &SetItem) -> Option<BackgroundInfo> {
     if item.item_type != SetItemType::Song {
         return None;
     }
@@ -96,6 +98,67 @@ async fn resolve_background(pool: &SqlitePool, item: &SetItem) -> Option<Backgro
 async fn emit_state(app: &AppHandle, state: &PresentationState) -> Result<(), ErrorPayload> {
     app.emit("state_changed", state)
         .map_err(|e| ErrorPayload::from(e.to_string()))
+}
+
+/// Shared next-slide logic — callable from commands and the countdown ticker task.
+pub async fn do_next_slide(
+    pool: &SqlitePool,
+    presentation: &Arc<RwLock<PresentationState>>,
+    presentation_slides: &Arc<RwLock<Vec<Vec<Slide>>>>,
+    app: &AppHandle,
+) -> Result<PresentationState, ErrorPayload> {
+    let slides = presentation_slides.read().await;
+    let mut pres = presentation.write().await;
+    let prev_item_idx = pres.current_item_index;
+
+    if !slides.is_empty() {
+        let item_idx = pres.current_item_index;
+        let slide_idx = pres.current_slide_index;
+        let item_len = slides.get(item_idx).map(|s| s.len()).unwrap_or(0);
+        if slide_idx + 1 < item_len {
+            pres.current_slide_index = slide_idx + 1;
+        } else if item_idx + 1 < slides.len() {
+            pres.current_item_index = item_idx + 1;
+            pres.current_slide_index = 0;
+        }
+    }
+
+    if pres.current_item_index != prev_item_idx {
+        let item = pres
+            .set
+            .as_ref()
+            .and_then(|s| s.items.get(pres.current_item_index))
+            .cloned();
+        pres.background = if let Some(ref item) = item {
+            resolve_background(pool, item).await
+        } else {
+            None
+        };
+    }
+
+    pres.current_slide = resolve_current_slide(&slides, &pres);
+    let new_state = pres.clone();
+    drop(pres);
+    drop(slides);
+    emit_state(app, &new_state).await?;
+    Ok(new_state)
+}
+
+/// Set presentation mode to Blank — callable from commands and the countdown ticker.
+pub async fn do_blank_presentation(
+    presentation: &Arc<RwLock<PresentationState>>,
+    presentation_slides: &Arc<RwLock<Vec<Vec<Slide>>>>,
+    app: &AppHandle,
+) -> Result<(), ErrorPayload> {
+    let slides = presentation_slides.read().await;
+    let mut pres = presentation.write().await;
+    pres.frozen_at = None;
+    pres.mode = PresentationMode::Blank;
+    pres.current_slide = resolve_current_slide(&slides, &pres);
+    let new_state = pres.clone();
+    drop(pres);
+    drop(slides);
+    emit_state(app, &new_state).await
 }
 
 // ─── Tauri commands ──────────────────────────────────────────────────────────
@@ -170,41 +233,7 @@ pub async fn next_slide(
     app: AppHandle,
 ) -> Result<PresentationState, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
-    let slides = state.presentation_slides.read().await;
-    let mut pres = state.presentation.write().await;
-
-    let prev_item_idx = pres.current_item_index;
-
-    if !slides.is_empty() {
-        let item_idx = pres.current_item_index;
-        let slide_idx = pres.current_slide_index;
-        let item_len = slides.get(item_idx).map(|s| s.len()).unwrap_or(0);
-
-        if slide_idx + 1 < item_len {
-            pres.current_slide_index = slide_idx + 1;
-        } else if item_idx + 1 < slides.len() {
-            pres.current_item_index = item_idx + 1;
-            pres.current_slide_index = 0;
-        }
-    }
-
-    // T17: resolve background if item changed
-    if pres.current_item_index != prev_item_idx {
-        let item = pres.set.as_ref().and_then(|s| s.items.get(pres.current_item_index)).cloned();
-        pres.background = if let Some(ref item) = item {
-            resolve_background(pool, item).await
-        } else {
-            None
-        };
-    }
-
-    pres.current_slide = resolve_current_slide(&slides, &pres);
-    let new_state = pres.clone();
-    drop(pres);
-    drop(slides);
-
-    emit_state(&app, &new_state).await?;
-    Ok(new_state)
+    do_next_slide(pool, &state.presentation, &state.presentation_slides, &app).await
 }
 
 #[tauri::command]

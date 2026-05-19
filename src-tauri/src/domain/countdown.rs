@@ -24,6 +24,8 @@ pub struct CountdownConfig {
     pub duration_ms: u64,
     pub message: Option<String>,
     pub end_behavior: CountdownEndBehavior,
+    /// Optional media ID for a looped video background behind the digits.
+    pub background_media_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -79,6 +81,7 @@ mod tests {
             duration_ms: 600_000,
             message: Some("O culto começa em…".into()),
             end_behavior: CountdownEndBehavior::AdvanceSet,
+            background_media_id: Some("media-uuid-123".into()),
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"durationMs\""), "{json}");

@@ -92,7 +92,7 @@ export const CountdownPanel: React.FC = () => {
           </button>
         ) : (
           <button
-            onClick={start}
+            onClick={() => start()}
             disabled={state.durationMs === 0}
             className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
           >

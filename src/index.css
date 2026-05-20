@@ -1,1 +1,4 @@
 @import "tailwindcss";
+
+/* Tailwind v4 dark variant: triggered by .dark class on <html> */
+@variant dark (&:where(.dark, .dark *));

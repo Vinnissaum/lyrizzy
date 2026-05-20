@@ -394,6 +394,11 @@
       "ptBR": "Português (Brasil)",
       "enUS": "English"
     },
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark"
+    },
     "windows": {
       "title": "Windows",
       "presentationWindow": "Presentation Window",

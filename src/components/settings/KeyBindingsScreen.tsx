@@ -98,20 +98,20 @@ export const KeyBindingsScreen: React.FC = () => {
           return (
             <div
               key={action}
-              className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-700/50 group"
+              className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-200/70 dark:hover:bg-gray-700/50 group"
             >
-              <span className="text-sm text-gray-200 flex-1 min-w-0 truncate">
+              <span className="text-sm text-gray-700 dark:text-gray-200 flex-1 min-w-0 truncate">
                 {t(`keyBindings.actions.${action}`)}
               </span>
               <div className="flex items-center gap-2 ml-3 shrink-0">
                 {isRecording ? (
-                  <span className="text-xs text-amber-400 animate-pulse">
+                  <span className="text-xs text-amber-500 dark:text-amber-400 animate-pulse">
                     {t("keyBindings.pressKey")}
                   </span>
                 ) : shortcuts.length > 0 ? (
                   <Keycap shortcut={shortcuts[0]} />
                 ) : (
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-gray-400 dark:text-gray-600">
                     {t("keyBindings.noBinding")}
                   </span>
                 )}
@@ -120,7 +120,7 @@ export const KeyBindingsScreen: React.FC = () => {
                     isRecording ? setRecording(null) : setRecording(action)
                   }
                   disabled={saving}
-                  className="text-xs text-gray-500 hover:text-blue-400 transition-colors px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100"
                 >
                   {isRecording ? t("keyBindings.cancel") : t("keyBindings.edit")}
                 </button>
@@ -130,11 +130,11 @@ export const KeyBindingsScreen: React.FC = () => {
         })}
       </div>
 
-      <div className="flex justify-end pt-2 border-t border-gray-700">
+      <div className="flex justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
         <button
           onClick={handleReset}
           disabled={saving}
-          className="text-xs text-gray-400 hover:text-white border border-gray-600 hover:border-gray-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 hover:border-gray-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
         >
           {saving ? t("saving") : t("keyBindings.resetAll")}
         </button>

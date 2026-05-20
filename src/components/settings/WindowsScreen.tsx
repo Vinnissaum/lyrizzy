@@ -51,14 +51,14 @@ const WindowRow: React.FC<WindowRowProps> = ({
   const { t } = useTranslation();
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-gray-300">{title}</p>
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{title}</p>
       <div className="flex gap-2">
         <select
           value={selectedIdx ?? ""}
           onChange={(e) =>
             onSelect(e.target.value === "" ? undefined : Number(e.target.value))
           }
-          className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-emerald-500"
+          className="flex-1 bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:border-emerald-500"
         >
           <option value="">{t("settings.windows.autoSelect")}</option>
           {monitors.map((m, i) => (

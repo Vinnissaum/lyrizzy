@@ -68,21 +68,21 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
             className="w-16 h-10 object-cover rounded border border-gray-600"
           />
         ) : (
-          <div className="w-16 h-10 rounded border border-gray-600 bg-gray-800 flex items-center justify-center text-gray-600 text-xs">
+          <div className="w-16 h-10 rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-600 text-xs">
             {t("editor.bg.none")}
           </div>
         )}
         <div className="flex gap-1.5 flex-1">
           <button
             onClick={onOpenPicker}
-            className="flex-1 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            className="flex-1 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
           >
             {current ? t("editor.bg.change") : t("editor.bg.choose")}
           </button>
           {current && (
             <button
               onClick={onRemove}
-              className="px-2 py-1.5 text-xs bg-gray-800 hover:bg-red-800 text-gray-400 hover:text-white rounded-lg transition-colors"
+              className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-red-100 dark:bg-gray-800 dark:hover:bg-red-800 text-gray-500 dark:text-gray-400 hover:text-red-700 dark:hover:text-white rounded-lg transition-colors"
             >
               {t("editor.bg.remove")}
             </button>
@@ -92,7 +92,7 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
 
       {current && (
         <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-gray-400">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
             <span>{t("editor.bg.scrimLabel")}</span>
             <span>{scrimOpacity}%</span>
           </div>
@@ -371,10 +371,10 @@ export const SongEditor: React.FC = () => {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <button
           onClick={closeEditor}
-          className="text-sm text-gray-400 hover:text-white transition-colors"
+          className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
         >
           {t("editor.back")}
         </button>
@@ -390,7 +390,7 @@ export const SongEditor: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={!isValid || isSaving}
-            className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-white"
           >
             {isSaving ? t("saving") : t("editor.save")}
           </button>
@@ -405,7 +405,7 @@ export const SongEditor: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("editor.titlePlaceholder")}
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-lg font-medium focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-lg font-medium text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
             {titleError && (
               <p className="text-red-400 text-xs mt-1">{titleError}</p>
@@ -416,14 +416,14 @@ export const SongEditor: React.FC = () => {
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
             placeholder={t("editor.artistPlaceholder")}
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
           />
 
           <div className="flex gap-3">
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className="bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             >
               <option value="pt">{t("editor.lang.pt")}</option>
               <option value="en">{t("editor.lang.en")}</option>
@@ -442,7 +442,7 @@ export const SongEditor: React.FC = () => {
 
         {/* Background */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             {t("editor.background")}
           </h3>
           <BackgroundPicker
@@ -460,7 +460,7 @@ export const SongEditor: React.FC = () => {
 
         {/* Sections */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             {t("editor.sections")}
           </h3>
           {bodyError && (
@@ -492,7 +492,7 @@ export const SongEditor: React.FC = () => {
 
           <button
             onClick={addSection}
-            className="w-full py-2 text-sm text-gray-400 hover:text-white border border-dashed border-gray-600 hover:border-gray-400 rounded-lg transition-colors"
+            className="w-full py-2 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-dashed border-gray-300 hover:border-gray-500 dark:border-gray-600 dark:hover:border-gray-400 rounded-lg transition-colors"
           >
             {t("editor.addSection")}
           </button>
@@ -503,7 +503,7 @@ export const SongEditor: React.FC = () => {
           <button
             type="button"
             onClick={() => setRightsOpen((o) => !o)}
-            className="flex items-center gap-2 text-sm font-medium text-gray-400 uppercase tracking-wider hover:text-gray-200 transition-colors w-full text-left"
+            className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
           >
             <span className={`text-xs transition-transform ${rightsOpen ? "rotate-90" : ""}`}>▶</span>
             {t("editor.rights.title")}
@@ -514,19 +514,19 @@ export const SongEditor: React.FC = () => {
                 value={ccliNumber}
                 onChange={(e) => setCcliNumber(e.target.value)}
                 placeholder={t("editor.rights.ccliNumber")}
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <input
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
                 placeholder={t("editor.rights.author")}
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <input
                 value={copyright}
                 onChange={(e) => setCopyright(e.target.value)}
                 placeholder={t("editor.rights.copyright")}
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
           )}

@@ -28,6 +28,7 @@ import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
 import { useKeyBindingsStore } from "../../stores/keyBindings";
+import { useThemeStore } from "../../stores/theme";
 import { installKeyboardDispatcher } from "../../runtime/keyboard";
 import type { Song } from "../../types";
 
@@ -54,6 +55,7 @@ export const OperatorApp: React.FC = () => {
   const { subscribe: subscribeCountdown } = useCountdownStore();
   const { setLocale } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
+  const { load: loadTheme } = useThemeStore();
 
   const [presentationMonitorIdx, setPresentationMonitorIdx] = useState<number | undefined>(undefined);
   const [stageMonitorIdx, setStageMonitorIdx] = useState<number | undefined>(undefined);
@@ -74,6 +76,7 @@ export const OperatorApp: React.FC = () => {
     });
     loadBindings();
     const unsubBindings = subscribeBindings();
+    loadTheme();
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
 
@@ -172,20 +175,20 @@ export const OperatorApp: React.FC = () => {
   const serviceSet = presState?.set;
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col">
+    <div className="h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white flex flex-col">
       {restoreInProgress && (
         <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />
       )}
 
       {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-gray-700 shrink-0">
+      <header className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setView("library")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isLibrarySection
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-800"
+                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
             }`}
           >
             {t("nav.library")}
@@ -194,8 +197,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("sets")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isSetSection
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-800"
+                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
             }`}
           >
             {t("nav.sets")}
@@ -204,8 +207,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("countdown")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isCountdownSection
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-800"
+                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
             }`}
           >
             {t("nav.countdown")}
@@ -214,8 +217,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("media")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isMediaSection
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-800"
+                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
             }`}
           >
             {t("nav.media")}
@@ -224,8 +227,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("backup")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isBackupSection
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-800"
+                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
             }`}
           >
             {t("nav.backup")}
@@ -234,8 +237,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("settings")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isSettingsSection
-                ? "bg-gray-700 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-800"
+                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
             }`}
           >
             {t("nav.settings")}
@@ -252,7 +255,7 @@ export const OperatorApp: React.FC = () => {
           </button>
           <button
             onClick={handleOpenStage}
-            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
+            className="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white rounded-lg font-medium transition-colors"
           >
             {t("nav.stageWindow")}
           </button>

@@ -85,7 +85,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
   const handleConfirmDelete = async () => {
     if (!references) return;
     const hasRefs =
-      references.songs.length > 0 || references.setItems.length > 0;
+      references.songs.length > 0 || references.setItems.length > 0 || references.sections.length > 0;
     if (hasRefs) {
       setShowDeleteConfirm(false);
       return;
@@ -106,7 +106,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
 
   const hasRefs =
     references &&
-    (references.songs.length > 0 || references.setItems.length > 0);
+    (references.songs.length > 0 || references.setItems.length > 0 || references.sections.length > 0);
 
   return (
     <div className="flex flex-col h-full border-l border-gray-700 bg-gray-900 w-72 shrink-0">
@@ -248,6 +248,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
             ? t("media.delete.inUseMessage", {
                 songs: references!.songs.length,
                 items: references!.setItems.length,
+                sections: references!.sections.length,
               })
             : t("media.delete.confirmMessage", { name: media.displayName })
         }

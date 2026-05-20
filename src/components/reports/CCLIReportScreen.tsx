@@ -80,22 +80,22 @@ export const CCLIReportScreen: React.FC = () => {
 
       {/* Date range */}
       <div className="flex items-center gap-3 flex-wrap">
-        <label className="flex items-center gap-2 text-sm text-gray-300">
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
           {t("reports.ccli.from")}
           <input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-blue-500"
+            className="bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
           />
         </label>
-        <label className="flex items-center gap-2 text-sm text-gray-300">
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
           {t("reports.ccli.to")}
           <input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-blue-500"
+            className="bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
           />
         </label>
         <button
@@ -118,7 +118,7 @@ export const CCLIReportScreen: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
-              <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-gray-700">
+              <tr className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
                 <th className="pb-2 pr-4">{t("reports.ccli.col.date")}</th>
                 <th className="pb-2 pr-4">{t("reports.ccli.col.title")}</th>
                 <th className="pb-2 pr-4">{t("reports.ccli.col.author")}</th>
@@ -126,11 +126,11 @@ export const CCLIReportScreen: React.FC = () => {
                 <th className="pb-2">{t("reports.ccli.col.copyright")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {rows.map((row, i) => (
-                <tr key={i} className="text-gray-300 hover:bg-gray-800/50">
-                  <td className="py-2 pr-4 text-gray-400 tabular-nums">{row.playedOn}</td>
-                  <td className="py-2 pr-4 font-medium text-white">{row.title}</td>
+                <tr key={i} className="text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <td className="py-2 pr-4 text-gray-500 dark:text-gray-400 tabular-nums">{row.playedOn}</td>
+                  <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">{row.title}</td>
                   <td className="py-2 pr-4">{row.author ?? "—"}</td>
                   <td className="py-2 pr-4">{row.ccliNumber ?? "—"}</td>
                   <td className="py-2">{row.copyright ?? "—"}</td>
@@ -138,7 +138,7 @@ export const CCLIReportScreen: React.FC = () => {
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-gray-600 mt-2">
+          <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">
             {t("reports.ccli.rowCount", { count: rows.length })}
           </p>
         </div>

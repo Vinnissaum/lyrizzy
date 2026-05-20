@@ -68,14 +68,14 @@ export const SectionCard: React.FC<Props> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-gray-800 rounded-lg border border-gray-700 p-3 space-y-2"
+      className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2"
     >
       <div className="flex items-center gap-2">
         <button
           {...attributes}
           {...listeners}
           aria-label={t("sectionCard.dragAriaLabel")}
-          className="cursor-grab text-gray-500 hover:text-gray-300 shrink-0"
+          className="cursor-grab text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
         >
           <GripVertical size={16} />
         </button>
@@ -94,13 +94,13 @@ export const SectionCard: React.FC<Props> = ({
           value={section.label}
           onChange={(e) => update({ label: e.target.value })}
           placeholder={t("sectionCard.labelPlaceholder")}
-          className="flex-1 text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+          className="flex-1 text-sm bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
         />
 
         <select
           value={section.type}
           onChange={(e) => update({ type: e.target.value as SectionType })}
-          className="text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+          className="text-sm bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
         >
           {SECTION_TYPE_VALUES.map((v) => (
             <option key={v} value={v}>
@@ -118,14 +118,14 @@ export const SectionCard: React.FC<Props> = ({
             update({ repeatCount: Math.max(1, parseInt(e.target.value) || 1) })
           }
           title="Repetições"
-          className="w-14 text-sm text-center bg-gray-700 border border-gray-600 rounded px-1 py-1 focus:outline-none focus:border-blue-500"
+          className="w-14 text-sm text-center bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded px-1 py-1 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
         />
 
         <button
           onClick={() => setBgPickerOpen((o) => !o)}
           aria-label={t("sectionCard.background.pick")}
           title={t("sectionCard.background.pick")}
-          className={`shrink-0 ${section.backgroundId ? "text-emerald-400" : "text-gray-500 hover:text-gray-300"}`}
+          className={`shrink-0 ${section.backgroundId ? "text-emerald-500 dark:text-emerald-400" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"}`}
         >
           <ImageIcon size={16} />
         </button>
@@ -134,7 +134,7 @@ export const SectionCard: React.FC<Props> = ({
           onClick={() => setNotesOpen((o) => !o)}
           aria-label={t("sectionCard.notes.toggle")}
           title={t("sectionCard.notes.toggle")}
-          className={`shrink-0 ${notesOpen || section.notes ? "text-blue-400" : "text-gray-500 hover:text-gray-300"}`}
+          className={`shrink-0 ${notesOpen || section.notes ? "text-blue-500 dark:text-blue-400" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"}`}
         >
           <StickyNote size={16} />
         </button>
@@ -143,7 +143,7 @@ export const SectionCard: React.FC<Props> = ({
           <button
             onClick={onRemove}
             aria-label={t("sectionCard.removeAriaLabel")}
-            className="text-gray-500 hover:text-red-400 shrink-0"
+            className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 shrink-0"
           >
             <Trash2 size={16} />
           </button>
@@ -155,25 +155,25 @@ export const SectionCard: React.FC<Props> = ({
         onChange={(e) => update({ body: e.target.value })}
         placeholder={t("sectionCard.bodyPlaceholder")}
         rows={4}
-        className="w-full text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1.5 resize-y focus:outline-none focus:border-blue-500 font-mono"
+        className="w-full text-sm bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white resize-y focus:outline-none focus:border-blue-500 font-mono"
       />
 
       {bgPickerOpen && (
-        <div className="rounded bg-gray-900 border border-gray-700 p-2 space-y-2">
+        <div className="rounded bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-2 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">{t("sectionCard.background.pick")}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t("sectionCard.background.pick")}</span>
             <div className="flex gap-1">
               {section.backgroundId && (
                 <button
                   onClick={() => { update({ backgroundId: undefined }); setBgPickerOpen(false); }}
-                  className="text-xs text-red-400 hover:text-red-300 px-2 py-0.5 rounded hover:bg-gray-800"
+                  className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-800"
                 >
                   {t("sectionCard.background.clear")}
                 </button>
               )}
               <button
                 onClick={() => setBgPickerOpen(false)}
-                className="text-gray-500 hover:text-gray-300 p-0.5 rounded"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 rounded"
               >
                 <X size={14} />
               </button>

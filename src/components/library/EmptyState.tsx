@@ -14,7 +14,7 @@ export const EmptyState: React.FC<Props> = ({
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center py-16">
       <div className="space-y-2">
-        <p className="text-2xl font-semibold text-gray-300">{t("library.empty.title")}</p>
+        <p className="text-2xl font-semibold text-gray-700 dark:text-gray-300">{t("library.empty.title")}</p>
         <p className="text-gray-500">{t("library.empty.subtitle")}</p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3">

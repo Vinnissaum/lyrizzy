@@ -47,7 +47,7 @@ export const SongList: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-3 border-b border-gray-700">
+      <div className="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold mb-3">{t("library.title")}</h2>
         <input
           ref={inputRef}
@@ -55,7 +55,7 @@ export const SongList: React.FC<Props> = ({
           value={search}
           onChange={handleSearchChange}
           placeholder={t("library.searchPlaceholder")}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500"
         />
       </div>
 

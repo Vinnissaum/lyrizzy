@@ -394,6 +394,11 @@
       "ptBR": "Português (Brasil)",
       "enUS": "English"
     },
+    "theme": {
+      "label": "Tema",
+      "light": "Claro",
+      "dark": "Escuro"
+    },
     "windows": {
       "title": "Janelas",
       "presentationWindow": "Janela de Apresentação",

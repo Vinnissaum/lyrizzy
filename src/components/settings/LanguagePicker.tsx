@@ -20,11 +20,11 @@ export const LanguagePicker: React.FC = () => {
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-300">{t("settings.language")}</span>
+      <span className="text-sm text-gray-700 dark:text-gray-300">{t("settings.language")}</span>
       <select
         value={locale}
         onChange={(e) => handleChange(e.target.value)}
-        className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+        className="bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
       >
         {LOCALE_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>

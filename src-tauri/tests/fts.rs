@@ -142,6 +142,8 @@ fn make_song(title: &str, body: &str) -> CreateSongPayload {
     CreateSongPayload {
         title: title.to_string(),
         artist: None,
+        author: None,
+        copyright: None,
         ccli_number: None,
         key_signature: None,
         language: None,
@@ -156,6 +158,8 @@ fn make_song(title: &str, body: &str) -> CreateSongPayload {
             body: body.to_string(),
             sort_order: 0,
             repeat_count: None,
+            notes: None,
+            background_id: None,
         }],
     }
 }
@@ -206,4 +210,81 @@ async fn fts_invalid_query_falls_back_to_like_and_returns_no_error() {
     .await;
 
     assert!(results.is_ok(), "invalid FTS5 query must not return an error");
+}
+
+#[tokio::test]
+async fn fts_search_finds_song_by_author() {
+    let pool = open_test_db().await;
+
+    db_create_song(
+        &pool,
+        CreateSongPayload {
+            title: "Música sem Autor".to_string(),
+            artist: None,
+            author: None,
+            copyright: None,
+            ccli_number: None,
+            key_signature: None,
+            language: None,
+            notes: None,
+            background_id: None,
+            scrim_opacity: None,
+            slide_config: None,
+            source: None,
+            sections: vec![SectionPayload {
+                label: "Estrofe 1".to_string(),
+                section_type: SectionType::Verse,
+                body: "corpo sem autor".to_string(),
+                sort_order: 0,
+                repeat_count: None,
+                notes: None,
+                background_id: None,
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    db_create_song(
+        &pool,
+        CreateSongPayload {
+            title: "Hino do Autor".to_string(),
+            artist: None,
+            author: Some("João Silva".to_string()),
+            copyright: None,
+            ccli_number: None,
+            key_signature: None,
+            language: None,
+            notes: None,
+            background_id: None,
+            scrim_opacity: None,
+            slide_config: None,
+            source: None,
+            sections: vec![SectionPayload {
+                label: "Estrofe 1".to_string(),
+                section_type: SectionType::Verse,
+                body: "corpo qualquer".to_string(),
+                sort_order: 0,
+                repeat_count: None,
+                notes: None,
+                background_id: None,
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    let results = db_list_songs(
+        &pool,
+        ListSongsParams {
+            search: Some("silva".to_string()),
+            limit: None,
+            offset: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].title, "Hino do Autor");
 }

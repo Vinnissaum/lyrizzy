@@ -73,6 +73,8 @@ async fn five_variant_set_produces_correct_slide_counts() {
         CreateSongPayload {
             title: "Test Song".into(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: Some("pt".into()),
@@ -88,6 +90,8 @@ async fn five_variant_set_produces_correct_slide_counts() {
                     body: "Line one\nLine two\nLine three\nLine four".into(),
                     sort_order: 0,
                     repeat_count: Some(1),
+                    notes: None,
+                    background_id: None,
                 },
                 SectionPayload {
                     label: "Chorus".into(),
@@ -95,6 +99,8 @@ async fn five_variant_set_produces_correct_slide_counts() {
                     body: "Chorus line one\nChorus line two".into(),
                     sort_order: 1,
                     repeat_count: Some(1),
+                    notes: None,
+                    background_id: None,
                 },
             ],
         },

@@ -145,6 +145,8 @@ export interface PresentationState {
   mode: PresentationMode;
   frozenAt?: [number, number];
   currentSlide?: Slide;
+  /** Next slide from the current navigation position. Used by the stage display. */
+  nextSlide?: Slide;
   itemSlideCounts: number[];
   background?: BackgroundInfo;
 }

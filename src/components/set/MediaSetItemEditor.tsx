@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { useMediaStore } from "../../stores/media";
+import { NotesField } from "../common/NotesField";
 import type { MediaItemOptions, SetItem } from "../../types";
 
 const DEFAULT_OPTS: MediaItemOptions = { loop: false, mute: false, autoAdvanceOnEnd: true };
@@ -14,11 +15,22 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
   const { t } = useTranslation();
   const { media } = useMediaStore();
   const [opts, setOpts] = useState<MediaItemOptions>(item.mediaOptions ?? DEFAULT_OPTS);
+  const [notes, setNotes] = useState(item.notes ?? "");
   const [saving, setSaving] = useState(false);
+  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setOpts(item.mediaOptions ?? DEFAULT_OPTS);
+    setNotes(item.notes ?? "");
   }, [item.id]);
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => {
+      updateSetItem({ id: item.id, notes: value || undefined }).catch(console.error);
+    }, 300);
+  };
 
   const selectedMedia = item.mediaId ? media.find((m) => m.id === item.mediaId) : undefined;
 
@@ -105,6 +117,11 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
       )}
 
       {saving && <p className="text-xs text-gray-500">{t("media.editor.saving")}</p>}
+
+      <div>
+        <p className="text-xs text-gray-400 mb-1">{t("builder.itemNotes.label")}</p>
+        <NotesField value={notes} onChange={handleNotesChange} placeholder={t("builder.itemNotes.placeholder")} />
+      </div>
     </div>
   );
 };

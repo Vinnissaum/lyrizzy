@@ -62,6 +62,8 @@ async fn run_batch(
                 body: s.text.clone(),
                 sort_order: (s.number as i32) - 1,
                 repeat_count: Some(1),
+                notes: None,
+                background_id: None,
             })
             .collect();
 
@@ -74,6 +76,8 @@ async fn run_batch(
                 } else {
                     Some(song.artist.clone())
                 },
+                author: None,
+                copyright: None,
                 ccli_number: None,
                 key_signature: None,
                 language: Some("pt".to_string()),
@@ -105,6 +109,8 @@ async fn import_batch_skips_duplicate_and_imports_unique() {
         CreateSongPayload {
             title: "Graça Infinita".to_string(),
             artist: Some("Artista A".to_string()),
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: Some("pt".to_string()),
@@ -119,6 +125,8 @@ async fn import_batch_skips_duplicate_and_imports_unique() {
                 body: "corpo".to_string(),
                 sort_order: 0,
                 repeat_count: None,
+                notes: None,
+                background_id: None,
             }],
         },
     )

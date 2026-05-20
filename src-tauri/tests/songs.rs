@@ -29,6 +29,8 @@ fn verse_section(label: &str, body: &str) -> SectionPayload {
         body: body.to_string(),
         sort_order: 0,
         repeat_count: None,
+        notes: None,
+        background_id: None,
     }
 }
 
@@ -39,6 +41,8 @@ async fn create_song_inserts_song_and_sections() {
     let payload = CreateSongPayload {
         title: "Amazing Grace".to_string(),
         artist: Some("John Newton".to_string()),
+        author: None,
+        copyright: None,
         ccli_number: None,
         key_signature: None,
         language: Some("en".to_string()),
@@ -54,6 +58,8 @@ async fn create_song_inserts_song_and_sections() {
                 body: "Amazing grace how sweet the sound".to_string(),
                 sort_order: 0,
                 repeat_count: Some(1),
+                notes: None,
+                background_id: None,
             },
             SectionPayload {
                 label: "Refrão".to_string(),
@@ -61,6 +67,8 @@ async fn create_song_inserts_song_and_sections() {
                 body: "Praise the Lord".to_string(),
                 sort_order: 1,
                 repeat_count: None,
+                notes: None,
+                background_id: None,
             },
         ],
     };
@@ -93,6 +101,8 @@ async fn update_song_replaces_sections_in_transaction() {
         CreateSongPayload {
             title: "Old Title".to_string(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -113,6 +123,8 @@ async fn update_song_replaces_sections_in_transaction() {
             id: created.id.clone(),
             title: "New Title".to_string(),
             artist: Some("New Artist".to_string()),
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -155,6 +167,8 @@ async fn update_song_returns_error_for_nonexistent_id() {
             id: "nonexistent-id".to_string(),
             title: "x".to_string(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -181,6 +195,8 @@ async fn delete_song_sets_deleted_at() {
         CreateSongPayload {
             title: "Deletável".to_string(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -215,6 +231,8 @@ async fn delete_song_returns_error_for_already_deleted() {
         CreateSongPayload {
             title: "Já deletada".to_string(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -243,6 +261,8 @@ async fn list_songs_excludes_soft_deleted() {
         CreateSongPayload {
             title: "Ativa".to_string(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -262,6 +282,8 @@ async fn list_songs_excludes_soft_deleted() {
         CreateSongPayload {
             title: "Removida".to_string(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -292,6 +314,8 @@ async fn get_song_returns_sections_in_sort_order() {
         CreateSongPayload {
             title: "Ordenada".to_string(),
             artist: None,
+            author: None,
+            copyright: None,
             ccli_number: None,
             key_signature: None,
             language: None,
@@ -307,6 +331,8 @@ async fn get_song_returns_sections_in_sort_order() {
                     body: "corpo 2".to_string(),
                     sort_order: 1,
                     repeat_count: None,
+                    notes: None,
+                    background_id: None,
                 },
                 SectionPayload {
                     label: "Primeiro".to_string(),
@@ -314,6 +340,8 @@ async fn get_song_returns_sections_in_sort_order() {
                     body: "corpo 1".to_string(),
                     sort_order: 0,
                     repeat_count: None,
+                    notes: None,
+                    background_id: None,
                 },
             ],
         },
@@ -325,4 +353,83 @@ async fn get_song_returns_sections_in_sort_order() {
     assert_eq!(fetched.sections.len(), 2);
     assert_eq!(fetched.sections[0].sort_order, 0);
     assert_eq!(fetched.sections[1].sort_order, 1);
+}
+
+#[tokio::test]
+async fn round_trips_notes_background_author_copyright() {
+    let pool = open_test_db().await;
+
+    let created = db_create_song(
+        &pool,
+        CreateSongPayload {
+            title: "Campos Cheios".to_string(),
+            artist: None,
+            author: Some("João Silva".to_string()),
+            copyright: Some("© 2024 Igreja".to_string()),
+            ccli_number: None,
+            key_signature: None,
+            language: None,
+            notes: None,
+            background_id: None,
+            scrim_opacity: None,
+            slide_config: None,
+            source: None,
+            sections: vec![SectionPayload {
+                label: "Estrofe 1".to_string(),
+                section_type: SectionType::Verse,
+                body: "corpo da estrofe".to_string(),
+                sort_order: 0,
+                repeat_count: Some(1),
+                notes: Some("Cantar devagar".to_string()),
+                background_id: None,
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(created.author.as_deref(), Some("João Silva"));
+    assert_eq!(created.copyright.as_deref(), Some("© 2024 Igreja"));
+    assert_eq!(created.sections[0].notes.as_deref(), Some("Cantar devagar"));
+
+    // Verify via a fetch from DB
+    let fetched = db_get_song(&pool, &created.id).await.unwrap();
+    assert_eq!(fetched.author.as_deref(), Some("João Silva"));
+    assert_eq!(fetched.copyright.as_deref(), Some("© 2024 Igreja"));
+    assert_eq!(fetched.sections[0].notes.as_deref(), Some("Cantar devagar"));
+
+    // update_song persists new values and normalizes empty strings to NULL
+    let updated = db_update_song(
+        &pool,
+        UpdateSongPayload {
+            id: created.id.clone(),
+            title: created.title.clone(),
+            artist: None,
+            author: Some("  ".to_string()),   // whitespace → None
+            copyright: Some("Nova Letra".to_string()),
+            ccli_number: None,
+            key_signature: None,
+            language: None,
+            notes: None,
+            background_id: None,
+            scrim_opacity: None,
+            slide_config: None,
+            source: None,
+            sections: vec![SectionPayload {
+                label: "Estrofe 1".to_string(),
+                section_type: SectionType::Verse,
+                body: "novo corpo".to_string(),
+                sort_order: 0,
+                repeat_count: Some(1),
+                notes: Some("".to_string()),   // empty → None
+                background_id: None,
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(updated.author.is_none(), "whitespace-only author must normalize to NULL");
+    assert_eq!(updated.copyright.as_deref(), Some("Nova Letra"));
+    assert!(updated.sections[0].notes.is_none(), "empty notes must normalize to NULL");
 }

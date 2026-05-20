@@ -49,6 +49,7 @@ describe("OperatorApp — smoke navigation", () => {
     expect(screen.getByRole("button", { name: "Backup" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Configurações" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Janela de Apresentação" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Janela de Stage" })).toBeInTheDocument();
   });
 
   it("library section is active by default and shows song list CTAs", async () => {
@@ -102,11 +103,12 @@ describe("OperatorApp — smoke navigation", () => {
   it("navigates to the settings section", async () => {
     render(<OperatorApp />);
     fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
-    // "Geral" and "Idioma" are unique to SettingsScreen
+    // "Geral", "Idioma", and "Janelas" are unique to SettingsScreen
     await waitFor(() =>
       expect(screen.getByText("Geral")).toBeInTheDocument()
     );
     expect(screen.getByText("Idioma")).toBeInTheDocument();
+    expect(screen.getByText("Janelas")).toBeInTheDocument();
   });
 
   it("subscribes to all required events on mount", async () => {

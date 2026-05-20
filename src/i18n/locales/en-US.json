@@ -6,7 +6,8 @@
     "media": "Media",
     "backup": "Backup",
     "settings": "Settings",
-    "presentationWindow": "Presentation Window"
+    "presentationWindow": "Presentation Window",
+    "stageWindow": "Stage Window"
   },
   "loading": "Loading…",
   "saving": "Saving…",
@@ -71,7 +72,12 @@
     "labelPlaceholder": "Section label",
     "bodyPlaceholder": "Section lyrics…",
     "dragAriaLabel": "Drag section",
-    "removeAriaLabel": "Remove section"
+    "removeAriaLabel": "Remove section",
+    "notes": {
+      "toggle": "Section notes",
+      "placeholder": "Presenter notes (visible only in operator and stage)…",
+      "charCountWarning": "Long note — consider splitting into sections"
+    }
   },
   "sets": {
     "title": "Worship Sets",
@@ -122,6 +128,10 @@
       "moveDown": "Move down",
       "remove": "Remove",
       "edit": "Edit"
+    },
+    "itemNotes": {
+      "label": "Notes",
+      "placeholder": "Presenter notes…"
     }
   },
   "presentation": {
@@ -136,7 +146,12 @@
     "currentSlide": "Current slide",
     "blankSlide": "Blank slide",
     "prev": "← Previous",
-    "next": "Next →"
+    "next": "Next →",
+    "notes": {
+      "title": "Notes",
+      "collapse": "Collapse notes panel",
+      "expand": "Expand notes panel"
+    }
   },
   "countdown": {
     "title": "Countdown",
@@ -368,6 +383,28 @@
     "languageOptions": {
       "ptBR": "Português (Brasil)",
       "enUS": "English"
+    },
+    "windows": {
+      "title": "Windows",
+      "presentationWindow": "Presentation Window",
+      "stageWindow": "Stage Window",
+      "open": "Open / Reopen on this screen",
+      "autoSelect": "— Auto —",
+      "current": "(current)"
+    }
+  },
+  "stage": {
+    "noSet": "No set loaded",
+    "endOfService": "End of service",
+    "screenBlanked": "Screen blanked",
+    "screenFrozen": "Screen frozen",
+    "current": "Current",
+    "next": "Next",
+    "notes": "Notes",
+    "preview": {
+      "media": "▶ Media",
+      "countdown": "⏱ Countdown",
+      "webview": "🌐 WebView"
     }
   },
   "errors": {

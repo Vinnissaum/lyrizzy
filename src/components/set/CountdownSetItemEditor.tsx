@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { MediaPicker } from "../common/MediaPicker";
+import { NotesField } from "../common/NotesField";
 import type { CountdownConfig, CountdownEndBehavior, SetItem } from "../../types";
 
 interface Props {
@@ -53,6 +54,8 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   );
   const [durationError, setDurationError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [notes, setNotes] = useState(item.notes ?? "");
+  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setDurationInput(msToDuration(config?.durationMs ?? 600_000));
@@ -60,7 +63,16 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     setEndBehavior(config?.endBehavior ?? "holdZero");
     setBackgroundMediaId(config?.backgroundMediaId);
     setDurationError(null);
+    setNotes(item.notes ?? "");
   }, [item.id]);
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => {
+      updateSetItem({ id: item.id, notes: value || undefined }).catch(console.error);
+    }, 300);
+  };
 
   const buildConfig = (): CountdownConfig | null => {
     const durationMs = durationToMs(durationInput);
@@ -191,6 +203,11 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
       {saving && (
         <p className="text-xs text-gray-500">{t("countdown.editor.saving")}</p>
       )}
+
+      <div>
+        <p className="text-xs text-gray-400 mb-1">{t("builder.itemNotes.label")}</p>
+        <NotesField value={notes} onChange={handleNotesChange} placeholder={t("builder.itemNotes.placeholder")} />
+      </div>
     </div>
   );
 };

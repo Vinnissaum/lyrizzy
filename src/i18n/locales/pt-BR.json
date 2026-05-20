@@ -6,7 +6,8 @@
     "media": "Mídia",
     "backup": "Backup",
     "settings": "Configurações",
-    "presentationWindow": "Janela de Apresentação"
+    "presentationWindow": "Janela de Apresentação",
+    "stageWindow": "Janela de Stage"
   },
   "loading": "Carregando…",
   "saving": "Salvando…",
@@ -71,7 +72,12 @@
     "labelPlaceholder": "Rótulo da seção",
     "bodyPlaceholder": "Letra da seção…",
     "dragAriaLabel": "Arrastar seção",
-    "removeAriaLabel": "Remover seção"
+    "removeAriaLabel": "Remover seção",
+    "notes": {
+      "toggle": "Notas da seção",
+      "placeholder": "Notas para o apresentador (visíveis apenas no operador e no stage)…",
+      "charCountWarning": "Nota longa — considere dividir em seções"
+    }
   },
   "sets": {
     "title": "Conjuntos de Culto",
@@ -122,6 +128,10 @@
       "moveDown": "Mover para baixo",
       "remove": "Remover",
       "edit": "Editar"
+    },
+    "itemNotes": {
+      "label": "Notas",
+      "placeholder": "Notas para o apresentador…"
     }
   },
   "presentation": {
@@ -136,7 +146,12 @@
     "currentSlide": "Slide atual",
     "blankSlide": "Tela em branco",
     "prev": "← Anterior",
-    "next": "Próximo →"
+    "next": "Próximo →",
+    "notes": {
+      "title": "Notas",
+      "collapse": "Recolher painel de notas",
+      "expand": "Expandir painel de notas"
+    }
   },
   "countdown": {
     "title": "Cronômetro",
@@ -368,6 +383,28 @@
     "languageOptions": {
       "ptBR": "Português (Brasil)",
       "enUS": "English"
+    },
+    "windows": {
+      "title": "Janelas",
+      "presentationWindow": "Janela de Apresentação",
+      "stageWindow": "Janela de Stage",
+      "open": "Abrir / Reabrir nesta tela",
+      "autoSelect": "— Automático —",
+      "current": "(atual)"
+    }
+  },
+  "stage": {
+    "noSet": "Sem conjunto carregado",
+    "endOfService": "Fim do culto",
+    "screenBlanked": "Tela apagada",
+    "screenFrozen": "Tela congelada",
+    "current": "Atual",
+    "next": "Próximo",
+    "notes": "Notas",
+    "preview": {
+      "media": "▶ Mídia",
+      "countdown": "⏱ Contagem",
+      "webview": "🌐 WebView"
     }
   },
   "errors": {

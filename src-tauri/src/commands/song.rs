@@ -76,6 +76,10 @@ pub async fn load_sections(
 
 // ─── Payload types ───────────────────────────────────────────────────────────
 
+fn trim_to_none(s: Option<String>) -> Option<String> {
+    s.and_then(|v| if v.trim().is_empty() { None } else { Some(v) })
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SectionPayload {
@@ -85,6 +89,8 @@ pub struct SectionPayload {
     pub body: String,
     pub sort_order: i32,
     pub repeat_count: Option<i32>,
+    pub notes: Option<String>,
+    pub background_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -92,6 +98,8 @@ pub struct SectionPayload {
 pub struct CreateSongPayload {
     pub title: String,
     pub artist: Option<String>,
+    pub author: Option<String>,
+    pub copyright: Option<String>,
     pub ccli_number: Option<String>,
     pub key_signature: Option<String>,
     pub language: Option<String>,
@@ -109,6 +117,8 @@ pub struct UpdateSongPayload {
     pub id: String,
     pub title: String,
     pub artist: Option<String>,
+    pub author: Option<String>,
+    pub copyright: Option<String>,
     pub ccli_number: Option<String>,
     pub key_signature: Option<String>,
     pub language: Option<String>,
@@ -140,6 +150,10 @@ pub async fn db_create_song(
     let id = new_id();
     let now = now_ms();
     let language = payload.language.unwrap_or_else(|| "pt".to_string());
+    let author = trim_to_none(payload.author);
+    let copyright = trim_to_none(payload.copyright);
+    let notes = trim_to_none(payload.notes);
+    let background_id = trim_to_none(payload.background_id);
 
     let mut tx = pool
         .begin()
@@ -148,18 +162,21 @@ pub async fn db_create_song(
 
     let scrim_opacity = payload.scrim_opacity.unwrap_or(35);
     sqlx::query(
-        "INSERT INTO songs (id, title, artist, ccli_number, key_signature, language, notes,
-                            background_id, scrim_opacity, slide_config, source, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO songs (id, title, artist, author, copyright, ccli_number, key_signature,
+                            language, notes, background_id, scrim_opacity, slide_config, source,
+                            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&payload.title)
     .bind(&payload.artist)
+    .bind(&author)
+    .bind(&copyright)
     .bind(&payload.ccli_number)
     .bind(&payload.key_signature)
     .bind(&language)
-    .bind(&payload.notes)
-    .bind(&payload.background_id)
+    .bind(&notes)
+    .bind(&background_id)
     .bind(scrim_opacity)
     .bind(&payload.slide_config)
     .bind(&payload.source)
@@ -173,9 +190,12 @@ pub async fn db_create_song(
     for (i, sec) in payload.sections.iter().enumerate() {
         let sec_id = new_id();
         let repeat_count = sec.repeat_count.unwrap_or(1);
+        let sec_notes = trim_to_none(sec.notes.clone());
+        let sec_background_id = trim_to_none(sec.background_id.clone());
         sqlx::query(
-            "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count,
+                                        notes, background_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&sec_id)
         .bind(&id)
@@ -184,6 +204,8 @@ pub async fn db_create_song(
         .bind(&sec.body)
         .bind(sec.sort_order)
         .bind(repeat_count)
+        .bind(&sec_notes)
+        .bind(&sec_background_id)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
@@ -199,8 +221,8 @@ pub async fn db_create_song(
             body: sec.body.clone(),
             sort_order: sec.sort_order,
             repeat_count,
-            notes: None,
-            background_id: None,
+            notes: sec_notes,
+            background_id: sec_background_id,
         });
     }
 
@@ -212,13 +234,13 @@ pub async fn db_create_song(
         id,
         title: payload.title,
         artist: payload.artist,
-        author: None,
-        copyright: None,
+        author,
+        copyright,
         ccli_number: payload.ccli_number,
         key_signature: payload.key_signature,
         language,
-        notes: payload.notes,
-        background_id: payload.background_id,
+        notes,
+        background_id,
         scrim_opacity,
         slide_config: payload.slide_config,
         source: payload.source,
@@ -242,6 +264,10 @@ pub async fn db_update_song(
     let created_at: i64 = row.get("created_at");
     let now = now_ms();
     let language = payload.language.unwrap_or_else(|| "pt".to_string());
+    let author = trim_to_none(payload.author);
+    let copyright = trim_to_none(payload.copyright);
+    let notes = trim_to_none(payload.notes);
+    let background_id = trim_to_none(payload.background_id);
 
     let mut tx = pool
         .begin()
@@ -250,17 +276,20 @@ pub async fn db_update_song(
 
     let scrim_opacity = payload.scrim_opacity.unwrap_or(35);
     sqlx::query(
-        "UPDATE songs SET title=?, artist=?, ccli_number=?, key_signature=?, language=?,
-                          notes=?, background_id=?, scrim_opacity=?, slide_config=?, source=?, updated_at=?
+        "UPDATE songs SET title=?, artist=?, author=?, copyright=?, ccli_number=?,
+                          key_signature=?, language=?, notes=?, background_id=?,
+                          scrim_opacity=?, slide_config=?, source=?, updated_at=?
          WHERE id=?",
     )
     .bind(&payload.title)
     .bind(&payload.artist)
+    .bind(&author)
+    .bind(&copyright)
     .bind(&payload.ccli_number)
     .bind(&payload.key_signature)
     .bind(&language)
-    .bind(&payload.notes)
-    .bind(&payload.background_id)
+    .bind(&notes)
+    .bind(&background_id)
     .bind(scrim_opacity)
     .bind(&payload.slide_config)
     .bind(&payload.source)
@@ -280,9 +309,12 @@ pub async fn db_update_song(
     for (i, sec) in payload.sections.iter().enumerate() {
         let sec_id = new_id();
         let repeat_count = sec.repeat_count.unwrap_or(1);
+        let sec_notes = trim_to_none(sec.notes.clone());
+        let sec_background_id = trim_to_none(sec.background_id.clone());
         sqlx::query(
-            "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count,
+                                        notes, background_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&sec_id)
         .bind(&payload.id)
@@ -291,6 +323,8 @@ pub async fn db_update_song(
         .bind(&sec.body)
         .bind(sec.sort_order)
         .bind(repeat_count)
+        .bind(&sec_notes)
+        .bind(&sec_background_id)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
@@ -306,8 +340,8 @@ pub async fn db_update_song(
             body: sec.body.clone(),
             sort_order: sec.sort_order,
             repeat_count,
-            notes: None,
-            background_id: None,
+            notes: sec_notes,
+            background_id: sec_background_id,
         });
     }
 
@@ -319,13 +353,13 @@ pub async fn db_update_song(
         id: payload.id,
         title: payload.title,
         artist: payload.artist,
-        author: None,
-        copyright: None,
+        author,
+        copyright,
         ccli_number: payload.ccli_number,
         key_signature: payload.key_signature,
         language,
-        notes: payload.notes,
-        background_id: payload.background_id,
+        notes,
+        background_id,
         scrim_opacity,
         slide_config: payload.slide_config,
         source: payload.source,

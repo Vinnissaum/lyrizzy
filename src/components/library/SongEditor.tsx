@@ -228,6 +228,7 @@ export const SongEditor: React.FC = () => {
             type: s.type,
             body: s.body,
             repeatCount: s.repeatCount,
+            notes: s.notes,
           }))
         );
       })
@@ -275,6 +276,7 @@ export const SongEditor: React.FC = () => {
           body: s.body,
           sortOrder: i,
           repeatCount: s.repeatCount,
+          notes: s.notes || undefined,
         })),
       };
 

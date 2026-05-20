@@ -2,11 +2,12 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   checkRestoreInProgress,
-  listMonitors,
+  getSetting,
   onLocaleChanged,
   onSetChanged,
   onSongsChanged,
   openPresentationWindow,
+  openStageWindow,
 } from "../../api/commands";
 import { SongList } from "../../components/library/SongList";
 import { SongEditor } from "../../components/library/SongEditor";
@@ -15,6 +16,7 @@ import { HolyricsImport } from "../../components/import/HolyricsImport";
 import { SetList } from "../../components/set/SetList";
 import { SetBuilder } from "../../components/set/SetBuilder";
 import { SlideController } from "../../components/presentation/SlideController";
+import { OperatorNotesPanel } from "../../components/presentation/OperatorNotesPanel";
 import { CountdownPanel } from "../../components/countdown/CountdownPanel";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
 import { BackupScreen } from "../../components/backup/BackupScreen";
@@ -25,7 +27,17 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
-import type { MonitorInfo, Song } from "../../types";
+import type { Song } from "../../types";
+
+async function loadPersistedMonitor(key: string): Promise<number | undefined> {
+  try {
+    const val = await getSetting(key);
+    const idx = parseInt(val, 10);
+    return isNaN(idx) ? undefined : idx;
+  } catch {
+    return undefined;
+  }
+}
 
 export const OperatorApp: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -40,8 +52,8 @@ export const OperatorApp: React.FC = () => {
   const { subscribe: subscribeCountdown } = useCountdownStore();
   const { setLocale } = useSettingsStore();
 
-  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
-  const [selectedMonitor, setSelectedMonitor] = useState<number | undefined>(undefined);
+  const [presentationMonitorIdx, setPresentationMonitorIdx] = useState<number | undefined>(undefined);
+  const [stageMonitorIdx, setStageMonitorIdx] = useState<number | undefined>(undefined);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
 
   useEffect(() => {
@@ -60,14 +72,8 @@ export const OperatorApp: React.FC = () => {
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
 
-    listMonitors()
-      .then((ms) => {
-        setMonitors(ms);
-        if (ms.length > 1) {
-          setSelectedMonitor(1);
-        }
-      })
-      .catch(() => {});
+    loadPersistedMonitor("window.presentation.monitor").then(setPresentationMonitorIdx);
+    loadPersistedMonitor("window.stage.monitor").then(setStageMonitorIdx);
 
     return () => {
       unlistenSongs.then((u) => u());
@@ -84,9 +90,17 @@ export const OperatorApp: React.FC = () => {
 
   const handleOpenPresentation = async () => {
     try {
-      await openPresentationWindow(selectedMonitor);
+      await openPresentationWindow(presentationMonitorIdx);
     } catch (err) {
       console.error("open presentation window failed:", err);
+    }
+  };
+
+  const handleOpenStage = async () => {
+    try {
+      await openStageWindow(stageMonitorIdx);
+    } catch (err) {
+      console.error("open stage window failed:", err);
     }
   };
 
@@ -179,30 +193,19 @@ export const OperatorApp: React.FC = () => {
           </button>
         </div>
 
-        {/* Monitor selector + open window button */}
+        {/* Window buttons */}
         <div className="flex items-center gap-2">
-          {monitors.length > 1 && (
-            <select
-              value={selectedMonitor ?? ""}
-              onChange={(e) =>
-                setSelectedMonitor(
-                  e.target.value === "" ? undefined : Number(e.target.value)
-                )
-              }
-              className="bg-gray-800 border border-gray-600 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-emerald-500"
-            >
-              {monitors.map((m, i) => (
-                <option key={i} value={i}>
-                  {m.name ?? `Monitor ${i + 1}`} ({m.width}×{m.height})
-                </option>
-              ))}
-            </select>
-          )}
           <button
             onClick={handleOpenPresentation}
             className="px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium transition-colors"
           >
             {t("nav.presentationWindow")}
+          </button>
+          <button
+            onClick={handleOpenStage}
+            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
+          >
+            {t("nav.stageWindow")}
           </button>
         </div>
       </header>
@@ -246,7 +249,12 @@ export const OperatorApp: React.FC = () => {
         )}
 
         {currentView === "set-player" && serviceSet ? (
-          <SlideController serviceSet={serviceSet} />
+          <div className="flex h-full overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <SlideController serviceSet={serviceSet} />
+            </div>
+            <OperatorNotesPanel />
+          </div>
         ) : currentView === "set-player" ? (
           <div className="h-full flex items-center justify-center text-gray-500 text-sm">
             {t("presentation.noSetLoaded")}

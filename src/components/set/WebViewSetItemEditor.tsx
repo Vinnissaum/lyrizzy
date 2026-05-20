@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { isUrlAllowed } from "../../utils/urlAllowlist";
+import { NotesField } from "../common/NotesField";
 import type { SetItem, WebViewConfig, WebViewMode } from "../../types";
 
 interface Props {
@@ -18,6 +19,8 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
   const [urlError, setUrlError] = useState<string | null>(null);
   const [httpWarning, setHttpWarning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [notes, setNotes] = useState(item.notes ?? "");
+  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMode(cfg?.mode ?? "iframe");
@@ -26,7 +29,16 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     setAuthPass(cfg?.basicAuthPass ?? "");
     setUrlError(null);
     setHttpWarning(false);
+    setNotes(item.notes ?? "");
   }, [item.id]);
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => {
+      updateSetItem({ id: item.id, notes: value || undefined }).catch(console.error);
+    }, 300);
+  };
 
   const buildConfig = (): WebViewConfig | null => {
     const trimmed = url.trim();
@@ -154,6 +166,11 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
       )}
 
       {saving && <p className="text-xs text-gray-500">{t("webview.editor.saving")}</p>}
+
+      <div>
+        <p className="text-xs text-gray-400 mb-1">{t("builder.itemNotes.label")}</p>
+        <NotesField value={notes} onChange={handleNotesChange} placeholder={t("builder.itemNotes.placeholder")} />
+      </div>
     </div>
   );
 };

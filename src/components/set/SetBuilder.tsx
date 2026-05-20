@@ -17,6 +17,7 @@ import { listSongs } from "../../api/commands";
 import { CountdownSetItemEditor } from "./CountdownSetItemEditor";
 import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
 import { MediaSetItemEditor } from "./MediaSetItemEditor";
+import { BlankItemNotesEditor } from "./BlankItemNotesEditor";
 import type { Media, ServiceSet, SetItem, Song } from "../../types";
 
 interface Props {
@@ -37,6 +38,7 @@ function isExpandable(item: SetItem): boolean {
   return (
     item.itemType === "countdown" ||
     item.itemType === "web_view" ||
+    item.itemType === "blank" ||
     (item.itemType === "media" && item.mediaKind === "video")
   );
 }
@@ -439,6 +441,9 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                     )}
                     {item.itemType === "media" && (
                       <MediaSetItemEditor item={item} />
+                    )}
+                    {item.itemType === "blank" && (
+                      <BlankItemNotesEditor item={item} />
                     )}
                   </div>
                 )}

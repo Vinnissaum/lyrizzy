@@ -36,6 +36,9 @@ export function normalizeError(err: unknown): ErrorPayload {
 export const openPresentationWindow = (monitorIndex?: number) =>
   invoke<void>("open_presentation_window", { monitorIndex });
 
+export const openStageWindow = (monitorIndex?: number) =>
+  invoke<void>("open_stage_window", { monitorIndex });
+
 export const listMonitors = () =>
   invoke<MonitorInfo[]>("list_monitors");
 
@@ -47,11 +50,15 @@ export interface SectionPayload {
   body: string;
   sortOrder: number;
   repeatCount?: number;
+  notes?: string;
+  backgroundId?: string;
 }
 
 export interface CreateSongPayload {
   title: string;
   artist?: string;
+  author?: string;
+  copyright?: string;
   ccliNumber?: string;
   keySignature?: string;
   language?: string;

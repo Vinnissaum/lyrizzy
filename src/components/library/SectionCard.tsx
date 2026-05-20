@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, Trash2, StickyNote } from "lucide-react";
 import type { SectionType } from "../../types";
+import { NotesField } from "../common/NotesField";
 
 export interface SectionDraft {
   /** Stable client-side key for dnd-kit */
@@ -12,6 +13,7 @@ export interface SectionDraft {
   type: SectionType;
   body: string;
   repeatCount: number;
+  notes?: string;
 }
 
 const SECTION_TYPE_VALUES: SectionType[] = [
@@ -38,6 +40,7 @@ export const SectionCard: React.FC<Props> = ({
   canRemove,
 }) => {
   const { t } = useTranslation();
+  const [notesOpen, setNotesOpen] = useState(Boolean(section.notes));
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: section.dndId });
 
@@ -97,6 +100,15 @@ export const SectionCard: React.FC<Props> = ({
           className="w-14 text-sm text-center bg-gray-700 border border-gray-600 rounded px-1 py-1 focus:outline-none focus:border-blue-500"
         />
 
+        <button
+          onClick={() => setNotesOpen((o) => !o)}
+          aria-label={t("sectionCard.notes.toggle")}
+          title={t("sectionCard.notes.toggle")}
+          className={`shrink-0 ${notesOpen || section.notes ? "text-blue-400" : "text-gray-500 hover:text-gray-300"}`}
+        >
+          <StickyNote size={16} />
+        </button>
+
         {canRemove && (
           <button
             onClick={onRemove}
@@ -115,6 +127,13 @@ export const SectionCard: React.FC<Props> = ({
         rows={4}
         className="w-full text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1.5 resize-y focus:outline-none focus:border-blue-500 font-mono"
       />
+
+      {notesOpen && (
+        <NotesField
+          value={section.notes ?? ""}
+          onChange={(v) => update({ notes: v || undefined })}
+        />
+      )}
     </div>
   );
 };

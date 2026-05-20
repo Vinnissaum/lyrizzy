@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { onLocaleChanged, onSongsChanged } from "../../api/commands";
+import { forwardKeydown } from "../../runtime/keyboard";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
@@ -27,11 +28,13 @@ export const StageApp: React.FC = () => {
     refreshMedia();
     refreshSongs();
 
+    window.addEventListener("keydown", forwardKeydown);
     return () => {
       unsubPresentation.then((u) => u());
       unsubCountdown.then((u) => u());
       unlistenLocale.then((u) => u());
       unlistenSongs.then((u) => u());
+      window.removeEventListener("keydown", forwardKeydown);
     };
   }, []);
 

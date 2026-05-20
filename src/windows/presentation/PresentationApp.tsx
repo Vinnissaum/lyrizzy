@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { onLocaleChanged } from "../../api/commands";
+import { forwardKeydown } from "../../runtime/keyboard";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
@@ -88,10 +89,13 @@ export const PresentationApp: React.FC = () => {
       setLocale(locale);
     });
     refreshMedia();
+
+    window.addEventListener("keydown", forwardKeydown);
     return () => {
       unsub.then((u) => u());
       unsubCd.then((u) => u());
       unsubLocale.then((u) => u());
+      window.removeEventListener("keydown", forwardKeydown);
     };
   }, []);
 

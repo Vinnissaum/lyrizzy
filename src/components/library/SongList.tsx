@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLibraryStore } from "../../stores/library";
 import { EmptyState } from "./EmptyState";
@@ -19,10 +19,21 @@ export const SongList: React.FC<Props> = ({
   const { t } = useTranslation();
   const { songs, isLoading, search, setSearch, refresh } = useLibraryStore();
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     refresh();
   }, []);
+
+  const focusSearch = useCallback(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("app:focus-search", focusSearch);
+    return () => window.removeEventListener("app:focus-search", focusSearch);
+  }, [focusSearch]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -39,6 +50,7 @@ export const SongList: React.FC<Props> = ({
       <div className="px-4 pt-4 pb-3 border-b border-gray-700">
         <h2 className="text-lg font-semibold mb-3">{t("library.title")}</h2>
         <input
+          ref={inputRef}
           type="search"
           value={search}
           onChange={handleSearchChange}

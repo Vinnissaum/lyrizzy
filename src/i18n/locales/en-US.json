@@ -411,6 +411,33 @@
       "webview": "🌐 WebView"
     }
   },
+  "keyBindings": {
+    "title": "Keyboard Shortcuts",
+    "pressKey": "Press a key…",
+    "noBinding": "—",
+    "edit": "Change",
+    "cancel": "Cancel",
+    "resetAll": "Reset to defaults",
+    "actions": {
+      "advanceSlide": "Next slide",
+      "previousSlide": "Previous slide",
+      "blank": "Toggle black screen",
+      "freeze": "Toggle freeze",
+      "exitPresentation": "Exit presentation",
+      "jumpToItem1": "Jump to item 1",
+      "jumpToItem2": "Jump to item 2",
+      "jumpToItem3": "Jump to item 3",
+      "jumpToItem4": "Jump to item 4",
+      "jumpToItem5": "Jump to item 5",
+      "jumpToItem6": "Jump to item 6",
+      "jumpToItem7": "Jump to item 7",
+      "jumpToItem8": "Jump to item 8",
+      "jumpToItem9": "Jump to item 9",
+      "countdownPause": "Countdown pause / resume",
+      "openPresentationWindow": "Open presentation window",
+      "focusSearch": "Focus song search"
+    }
+  },
   "errors": {
     "song": {
       "notFound": "Song not found",

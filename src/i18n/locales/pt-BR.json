@@ -411,6 +411,33 @@
       "webview": "🌐 WebView"
     }
   },
+  "keyBindings": {
+    "title": "Atalhos de Teclado",
+    "pressKey": "Pressione uma tecla…",
+    "noBinding": "—",
+    "edit": "Alterar",
+    "cancel": "Cancelar",
+    "resetAll": "Restaurar padrões",
+    "actions": {
+      "advanceSlide": "Próximo slide",
+      "previousSlide": "Slide anterior",
+      "blank": "Alternar tela preta",
+      "freeze": "Alternar congelamento",
+      "exitPresentation": "Sair da apresentação",
+      "jumpToItem1": "Ir para item 1",
+      "jumpToItem2": "Ir para item 2",
+      "jumpToItem3": "Ir para item 3",
+      "jumpToItem4": "Ir para item 4",
+      "jumpToItem5": "Ir para item 5",
+      "jumpToItem6": "Ir para item 6",
+      "jumpToItem7": "Ir para item 7",
+      "jumpToItem8": "Ir para item 8",
+      "jumpToItem9": "Ir para item 9",
+      "countdownPause": "Pausar / retomar cronômetro",
+      "openPresentationWindow": "Abrir janela de apresentação",
+      "focusSearch": "Focar pesquisa de músicas"
+    }
+  },
   "errors": {
     "song": {
       "notFound": "Música não encontrada",

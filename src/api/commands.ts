@@ -1,10 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen, emit } from "@tauri-apps/api/event";
 import type {
   CountdownConfig,
   CountdownEndBehavior,
   CountdownState,
   ErrorPayload,
+  KeyBindings,
   Media,
   MediaItemOptions,
   MediaKind,
@@ -365,3 +366,23 @@ export const onStateChanged = (cb: (state: PresentationState) => void) =>
 
 export const onCountdownTick = (cb: (state: CountdownState) => void) =>
   listen<CountdownState>("countdown_tick", (e) => cb(e.payload));
+
+// ─── Key bindings ─────────────────────────────────────────────────────────────
+
+export const getKeyBindings = () =>
+  invoke<KeyBindings>("get_key_bindings");
+
+export const setKeyBindings = (bindings: KeyBindings) =>
+  invoke<KeyBindings>("set_key_bindings", { bindings });
+
+export const resetKeyBindings = () =>
+  invoke<KeyBindings>("reset_key_bindings");
+
+export const onKeyBindingsChanged = (cb: (kb: KeyBindings) => void) =>
+  listen<KeyBindings>("key_bindings_changed", (e) => cb(e.payload));
+
+export const emitForwardKeydown = (signature: string) =>
+  emit("forward_keydown", { signature });
+
+export const onForwardKeydown = (cb: (sig: string) => void) =>
+  listen<{ signature: string }>("forward_keydown", (e) => cb(e.payload.signature));

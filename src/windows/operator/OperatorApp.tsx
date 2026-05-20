@@ -27,6 +27,8 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
+import { useKeyBindingsStore } from "../../stores/keyBindings";
+import { installKeyboardDispatcher } from "../../runtime/keyboard";
 import type { Song } from "../../types";
 
 async function loadPersistedMonitor(key: string): Promise<number | undefined> {
@@ -51,6 +53,7 @@ export const OperatorApp: React.FC = () => {
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const { subscribe: subscribeCountdown } = useCountdownStore();
   const { setLocale } = useSettingsStore();
+  const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
   const [presentationMonitorIdx, setPresentationMonitorIdx] = useState<number | undefined>(undefined);
   const [stageMonitorIdx, setStageMonitorIdx] = useState<number | undefined>(undefined);
@@ -69,6 +72,8 @@ export const OperatorApp: React.FC = () => {
       i18n.changeLanguage(locale);
       setLocale(locale);
     });
+    loadBindings();
+    const unsubBindings = subscribeBindings();
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
 
@@ -81,7 +86,51 @@ export const OperatorApp: React.FC = () => {
       unsubPresentation.then((u) => u());
       unsubCountdown.then((u) => u());
       unlistenLocale.then((u) => u());
+      unsubBindings.then((u) => u());
     };
+  }, []);
+
+  useEffect(() => {
+    const pres = usePresentationStore.getState;
+    const cd = useCountdownStore.getState;
+
+    const uninstall = installKeyboardDispatcher(
+      () => useKeyBindingsStore.getState().bindings,
+      {
+        advanceSlide: () => pres().next(),
+        previousSlide: () => pres().prev(),
+        blank: () => {
+          const mode = pres().state?.mode;
+          pres().setMode(mode === "blank" ? "live" : "blank");
+        },
+        freeze: () => {
+          const mode = pres().state?.mode;
+          pres().setMode(mode === "frozen" ? "live" : "frozen");
+        },
+        exitPresentation: () => pres().setMode("idle"),
+        jumpToItem1: () => pres().jumpToItem(0),
+        jumpToItem2: () => pres().jumpToItem(1),
+        jumpToItem3: () => pres().jumpToItem(2),
+        jumpToItem4: () => pres().jumpToItem(3),
+        jumpToItem5: () => pres().jumpToItem(4),
+        jumpToItem6: () => pres().jumpToItem(5),
+        jumpToItem7: () => pres().jumpToItem(6),
+        jumpToItem8: () => pres().jumpToItem(7),
+        jumpToItem9: () => pres().jumpToItem(8),
+        countdownPause: () => {
+          const { state: cdState } = cd();
+          if (cdState.mode === "running") {
+            cd().pause();
+          } else if (cdState.mode === "paused") {
+            cd().start();
+          }
+        },
+        openPresentationWindow: () => handleOpenPresentation(),
+        focusSearch: () =>
+          window.dispatchEvent(new CustomEvent("app:focus-search")),
+      }
+    );
+    return uninstall;
   }, []);
 
   const handleSongClick = (song: Song) => {

@@ -4,7 +4,7 @@ use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{Slide, SlideConfig};
-use crate::services::{background, slide_splitter};
+use crate::services::{background, play_counter, slide_splitter};
 use crate::state::AppState;
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -220,6 +220,11 @@ pub async fn load_set_for_presentation(
     {
         let mut pres = state.presentation.write().await;
         *pres = new_state.clone();
+    }
+
+    // Record a play row for every song in this set (idempotent per day).
+    if let Err(e) = play_counter::record_set_start(pool, &set_id).await {
+        eprintln!("[trinity] WARN: play_counter::record_set_start failed: {e}");
     }
 
     emit_state(&app, &new_state).await?;

@@ -184,10 +184,14 @@ export const SongEditor: React.FC = () => {
 
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [author, setAuthor] = useState("");
+  const [copyright, setCopyright] = useState("");
+  const [ccliNumber, setCcliNumber] = useState("");
   const [language, setLanguage] = useState("pt");
   const [notes, setNotes] = useState("");
   const [backgroundId, setBackgroundId] = useState<string | undefined>();
   const [scrimOpacity, setScrimOpacity] = useState(35);
+  const [rightsOpen, setRightsOpen] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [sections, setSections] = useState<SectionDraft[]>([
     newSection("verse", []),
@@ -217,10 +221,15 @@ export const SongEditor: React.FC = () => {
       .then((song) => {
         setTitle(song.title);
         setArtist(song.artist ?? "");
+        setAuthor(song.author ?? "");
+        setCopyright(song.copyright ?? "");
+        setCcliNumber(song.ccliNumber ?? "");
         setLanguage(song.language);
         setNotes(song.notes ?? "");
         setBackgroundId(song.backgroundId);
         setScrimOpacity(song.scrimOpacity ?? 35);
+        const hasRights = !!(song.author || song.copyright || song.ccliNumber);
+        setRightsOpen(hasRights);
         setSections(
           song.sections.map((s) => ({
             dndId: nextDndId(),
@@ -267,6 +276,9 @@ export const SongEditor: React.FC = () => {
       const payload = {
         title: title.trim(),
         artist: artist.trim() || undefined,
+        author: author.trim() || undefined,
+        copyright: copyright.trim() || undefined,
+        ccliNumber: ccliNumber.trim() || undefined,
         language,
         notes: notes.trim() || undefined,
         backgroundId: backgroundId || undefined,
@@ -484,6 +496,40 @@ export const SongEditor: React.FC = () => {
           >
             {t("editor.addSection")}
           </button>
+        </div>
+
+        {/* Rights / License panel */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setRightsOpen((o) => !o)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-400 uppercase tracking-wider hover:text-gray-200 transition-colors w-full text-left"
+          >
+            <span className={`text-xs transition-transform ${rightsOpen ? "rotate-90" : ""}`}>▶</span>
+            {t("editor.rights.title")}
+          </button>
+          {rightsOpen && (
+            <div className="space-y-2 pl-4">
+              <input
+                value={ccliNumber}
+                onChange={(e) => setCcliNumber(e.target.value)}
+                placeholder={t("editor.rights.ccliNumber")}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              />
+              <input
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder={t("editor.rights.author")}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              />
+              <input
+                value={copyright}
+                onChange={(e) => setCopyright(e.target.value)}
+                placeholder={t("editor.rights.copyright")}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
         </div>
       </div>
 

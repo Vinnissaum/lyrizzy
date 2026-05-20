@@ -54,6 +54,12 @@
       "modalTitle": "Choose background",
       "noMedia": "No media imported"
     },
+    "rights": {
+      "title": "Rights / License",
+      "ccliNumber": "CCLI # (optional)",
+      "author": "Author (optional)",
+      "copyright": "Copyright (optional)"
+    },
     "deleteConfirm": {
       "title": "Delete song",
       "message": "Delete this song? This action can be undone.",

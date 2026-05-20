@@ -54,6 +54,12 @@
       "modalTitle": "Escolher fundo",
       "noMedia": "Nenhuma mídia importada"
     },
+    "rights": {
+      "title": "Direitos / Licença",
+      "ccliNumber": "CCLI # (opcional)",
+      "author": "Autor (opcional)",
+      "copyright": "Direitos autorais (opcional)"
+    },
     "deleteConfirm": {
       "title": "Excluir música",
       "message": "Excluir esta música? Esta ação pode ser desfeita.",

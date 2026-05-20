@@ -1,6 +1,6 @@
 use crate::db::media::{
     db_count_references, db_get_references, db_insert_media, db_list_media, db_rename_media,
-    db_soft_delete_media, unique_display_name, ListMediaParams,
+    db_soft_delete_media, unique_display_name, ListMediaParams, SectionRef as DbSectionRef,
 };
 use crate::domain::error::ErrorPayload;
 use crate::domain::media::{Media, MediaKind};
@@ -38,9 +38,19 @@ pub struct SetItemRef {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MediaSectionRef {
+    pub song_id: String,
+    pub song_title: String,
+    pub section_id: String,
+    pub section_label: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MediaReferences {
     pub songs: Vec<SongRef>,
     pub set_items: Vec<SetItemRef>,
+    pub sections: Vec<MediaSectionRef>,
 }
 
 // ── Params ────────────────────────────────────────────────────────────────────
@@ -235,14 +245,15 @@ pub async fn delete_media(
 ) -> Result<(), ErrorPayload> {
     let pool = state.db.get().expect("db must be initialized");
 
-    let (song_count, set_item_count) = db_count_references(pool, &id)
+    let (song_count, set_item_count, section_count) = db_count_references(pool, &id)
         .await
         .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))?;
 
-    if song_count > 0 || set_item_count > 0 {
+    if song_count > 0 || set_item_count > 0 || section_count > 0 {
         return Err(ErrorPayload::new("media.in_use")
             .with_param("songCount", song_count.to_string())
-            .with_param("setItemCount", set_item_count.to_string()));
+            .with_param("setItemCount", set_item_count.to_string())
+            .with_param("sectionCount", section_count.to_string()));
     }
 
     db_soft_delete_media(pool, &id, now_ms())
@@ -291,6 +302,16 @@ pub async fn get_media_references(
                 set_id: si.set_id,
                 set_name: si.set_name,
                 item_id: si.item_id,
+            })
+            .collect(),
+        sections: refs
+            .sections
+            .into_iter()
+            .map(|sec: DbSectionRef| MediaSectionRef {
+                song_id: sec.song_id,
+                song_title: sec.song_title,
+                section_id: sec.section_id,
+                section_label: sec.section_label,
             })
             .collect(),
     })

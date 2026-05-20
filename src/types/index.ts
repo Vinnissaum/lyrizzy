@@ -78,9 +78,17 @@ export interface MediaSetItemRef {
   itemId: string;
 }
 
+export interface MediaSectionRef {
+  songId: string;
+  songTitle: string;
+  sectionId: string;
+  sectionLabel: string;
+}
+
 export interface MediaReferences {
   songs: MediaSongRef[];
   setItems: MediaSetItemRef[];
+  sections: MediaSectionRef[];
 }
 
 /** Per-set-item playback overrides for media items. */

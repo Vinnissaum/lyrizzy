@@ -1,13 +1,12 @@
 use crate::commands::set::db_load_set;
 use crate::commands::song::load_sections;
 use crate::domain::error::ErrorPayload;
-use crate::domain::media::MediaKind;
-use crate::domain::presentation::{BackgroundInfo, PresentationMode, PresentationState};
+use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{Slide, SlideConfig};
-use crate::services::slide_splitter;
+use crate::services::{background, slide_splitter};
 use crate::state::AppState;
-use sqlx::{Row, SqlitePool};
+use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::RwLock;
@@ -68,48 +67,22 @@ fn resolve_current_slide(
     }
 }
 
-/// Resolves per-song background for a set item.
-/// Returns `None` for non-song items or songs without a background.
-pub async fn resolve_background(pool: &SqlitePool, item: &SetItem) -> Option<BackgroundInfo> {
+/// Resolves the effective background for a set item + current section.
+/// Non-song items always return `None`.
+/// Uses the section → song → None fallback chain via `services::background`.
+async fn resolve_background_for_item(
+    pool: &SqlitePool,
+    item: &SetItem,
+    section_id: &str,
+) -> Option<crate::domain::background::BackgroundInfo> {
     if item.item_type != SetItemType::Song {
         return None;
     }
     let song_id = item.song_id.as_deref()?;
-
-    let song_row = sqlx::query(
-        "SELECT background_id, scrim_opacity FROM songs WHERE id = ? AND deleted_at IS NULL",
-    )
-    .bind(song_id)
-    .fetch_optional(pool)
-    .await
-    .ok()??;
-
-    let background_id: Option<String> = song_row.get("background_id");
-    let scrim_opacity: i32 = song_row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35);
-    let bg_id = background_id?;
-
-    let media_row = sqlx::query(
-        "SELECT file_name, kind FROM media WHERE id = ? AND deleted_at IS NULL",
-    )
-    .bind(&bg_id)
-    .fetch_optional(pool)
-    .await
-    .ok()??;
-
-    let file_name: String = media_row.get("file_name");
-    let kind_str: String = media_row.get("kind");
-    let media_kind = if kind_str == "video" {
-        MediaKind::Video
-    } else {
-        MediaKind::Image
-    };
-
-    Some(BackgroundInfo {
-        media_kind,
-        asset_url: format!("asset://localhost/media/{file_name}"),
-        scrim_opacity: scrim_opacity.clamp(0, 100) as u8,
-        restart_on_section_boundary: false,
-    })
+    background::resolve_for_slide(pool, song_id, section_id)
+        .await
+        .ok()
+        .flatten()
 }
 
 async fn emit_state(app: &AppHandle, state: &PresentationState) -> Result<(), ErrorPayload> {
@@ -127,6 +100,7 @@ pub async fn do_next_slide(
     let slides = presentation_slides.read().await;
     let mut pres = presentation.write().await;
     let prev_item_idx = pres.current_item_index;
+    let prev_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
 
     if !slides.is_empty() {
         let item_idx = pres.current_item_index;
@@ -140,21 +114,20 @@ pub async fn do_next_slide(
         }
     }
 
-    if pres.current_item_index != prev_item_idx {
-        let item = pres
-            .set
-            .as_ref()
-            .and_then(|s| s.items.get(pres.current_item_index))
-            .cloned();
+    pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
+
+    let new_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
+    if pres.current_item_index != prev_item_idx || new_section_id != prev_section_id {
+        let item = pres.set.as_ref().and_then(|s| s.items.get(pres.current_item_index)).cloned();
+        let sid = new_section_id.as_deref().unwrap_or("");
         pres.background = if let Some(ref item) = item {
-            resolve_background(pool, item).await
+            resolve_background_for_item(pool, item, sid).await
         } else {
             None
         };
     }
 
-    pres.current_slide = resolve_current_slide(&slides, &pres);
-    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
@@ -221,9 +194,9 @@ pub async fn load_set_for_presentation(
         .or_else(|| computed_slides.get(1).and_then(|s| s.first()))
         .cloned();
 
-    // T17: resolve background from the first set item
+    let first_section_id = first_slide.as_ref().map(|s| s.section_id.as_str()).unwrap_or("");
     let background = if let Some(item) = service_set.items.first() {
-        resolve_background(pool, item).await
+        resolve_background_for_item(pool, item, first_section_id).await
     } else {
         None
     };
@@ -272,6 +245,7 @@ pub async fn prev_slide(
     let mut pres = state.presentation.write().await;
 
     let prev_item_idx = pres.current_item_index;
+    let prev_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
 
     if !slides.is_empty() {
         let item_idx = pres.current_item_index;
@@ -286,18 +260,20 @@ pub async fn prev_slide(
         }
     }
 
-    // T17: resolve background if item changed
-    if pres.current_item_index != prev_item_idx {
+    pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
+
+    let new_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
+    if pres.current_item_index != prev_item_idx || new_section_id != prev_section_id {
         let item = pres.set.as_ref().and_then(|s| s.items.get(pres.current_item_index)).cloned();
+        let sid = new_section_id.as_deref().unwrap_or("");
         pres.background = if let Some(ref item) = item {
-            resolve_background(pool, item).await
+            resolve_background_for_item(pool, item, sid).await
         } else {
             None
         };
     }
 
-    pres.current_slide = resolve_current_slide(&slides, &pres);
-    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
@@ -325,16 +301,16 @@ pub async fn go_to_item(
     pres.current_item_index = item_index;
     pres.current_slide_index = slide_index.unwrap_or(0);
 
-    // T17: always resolve background when jumping to an item
+    pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
+
+    let section_id = pres.current_slide.as_ref().map(|s| s.section_id.as_str()).unwrap_or("").to_string();
     let item = pres.set.as_ref().and_then(|s| s.items.get(item_index)).cloned();
     pres.background = if let Some(ref item) = item {
-        resolve_background(pool, item).await
+        resolve_background_for_item(pool, item, &section_id).await
     } else {
         None
     };
-
-    pres.current_slide = resolve_current_slide(&slides, &pres);
-    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);

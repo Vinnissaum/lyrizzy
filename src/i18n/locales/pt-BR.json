@@ -77,6 +77,10 @@
       "toggle": "Notas da seção",
       "placeholder": "Notas para o apresentador (visíveis apenas no operador e no stage)…",
       "charCountWarning": "Nota longa — considere dividir em seções"
+    },
+    "background": {
+      "pick": "Fundo da seção",
+      "clear": "Remover fundo"
     }
   },
   "sets": {
@@ -235,7 +239,7 @@
     },
     "delete": {
       "inUseTitle": "Mídia em uso",
-      "inUseMessage": "Esta mídia está em uso por {{songs}} música(s) e {{items}} item(s) de conjunto. Remova as referências antes de excluir.",
+      "inUseMessage": "Esta mídia está em uso por {{songs}} música(s), {{items}} item(s) de conjunto e {{sections}} seção(ões). Remova as referências antes de excluir.",
       "confirmTitle": "Excluir mídia",
       "confirmMessage": "Excluir \"{{name}}\"? Esta ação não pode ser desfeita.",
       "understood": "Entendido"

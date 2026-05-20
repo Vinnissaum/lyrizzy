@@ -37,7 +37,7 @@ const makeMedia = (
   ...overrides,
 });
 
-const emptyRefs: MediaReferences = { songs: [], setItems: [] };
+const emptyRefs: MediaReferences = { songs: [], setItems: [], sections: [] };
 
 describe("MediaLibrary", () => {
   beforeEach(() => {
@@ -162,6 +162,7 @@ describe("MediaLibrary", () => {
     const refs: MediaReferences = {
       songs: [{ id: "s1", title: "Música Teste" }],
       setItems: [],
+      sections: [],
     };
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "list_media") return Promise.resolve(items);

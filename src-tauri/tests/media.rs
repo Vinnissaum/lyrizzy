@@ -172,9 +172,10 @@ async fn count_references_with_song() {
     .await
     .unwrap();
 
-    let (song_count, set_item_count) = db_count_references(&pool, "m4").await.unwrap();
+    let (song_count, set_item_count, section_count) = db_count_references(&pool, "m4").await.unwrap();
     assert_eq!(song_count, 1);
     assert_eq!(set_item_count, 0);
+    assert_eq!(section_count, 0);
 }
 
 #[tokio::test]
@@ -184,9 +185,10 @@ async fn count_references_zero_when_no_refs() {
         .await
         .unwrap();
 
-    let (songs, items) = db_count_references(&pool, "m5").await.unwrap();
+    let (songs, items, sections) = db_count_references(&pool, "m5").await.unwrap();
     assert_eq!(songs, 0);
     assert_eq!(items, 0);
+    assert_eq!(sections, 0);
 }
 
 #[tokio::test]
@@ -208,6 +210,63 @@ async fn get_references_returns_song_details() {
     assert_eq!(refs.songs.len(), 1);
     assert_eq!(refs.songs[0].title, "Hallelujah");
     assert!(refs.set_items.is_empty());
+    assert!(refs.sections.is_empty());
+}
+
+#[tokio::test]
+async fn count_and_get_references_includes_sections() {
+    let (pool, _dir) = open_test_db().await;
+
+    db_insert_media(&pool, &make_media("bg-sec", "sec-bg.png", MediaKind::Image))
+        .await
+        .unwrap();
+
+    // Insert a song + section referencing the media as section background
+    sqlx::query(
+        "INSERT INTO songs (id, title, language, created_at, updated_at) \
+         VALUES ('song-sec', 'My Song', 'pt', 1, 1)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count, background_id) \
+         VALUES ('sec-1', 'song-sec', 'Verse 1', 'verse', 'Line', 0, 1, 'bg-sec')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Section reference blocks delete
+    let (song_count, item_count, section_count) = db_count_references(&pool, "bg-sec").await.unwrap();
+    assert_eq!(song_count, 0);
+    assert_eq!(item_count, 0);
+    assert_eq!(section_count, 1);
+
+    let refs = db_get_references(&pool, "bg-sec").await.unwrap();
+    assert!(refs.songs.is_empty());
+    assert!(refs.set_items.is_empty());
+    assert_eq!(refs.sections.len(), 1);
+    assert_eq!(refs.sections[0].song_title, "My Song");
+    assert_eq!(refs.sections[0].section_label, "Verse 1");
+
+    // Clear the section's background_id → delete should now succeed
+    sqlx::query("UPDATE song_sections SET background_id = NULL WHERE id = 'sec-1'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let (_, _, section_count_after) = db_count_references(&pool, "bg-sec").await.unwrap();
+    assert_eq!(section_count_after, 0);
+
+    db_soft_delete_media(&pool, "bg-sec", 9999).await.unwrap();
+    let after = db_list_media(&pool, &ListMediaParams {
+        kind: None,
+        search: None,
+        limit: None,
+        offset: None,
+    }).await.unwrap();
+    assert!(after.iter().all(|m| m.id != "bg-sec"), "deleted media should not appear in list");
 }
 
 #[tokio::test]

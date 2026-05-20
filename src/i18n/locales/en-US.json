@@ -77,6 +77,10 @@
       "toggle": "Section notes",
       "placeholder": "Presenter notes (visible only in operator and stage)…",
       "charCountWarning": "Long note — consider splitting into sections"
+    },
+    "background": {
+      "pick": "Section background",
+      "clear": "Clear background"
     }
   },
   "sets": {
@@ -235,7 +239,7 @@
     },
     "delete": {
       "inUseTitle": "Media in use",
-      "inUseMessage": "This media is used by {{songs}} song(s) and {{items}} set item(s). Remove references before deleting.",
+      "inUseMessage": "This media is used by {{songs}} song(s), {{items}} set item(s) and {{sections}} section(s). Remove references before deleting.",
       "confirmTitle": "Delete media",
       "confirmMessage": "Delete \"{{name}}\"? This action cannot be undone.",
       "understood": "Understood"

@@ -19,9 +19,17 @@ pub struct SetItemRef {
     pub item_id: String,
 }
 
+pub struct SectionRef {
+    pub song_id: String,
+    pub song_title: String,
+    pub section_id: String,
+    pub section_label: String,
+}
+
 pub struct MediaReferences {
     pub songs: Vec<SongRef>,
     pub set_items: Vec<SetItemRef>,
+    pub sections: Vec<SectionRef>,
 }
 
 fn kind_to_str(kind: &MediaKind) -> &'static str {
@@ -155,11 +163,11 @@ pub async fn db_soft_delete_media(
     Ok(())
 }
 
-/// Returns (song_count, set_item_count) referencing this media id.
+/// Returns (song_count, set_item_count, section_count) referencing this media id.
 pub async fn db_count_references(
     pool: &SqlitePool,
     id: &str,
-) -> Result<(i64, i64), sqlx::Error> {
+) -> Result<(i64, i64, i64), sqlx::Error> {
     let song_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM songs WHERE background_id = ? AND deleted_at IS NULL",
     )
@@ -173,7 +181,16 @@ pub async fn db_count_references(
             .fetch_one(pool)
             .await?;
 
-    Ok((song_count, set_item_count))
+    let section_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM song_sections ss \
+         JOIN songs s ON s.id = ss.song_id \
+         WHERE ss.background_id = ? AND s.deleted_at IS NULL",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok((song_count, set_item_count, section_count))
 }
 
 pub async fn db_get_references(
@@ -213,7 +230,27 @@ pub async fn db_get_references(
         })
         .collect();
 
-    Ok(MediaReferences { songs, set_items })
+    let section_rows = sqlx::query(
+        "SELECT ss.id AS section_id, ss.label AS section_label, s.id AS song_id, s.title AS song_title \
+         FROM song_sections ss \
+         JOIN songs s ON s.id = ss.song_id \
+         WHERE ss.background_id = ? AND s.deleted_at IS NULL",
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await?;
+
+    let sections = section_rows
+        .iter()
+        .map(|r| SectionRef {
+            song_id: r.get("song_id"),
+            song_title: r.get("song_title"),
+            section_id: r.get("section_id"),
+            section_label: r.get("section_label"),
+        })
+        .collect();
+
+    Ok(MediaReferences { songs, set_items, sections })
 }
 
 pub async fn db_get_media_by_id(

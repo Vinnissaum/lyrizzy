@@ -19,12 +19,20 @@ export const SongBackground: React.FC<Props> = ({ background, frozen }) => {
     }
   }, [frozen]);
 
+  // Section-level backgrounds (restartOnSectionBoundary=true): key on assetUrl so React
+  // unmounts and remounts the element when the section background changes.
+  // Song-level backgrounds (restartOnSectionBoundary=false): prefix key with "song:" so
+  // React keeps the element mounted even if the URL somehow changes between sections.
+  const mediaKey = background.restartOnSectionBoundary
+    ? background.assetUrl
+    : `song:${background.assetUrl}`;
+
   return (
     <>
       {background.mediaKind === "video" ? (
         <video
           ref={videoRef}
-          key={background.assetUrl}
+          key={mediaKey}
           src={background.assetUrl}
           className="absolute inset-0 w-full h-full object-cover"
           autoPlay
@@ -34,7 +42,7 @@ export const SongBackground: React.FC<Props> = ({ background, frozen }) => {
         />
       ) : (
         <img
-          key={background.assetUrl}
+          key={mediaKey}
           src={background.assetUrl}
           className="absolute inset-0 w-full h-full object-cover"
           alt=""

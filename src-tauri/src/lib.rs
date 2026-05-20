@@ -23,7 +23,7 @@ use commands::set::{
 };
 use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
 use commands::settings::{get_setting, set_setting};
-use commands::window::{list_monitors, open_presentation_window};
+use commands::window::{list_monitors, open_presentation_window, open_stage_window};
 use state::AppState;
 use tauri::Manager;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
@@ -98,6 +98,7 @@ pub fn run() {
             check_restore_in_progress,
             abort_restore,
             open_presentation_window,
+            open_stage_window,
             list_monitors,
             create_song,
             update_song,

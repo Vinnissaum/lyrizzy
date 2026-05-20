@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
+import { WindowsScreen } from "./WindowsScreen";
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -15,6 +16,13 @@ export const SettingsScreen: React.FC = () => {
             {t("settings.general")}
           </h3>
           <LanguagePicker />
+        </div>
+
+        <div className="bg-gray-800 rounded-xl p-4 space-y-4">
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            {t("settings.windows.title")}
+          </h3>
+          <WindowsScreen />
         </div>
       </div>
     </div>

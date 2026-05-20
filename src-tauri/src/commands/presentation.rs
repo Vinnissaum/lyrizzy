@@ -30,6 +30,22 @@ fn sections_to_slides(
         .collect()
 }
 
+fn resolve_next_slide(all_slides: &[Vec<Slide>], state: &PresentationState) -> Option<Slide> {
+    if all_slides.is_empty() {
+        return None;
+    }
+    let item_idx = state.current_item_index;
+    let slide_idx = state.current_slide_index;
+    let item_len = all_slides.get(item_idx).map(|s| s.len()).unwrap_or(0);
+    if slide_idx + 1 < item_len {
+        all_slides.get(item_idx).and_then(|s| s.get(slide_idx + 1)).cloned()
+    } else if item_idx + 1 < all_slides.len() {
+        all_slides.get(item_idx + 1).and_then(|s| s.first()).cloned()
+    } else {
+        None
+    }
+}
+
 fn resolve_current_slide(
     all_slides: &[Vec<Slide>],
     state: &PresentationState,
@@ -138,6 +154,7 @@ pub async fn do_next_slide(
     }
 
     pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
@@ -156,6 +173,7 @@ pub async fn do_blank_presentation(
     pres.frozen_at = None;
     pres.mode = PresentationMode::Blank;
     pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
@@ -196,6 +214,12 @@ pub async fn load_set_for_presentation(
 
     let item_slide_counts: Vec<usize> = computed_slides.iter().map(|s| s.len()).collect();
     let first_slide = computed_slides.first().and_then(|s| s.first()).cloned();
+    // Next slide = second slide of the first item, or first slide of the second item.
+    let second_slide = computed_slides
+        .first()
+        .and_then(|s| s.get(1))
+        .or_else(|| computed_slides.get(1).and_then(|s| s.first()))
+        .cloned();
 
     // T17: resolve background from the first set item
     let background = if let Some(item) = service_set.items.first() {
@@ -211,6 +235,7 @@ pub async fn load_set_for_presentation(
         mode: PresentationMode::Live,
         frozen_at: None,
         current_slide: first_slide,
+        next_slide: second_slide,
         item_slide_counts,
         background,
     };
@@ -272,6 +297,7 @@ pub async fn prev_slide(
     }
 
     pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
@@ -308,6 +334,7 @@ pub async fn go_to_item(
     };
 
     pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
@@ -338,6 +365,7 @@ pub async fn set_presentation_mode(
 
     pres.mode = mode;
     pres.current_slide = resolve_current_slide(&slides, &pres);
+    pres.next_slide = resolve_next_slide(&slides, &pres);
     let new_state = pres.clone();
     drop(pres);
     drop(slides);

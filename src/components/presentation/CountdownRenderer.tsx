@@ -1,7 +1,7 @@
 import React from "react";
 import type { BackgroundInfo, CountdownConfig } from "../../types";
 import { SongBackground } from "./SongBackground";
-import { useCountdownStore } from "../../stores/countdown";
+import { useCountdownDigits } from "../../runtime/useCountdownDigits";
 
 interface Props {
   config: CountdownConfig;
@@ -9,23 +9,8 @@ interface Props {
   frozen?: boolean;
 }
 
-function formatMs(ms: number): string {
-  const totalSec = Math.floor(Math.max(0, ms) / 1000);
-  const hours = Math.floor(totalSec / 3600);
-  const min = Math.floor((totalSec % 3600) / 60);
-  const sec = totalSec % 60;
-  if (hours > 0) {
-    return `${String(hours).padStart(2, "0")}:${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  }
-  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
-
 export const CountdownRenderer: React.FC<Props> = ({ config, background, frozen }) => {
-  const { state } = useCountdownStore();
-
-  const isFinished = state.mode === "finished";
-  const isLow = !isFinished && state.remainingMs > 0 && state.remainingMs <= 60_000;
-  const displayMs = state.remainingMs;
+  const { formattedTime, isFinished, isLow } = useCountdownDigits();
 
   return (
     <div className="relative h-full bg-black overflow-hidden select-none">
@@ -45,7 +30,7 @@ export const CountdownRenderer: React.FC<Props> = ({ config, background, frozen 
           }`}
           style={{ fontSize: "clamp(4rem, 30vmin, 18rem)" }}
         >
-          {formatMs(displayMs)}
+          {formattedTime}
         </p>
       </div>
     </div>

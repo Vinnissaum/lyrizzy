@@ -35,6 +35,7 @@ export default defineConfig({
       input: {
         main: "index.html",
         presentation: "presentation.html",
+        stage: "stage.html",
       },
     },
   },

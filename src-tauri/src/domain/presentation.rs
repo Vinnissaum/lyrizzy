@@ -29,6 +29,10 @@ pub struct PresentationState {
     /// Resolved slide for the presentation window to render.
     /// None when mode is Idle or Blank.
     pub current_slide: Option<Slide>,
+    /// The slide that will be shown after the next advance from the current navigation
+    /// position (current_item_index / current_slide_index). Used by the stage display.
+    /// None when there is no next slide (end of set or no set loaded).
+    pub next_slide: Option<Slide>,
     /// How many slides each set item generates (parallel to set.items).
     /// Used by the operator for "Slide N/M" display without re-sending all slides.
     pub item_slide_counts: Vec<usize>,
@@ -45,6 +49,7 @@ impl Default for PresentationState {
             mode: PresentationMode::Idle,
             frozen_at: None,
             current_slide: None,
+            next_slide: None,
             item_slide_counts: vec![],
             background: None,
         }
@@ -63,6 +68,7 @@ mod tests {
         assert!(json.contains("\"currentSlideIndex\""), "expected camelCase: {json}");
         assert!(json.contains("\"mode\":\"idle\""), "expected snake_case enum: {json}");
         assert!(json.contains("\"currentSlide\""), "expected currentSlide field: {json}");
+        assert!(json.contains("\"nextSlide\""), "expected nextSlide field: {json}");
         assert!(json.contains("\"itemSlideCounts\""), "expected itemSlideCounts field: {json}");
         assert!(json.contains("\"background\""), "expected background field: {json}");
         let back: PresentationState = serde_json::from_str(&json).unwrap();

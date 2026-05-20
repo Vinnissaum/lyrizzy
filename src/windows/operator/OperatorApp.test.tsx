@@ -29,7 +29,10 @@ describe("OperatorApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(listen).mockResolvedValue(() => {});
-    vi.mocked(invoke).mockResolvedValue([]);
+    vi.mocked(invoke).mockImplementation((cmd) => {
+      if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+      return Promise.resolve([]);
+    });
   });
 
   it("renders the library heading", async () => {

@@ -23,6 +23,9 @@ async function init() {
   if (label === "presentation") {
     const { PresentationApp } = await import("./windows/presentation/PresentationApp");
     App = PresentationApp;
+  } else if (label === "stage") {
+    const { StageApp } = await import("./windows/stage/StageApp");
+    App = StageApp;
   } else {
     const { OperatorApp } = await import("./windows/operator/OperatorApp");
     App = OperatorApp;

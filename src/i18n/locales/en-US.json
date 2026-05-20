@@ -417,6 +417,28 @@
       "webview": "🌐 WebView"
     }
   },
+  "reports": {
+    "ccli": {
+      "title": "CCLI Usage Report",
+      "from": "From",
+      "to": "to",
+      "exportButton": "Export CSV",
+      "exporting": "Exporting…",
+      "empty": "No songs played in this period.",
+      "emptyToast": "No songs found — CSV exported with header only.",
+      "exportSuccess_one": "{{count}} row exported",
+      "exportSuccess_other": "{{count}} rows exported",
+      "rowCount_one": "{{count}} row",
+      "rowCount_other": "{{count}} rows",
+      "col": {
+        "date": "Date",
+        "title": "Title",
+        "author": "Author",
+        "ccliNumber": "CCLI #",
+        "copyright": "Copyright"
+      }
+    }
+  },
   "keyBindings": {
     "title": "Keyboard Shortcuts",
     "pressKey": "Press a key…",

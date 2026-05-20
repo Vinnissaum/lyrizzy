@@ -23,6 +23,7 @@ use commands::set::{
 };
 use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
 use commands::key_bindings::{get_key_bindings, set_key_bindings, reset_key_bindings};
+use commands::reports::{export_ccli_csv, preview_ccli_export};
 use commands::settings::{get_setting, set_setting};
 use commands::window::{list_monitors, open_presentation_window, open_stage_window};
 use state::AppState;
@@ -139,6 +140,8 @@ pub fn run() {
             get_key_bindings,
             set_key_bindings,
             reset_key_bindings,
+            preview_ccli_export,
+            export_ccli_csv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

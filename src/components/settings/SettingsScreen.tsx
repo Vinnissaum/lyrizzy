@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
 import { WindowsScreen } from "./WindowsScreen";
 import { KeyBindingsScreen } from "./KeyBindingsScreen";
+import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -31,6 +32,13 @@ export const SettingsScreen: React.FC = () => {
             {t("keyBindings.title")}
           </h3>
           <KeyBindingsScreen />
+        </div>
+
+        <div className="bg-gray-800 rounded-xl p-4 space-y-4">
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            {t("reports.ccli.title")}
+          </h3>
+          <CCLIReportScreen />
         </div>
       </div>
     </div>

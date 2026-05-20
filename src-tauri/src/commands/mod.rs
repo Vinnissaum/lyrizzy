@@ -5,6 +5,7 @@ pub mod key_bindings;
 pub mod import;
 pub mod media;
 pub mod presentation;
+pub mod reports;
 pub mod set;
 pub mod settings;
 pub mod song;

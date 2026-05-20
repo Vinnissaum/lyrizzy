@@ -367,6 +367,22 @@ export const onStateChanged = (cb: (state: PresentationState) => void) =>
 export const onCountdownTick = (cb: (state: CountdownState) => void) =>
   listen<CountdownState>("countdown_tick", (e) => cb(e.payload));
 
+// ─── CCLI reports ────────────────────────────────────────────────────────────
+
+export interface CcliRow {
+  playedOn: string;
+  title: string;
+  author?: string;
+  ccliNumber?: string;
+  copyright?: string;
+}
+
+export const previewCcliExport = (from: string, to: string) =>
+  invoke<CcliRow[]>("preview_ccli_export", { from, to });
+
+export const exportCcliCsv = (from: string, to: string, outPath: string) =>
+  invoke<number>("export_ccli_csv", { from, to, outPath });
+
 // ─── Key bindings ─────────────────────────────────────────────────────────────
 
 export const getKeyBindings = () =>

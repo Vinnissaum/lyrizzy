@@ -417,6 +417,28 @@
       "webview": "🌐 WebView"
     }
   },
+  "reports": {
+    "ccli": {
+      "title": "Relatório CCLI",
+      "from": "De",
+      "to": "até",
+      "exportButton": "Exportar CSV",
+      "exporting": "Exportando…",
+      "empty": "Nenhuma música tocada neste período.",
+      "emptyToast": "Nenhuma música encontrada — CSV exportado apenas com cabeçalho.",
+      "exportSuccess_one": "{{count}} linha exportada",
+      "exportSuccess_other": "{{count}} linhas exportadas",
+      "rowCount_one": "{{count}} linha",
+      "rowCount_other": "{{count}} linhas",
+      "col": {
+        "date": "Data",
+        "title": "Título",
+        "author": "Autor",
+        "ccliNumber": "CCLI #",
+        "copyright": "Direitos"
+      }
+    }
+  },
   "keyBindings": {
     "title": "Atalhos de Teclado",
     "pressKey": "Pressione uma tecla…",

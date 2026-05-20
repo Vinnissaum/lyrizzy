@@ -92,6 +92,7 @@ pub async fn resolve_background(pool: &SqlitePool, item: &SetItem) -> Option<Bac
         media_kind,
         asset_url: format!("asset://localhost/media/{file_name}"),
         scrim_opacity: scrim_opacity.clamp(0, 100) as u8,
+        restart_on_section_boundary: false,
     })
 }
 

@@ -101,6 +101,8 @@ mod tests {
             body: body.into(),
             sort_order: 0,
             repeat_count,
+            notes: None,
+            background_id: None,
         }
     }
 

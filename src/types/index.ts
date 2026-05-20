@@ -23,12 +23,16 @@ export interface SongSection {
   body: string;
   sortOrder: number;
   repeatCount: number;
+  notes?: string;
+  backgroundId?: string;
 }
 
 export interface Song {
   id: string;
   title: string;
   artist?: string;
+  author?: string;
+  copyright?: string;
   ccliNumber?: string;
   keySignature?: string;
   language: string;
@@ -131,6 +135,7 @@ export interface BackgroundInfo {
   mediaKind: MediaKind;
   assetUrl: string;
   scrimOpacity: number;
+  restartOnSectionBoundary: boolean;
 }
 
 export interface PresentationState {
@@ -185,4 +190,55 @@ export interface MonitorInfo {
   x: number;
   y: number;
   scaleFactor: number;
+}
+
+// ── Phase 3 — Key bindings ────────────────────────────────────────────────────
+
+export type ActionId =
+  | 'advanceSlide'
+  | 'previousSlide'
+  | 'blank'
+  | 'freeze'
+  | 'exitPresentation'
+  | 'jumpToItem1'
+  | 'jumpToItem2'
+  | 'jumpToItem3'
+  | 'jumpToItem4'
+  | 'jumpToItem5'
+  | 'jumpToItem6'
+  | 'jumpToItem7'
+  | 'jumpToItem8'
+  | 'jumpToItem9'
+  | 'countdownPause'
+  | 'openPresentationWindow'
+  | 'focusSearch';
+
+export interface Shortcut {
+  key: string;
+  ctrl: boolean;
+  shift: boolean;
+  alt: boolean;
+}
+
+export interface KeyBindings {
+  bindings: Record<ActionId, Shortcut[]>;
+}
+
+// ── Phase 3 — CCLI / plays ────────────────────────────────────────────────────
+
+export interface SongPlay {
+  id: string;
+  songId: string;
+  setId: string;
+  playedOn: string;
+  createdAt: number;
+}
+
+// ── Phase 3 — Auto-update ─────────────────────────────────────────────────────
+
+export interface UpdateInfo {
+  version: string;
+  currentVersion: string;
+  notes?: string;
+  pubDate?: string;
 }

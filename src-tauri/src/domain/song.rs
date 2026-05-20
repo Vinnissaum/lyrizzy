@@ -23,6 +23,8 @@ pub struct SongSection {
     pub body: String,
     pub sort_order: i32,
     pub repeat_count: i32,
+    pub notes: Option<String>,
+    pub background_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -31,6 +33,8 @@ pub struct Song {
     pub id: String,
     pub title: String,
     pub artist: Option<String>,
+    pub author: Option<String>,
+    pub copyright: Option<String>,
     pub ccli_number: Option<String>,
     pub key_signature: Option<String>,
     pub language: String,
@@ -59,12 +63,15 @@ mod tests {
             body: "Amazing grace".into(),
             sort_order: 0,
             repeat_count: 1,
+            notes: Some("Presenter note".into()),
+            background_id: Some("bg-id".into()),
         };
         let json = serde_json::to_string(&section).unwrap();
         assert!(json.contains("\"songId\""), "expected camelCase: {json}");
         assert!(json.contains("\"sortOrder\""), "expected camelCase: {json}");
         assert!(json.contains("\"repeatCount\""), "expected camelCase: {json}");
         assert!(json.contains("\"type\":\"verse\""), "expected snake_case enum: {json}");
+        assert!(json.contains("\"backgroundId\""), "expected camelCase: {json}");
         let back: SongSection = serde_json::from_str(&json).unwrap();
         assert_eq!(back, section);
     }
@@ -75,6 +82,8 @@ mod tests {
             id: "id1".into(),
             title: "Amazing Grace".into(),
             artist: Some("John Newton".into()),
+            author: Some("John Newton".into()),
+            copyright: Some("Public Domain".into()),
             ccli_number: None,
             key_signature: None,
             language: "pt".into(),
@@ -91,6 +100,8 @@ mod tests {
         let json = serde_json::to_string(&song).unwrap();
         assert!(json.contains("\"createdAt\""), "expected camelCase: {json}");
         assert!(json.contains("\"updatedAt\""), "expected camelCase: {json}");
+        assert!(json.contains("\"author\""), "expected author field: {json}");
+        assert!(json.contains("\"copyright\""), "expected copyright field: {json}");
         let back: Song = serde_json::from_str(&json).unwrap();
         assert_eq!(back, song);
     }

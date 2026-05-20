@@ -47,7 +47,7 @@ pub async fn load_sections(
     song_id: &str,
 ) -> Result<Vec<SongSection>, ErrorPayload> {
     let rows = sqlx::query(
-        "SELECT id, song_id, label, type, body, sort_order, repeat_count
+        "SELECT id, song_id, label, type, body, sort_order, repeat_count, notes, background_id
          FROM song_sections WHERE song_id = ? ORDER BY sort_order ASC",
     )
     .bind(song_id)
@@ -67,6 +67,8 @@ pub async fn load_sections(
                 body: row.get("body"),
                 sort_order: row.get("sort_order"),
                 repeat_count: row.get("repeat_count"),
+                notes: row.get("notes"),
+                background_id: row.get("background_id"),
             }
         })
         .collect())
@@ -197,6 +199,8 @@ pub async fn db_create_song(
             body: sec.body.clone(),
             sort_order: sec.sort_order,
             repeat_count,
+            notes: None,
+            background_id: None,
         });
     }
 
@@ -208,6 +212,8 @@ pub async fn db_create_song(
         id,
         title: payload.title,
         artist: payload.artist,
+        author: None,
+        copyright: None,
         ccli_number: payload.ccli_number,
         key_signature: payload.key_signature,
         language,
@@ -300,6 +306,8 @@ pub async fn db_update_song(
             body: sec.body.clone(),
             sort_order: sec.sort_order,
             repeat_count,
+            notes: None,
+            background_id: None,
         });
     }
 
@@ -311,6 +319,8 @@ pub async fn db_update_song(
         id: payload.id,
         title: payload.title,
         artist: payload.artist,
+        author: None,
+        copyright: None,
         ccli_number: payload.ccli_number,
         key_signature: payload.key_signature,
         language,
@@ -352,8 +362,9 @@ pub async fn db_list_songs(
     let song_rows = match params.search.as_deref() {
         Some(s) if !s.trim().is_empty() => match fts_query::sanitize(s) {
             FtsQuery::Fts5(q) => sqlx::query(
-                "SELECT s.id, s.title, s.artist, s.ccli_number, s.key_signature, s.language,
-                         s.notes, s.background_id, s.scrim_opacity, s.slide_config, s.source,
+                "SELECT s.id, s.title, s.artist, s.author, s.copyright, s.ccli_number,
+                         s.key_signature, s.language, s.notes, s.background_id,
+                         s.scrim_opacity, s.slide_config, s.source,
                          s.created_at, s.updated_at, s.deleted_at
                  FROM songs s
                  JOIN songs_fts ON songs_fts.rowid = s.rowid
@@ -371,8 +382,9 @@ pub async fn db_list_songs(
             FtsQuery::Like(term) => {
                 let pattern = format!("%{term}%");
                 sqlx::query(
-                    "SELECT id, title, artist, ccli_number, key_signature, language, notes,
-                             background_id, scrim_opacity, slide_config, source, created_at, updated_at, deleted_at
+                    "SELECT id, title, artist, author, copyright, ccli_number, key_signature,
+                             language, notes, background_id, scrim_opacity, slide_config, source,
+                             created_at, updated_at, deleted_at
                      FROM songs WHERE deleted_at IS NULL
                        AND (title LIKE ? OR artist LIKE ?)
                      ORDER BY title ASC LIMIT ? OFFSET ?",
@@ -387,8 +399,9 @@ pub async fn db_list_songs(
             }
         },
         _ => sqlx::query(
-            "SELECT id, title, artist, ccli_number, key_signature, language, notes,
-                     background_id, scrim_opacity, slide_config, source, created_at, updated_at, deleted_at
+            "SELECT id, title, artist, author, copyright, ccli_number, key_signature, language,
+                     notes, background_id, scrim_opacity, slide_config, source,
+                     created_at, updated_at, deleted_at
              FROM songs WHERE deleted_at IS NULL ORDER BY title ASC LIMIT ? OFFSET ?",
         )
         .bind(limit)
@@ -406,6 +419,8 @@ pub async fn db_list_songs(
             id: song_id,
             title: row.get("title"),
             artist: row.get("artist"),
+            author: row.get("author"),
+            copyright: row.get("copyright"),
             ccli_number: row.get("ccli_number"),
             key_signature: row.get("key_signature"),
             language: row.get("language"),
@@ -425,8 +440,9 @@ pub async fn db_list_songs(
 
 pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPayload> {
     let row = sqlx::query(
-        "SELECT id, title, artist, ccli_number, key_signature, language, notes,
-                background_id, scrim_opacity, slide_config, source, created_at, updated_at, deleted_at
+        "SELECT id, title, artist, author, copyright, ccli_number, key_signature, language,
+                notes, background_id, scrim_opacity, slide_config, source,
+                created_at, updated_at, deleted_at
          FROM songs WHERE id = ?",
     )
     .bind(id)
@@ -441,6 +457,8 @@ pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPaylo
         id: row.get("id"),
         title: row.get("title"),
         artist: row.get("artist"),
+        author: row.get("author"),
+        copyright: row.get("copyright"),
         ccli_number: row.get("ccli_number"),
         key_signature: row.get("key_signature"),
         language: row.get("language"),

@@ -1,18 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use super::media::MediaKind;
 use super::set::ServiceSet;
 use super::slide::Slide;
 
-/// Background overlay sent to the presentation window for the current song item.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct BackgroundInfo {
-    pub media_kind: MediaKind,
-    pub asset_url: String,
-    /// Scrim opacity as a percentage 0–100. Default 35.
-    pub scrim_opacity: u8,
-}
+// Re-export BackgroundInfo from the background domain module so existing callers
+// that import `domain::presentation::BackgroundInfo` continue to work unchanged.
+pub use super::background::BackgroundInfo;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]

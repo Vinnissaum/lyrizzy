@@ -173,6 +173,7 @@ export const PresentationApp: React.FC = () => {
           mediaKind: bgMedia.kind,
           assetUrl: buildAssetUrl(bgMedia.fileName),
           scrimOpacity: 35,
+          restartOnSectionBoundary: false,
         };
       }
     }

@@ -34,5 +34,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "PLACEHOLDER_INSERT_PUBLIC_KEY_FROM_TAURI_SIGNER_GENERATE",
+      "endpoints": [
+        "https://github.com/OWNER/REPO/releases/latest/download/latest.json"
+      ],
+      "dialog": false
+    }
   }
 }

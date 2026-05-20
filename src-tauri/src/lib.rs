@@ -25,6 +25,7 @@ use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain
 use commands::key_bindings::{get_key_bindings, set_key_bindings, reset_key_bindings};
 use commands::reports::{export_ccli_csv, preview_ccli_export};
 use commands::settings::{get_setting, set_setting};
+use commands::updates::{apply_update_and_restart, check_for_updates};
 use commands::window::{list_monitors, open_presentation_window, open_stage_window};
 use state::AppState;
 use tauri::Manager;
@@ -36,6 +37,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
         .register_uri_scheme_protocol("asset", protocol::asset::build_handler())
         .setup(|app| {
@@ -142,6 +144,8 @@ pub fn run() {
             reset_key_bindings,
             preview_ccli_export,
             export_ccli_csv,
+            check_for_updates,
+            apply_update_and_restart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

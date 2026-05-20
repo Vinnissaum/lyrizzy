@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  checkForUpdates,
   checkRestoreInProgress,
   getSetting,
   onLocaleChanged,
@@ -22,6 +23,8 @@ import { MediaLibrary } from "../../components/media/MediaLibrary";
 import { BackupScreen } from "../../components/backup/BackupScreen";
 import { SettingsScreen } from "../../components/settings/SettingsScreen";
 import { RestoreInProgressDialog } from "../../components/backup/RestoreInProgressDialog";
+import { UpdateBanner } from "../../components/system/UpdateBanner";
+import { UpdateDialog } from "../../components/system/UpdateDialog";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
@@ -30,7 +33,7 @@ import { useSettingsStore } from "../../stores/settings";
 import { useKeyBindingsStore } from "../../stores/keyBindings";
 import { useThemeStore } from "../../stores/theme";
 import { installKeyboardDispatcher } from "../../runtime/keyboard";
-import type { Song } from "../../types";
+import type { Song, UpdateInfo } from "../../types";
 
 async function loadPersistedMonitor(key: string): Promise<number | undefined> {
   try {
@@ -60,6 +63,9 @@ export const OperatorApp: React.FC = () => {
   const [presentationMonitorIdx, setPresentationMonitorIdx] = useState<number | undefined>(undefined);
   const [stageMonitorIdx, setStageMonitorIdx] = useState<number | undefined>(undefined);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
+  const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   useEffect(() => {
     const unlistenSongs = onSongsChanged(() => {
@@ -79,6 +85,10 @@ export const OperatorApp: React.FC = () => {
     loadTheme();
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
+
+    checkForUpdates(false)
+      .then((info) => { if (info) setPendingUpdate(info); })
+      .catch(() => {});
 
     loadPersistedMonitor("window.presentation.monitor").then(setPresentationMonitorIdx);
     loadPersistedMonitor("window.stage.monitor").then(setStageMonitorIdx);
@@ -178,6 +188,21 @@ export const OperatorApp: React.FC = () => {
     <div className="h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white flex flex-col">
       {restoreInProgress && (
         <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />
+      )}
+
+      {pendingUpdate && !updateDismissed && (
+        <UpdateBanner
+          update={pendingUpdate}
+          onDismiss={() => setUpdateDismissed(true)}
+          onUpdate={() => setShowUpdateDialog(true)}
+        />
+      )}
+
+      {showUpdateDialog && pendingUpdate && (
+        <UpdateDialog
+          update={pendingUpdate}
+          onClose={() => setShowUpdateDialog(false)}
+        />
       )}
 
       {/* Top bar */}

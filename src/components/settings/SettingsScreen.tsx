@@ -5,6 +5,7 @@ import { WindowsScreen } from "./WindowsScreen";
 import { KeyBindingsScreen } from "./KeyBindingsScreen";
 import { ThemeToggle } from "./ThemeToggle";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
+import { UpdateCheckButton } from "../system/UpdateCheckButton";
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -41,6 +42,13 @@ export const SettingsScreen: React.FC = () => {
             {t("reports.ccli.title")}
           </h3>
           <CCLIReportScreen />
+        </div>
+
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 space-y-2">
+          <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {t("settings.about")}
+          </h3>
+          <UpdateCheckButton />
         </div>
       </div>
     </div>

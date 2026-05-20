@@ -16,6 +16,7 @@ import type {
   ServiceSet,
   SetItem,
   Song,
+  UpdateInfo,
   WebViewConfig,
 } from "../types";
 
@@ -402,3 +403,11 @@ export const emitForwardKeydown = (signature: string) =>
 
 export const onForwardKeydown = (cb: (sig: string) => void) =>
   listen<{ signature: string }>("forward_keydown", (e) => cb(e.payload.signature));
+
+// ─── Updates ──────────────────────────────────────────────────────────────────
+
+export const checkForUpdates = (force: boolean) =>
+  invoke<UpdateInfo | null>("check_for_updates", { force });
+
+export const applyUpdateAndRestart = () =>
+  invoke<void>("apply_update_and_restart");

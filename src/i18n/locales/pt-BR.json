@@ -399,6 +399,7 @@
       "light": "Claro",
       "dark": "Escuro"
     },
+    "about": "Sobre",
     "windows": {
       "title": "Janelas",
       "presentationWindow": "Janela de Apresentação",
@@ -501,5 +502,21 @@
       "buildError": "Falha ao criar janela: {{detail}}"
     },
     "legacy": "{{message}}"
+  },
+  "updates": {
+    "bannerMessage": "Nova versão disponível: {{version}}",
+    "updateButton": "Atualizar",
+    "dismissButton": "Fechar",
+    "dialogTitle": "Versão {{version}} disponível",
+    "currentVersion": "Versão atual: {{version}}",
+    "noNotes": "Nenhuma nota de versão.",
+    "applyButton": "Baixar e instalar",
+    "applying": "Instalando…",
+    "cancelButton": "Mais tarde",
+    "signatureInvalid": "Falha na verificação de assinatura — atualização abortada.",
+    "applyFailed": "Falha ao instalar: {{detail}}",
+    "checkManual": "Verificar atualizações",
+    "upToDate": "Você já está na versão mais recente.",
+    "checkFailed": "Não foi possível verificar atualizações."
   }
 }

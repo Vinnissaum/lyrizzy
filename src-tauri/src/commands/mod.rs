@@ -9,4 +9,5 @@ pub mod reports;
 pub mod set;
 pub mod settings;
 pub mod song;
+pub mod updates;
 pub mod window;

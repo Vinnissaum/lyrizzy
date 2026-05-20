@@ -399,6 +399,7 @@
       "light": "Light",
       "dark": "Dark"
     },
+    "about": "About",
     "windows": {
       "title": "Windows",
       "presentationWindow": "Presentation Window",
@@ -501,5 +502,21 @@
       "buildError": "Failed to create window: {{detail}}"
     },
     "legacy": "{{message}}"
+  },
+  "updates": {
+    "bannerMessage": "New version available: {{version}}",
+    "updateButton": "Update",
+    "dismissButton": "Dismiss",
+    "dialogTitle": "Version {{version}} available",
+    "currentVersion": "Current version: {{version}}",
+    "noNotes": "No release notes.",
+    "applyButton": "Download and install",
+    "applying": "Installing…",
+    "cancelButton": "Later",
+    "signatureInvalid": "Signature verification failed — update aborted.",
+    "applyFailed": "Install failed: {{detail}}",
+    "checkManual": "Check for updates",
+    "upToDate": "You are already on the latest version.",
+    "checkFailed": "Could not check for updates."
   }
 }

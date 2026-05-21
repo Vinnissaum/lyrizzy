@@ -28,7 +28,7 @@ export const CountdownPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full p-6 gap-6">
-      <h2 className="text-base font-semibold text-white">{t("countdown.title")}</h2>
+      <h2 className="text-base font-semibold">{t("countdown.title")}</h2>
 
       {/* Big display */}
       <div className="flex-1 flex items-center justify-center">
@@ -38,7 +38,7 @@ export const CountdownPanel: React.FC = () => {
               ? "text-red-400"
               : isRunning
               ? "text-emerald-400"
-              : "text-white"
+              : ""
           }`}
         >
           {formatMs(displayMs)}
@@ -46,37 +46,37 @@ export const CountdownPanel: React.FC = () => {
       </div>
 
       {/* Duration input */}
-      <div className="bg-gray-800 rounded-xl p-4 space-y-3">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+      <div className="bg-surface rounded-xl p-4 space-y-3">
+        <p className="text-xs text-muted font-medium uppercase tracking-wider">
           {t("countdown.setDuration")}
         </p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-xs text-gray-500 mb-1 block">{t("countdown.min")}</label>
+            <label className="text-xs text-muted mb-1 block">{t("countdown.min")}</label>
             <input
               type="number"
               min="0"
               max="99"
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-center text-lg font-mono focus:outline-none focus:border-emerald-500"
+              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-center text-lg font-mono focus:outline-none focus:border-primary"
             />
           </div>
-          <span className="text-gray-400 text-2xl font-mono pb-2">:</span>
+          <span className="text-muted text-2xl font-mono pb-2">:</span>
           <div className="flex-1">
-            <label className="text-xs text-gray-500 mb-1 block">{t("countdown.sec")}</label>
+            <label className="text-xs text-muted mb-1 block">{t("countdown.sec")}</label>
             <input
               type="number"
               min="0"
               max="59"
               value={seconds}
               onChange={(e) => setSeconds(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-center text-lg font-mono focus:outline-none focus:border-emerald-500"
+              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-center text-lg font-mono focus:outline-none focus:border-primary"
             />
           </div>
           <button
             onClick={handleSetDuration}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-surface-2 hover:bg-border rounded-lg text-sm font-medium transition-colors"
           >
             {t("countdown.setButton")}
           </button>
@@ -88,7 +88,7 @@ export const CountdownPanel: React.FC = () => {
         {isRunning ? (
           <button
             onClick={pause}
-            className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 rounded-xl text-sm font-semibold transition-colors"
+            className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-semibold transition-colors"
           >
             {t("countdown.pause")}
           </button>
@@ -96,7 +96,7 @@ export const CountdownPanel: React.FC = () => {
           <button
             onClick={() => start()}
             disabled={state.durationMs === 0}
-            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
+            className="flex-1 py-3 bg-primary hover:bg-primary-hover text-white disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
           >
             {t("countdown.start")}
           </button>
@@ -104,7 +104,7 @@ export const CountdownPanel: React.FC = () => {
         <button
           onClick={reset}
           disabled={state.durationMs === 0}
-          className="px-5 py-3 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
+          className="px-5 py-3 bg-surface-2 hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
         >
           {t("countdown.reset")}
         </button>

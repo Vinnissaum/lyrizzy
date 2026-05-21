@@ -6,9 +6,11 @@ import { KeyBindingsScreen } from "./KeyBindingsScreen";
 import { ThemeToggle } from "./ThemeToggle";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { UpdateCheckButton } from "../system/UpdateCheckButton";
+import { useSettingsStore } from "../../stores/settings";
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
+  const { cameraUrl, setCameraUrl } = useSettingsStore();
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -28,6 +30,18 @@ export const SettingsScreen: React.FC = () => {
             {t("settings.windows.title")}
           </h3>
           <WindowsScreen />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t("settings.windows.cameraUrl")}
+            </p>
+            <input
+              type="url"
+              value={cameraUrl}
+              onChange={(e) => setCameraUrl(e.target.value)}
+              placeholder="http://192.168.1.x/cam"
+              className="w-full bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
         </div>
 
         <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 space-y-2">

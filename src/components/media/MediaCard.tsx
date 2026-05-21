@@ -29,10 +29,10 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
     <button
       onClick={() => onClick(media)}
       data-testid={`media-card-${media.id}`}
-      className={`group relative aspect-video rounded-lg overflow-hidden border-2 transition-all bg-gray-800 w-full ${
+      className={`group relative aspect-video rounded-lg overflow-hidden border-2 transition-all bg-surface w-full ${
         isSelected
-          ? "border-blue-500"
-          : "border-transparent hover:border-gray-600"
+          ? "border-primary"
+          : "border-transparent hover:border-border"
       }`}
     >
       {thumbUrl ? (
@@ -42,7 +42,7 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
           className="w-full h-full object-cover"
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-gray-600">
+        <div className="flex h-full items-center justify-center text-muted">
           <Film className="w-10 h-10" />
         </div>
       )}

@@ -109,14 +109,14 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
     (references.songs.length > 0 || references.setItems.length > 0 || references.sections.length > 0);
 
   return (
-    <div className="flex flex-col h-full border-l border-gray-700 bg-gray-900 w-72 shrink-0">
+    <div className="flex flex-col h-full border-l border-border bg-bg w-72 shrink-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-        <span className="text-sm font-semibold text-gray-200">{t("media.detail.title")}</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-sm font-semibold">{t("media.detail.title")}</span>
         <button
           onClick={onClose}
           data-testid="detail-close"
-          className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+          className="p-1 rounded hover:bg-surface-2 text-muted hover:text-inherit transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -131,7 +131,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
             className="max-w-full max-h-full object-contain"
           />
         ) : (
-          <div className="text-gray-700">
+          <div className="text-muted">
             {media.kind === "video" ? (
               <Film className="w-12 h-12" />
             ) : (
@@ -145,7 +145,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Name */}
         <div>
-          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
+          <p className="text-xs text-muted mb-1 uppercase tracking-wide">
             {t("media.detail.name")}
           </p>
           {editingName ? (
@@ -162,12 +162,12 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
                   }
                 }}
                 data-testid="name-input"
-                className="flex-1 min-w-0 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+                className="flex-1 min-w-0 px-2 py-1 bg-surface border border-border rounded text-sm focus:outline-none focus:border-primary"
               />
               <button
                 onClick={handleSaveName}
                 disabled={isSavingName}
-                className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded text-white transition-colors disabled:opacity-50"
+                className="p-1.5 bg-primary hover:bg-primary-hover rounded text-white transition-colors disabled:opacity-50"
               >
                 <Check className="w-3.5 h-3.5" />
               </button>
@@ -175,7 +175,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
           ) : (
             <div className="flex items-start gap-2">
               <p
-                className="text-sm text-white flex-1 break-words"
+                className="text-sm flex-1 break-words"
                 data-testid="display-name"
               >
                 {media.displayName}
@@ -183,7 +183,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
               <button
                 onClick={() => setEditingName(true)}
                 data-testid="rename-button"
-                className="p-1 rounded hover:bg-gray-700 text-gray-500 hover:text-white transition-colors shrink-0"
+                className="p-1 rounded hover:bg-surface-2 text-muted hover:text-inherit transition-colors shrink-0"
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
@@ -197,28 +197,28 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
         {/* Metadata */}
         <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between">
-            <dt className="text-gray-500">{t("media.detail.type")}</dt>
-            <dd className="text-gray-300">
+            <dt className="text-muted">{t("media.detail.type")}</dt>
+            <dd className="text-muted">
               {t(`media.type.${media.kind}`)}
             </dd>
           </div>
           {(media.width || media.height) && (
             <div className="flex justify-between">
-              <dt className="text-gray-500">{t("media.detail.dimensions")}</dt>
-              <dd className="text-gray-300">
+              <dt className="text-muted">{t("media.detail.dimensions")}</dt>
+              <dd className="text-muted">
                 {media.width}×{media.height}
               </dd>
             </div>
           )}
           {media.durationMs !== undefined && media.durationMs > 0 && (
             <div className="flex justify-between">
-              <dt className="text-gray-500">{t("media.detail.duration")}</dt>
-              <dd className="text-gray-300">{formatDuration(media.durationMs)}</dd>
+              <dt className="text-muted">{t("media.detail.duration")}</dt>
+              <dd className="text-muted">{formatDuration(media.durationMs)}</dd>
             </div>
           )}
           <div className="flex justify-between">
-            <dt className="text-gray-500">{t("media.detail.size")}</dt>
-            <dd className="text-gray-300">{formatBytes(media.byteSize)}</dd>
+            <dt className="text-muted">{t("media.detail.size")}</dt>
+            <dd className="text-muted">{formatBytes(media.byteSize)}</dd>
           </div>
         </dl>
 

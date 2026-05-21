@@ -77,7 +77,7 @@ describe("MediaLibrary", () => {
     render(<MediaLibrary />);
     const todosChip = screen.getByTestId("filter-all");
     expect(todosChip).toBeInTheDocument();
-    expect(todosChip.className).toMatch(/bg-blue-600/);
+    expect(todosChip.className).toMatch(/bg-primary/);
   });
 
   it("clicking filter chip calls setFilter and refreshes", async () => {

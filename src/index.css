@@ -2,3 +2,23 @@
 
 /* Tailwind v4 dark variant: triggered by .dark class on <html> */
 @variant dark (&:where(.dark, .dark *));
+
+/* Light-mode defaults; registers utility classes: bg-surface, bg-primary, border-border, text-muted, etc. */
+@theme {
+  --color-bg:            #F5F5F5;
+  --color-surface:       #FFFFFF;
+  --color-surface-2:     #F0F0F0;
+  --color-border:        #E0E0E0;
+  --color-muted:         #666666;
+  --color-primary:       #19A4DD;
+  --color-primary-hover: #1494C5;
+}
+
+/* Dark-mode surface overrides (primary is the same in both themes) */
+.dark {
+  --color-bg:        #111111;
+  --color-surface:   #1C1C1C;
+  --color-surface-2: #252525;
+  --color-border:    #333333;
+  --color-muted:     #888888;
+}

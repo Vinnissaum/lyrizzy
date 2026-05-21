@@ -41,19 +41,19 @@ export const OperatorNotesPanel: React.FC = () => {
 
   return (
     <div
-      className={`flex flex-col border-l border-gray-700 bg-gray-900 transition-all ${
+      className={`flex flex-col border-l border-border bg-bg transition-all ${
         notesPanelCollapsed ? "w-8" : "w-72"
       }`}
     >
-      <div className="flex items-center justify-between px-2 py-2 border-b border-gray-700 shrink-0">
+      <div className="flex items-center justify-between px-2 py-2 border-b border-border shrink-0">
         {!notesPanelCollapsed && (
-          <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <span className="text-xs font-medium text-muted uppercase tracking-wider">
             {t("presentation.notes.title")}
           </span>
         )}
         <button
           onClick={() => setNotesPanelCollapsed(!notesPanelCollapsed)}
-          className="text-gray-500 hover:text-gray-300 p-0.5 rounded ml-auto"
+          className="text-muted hover:text-inherit p-0.5 rounded ml-auto"
           aria-label={notesPanelCollapsed ? t("presentation.notes.expand") : t("presentation.notes.collapse")}
         >
           {notesPanelCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
@@ -62,7 +62,7 @@ export const OperatorNotesPanel: React.FC = () => {
 
       {!notesPanelCollapsed && (
         <div className="flex-1 overflow-y-auto px-3 py-2">
-          <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">{notes}</p>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">{notes}</p>
         </div>
       )}
     </div>

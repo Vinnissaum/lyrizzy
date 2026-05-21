@@ -27,7 +27,7 @@ export const BlankItemNotesEditor: React.FC<Props> = ({ item }) => {
 
   return (
     <div className="p-3">
-      <p className="text-xs text-gray-400 mb-1">{t("builder.itemNotes.label")}</p>
+      <p className="text-xs text-muted mb-1">{t("builder.itemNotes.label")}</p>
       <NotesField value={notes} onChange={handleNotesChange} placeholder={t("builder.itemNotes.placeholder")} />
     </div>
   );

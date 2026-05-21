@@ -93,7 +93,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     <div className="p-3 space-y-3">
       {/* Mode */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">{t("webview.editor.mode")}</label>
+        <label className="text-xs text-muted mb-1 block">{t("webview.editor.mode")}</label>
         <div className="flex gap-4">
           {(["iframe", "mjpeg"] as WebViewMode[]).map((m) => (
             <label key={m} className="flex items-center gap-1.5 cursor-pointer">
@@ -103,9 +103,9 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
                 value={m}
                 checked={mode === m}
                 onChange={() => handleModeChange(m)}
-                className="accent-blue-500"
+                className="accent-primary"
               />
-              <span className="text-sm text-gray-300">
+              <span className="text-sm">
                 {t(`webview.editor.modes.${m === "iframe" ? "iframe" : "mjpeg"}`)}
               </span>
             </label>
@@ -115,7 +115,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {/* URL */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">{t("webview.editor.url")}</label>
+        <label className="text-xs text-muted mb-1 block">{t("webview.editor.url")}</label>
         <input
           type="text"
           value={url}
@@ -126,8 +126,8 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
               ? "https://exemplo.com"
               : "http://192.168.1.10/stream"
           }
-          className={`w-full px-3 py-1.5 bg-gray-700 border rounded text-sm text-white font-mono focus:outline-none focus:border-blue-500 ${
-            urlError ? "border-red-500" : "border-gray-600"
+          className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
+            urlError ? "border-red-500" : "border-border"
           }`}
         />
         {urlError && (
@@ -143,7 +143,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
       {/* Basic auth — MJPEG only */}
       {mode === "mjpeg" && (
         <div className="space-y-2">
-          <label className="text-xs text-gray-400 block">
+          <label className="text-xs text-muted block">
             {t("webview.editor.auth")}
           </label>
           <input
@@ -152,7 +152,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
             onChange={(e) => setAuthUser(e.target.value)}
             onBlur={handleSave}
             placeholder={t("webview.editor.user")}
-            className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
           />
           <input
             type="password"
@@ -160,15 +160,15 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
             onChange={(e) => setAuthPass(e.target.value)}
             onBlur={handleSave}
             placeholder={t("webview.editor.pass")}
-            className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
           />
         </div>
       )}
 
-      {saving && <p className="text-xs text-gray-500">{t("webview.editor.saving")}</p>}
+      {saving && <p className="text-xs text-muted">{t("webview.editor.saving")}</p>}
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">{t("builder.itemNotes.label")}</p>
+        <p className="text-xs text-muted mb-1">{t("builder.itemNotes.label")}</p>
         <NotesField value={notes} onChange={handleNotesChange} placeholder={t("builder.itemNotes.placeholder")} />
       </div>
     </div>

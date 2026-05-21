@@ -61,8 +61,8 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
             />
           ) : null}
           <div className="min-w-0">
-            <p className="text-xs text-white truncate">{selectedMedia.displayName}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs truncate">{selectedMedia.displayName}</p>
+            <p className="text-xs text-muted">
               {t(`media.type.${selectedMedia.kind}`)}
               {selectedMedia.durationMs
                 ? ` · ${Math.round(selectedMedia.durationMs / 1000)}s`
@@ -79,9 +79,9 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
               type="checkbox"
               checked={opts.loop}
               onChange={(e) => saveOpts({ ...opts, loop: e.target.checked })}
-              className="accent-blue-500"
+              className="accent-primary"
             />
-            <span className="text-sm text-gray-300">{t("media.editor.loop")}</span>
+            <span className="text-sm">{t("media.editor.loop")}</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer">
@@ -89,9 +89,9 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
               type="checkbox"
               checked={opts.mute}
               onChange={(e) => saveOpts({ ...opts, mute: e.target.checked })}
-              className="accent-blue-500"
+              className="accent-primary"
             />
-            <span className="text-sm text-gray-300">{t("media.editor.mute")}</span>
+            <span className="text-sm">{t("media.editor.mute")}</span>
           </label>
 
           {!opts.loop && (
@@ -102,24 +102,24 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
                 onChange={(e) =>
                   saveOpts({ ...opts, autoAdvanceOnEnd: e.target.checked })
                 }
-                className="accent-blue-500"
+                className="accent-primary"
               />
-              <span className="text-sm text-gray-300">{t("media.editor.autoAdvance")}</span>
+              <span className="text-sm">{t("media.editor.autoAdvance")}</span>
             </label>
           )}
         </div>
       )}
 
       {item.mediaKind === "image" && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted">
           {t("media.editor.imageNote")}
         </p>
       )}
 
-      {saving && <p className="text-xs text-gray-500">{t("media.editor.saving")}</p>}
+      {saving && <p className="text-xs text-muted">{t("media.editor.saving")}</p>}
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">{t("builder.itemNotes.label")}</p>
+        <p className="text-xs text-muted mb-1">{t("builder.itemNotes.label")}</p>
         <NotesField value={notes} onChange={handleNotesChange} placeholder={t("builder.itemNotes.placeholder")} />
       </div>
     </div>

@@ -106,15 +106,15 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     <div className="p-3 space-y-3">
       {/* Duration */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.duration")}</label>
+        <label className="text-xs text-muted mb-1 block">{t("countdown.editor.duration")}</label>
         <input
           type="text"
           value={durationInput}
           onChange={(e) => setDurationInput(e.target.value)}
           onBlur={handleSave}
           placeholder="10:00"
-          className={`w-full px-3 py-1.5 bg-gray-700 border rounded text-sm text-white font-mono focus:outline-none focus:border-blue-500 ${
-            durationError ? "border-red-500" : "border-gray-600"
+          className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
+            durationError ? "border-red-500" : "border-border"
           }`}
         />
         {durationError && (
@@ -124,20 +124,20 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {/* Message */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.message")}</label>
+        <label className="text-xs text-muted mb-1 block">{t("countdown.editor.message")}</label>
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onBlur={handleSave}
           maxLength={200}
-          className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
         />
       </div>
 
       {/* End behavior */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.endBehavior")}</label>
+        <label className="text-xs text-muted mb-1 block">{t("countdown.editor.endBehavior")}</label>
         <div className="space-y-1">
           {END_BEHAVIOR_VALUES.map((value) => (
             <label
@@ -164,9 +164,9 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                     }).catch(console.error);
                   }
                 }}
-                className="accent-blue-500"
+                className="accent-primary"
               />
-              <span className="text-sm text-gray-300">
+              <span className="text-sm">
                 {t(`countdown.endBehavior.${value}`)}
               </span>
             </label>
@@ -176,7 +176,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
 
       {/* Background media picker */}
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">{t("countdown.editor.background")}</label>
+        <label className="text-xs text-muted mb-1 block">{t("countdown.editor.background")}</label>
         <MediaPicker
           value={backgroundMediaId}
           kind="video"
@@ -201,11 +201,11 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
       </div>
 
       {saving && (
-        <p className="text-xs text-gray-500">{t("countdown.editor.saving")}</p>
+        <p className="text-xs text-muted">{t("countdown.editor.saving")}</p>
       )}
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">{t("builder.itemNotes.label")}</p>
+        <p className="text-xs text-muted mb-1">{t("builder.itemNotes.label")}</p>
         <NotesField value={notes} onChange={handleNotesChange} placeholder={t("builder.itemNotes.placeholder")} />
       </div>
     </div>

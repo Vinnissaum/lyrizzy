@@ -4,6 +4,7 @@ pub mod countdown;
 pub mod key_bindings;
 pub mod import;
 pub mod media;
+pub mod overlay;
 pub mod presentation;
 pub mod reports;
 pub mod set;

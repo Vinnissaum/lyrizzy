@@ -211,6 +211,7 @@ pub async fn load_set_for_presentation(
         next_slide: second_slide,
         item_slide_counts,
         background,
+        overlay: None,
     };
 
     {

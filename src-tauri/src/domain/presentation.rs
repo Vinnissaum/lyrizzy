@@ -16,6 +16,15 @@ pub enum PresentationMode {
     Frozen,
 }
 
+/// Active overlay layer rendered on top of the primary slide.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum OverlayState {
+    Announcement { text: String },
+    Media { media_id: String },
+    WebView { url: String },
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationState {
@@ -38,6 +47,9 @@ pub struct PresentationState {
     pub item_slide_counts: Vec<usize>,
     /// Resolved per-song background for the current item, or None for solid black.
     pub background: Option<BackgroundInfo>,
+    /// Active overlay layer rendered on top of the primary slide.
+    /// None when no overlay is active.
+    pub overlay: Option<OverlayState>,
 }
 
 impl Default for PresentationState {
@@ -52,6 +64,7 @@ impl Default for PresentationState {
             next_slide: None,
             item_slide_counts: vec![],
             background: None,
+            overlay: None,
         }
     }
 }
@@ -71,6 +84,7 @@ mod tests {
         assert!(json.contains("\"nextSlide\""), "expected nextSlide field: {json}");
         assert!(json.contains("\"itemSlideCounts\""), "expected itemSlideCounts field: {json}");
         assert!(json.contains("\"background\""), "expected background field: {json}");
+        assert!(json.contains("\"overlay\""), "expected overlay field: {json}");
         let back: PresentationState = serde_json::from_str(&json).unwrap();
         assert_eq!(back, state);
     }
@@ -81,5 +95,33 @@ mod tests {
         assert_eq!(serde_json::to_string(&PresentationMode::Live).unwrap(), "\"live\"");
         assert_eq!(serde_json::to_string(&PresentationMode::Blank).unwrap(), "\"blank\"");
         assert_eq!(serde_json::to_string(&PresentationMode::Frozen).unwrap(), "\"frozen\"");
+    }
+
+    #[test]
+    fn overlay_state_announcement_round_trips() {
+        let o = OverlayState::Announcement { text: "Oferta".to_string() };
+        let json = serde_json::to_string(&o).unwrap();
+        assert!(json.contains("\"type\":\"announcement\""), "tag missing: {json}");
+        assert!(json.contains("\"text\":\"Oferta\""), "text missing: {json}");
+        let back: OverlayState = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, o);
+    }
+
+    #[test]
+    fn overlay_state_media_round_trips() {
+        let o = OverlayState::Media { media_id: "m-123".to_string() };
+        let json = serde_json::to_string(&o).unwrap();
+        assert!(json.contains("\"type\":\"media\""), "tag missing: {json}");
+        let back: OverlayState = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, o);
+    }
+
+    #[test]
+    fn overlay_state_webview_round_trips() {
+        let o = OverlayState::WebView { url: "https://example.com".to_string() };
+        let json = serde_json::to_string(&o).unwrap();
+        assert!(json.contains("\"type\":\"webView\""), "tag missing: {json}");
+        let back: OverlayState = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, o);
     }
 }

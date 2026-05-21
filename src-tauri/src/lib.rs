@@ -17,9 +17,12 @@ use commands::presentation::{
     get_presentation_state, go_to_item, load_set_for_presentation, next_slide, prev_slide,
     set_presentation_mode,
 };
+use commands::overlay::{
+    clear_overlay, set_announcement_overlay, set_media_overlay, set_webview_overlay,
+};
 use commands::set::{
-    add_set_item, create_set, delete_set, duplicate_set_item, get_set, list_sets, remove_set_item,
-    reorder_set_items, update_set, update_set_item,
+    add_set_item, create_set, delete_set, duplicate_set_item, get_or_create_default_set, get_set,
+    list_sets, remove_set_item, reorder_set_items, update_set, update_set_item,
 };
 use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
 use commands::key_bindings::{get_key_bindings, set_key_bindings, reset_key_bindings};
@@ -144,6 +147,11 @@ pub fn run() {
             reset_key_bindings,
             preview_ccli_export,
             export_ccli_csv,
+            get_or_create_default_set,
+            set_announcement_overlay,
+            set_media_overlay,
+            set_webview_overlay,
+            clear_overlay,
             check_for_updates,
             apply_update_and_restart,
         ])

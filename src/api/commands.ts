@@ -189,6 +189,9 @@ export const deleteSet = (id: string) =>
 export const listSets = () =>
   invoke<ServiceSet[]>("list_sets");
 
+export const getOrCreateDefaultSet = () =>
+  invoke<ServiceSet>("get_or_create_default_set");
+
 export const getSet = (id: string) =>
   invoke<ServiceSet>("get_set", { id });
 
@@ -411,3 +414,17 @@ export const checkForUpdates = (force: boolean) =>
 
 export const applyUpdateAndRestart = () =>
   invoke<void>("apply_update_and_restart");
+
+// ─── Overlay ─────────────────────────────────────────────────────────────────
+
+export const setAnnouncementOverlay = (text: string) =>
+  invoke<void>("set_announcement_overlay", { text });
+
+export const setMediaOverlay = (mediaId: string) =>
+  invoke<void>("set_media_overlay", { mediaId });
+
+export const setWebviewOverlay = (url: string) =>
+  invoke<void>("set_webview_overlay", { url });
+
+export const clearOverlay = () =>
+  invoke<void>("clear_overlay");

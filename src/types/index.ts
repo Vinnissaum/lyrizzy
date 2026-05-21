@@ -146,6 +146,11 @@ export interface BackgroundInfo {
   restartOnSectionBoundary: boolean;
 }
 
+export type OverlayState =
+  | { type: 'announcement'; text: string }
+  | { type: 'media'; mediaId: string }
+  | { type: 'webView'; url: string };
+
 export interface PresentationState {
   set?: ServiceSet;
   currentItemIndex: number;
@@ -157,6 +162,7 @@ export interface PresentationState {
   nextSlide?: Slide;
   itemSlideCounts: number[];
   background?: BackgroundInfo;
+  overlay?: OverlayState;
 }
 
 export interface Slide {

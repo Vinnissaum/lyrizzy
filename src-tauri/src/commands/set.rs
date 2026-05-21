@@ -552,3 +552,87 @@ pub async fn reorder_set_items(
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(set)
 }
+
+/// Return the most-recently-updated set, creating a default "Culto Dominical"
+/// set when the table is empty. Idempotent: calling twice with an empty table
+/// produces exactly one row.
+pub async fn db_get_or_create_default_set(pool: &SqlitePool) -> Result<ServiceSet, ErrorPayload> {
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sets")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+
+    if count > 0 {
+        let row = sqlx::query("SELECT id FROM sets ORDER BY updated_at DESC LIMIT 1")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+        let id: String = row.get("id");
+        return db_load_set(pool, &id).await;
+    }
+
+    let id = new_id();
+    let now = now_ms();
+    sqlx::query(
+        "INSERT INTO sets (id, name, service_date, notes, created_at, updated_at)
+         VALUES (?, ?, NULL, NULL, ?, ?)",
+    )
+    .bind(&id)
+    .bind("Culto Dominical")
+    .bind(now)
+    .bind(now)
+    .execute(pool)
+    .await
+    .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+
+    db_load_set(pool, &id).await
+}
+
+#[tauri::command]
+pub async fn get_or_create_default_set(
+    state: State<'_, AppState>,
+) -> Result<ServiceSet, ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
+    db_get_or_create_default_set(pool).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqliteConnectOptions;
+    use std::str::FromStr;
+    use tempfile::tempdir;
+
+    async fn open_db() -> (SqlitePool, tempfile::TempDir) {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("set_test.db");
+        let url = format!("sqlite://{}?mode=rwc", path.to_string_lossy());
+        let opts = SqliteConnectOptions::from_str(&url)
+            .unwrap()
+            .create_if_missing(true);
+        let pool = sqlx::SqlitePool::connect_with(opts).await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        (pool, dir)
+    }
+
+    #[tokio::test]
+    async fn get_or_create_default_creates_when_empty() {
+        let (pool, _dir) = open_db().await;
+        let set = db_get_or_create_default_set(&pool).await.unwrap();
+        assert_eq!(set.name, "Culto Dominical");
+        assert!(set.items.is_empty());
+    }
+
+    #[tokio::test]
+    async fn get_or_create_default_returns_existing_when_populated() {
+        let (pool, _dir) = open_db().await;
+        let first = db_get_or_create_default_set(&pool).await.unwrap();
+        let second = db_get_or_create_default_set(&pool).await.unwrap();
+        assert_eq!(first.id, second.id, "should return same set on second call");
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sets")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 1, "should not create a second set");
+    }
+}

@@ -243,7 +243,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
 
   if (!serviceSet) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+      <div className="h-full flex items-center justify-center text-muted text-sm">
         {t("builder.loading")}
       </div>
     );
@@ -266,9 +266,9 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       case "song":
         return (
           <>
-            <p className="text-sm font-medium text-white truncate">{song!.title}</p>
+            <p className="text-sm font-medium truncate">{song!.title}</p>
             {song!.artist && (
-              <p className="text-xs text-gray-400 truncate">{song!.artist}</p>
+              <p className="text-xs text-muted truncate">{song!.artist}</p>
             )}
           </>
         );
@@ -299,18 +299,18 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         );
       }
       default:
-        return <p className="text-sm text-gray-400 italic">{t("builder.blank")}</p>;
+        return <p className="text-sm text-muted italic">{t("builder.blank")}</p>;
     }
   };
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-gray-700">
+      <div className="px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center gap-2 mb-2">
           <button
             onClick={() => setView("sets")}
-            className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+            className="text-muted hover:text-inherit p-1 rounded transition-colors"
           >
             ←
           </button>
@@ -326,11 +326,11 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                 autoFocus
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
-                className="flex-1 px-2 py-1 bg-gray-800 border border-blue-500 rounded text-sm text-white focus:outline-none"
+                className="flex-1 px-2 py-1 bg-surface border border-primary rounded text-sm focus:outline-none"
               />
               <button
                 type="submit"
-                className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+                className="px-2 py-1 text-xs bg-primary hover:bg-primary-hover text-white rounded transition-colors"
               >
                 ✓
               </button>
@@ -340,7 +340,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                   setEditingName(false);
                   setNameInput(serviceSet.name);
                 }}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                className="px-2 py-1 text-xs bg-surface-2 hover:bg-border rounded transition-colors"
               >
                 ✕
               </button>
@@ -348,14 +348,14 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
           ) : (
             <button
               onClick={() => setEditingName(true)}
-              className="flex-1 text-left text-base font-semibold hover:text-blue-400 transition-colors"
+              className="flex-1 text-left text-base font-semibold hover:text-primary transition-colors"
               title={t("builder.renameTip")}
             >
               {serviceSet.name}
             </button>
           )}
         </div>
-        <p className="text-xs text-gray-400 pl-7">
+        <p className="text-xs text-muted pl-7">
           {t("builder.item", { count: serviceSet.items.length })}
         </p>
       </div>
@@ -363,7 +363,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       {/* Item list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         {serviceSet.items.length === 0 ? (
-          <p className="text-center text-gray-500 text-sm py-8">
+          <p className="text-center text-muted text-sm py-8">
             {t("builder.empty")}
           </p>
         ) : (
@@ -372,9 +372,9 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
             const canExpand = isExpandable(item);
 
             return (
-              <div key={item.id} className="rounded-lg bg-gray-800 overflow-hidden">
+              <div key={item.id} className="rounded-lg bg-surface overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2 group">
-                  <span className="text-xs text-gray-500 w-5 text-right shrink-0">
+                  <span className="text-xs text-muted w-5 text-right shrink-0">
                     {idx + 1}
                   </span>
                   <span className="text-sm shrink-0 w-4 text-center">
@@ -391,7 +391,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                   {canExpand && (
                     <button
                       onClick={() => setExpandedItemId(expanded ? null : item.id)}
-                      className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 transition-all text-xs"
+                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 transition-all text-xs"
                       title={t("builder.actions.edit")}
                     >
                       {expanded ? "▲" : "▼"}
@@ -400,7 +400,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button
                       onClick={() => handleDuplicate(item)}
-                      className="p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-gray-700 transition-all"
+                      className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"
                       title={t("builder.actions.duplicate")}
                     >
                       ⧉
@@ -408,7 +408,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                     <button
                       onClick={() => handleMove(idx, "up")}
                       disabled={idx === 0}
-                      className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
+                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
                       title={t("builder.actions.moveUp")}
                     >
                       ↑
@@ -416,14 +416,14 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                     <button
                       onClick={() => handleMove(idx, "down")}
                       disabled={idx === serviceSet.items.length - 1}
-                      className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 transition-all"
+                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
                       title={t("builder.actions.moveDown")}
                     >
                       ↓
                     </button>
                     <button
                       onClick={() => handleRemoveItem(item)}
-                      className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-all"
+                      className="p-1 rounded text-muted hover:text-red-400 hover:bg-surface-2 transition-all"
                       title={t("builder.actions.remove")}
                     >
                       ✕
@@ -432,7 +432,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                 </div>
 
                 {expanded && (
-                  <div className="border-t border-gray-700">
+                  <div className="border-t border-border">
                     {item.itemType === "countdown" && (
                       <CountdownSetItemEditor item={item} />
                     )}
@@ -455,19 +455,19 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
 
       {/* Song picker panel */}
       {showSongPicker && (
-        <div className="border-t border-gray-700 flex flex-col h-64">
-          <div className="px-3 py-2 border-b border-gray-700 flex items-center gap-2">
+        <div className="border-t border-border flex flex-col h-64">
+          <div className="px-3 py-2 border-b border-border flex items-center gap-2">
             <input
               autoFocus
               type="search"
               value={songSearch}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder={t("builder.songSearch")}
-              className="flex-1 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="flex-1 px-2 py-1.5 bg-surface border border-border rounded text-sm placeholder-muted focus:outline-none focus:border-primary"
             />
             <button
               onClick={() => setShowSongPicker(false)}
-              className="text-gray-400 hover:text-white p-1"
+              className="text-muted hover:text-inherit p-1"
             >
               ✕
             </button>
@@ -477,11 +477,11 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
               <button
                 key={song.id}
                 onClick={() => handleAddSong(song)}
-                className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 transition-colors"
+                className="w-full text-left px-3 py-2 rounded hover:bg-surface-2 transition-colors"
               >
-                <p className="text-sm text-white">{song.title}</p>
+                <p className="text-sm">{song.title}</p>
                 {song.artist && (
-                  <p className="text-xs text-gray-400">{song.artist}</p>
+                  <p className="text-xs text-muted">{song.artist}</p>
                 )}
               </button>
             ))}
@@ -491,8 +491,8 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
 
       {/* Media picker panel */}
       {showMediaPicker && (
-        <div className="border-t border-gray-700 flex flex-col h-64">
-          <div className="px-3 py-2 border-b border-gray-700 flex items-center gap-2">
+        <div className="border-t border-border flex flex-col h-64">
+          <div className="px-3 py-2 border-b border-border flex items-center gap-2">
             <div className="flex gap-1">
               {(["all", "image", "video"] as const).map((f) => (
                 <button
@@ -500,8 +500,8 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                   onClick={() => setMediaFilter(f)}
                   className={`px-2 py-1 text-xs rounded transition-colors ${
                     mediaFilter === f
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                      ? "bg-primary text-white"
+                      : "bg-surface-2 text-muted hover:bg-border"
                   }`}
                 >
                   {f === "all"
@@ -515,14 +515,14 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
             <span className="flex-1" />
             <button
               onClick={() => setShowMediaPicker(false)}
-              className="text-gray-400 hover:text-white p-1"
+              className="text-muted hover:text-inherit p-1"
             >
               ✕
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 gap-2">
             {filteredMedia.length === 0 ? (
-              <p className="col-span-3 text-center text-gray-500 py-6 text-sm">
+              <p className="col-span-3 text-center text-muted py-6 text-sm">
                 {t("builder.noMedia")}
               </p>
             ) : (
@@ -530,9 +530,9 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                 <button
                   key={m.id}
                   onClick={() => handleAddMedia(m)}
-                  className="flex flex-col rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors"
+                  className="flex flex-col rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
                 >
-                  <div className="aspect-video bg-gray-800 relative">
+                  <div className="aspect-video bg-surface relative">
                     <img
                       src={`asset://localhost/media/${m.thumbnailFile ?? m.fileName}`}
                       alt=""
@@ -547,7 +547,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-300 truncate px-1 py-0.5">
+                  <p className="text-xs text-muted truncate px-1 py-0.5">
                     {m.displayName}
                   </p>
                 </button>
@@ -558,7 +558,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       )}
 
       {/* Footer actions */}
-      <div className="px-4 py-3 border-t border-gray-700 space-y-2">
+      <div className="px-4 py-3 border-t border-border space-y-2">
         <div className="grid grid-cols-3 gap-1.5">
           <button
             onClick={() => {
@@ -567,7 +567,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
               setShowMediaPicker(false);
               setShowSongPicker((v) => !v);
             }}
-            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
           >
             {t("builder.add.song")}
           </button>
@@ -578,25 +578,25 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
               refreshMedia();
               setShowMediaPicker((v) => !v);
             }}
-            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-blue-400"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-blue-400"
           >
             {t("builder.add.media")}
           </button>
           <button
             onClick={handleAddCountdown}
-            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-amber-400"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-amber-400"
           >
             {t("builder.add.countdown")}
           </button>
           <button
             onClick={handleAddWebView}
-            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-purple-400"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-purple-400"
           >
             {t("builder.add.webView")}
           </button>
           <button
             onClick={handleAddBlank}
-            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-gray-400"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-muted"
           >
             {t("builder.add.blank")}
           </button>
@@ -604,7 +604,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         <button
           onClick={handleLoadForPresentation}
           disabled={isLoading || serviceSet.items.length === 0}
-          className="w-full px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+          className="w-full px-3 py-2 text-sm bg-primary hover:bg-primary-hover text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
         >
           {isLoading ? t("builder.loading") : t("builder.present")}
         </button>

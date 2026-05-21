@@ -50,11 +50,11 @@ export const SetList: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-3 border-b border-gray-700 flex items-center justify-between">
+      <div className="px-4 pt-4 pb-3 border-b border-border flex items-center justify-between">
         <h2 className="text-lg font-semibold">{t("sets.title")}</h2>
         <button
           onClick={() => setIsCreating(true)}
-          className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+          className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
         >
           {t("sets.newButton")}
         </button>
@@ -63,7 +63,7 @@ export const SetList: React.FC = () => {
       {isCreating && (
         <form
           onSubmit={handleCreate}
-          className="px-4 py-3 border-b border-gray-700 flex gap-2"
+          className="px-4 py-3 border-b border-border flex gap-2"
         >
           <input
             autoFocus
@@ -71,11 +71,11 @@ export const SetList: React.FC = () => {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("sets.namePlaceholder")}
-            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm placeholder-muted focus:outline-none focus:border-primary"
           />
           <button
             type="submit"
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+            className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
           >
             {t("sets.createButton")}
           </button>
@@ -85,7 +85,7 @@ export const SetList: React.FC = () => {
               setIsCreating(false);
               setNewName("");
             }}
-            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
+            className="px-3 py-1.5 text-sm bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
           >
             {t("sets.cancelButton")}
           </button>
@@ -94,9 +94,9 @@ export const SetList: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
-          <p className="text-gray-500 text-sm text-center py-8">{t("loading")}</p>
+          <p className="text-muted text-sm text-center py-8">{t("loading")}</p>
         ) : sets.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-muted">
             <p className="text-sm">{t("sets.empty.message")}</p>
             <p className="text-xs mt-1">{t("sets.empty.hint")}</p>
           </div>
@@ -104,20 +104,20 @@ export const SetList: React.FC = () => {
           <ul className="space-y-2">
             {sets.map((s) => (
               <li key={s.id}>
-                <div className="flex items-center gap-2 px-3 py-3 rounded-lg bg-gray-800 hover:bg-gray-750 group">
+                <div className="flex items-center gap-2 px-3 py-3 rounded-lg bg-surface hover:bg-surface-2 group">
                   <button
                     className="flex-1 text-left"
                     onClick={() => openSetBuilder(s.id)}
                   >
-                    <p className="text-sm font-medium text-white">{s.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-sm font-medium">{s.name}</p>
+                    <p className="text-xs text-muted mt-0.5">
                       {t("sets.item", { count: s.items.length })}
                       {s.serviceDate ? ` · ${formatDate(s.serviceDate)}` : ""}
                     </p>
                   </button>
                   <button
                     onClick={() => setDeletingSet(s)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-muted hover:text-red-400 hover:bg-surface-2 transition-all"
                     title={t("sets.delete.title")}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

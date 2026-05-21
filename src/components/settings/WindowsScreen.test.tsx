@@ -28,37 +28,25 @@ describe("WindowsScreen", () => {
     });
   });
 
-  it("renders both window sections", async () => {
+  it("renders only the stage window section (presentation removed)", async () => {
     render(<WindowsScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Janela de Apresentação")).toBeInTheDocument();
       expect(screen.getByText("Janela de Stage")).toBeInTheDocument();
     });
+    expect(screen.queryByText("Janela de Apresentação")).toBeNull();
   });
 
-  it("renders monitor options from list_monitors", async () => {
+  it("renders monitor options for the stage row", async () => {
     render(<WindowsScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/Monitor 1.*2560/)).toHaveLength(2); // two window rows
+      expect(screen.getAllByText(/Monitor 1.*2560/)).toHaveLength(1);
     });
   });
 
-  it("calls open_presentation_window when presentation open button is clicked", async () => {
+  it("calls open_stage_window when the stage open button is clicked", async () => {
     render(<WindowsScreen />);
-    const [presentationBtn] = await screen.findAllByText("Abrir / Reabrir nesta tela");
-    fireEvent.click(presentationBtn);
-    await waitFor(() =>
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith(
-        "open_presentation_window",
-        expect.objectContaining({ monitorIndex: undefined })
-      )
-    );
-  });
-
-  it("calls open_stage_window when stage open button is clicked", async () => {
-    render(<WindowsScreen />);
-    const buttons = await screen.findAllByText("Abrir / Reabrir nesta tela");
-    fireEvent.click(buttons[1]);
+    const openBtn = await screen.findByText("Abrir / Reabrir nesta tela");
+    fireEvent.click(openBtn);
     await waitFor(() =>
       expect(vi.mocked(invoke)).toHaveBeenCalledWith(
         "open_stage_window",

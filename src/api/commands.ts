@@ -35,8 +35,8 @@ export function normalizeError(err: unknown): ErrorPayload {
 
 // ─── Window management ──────────────────────────────────────────────────────
 
-export const openPresentationWindow = (monitorIndex?: number) =>
-  invoke<void>("open_presentation_window", { monitorIndex });
+export const openPresentationWindow = () =>
+  invoke<void>("open_presentation_window");
 
 export const openStageWindow = (monitorIndex?: number) =>
   invoke<void>("open_stage_window", { monitorIndex });

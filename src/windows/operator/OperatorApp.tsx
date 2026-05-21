@@ -14,8 +14,9 @@ import { SongList } from "../../components/library/SongList";
 import { SongEditor } from "../../components/library/SongEditor";
 import { PlainTextImport } from "../../components/import/PlainTextImport";
 import { HolyricsImport } from "../../components/import/HolyricsImport";
-import { SetList } from "../../components/set/SetList";
+import { HomeSetBuilder } from "../../components/setbuilder/HomeSetBuilder";
 import { SetBuilder } from "../../components/set/SetBuilder";
+import { SetList } from "../../components/set/SetList";
 import { SlideController } from "../../components/presentation/SlideController";
 import { OperatorNotesPanel } from "../../components/presentation/OperatorNotesPanel";
 import { CountdownPanel } from "../../components/countdown/CountdownPanel";
@@ -53,6 +54,7 @@ export const OperatorApp: React.FC = () => {
     openEditor,
     setView,
     refresh,
+    loadFixedSet,
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const { subscribe: subscribeCountdown } = useCountdownStore();
@@ -60,7 +62,6 @@ export const OperatorApp: React.FC = () => {
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
   const { load: loadTheme } = useThemeStore();
 
-  const [presentationMonitorIdx, setPresentationMonitorIdx] = useState<number | undefined>(undefined);
   const [stageMonitorIdx, setStageMonitorIdx] = useState<number | undefined>(undefined);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
@@ -90,7 +91,7 @@ export const OperatorApp: React.FC = () => {
       .then((info) => { if (info) setPendingUpdate(info); })
       .catch(() => {});
 
-    loadPersistedMonitor("window.presentation.monitor").then(setPresentationMonitorIdx);
+    loadFixedSet();
     loadPersistedMonitor("window.stage.monitor").then(setStageMonitorIdx);
 
     return () => {
@@ -152,7 +153,7 @@ export const OperatorApp: React.FC = () => {
 
   const handleOpenPresentation = async () => {
     try {
-      await openPresentationWindow(presentationMonitorIdx);
+      await openPresentationWindow();
     } catch (err) {
       console.error("open presentation window failed:", err);
     }
@@ -172,7 +173,8 @@ export const OperatorApp: React.FC = () => {
     currentView === "import-text" ||
     currentView === "import-holyrics";
 
-  const isSetSection =
+  const isHomeSection =
+    currentView === "home" ||
     currentView === "sets" ||
     currentView === "set-builder" ||
     currentView === "set-player";
@@ -209,6 +211,16 @@ export const OperatorApp: React.FC = () => {
       <header className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <div className="flex items-center gap-1">
           <button
+            onClick={() => setView("home")}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+              isHomeSection
+                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+            }`}
+          >
+            {t("nav.home")}
+          </button>
+          <button
             onClick={() => setView("library")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isLibrarySection
@@ -217,16 +229,6 @@ export const OperatorApp: React.FC = () => {
             }`}
           >
             {t("nav.library")}
-          </button>
-          <button
-            onClick={() => setView("sets")}
-            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-              isSetSection
-                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
-            }`}
-          >
-            {t("nav.sets")}
           </button>
           <button
             onClick={() => setView("countdown")}
@@ -289,6 +291,8 @@ export const OperatorApp: React.FC = () => {
 
       {/* Main content */}
       <main className="flex-1 min-h-0">
+        {currentView === "home" && <HomeSetBuilder />}
+
         {currentView === "library" && (
           <SongList
             onSongClick={handleSongClick}

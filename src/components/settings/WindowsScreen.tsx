@@ -5,14 +5,12 @@ import {
   getSetting,
   setSetting,
   listMonitors,
-  openPresentationWindow,
   openStageWindow,
 } from "../../api/commands";
 import type { MonitorInfo } from "../../types";
 
 async function getOperatorMonitorName(): Promise<string | null> {
   try {
-    // currentMonitor() is available at runtime in Tauri v2 but may not be typed on Window
     const win = getCurrentWindow() as unknown as { currentMonitor(): Promise<{ name?: string } | null> };
     const m = await win.currentMonitor();
     return m?.name ?? null;
@@ -83,27 +81,13 @@ export const WindowsScreen: React.FC = () => {
   const { t } = useTranslation();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [operatorMonitorName, setOperatorMonitorName] = useState<string | null>(null);
-  const [presentationIdx, setPresentationIdx] = useState<number | undefined>(undefined);
   const [stageIdx, setStageIdx] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     listMonitors().then(setMonitors).catch(() => {});
     getOperatorMonitorName().then(setOperatorMonitorName).catch(() => {});
-    getSavedMonitorIdx("window.presentation.monitor").then(setPresentationIdx);
     getSavedMonitorIdx("window.stage.monitor").then(setStageIdx);
   }, []);
-
-  const handleOpenPresentation = async () => {
-    try {
-      await setSetting(
-        "window.presentation.monitor",
-        presentationIdx !== undefined ? String(presentationIdx) : ""
-      );
-      await openPresentationWindow(presentationIdx);
-    } catch (err) {
-      console.error("Failed to open presentation window:", err);
-    }
-  };
 
   const handleOpenStage = async () => {
     try {
@@ -119,14 +103,6 @@ export const WindowsScreen: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <WindowRow
-        title={t("settings.windows.presentationWindow")}
-        monitors={monitors}
-        operatorMonitorName={operatorMonitorName}
-        selectedIdx={presentationIdx}
-        onSelect={setPresentationIdx}
-        onOpen={handleOpenPresentation}
-      />
       <WindowRow
         title={t("settings.windows.stageWindow")}
         monitors={monitors}

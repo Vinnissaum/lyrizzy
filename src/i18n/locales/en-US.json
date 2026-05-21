@@ -1,5 +1,6 @@
 {
   "nav": {
+    "home": "Home",
     "library": "Library",
     "sets": "Sets",
     "countdown": "Countdown",
@@ -406,7 +407,8 @@
       "stageWindow": "Stage Window",
       "open": "Open / Reopen on this screen",
       "autoSelect": "— Auto —",
-      "current": "(current)"
+      "current": "(current)",
+      "cameraUrl": "Camera URL"
     }
   },
   "stage": {

@@ -1,8 +1,9 @@
 import { create } from "zustand";
-import { listSongs } from "../api/commands";
+import { getOrCreateDefaultSet, listSongs } from "../api/commands";
 import type { Song } from "../types";
 
 export type AppView =
+  | "home"
   | "library"
   | "editor"
   | "import-text"
@@ -22,6 +23,7 @@ interface LibraryStore {
   editingSongId: string | null;
   editingSetId: string | null;
   currentView: AppView;
+  fixedSetId: string | null;
 
   setSearch: (search: string) => void;
   refresh: () => Promise<void>;
@@ -29,6 +31,7 @@ interface LibraryStore {
   closeEditor: () => void;
   openSetBuilder: (id?: string) => void;
   setView: (view: AppView) => void;
+  loadFixedSet: () => Promise<void>;
 }
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
@@ -37,7 +40,8 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   search: "",
   editingSongId: null,
   editingSetId: null,
-  currentView: "library",
+  currentView: "home",
+  fixedSetId: null,
 
   setSearch: (search) => {
     set({ search });
@@ -68,6 +72,15 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   setView: (view) => {
     set({ currentView: view });
+  },
+
+  loadFixedSet: async () => {
+    try {
+      const defaultSet = await getOrCreateDefaultSet();
+      set({ fixedSetId: defaultSet.id });
+    } catch (err) {
+      console.error("Falha ao carregar conjunto fixo:", err);
+    }
   },
 }));
 

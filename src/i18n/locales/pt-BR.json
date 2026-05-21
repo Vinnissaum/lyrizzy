@@ -1,5 +1,6 @@
 {
   "nav": {
+    "home": "Início",
     "library": "Biblioteca",
     "sets": "Conjuntos",
     "countdown": "Cronômetro",
@@ -406,7 +407,8 @@
       "stageWindow": "Janela de Stage",
       "open": "Abrir / Reabrir nesta tela",
       "autoSelect": "— Automático —",
-      "current": "(atual)"
+      "current": "(atual)",
+      "cameraUrl": "URL da câmera"
     }
   },
   "stage": {

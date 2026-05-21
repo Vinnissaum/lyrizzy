@@ -12,7 +12,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { CountdownState } from "../../types";
+import type { CountdownState, ServiceSet } from "../../types";
 
 const defaultCountdownState: CountdownState = {
   mode: "idle",
@@ -21,13 +21,24 @@ const defaultCountdownState: CountdownState = {
   endBehavior: "holdZero",
 };
 
+const defaultSet: ServiceSet = {
+  id: "set-1",
+  name: "Culto Dominical",
+  createdAt: 0,
+  updatedAt: 0,
+  items: [],
+};
+
 function setupInvokeMock() {
   vi.mocked(invoke).mockImplementation((cmd) => {
     if (cmd === "get_countdown_state") return Promise.resolve(defaultCountdownState);
     if (cmd === "check_restore_in_progress") return Promise.resolve(false);
     if (cmd === "list_monitors") return Promise.resolve([]);
     if (cmd === "check_ffprobe") return Promise.resolve(true);
+    if (cmd === "check_for_updates") return Promise.resolve(null);
     if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+    if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
+    if (cmd === "get_set") return Promise.resolve(defaultSet);
     return Promise.resolve([]);
   });
 }
@@ -39,40 +50,47 @@ describe("OperatorApp — smoke navigation", () => {
     setupInvokeMock();
   });
 
-  it("renders all nav tabs and the presentation button", () => {
+  it("renders nav tabs with Início instead of Conjuntos", () => {
     render(<OperatorApp />);
-    // Use role="button" to target nav tabs specifically (not section headings)
+    expect(screen.getByRole("button", { name: "Início" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Biblioteca" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Conjuntos" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cronômetro" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mídia" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Backup" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Configurações" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Janela de Apresentação" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Janela de Stage" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Conjuntos" })).toBeNull();
   });
 
-  it("library section is active by default and shows song list CTAs", async () => {
+  it("shows the home set builder by default", async () => {
     render(<OperatorApp />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Apresentar" })).toBeInTheDocument()
+    );
+  });
+
+  it("navigates to the library section", async () => {
+    render(<OperatorApp />);
+    fireEvent.click(screen.getByRole("button", { name: "Biblioteca" }));
     await waitFor(() =>
       expect(screen.getByTestId("cta-import-holyrics")).toBeInTheDocument()
     );
     expect(screen.getByTestId("cta-create-song")).toBeInTheDocument();
   });
 
-  it("navigates to the sets section", async () => {
+  it("home nav tab shows the set builder", async () => {
     render(<OperatorApp />);
-    fireEvent.click(screen.getByRole("button", { name: "Conjuntos" }));
-    // "Conjuntos de Culto" is unique to the SetList heading
+    fireEvent.click(screen.getByRole("button", { name: "Biblioteca" }));
+    fireEvent.click(screen.getByRole("button", { name: "Início" }));
     await waitFor(() =>
-      expect(screen.getByText("Conjuntos de Culto")).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Apresentar" })).toBeInTheDocument()
     );
   });
 
   it("navigates to the countdown section", async () => {
     render(<OperatorApp />);
     fireEvent.click(screen.getByRole("button", { name: "Cronômetro" }));
-    // CountdownPanel renders a set-duration row with these labels
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Cronômetro" })).toBeInTheDocument()
     );
@@ -93,7 +111,6 @@ describe("OperatorApp — smoke navigation", () => {
   it("navigates to the backup section", async () => {
     render(<OperatorApp />);
     fireEvent.click(screen.getByRole("button", { name: "Backup" }));
-    // BackupScreen headings are unique to that section
     await waitFor(() =>
       expect(screen.getByText("Exportar biblioteca")).toBeInTheDocument()
     );
@@ -103,7 +120,6 @@ describe("OperatorApp — smoke navigation", () => {
   it("navigates to the settings section", async () => {
     render(<OperatorApp />);
     fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
-    // "Geral", "Idioma", and "Janelas" are unique to SettingsScreen
     await waitFor(() =>
       expect(screen.getByText("Geral")).toBeInTheDocument()
     );

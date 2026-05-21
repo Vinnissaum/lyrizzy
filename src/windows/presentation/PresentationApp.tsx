@@ -26,13 +26,11 @@ function buildAssetUrl(fileName: string): string {
 
 function SongSlide({
   slideLines,
-  sectionLabel,
   background,
   frozen,
   mode,
 }: {
   slideLines: string[];
-  sectionLabel: string;
   background?: BackgroundInfo;
   frozen?: boolean;
   mode: string;
@@ -48,11 +46,6 @@ function SongSlide({
         )}
         {slideLines.length > 0 ? (
           <div className="w-full max-w-4xl text-center space-y-2">
-            {sectionLabel && (
-              <p className="text-gray-400/60 text-xs uppercase tracking-widest mb-4">
-                {sectionLabel}
-              </p>
-            )}
             {slideLines.map((line, i) => (
               <p
                 key={i}
@@ -206,7 +199,6 @@ export const PresentationApp: React.FC = () => {
     content = (
       <SongSlide
         slideLines={slide?.lines ?? []}
-        sectionLabel={slide?.sectionLabel ?? ""}
         background={background}
         frozen={frozen}
         mode={mode}

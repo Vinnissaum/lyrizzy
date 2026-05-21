@@ -452,6 +452,11 @@
     "edit": "Alterar",
     "cancel": "Cancelar",
     "resetAll": "Restaurar padrões",
+    "addShortcut": "Adicionar atalho",
+    "removeShortcut": "Remover atalho",
+    "modifierOnly": "Inclua uma tecla principal além dos modificadores",
+    "resetConfirmTitle": "Restaurar padrões",
+    "resetConfirmMessage": "Restaurar todos os atalhos para os valores padrão?",
     "actions": {
       "advanceSlide": "Próximo slide",
       "previousSlide": "Slide anterior",
@@ -500,6 +505,12 @@
     },
     "window": {
       "buildError": "Falha ao criar janela: {{detail}}"
+    },
+    "keyBindings": {
+      "conflict": "Conflito com '{{action}}'",
+      "missingAction": "Ação sem atalho: {{action}}",
+      "invalidShortcut": "Inclua uma tecla principal além dos modificadores",
+      "dbError": "Erro no banco de dados: {{detail}}"
     },
     "legacy": "{{message}}"
   },

@@ -452,6 +452,11 @@
     "edit": "Change",
     "cancel": "Cancel",
     "resetAll": "Reset to defaults",
+    "addShortcut": "Add shortcut",
+    "removeShortcut": "Remove shortcut",
+    "modifierOnly": "Include a main key in addition to modifiers",
+    "resetConfirmTitle": "Reset to defaults",
+    "resetConfirmMessage": "Reset all shortcuts to their default values?",
     "actions": {
       "advanceSlide": "Next slide",
       "previousSlide": "Previous slide",
@@ -500,6 +505,12 @@
     },
     "window": {
       "buildError": "Failed to create window: {{detail}}"
+    },
+    "keyBindings": {
+      "conflict": "Conflict with '{{action}}'",
+      "missingAction": "Action has no shortcut: {{action}}",
+      "invalidShortcut": "Include a main key in addition to modifiers",
+      "dbError": "Database error: {{detail}}"
     },
     "legacy": "{{message}}"
   },

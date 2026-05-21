@@ -56,6 +56,17 @@ pub fn logical_placement(
     ))
 }
 
+/// Pick the index of the first monitor that is not the primary monitor.
+/// Returns `None` when there is only one monitor or when `primary_xy` is unknown.
+/// Pure function for testability.
+pub fn pick_secondary_index(
+    primary_xy: Option<(i32, i32)>,
+    all_xy: &[(i32, i32)],
+) -> Option<usize> {
+    let primary = primary_xy?;
+    all_xy.iter().position(|&xy| xy != primary)
+}
+
 /// Apply monitor-based positioning to a window builder. If `monitor_index` is
 /// `None` or out of range the builder is returned unchanged (OS picks position).
 fn apply_monitor<'a, R: Runtime, M: Manager<R>>(
@@ -77,15 +88,13 @@ fn apply_monitor<'a, R: Runtime, M: Manager<R>>(
     builder
 }
 
-/// Open (or focus) the presentation window on the specified monitor.
+/// Open (or focus) the presentation window, automatically choosing a secondary
+/// monitor when one is available.
 ///
 /// Idempotent: if a window with label `"presentation"` already exists, focuses
 /// it and returns `Ok(())`. Builds `presentation.html`.
 #[tauri::command]
-pub async fn open_presentation_window(
-    app: AppHandle,
-    monitor_index: Option<usize>,
-) -> Result<(), ErrorPayload> {
+pub async fn open_presentation_window(app: AppHandle) -> Result<(), ErrorPayload> {
     if let Some(existing) = app.get_webview_window("presentation") {
         existing.set_focus().map_err(|e| {
             ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
@@ -97,13 +106,33 @@ pub async fn open_presentation_window(
         .available_monitors()
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
 
-    let builder = apply_monitor(
-        WebviewWindowBuilder::new(&app, "presentation", WebviewUrl::App("presentation.html".into()))
-            .title("Trinity Lyrics — Presentation")
-            .inner_size(1280.0, 720.0),
-        &monitors,
-        monitor_index,
-    );
+    let primary_xy = app
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| { let p = m.position(); (p.x, p.y) });
+
+    let all_xy: Vec<(i32, i32)> = monitors.iter().map(|m| {
+        let p = m.position();
+        (p.x, p.y)
+    }).collect();
+
+    let secondary_idx = pick_secondary_index(primary_xy, &all_xy);
+
+    let base = WebviewWindowBuilder::new(
+        &app,
+        "presentation",
+        WebviewUrl::App("presentation.html".into()),
+    )
+    .title("Trinity Lyrics — Presentation")
+    .inner_size(1280.0, 720.0);
+
+    let builder = apply_monitor(base, &monitors, secondary_idx);
+    let builder = if secondary_idx.is_some() {
+        builder.fullscreen(true)
+    } else {
+        builder
+    };
 
     builder.build().map_err(|e| {
         ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
@@ -176,5 +205,17 @@ mod tests {
     #[test]
     fn logical_placement_zero_scale_returns_none() {
         assert!(logical_placement(0, 0, 1920, 1080, 0.0).is_none());
+    }
+
+    #[test]
+    fn pick_secondary_finds_non_primary() {
+        let all = [(0_i32, 0_i32), (1920_i32, 0_i32)];
+        assert_eq!(pick_secondary_index(Some((0, 0)), &all), Some(1));
+    }
+
+    #[test]
+    fn pick_secondary_single_monitor_returns_none() {
+        let all = [(0_i32, 0_i32)];
+        assert_eq!(pick_secondary_index(Some((0, 0)), &all), None);
     }
 }

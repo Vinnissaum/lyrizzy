@@ -108,6 +108,73 @@
 
 **Deliverable:** Production-stable V2 used weekly. 8-week feedback period before Phase 4.
 
-**Deferred to Phase 4 (per spec discussion 2026-05-20):**
+**Deferred to Phase 5 (renumbered from Phase 4, per 2026-05-20 spec discussion):**
 - PPTX rendering (bundled LibreOffice sidecar — heavier installer impact, deserves its own phase)
 - Opt-in Sentry crash reporting (privacy disclosure flow bundled with PPTX phase)
+
+---
+
+## Phase 4: Home UX, Design System & Monitor Rework — DONE
+
+**Goal:** Eliminate the remaining friction from weekly Sunday service workflow.  
+**Completed:** 2026-05-21.  
+**Spec:** `.specs/features/phase4-home-ux/spec.md` (12 requirements P4H-01..P4H-07e, drafted 2026-05-20)
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P4H-01 | Auto-detect secondary monitor — fullscreen on non-primary | Done |
+| P4H-02 | Single fixed set ("Culto Dominical") as home screen | Done |
+| P4H-03 | Light theme completion across all tabs/components | Done |
+| P4H-04 | Design system: neutral gray dark mode + #19A4DD secondary | Done |
+| P4H-05 | Remove strophe/section label from presentation window | Done |
+| P4H-06 | Drag songs to set directly from home (split-panel) | Done |
+| P4H-07a | Overlay backend: OverlayState in PresentationState + commands | Done |
+| P4H-07b | AnnouncementRenderer (fullscreen custom text overlay) | Done |
+| P4H-07c | Quick media overlay shortcut (Oferta) | Done |
+| P4H-07d | Camera URL setting + WebView overlay shortcut | Done |
+| P4H-07e | PDF/PPTX placeholder button ("Em breve") | Done |
+
+**Deliverable:** App opens directly to service set, presentation goes fullscreen on projector automatically, full theme + design polish. Song sidebar with drag-to-add and overlay shortcuts (Oferta/Câmera/Aviso) on home screen.
+
+---
+
+## Phase 5: PPTX/PDF Rendering (LibreOffice Sidecar) — DONE
+
+**Goal:** Import PPTX and PDF files as set items; navigate slide-by-slide like songs.  
+**Completed:** 2026-05-21.  
+**Spec:** `.specs/features/phase5-pptx/spec.md` (8 requirements P5-01..P5-08)
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P5-01 | `Presentation` MediaKind + `slide_count` column | Done |
+| P5-02 | `SlideShow` SetItemType + serialization | Done |
+| P5-03 | `libreoffice` service — path resolution + headless PNG conversion | Done |
+| P5-04 | `import_presentation` Tauri command + `conversion_progress` event | Done |
+| P5-05 | `load_set_for_presentation` — SlideShow pseudo-slides | Done |
+| P5-06 | `SlideshowRenderer` presentation component | Done |
+| P5-07 | `SlideshowSetItemEditor` + SetBuilder add-presentation button | Done |
+| P5-08 | HomeSetBuilder PDF/PPTX import button wired | Done |
+
+**Deliverable:** PPTX and PDF files importable as set items; slides advance via normal prev/next controls; `LibreOfficeBanner` warns if LibreOffice not found.
+
+---
+
+## Phase 6: Corrections & Polish — DONE
+
+**Goal:** Fix critical UX gaps, complete dark/light theme parity, add PowerPoint-style in-operator presentation navigator.  
+**Completed:** 2026-05-22.  
+**Spec:** `.specs/features/phase6-corrections/spec.md` (9 requirements P6-01..P6-09, drafted 2026-05-21)
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P6-01 | `--color-fg` / `--color-fg-on-primary` tokens + NotesField + textbox sweep | Done |
+| P6-02 | Operator surfaces sweep + extend `check-theme-tokens.ps1` deny-list | Done |
+| P6-03 | Dark theme contrast fix + native input `color-scheme` | Done |
+| P6-04 | `enter_presentation` / `exit_presentation` + "Apresentar" button + OperatorApp routing + lifecycle subscription | Done |
+| P6-05 | `PresentationNavigator` — scrollable per-slide jump list with current highlight | Done |
+| P6-06 | Hardcoded ESC (exits presentation) + F10 (toggles blackout) in both windows | Done |
+| P6-07 | Remove redundant "Open Presentation Window" toolbar button | Done |
+| P6-08 | Remove Stage window subsystem (3-window → 2-window) | Done |
+| P6-09 | `CountdownTarget` enum (`Duration` \| `FixedTime`) + `CountdownSetItemEditor` mode toggle | Done |
+
+**Deliverable:** Fully theme-consistent operator UI in light and dark mode, PowerPoint-style in-operator slide navigator with click-to-jump, countdown fixed-time mode, ESC/F10 keyboard parity.

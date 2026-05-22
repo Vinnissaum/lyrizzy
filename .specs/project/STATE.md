@@ -1,7 +1,7 @@
 # Trinity Lyrics v2 — State
 
-**Last updated:** 2026-05-20
-**Current phase:** Phase 3 V2 implementation complete (2026-05-20). All 18 requirements P3-01..P3-18 delivered across phases 3A-3H. Entering 8-week field period starting 2026-05-20. Phase 4 (PPTX + Sentry) deferred.
+**Last updated:** 2026-05-22
+**Current phase:** Phase 6 complete (2026-05-22). Corrections & polish — theme token sweep, in-operator PresentationNavigator, ESC/F10 keyboard parity, Stage window removed, CountdownTarget enum. All 9 P6 requirements done.
 
 ---
 
@@ -23,11 +23,20 @@
 | D-11 | Phase 2 set-item type extension forces compiler-checked exhaustive `match`es everywhere (no `_` arms) | Compile-time guarantee that every dispatch site is reviewed when new variants added | 2026-05-19 |
 | D-12 | Phase 2 per-song scrim opacity stored as `songs.scrim_opacity` TINYINT column (not JSON in `slide_config`) | Queryable + indexable; default 35%; per-song override in editor | 2026-05-19 |
 | D-14 | Phase 3 ships 6 of 8 originally-roadmapped items; PPTX (bundled-LibreOffice strategy) and Sentry opt-in deferred to Phase 4 | PPTX adds ~150 MB to installer — deserves its own phase + signing review; Sentry's privacy-disclosure flow bundles naturally with the PPTX phase. Keeps Phase 3 focused on operator UX + ops infra. | 2026-05-20 |
-| D-15 | Phase 3 introduces a third WebviewWindow labeled `"stage"` (ProPresenter-style layout: current slide + next slide + notes + clock) | On-stage talent has had no monitor preview through Phase 1/2 — the single biggest operator-vs-talent pain point. Window is opt-in and non-fatal if absent. | 2026-05-20 |
+| D-15 | ~~Phase 3 introduces a third WebviewWindow labeled `"stage"`~~ **Superseded by D-27** | — | 2026-05-20 |
 | D-16 | Phase 3 CCLI play-counting is per-service-idempotent: insert one `song_plays` row per `(song_id, set_id, played_on DATE)` triggered when the set is started; duplicates within the same day are silently skipped | Matches what CCLI actually reports ("usage per service"); avoids double-counting if operator restarts the same set mid-service | 2026-05-20 |
 | D-17 | Phase 3 auto-update uses Tauri updater plugin pointing at GitHub Releases `latest.json` manifest; public signing key embedded in app, private key stays out of repo via `.gitignore` | Free distribution channel, native Tauri support, no extra infra to maintain | 2026-05-20 |
 | D-18 | Phase 3 dark/light theme scope is **operator window only** (presentation + stage stay content-driven) | Presentation backgrounds are author-controlled (song media); theme would either fight the content or be invisible. Operator chrome is the only ambiguous surface. | 2026-05-20 |
 | D-19 | Phase 3 keyboard bindings move to a `key_bindings` JSON row in the existing `settings` key/value table (not a new table) | Reuses Phase 1/2 storage; single source of truth for bindings; trivial to back up/restore via existing settings export | 2026-05-20 |
+| D-20 | Phase 4 presentation window auto-detects non-primary monitor and opens fullscreen; no manual monitor picker. `app.primary_monitor()` identifies primary; first non-primary gets fullscreen. Single-monitor fallback: 1280×720 windowed. | User confirmed 100% automatic behavior; WindowsScreen presentation row removed from settings. | 2026-05-20 |
+| D-21 | Phase 4 uses a single fixed "Culto Dominical" set — no SetList; `get_or_create_default_set` command auto-creates on first run | Sunday workflow always uses one set; multi-set navigation is pure friction | 2026-05-20 |
+| D-22 | Phase 4 overlay system: `PresentationState` gains `overlay: Option<OverlayState>` (Announcement/QuickMedia/QuickWebView variants). Overlay commands: `set_announcement_overlay`, `set_media_overlay`, `set_webview_overlay`, `clear_overlay`. Esc in presentation clears overlay before exiting idle. | Overlays must not modify the set — they're transient interruptions (offering image, camera, announcement) | 2026-05-20 |
+| D-23 | Phase 4 design tokens: CSS custom properties in index.css (`--color-bg`, `--color-surface`, `--color-surface-2`, `--color-border`, `--color-muted`, `--color-primary #19A4DD`, `--color-primary-hover #1494C5`). Tailwind v4 theme extends these. | Neutral gray dark mode (not blue-shifted Tailwind grays); consistent secondary color replaces scattered emerald-600/blue-600 | 2026-05-20 |
+| D-24 | Phase 4 PPTX/PDF deferred to Phase 5; placeholder button shows "Em breve" tooltip | PDF via WebView2 iframe was considered but deferred to avoid scope creep in this phase | 2026-05-20 |
+| D-25 | Phase 5 LibreOffice bundled silently (larger installer); path resolution order: bundled `soffice/program/soffice.exe` → `SOFFICE_PATH` env → PATH | User chose silent bundle ("always works") over PATH-only or optional install | 2026-05-21 |
+| D-26 | Phase 5 Sentry crash reporting skipped entirely (not just deferred) | Out of scope per user decision 2026-05-21 | 2026-05-21 |
+| D-27 | Phase 6 removes the Stage window (D-15 superseded): 3-window design (operator + presentation + stage) reverted to 2-window. Stage display replaced by `PresentationNavigator` embedded in the operator window. | Stage window added latency + complexity without clear gain for current workflow; in-operator navigator is always-visible and eliminates focus-switching | 2026-05-22 |
+| D-28 | `open_presentation_window` replaced by `enter_presentation` / `exit_presentation` command pair. `enter_presentation` is idempotent (focus-only if window exists), guards against empty set, emits `presentation_lifecycle {phase: "entered"}`. `exit_presentation` resets state, clears overlay, emits `presentation_lifecycle {phase: "exited"}`. | Lifecycle events let operator window react to presentation state without polling; idempotency makes retry safe; empty-set guard gives user feedback before the window opens | 2026-05-22 |
 
 ---
 
@@ -55,8 +64,8 @@
 - ~~Per-section background overrides~~ → now P3-06/P3-07 in Phase 3 spec
 - ~~Keyboard shortcut customization~~ → now P3-08/P3-09/P3-10 in Phase 3 spec
 - Optional VLC fallback for MKV/AVI (Phase 2+ — still deferred)
-- PPTX rendering via bundled LibreOffice sidecar (deferred from Phase 3 → Phase 4, see D-14)
-- Opt-in Sentry crash reporting (deferred from Phase 3 → Phase 4, see D-14)
+- ~~PPTX rendering via bundled LibreOffice sidecar~~ → shipped in Phase 5
+- Opt-in Sentry crash reporting (deferred from Phase 3 → Phase 5, skipped — out of scope per user decision 2026-05-21)
 - Per-slide notes (Phase 4 candidate — per-section deemed sufficient for Phase 3)
 - Auto-update beta channel (Phase 4 candidate — stable-only in v2)
 - Key-binding scheme presets / "Holyrics-like" / "ProPresenter-like" bundles (Phase 4 candidate, P3 ships individual bindings only)
@@ -71,6 +80,64 @@
 - **L-4:** When testing canonical path containment, use two independent temp dirs. A file in the *parent* of `media/` could accidentally start_with `media/` if using the same `TempDir`.
 - **L-5:** `http` crate must be added explicitly to `Cargo.toml` for the protocol handler; it is not re-exported from `tauri` in a usable way for custom handlers.
 - **L-6:** Tauri 2 built-in `asset://` protocol requires `protocol-asset` feature. To use a custom media directory without that feature, register your own `asset` scheme via `register_uri_scheme_protocol`.
+
+## Phase 6 Completion Summary (2026-05-22)
+
+All 9 P6-01..P6-09 requirements delivered:
+
+| Area | Tasks | Delivered |
+|---|---|---|
+| Stage removal | T1 | Stage window subsystem deleted; 3-window → 2-window architecture |
+| Button cleanup | T2 | Redundant "Open Presentation Window" toolbar button removed |
+| Presentation mode | T3, T4 | `enter_presentation`/`exit_presentation` backend + "Apresentar" button + OperatorApp routing + lifecycle subscription |
+| Navigator | T5 | `PresentationNavigator` — scrollable per-slide list, click-to-jump, auto-scroll, current highlight |
+| Keyboard | T6 | ESC exits presentation, F10 toggles blackout (hardcoded, both windows), read-only rows in KeyBindingsScreen |
+| Token sweep | T7 | `--color-fg` + `--color-fg-on-primary` tokens; NotesField + textbox sweep |
+| Surface sweep | T8, T9 | Full operator surfaces → semantic tokens; `check-theme-tokens.ps1` deny-list extended; dark contrast fixed |
+| Countdown | T10, T11 | `CountdownTarget` enum (`Duration` \| `FixedTime`); backward-compat serde; `CountdownSetItemEditor` mode toggle + `<input type="time">` |
+
+**Test results at completion:** 175 Rust unit tests, 104 Vitest tests — all passing. `tsc --noEmit` clean. `check-theme-tokens.ps1` exits 0.
+
+---
+
+## Phase 4 Completion Summary (2026-05-21)
+
+All 12 P4H-01..P4H-07e requirements delivered:
+
+| Area | Tasks | Delivered |
+|---|---|---|
+| Theme tokens | T1–T7 | CSS custom props in `index.css` (`--color-bg`, `--color-surface`, `--color-surface-2`, `--color-border`, `--color-muted`, `--color-primary #19A4DD`); full semantic token sweep across all tabs/components |
+| Auto-monitor | T8, T12 | `open_presentation_window` auto-picks first non-primary monitor + fullscreen; manual picker removed from operator UI |
+| Single-set home | T9, T13 | `get_or_create_default_set` command; `HomeSetBuilder` replaces Conjuntos as starting view |
+| Overlay backend | T10 | `OverlayState` (Announcement/QuickMedia/QuickWebView) in `PresentationState`; 4 commands: `set_announcement_overlay`, `set_media_overlay`, `set_webview_overlay`, `clear_overlay` |
+| Remove section label | T11 | Strophe label removed from `PresentationApp` `SongSlide` |
+| Overlay renderers | T14–T16 | `AnnouncementRenderer`, `QuickMediaRenderer`, `QuickWebViewRenderer` |
+| Overlay wiring | T17 | `PresentationApp` overlay branch (after blank guard, before set content); Esc clears overlay first |
+| Home shortcuts | T18–T20 | "Limpar" with confirmation; drag-from-library song sidebar; Oferta/Câmera/Aviso/PDF overlay buttons |
+
+**Test results at completion:** 124 Rust unit tests, 86 Vitest tests — all passing. `tsc --noEmit` clean.
+
+---
+
+## Phase 5 Completion Summary (2026-05-21)
+
+All 8 P5-01..P5-08 requirements delivered:
+
+| Area | Tasks | Delivered |
+|---|---|---|
+| Data model | T1 | `Presentation` MediaKind, `slide_count` column, migration 006 |
+| Domain | T2 | `SlideShow` SetItemType, `Slide::pseudo_slideshow(index)` |
+| Backend service | T3 | `libreoffice.rs`: soffice path resolution (bundled → env → PATH), headless PNG conversion, canonical rename to `slide_NNN.png` |
+| Backend command | T4 | `import_presentation` command, `check_libreoffice`, `conversion_progress` event |
+| Runtime | T5 | `load_set_for_presentation` generates N pseudo-slides for SlideShow items |
+| Presentation | T6 | `SlideshowRenderer` (asset URL with padded index), `SlideshowSetItemEditor` (thumbnail + slide count), SetBuilder "+ Apresentação" button, HomeSetBuilder PDF button wired |
+| Tests | T7 | 10 new Vitest tests (SlideshowRenderer ×3, LibreOfficeBanner ×4, SlideshowSetItemEditor ×3) |
+
+**Test results at completion:** 124 Rust unit tests, 96 Vitest tests — all passing. `tsc --noEmit` clean.
+
+**Decision:** Sentry crash reporting (originally bundled with Phase 5) skipped entirely per user decision.
+
+---
 
 ## Phase 3 Completion Summary (2026-05-20)
 

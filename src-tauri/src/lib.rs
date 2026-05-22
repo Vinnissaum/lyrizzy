@@ -29,7 +29,7 @@ use commands::key_bindings::{get_key_bindings, set_key_bindings, reset_key_bindi
 use commands::reports::{export_ccli_csv, preview_ccli_export};
 use commands::settings::{get_setting, set_setting};
 use commands::updates::{apply_update_and_restart, check_for_updates};
-use commands::window::{list_monitors, open_presentation_window};
+use commands::window::{enter_presentation, exit_presentation, list_monitors};
 use state::AppState;
 use tauri::Manager;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
@@ -104,7 +104,8 @@ pub fn run() {
             restore_library,
             check_restore_in_progress,
             abort_restore,
-            open_presentation_window,
+            enter_presentation,
+            exit_presentation,
             list_monitors,
             create_song,
             update_song,

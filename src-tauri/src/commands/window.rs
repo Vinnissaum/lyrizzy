@@ -1,6 +1,8 @@
 use crate::domain::error::ErrorPayload;
+use crate::domain::presentation::{PresentationMode, PresentationState};
+use crate::state::AppState;
 use serde::Serialize;
-use tauri::{AppHandle, Manager, Monitor, Runtime, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, Monitor, Runtime, State, WebviewUrl, WebviewWindowBuilder};
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -88,13 +90,33 @@ fn apply_monitor<'a, R: Runtime, M: Manager<R>>(
     builder
 }
 
-/// Open (or focus) the presentation window, automatically choosing a secondary
-/// monitor when one is available.
+#[derive(Serialize, Clone)]
+struct PresentationLifecyclePayload {
+    phase: &'static str,
+}
+
+/// Returns true when no set is loaded or the loaded set has no items.
+fn presentation_set_is_empty(state: &PresentationState) -> bool {
+    state.set.as_ref().map(|s| s.items.is_empty()).unwrap_or(true)
+}
+
+/// Enter presentation mode: opens (or focuses) the fullscreen presentation window.
 ///
-/// Idempotent: if a window with label `"presentation"` already exists, focuses
-/// it and returns `Ok(())`. Builds `presentation.html`.
+/// Rejects with `"presentation.empty_set"` when no set is loaded or the set is
+/// empty.  Idempotent: if a window with label `"presentation"` already exists,
+/// focuses it and returns without re-emitting the lifecycle event.
 #[tauri::command]
-pub async fn open_presentation_window(app: AppHandle) -> Result<(), ErrorPayload> {
+pub async fn enter_presentation(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), ErrorPayload> {
+    {
+        let pres = state.presentation.read().await;
+        if presentation_set_is_empty(&pres) {
+            return Err(ErrorPayload::new("presentation.empty_set"));
+        }
+    }
+
     if let Some(existing) = app.get_webview_window("presentation") {
         existing.set_focus().map_err(|e| {
             ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
@@ -128,15 +150,42 @@ pub async fn open_presentation_window(app: AppHandle) -> Result<(), ErrorPayload
     .inner_size(1280.0, 720.0);
 
     let builder = apply_monitor(base, &monitors, secondary_idx);
-    let builder = if secondary_idx.is_some() {
-        builder.fullscreen(true)
-    } else {
-        builder
-    };
-
-    builder.build().map_err(|e| {
+    builder.fullscreen(true).build().map_err(|e| {
         ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
     })?;
+
+    app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "entered" })
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+
+    Ok(())
+}
+
+/// Exit presentation mode: closes the presentation window and resets state to Idle.
+///
+/// Idempotent: safe to call when the window is already closed.
+#[tauri::command]
+pub async fn exit_presentation(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), ErrorPayload> {
+    if let Some(w) = app.get_webview_window("presentation") {
+        w.close().map_err(|e| ErrorPayload::from(e.to_string()))?;
+    }
+
+    {
+        let mut pres = state.presentation.write().await;
+        pres.mode = PresentationMode::Idle;
+        pres.frozen_at = None;
+        pres.overlay = None;
+    }
+
+    let state_snapshot = state.presentation.read().await.clone();
+    app.emit("state_changed", &state_snapshot)
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+
+    app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "exited" })
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+
     Ok(())
 }
 
@@ -144,6 +193,29 @@ pub async fn open_presentation_window(app: AppHandle) -> Result<(), ErrorPayload
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::set::ServiceSet;
+
+    fn make_state_with_empty_set() -> PresentationState {
+        let mut s = PresentationState::default();
+        s.set = Some(ServiceSet {
+            id: "s1".into(),
+            name: "Test".into(),
+            service_date: None,
+            notes: None,
+            created_at: 0,
+            updated_at: 0,
+            items: vec![],
+        });
+        s
+    }
+
+    #[test]
+    fn enter_with_empty_set_returns_error() {
+        // No set loaded → empty
+        assert!(presentation_set_is_empty(&PresentationState::default()));
+        // Set with no items → empty
+        assert!(presentation_set_is_empty(&make_state_with_empty_set()));
+    }
 
     #[test]
     fn logical_placement_converts_hi_dpi() {

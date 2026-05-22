@@ -181,10 +181,27 @@ pub async fn load_set_for_presentation(
             SetItemType::Countdown => vec![Slide::pseudo("countdown")],
             SetItemType::WebView => vec![Slide::pseudo("webview")],
             SetItemType::Blank => vec![blank_slide()],
+            SetItemType::SlideShow => {
+                if let Some(media_id) = &item.media_id {
+                    let n: Option<i64> = sqlx::query_scalar(
+                        "SELECT slide_count FROM media WHERE id = ? AND deleted_at IS NULL",
+                    )
+                    .bind(media_id)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None)
+                    .flatten();
+                    let count = n.unwrap_or(1).max(1) as usize;
+                    (0..count).map(Slide::pseudo_slideshow).collect()
+                } else {
+                    vec![blank_slide()]
+                }
+            }
         };
         computed_slides.push(slides);
     }
 
+    let all_slides_per_item = computed_slides.clone();
     let item_slide_counts: Vec<usize> = computed_slides.iter().map(|s| s.len()).collect();
     let first_slide = computed_slides.first().and_then(|s| s.first()).cloned();
     // Next slide = second slide of the first item, or first slide of the second item.
@@ -212,6 +229,7 @@ pub async fn load_set_for_presentation(
         item_slide_counts,
         background,
         overlay: None,
+        all_slides_per_item,
     };
 
     {

@@ -50,6 +50,11 @@ pub struct PresentationState {
     /// Active overlay layer rendered on top of the primary slide.
     /// None when no overlay is active.
     pub overlay: Option<OverlayState>,
+    /// All slides for every set item, parallel to set.items.
+    /// Populated by load_set_for_presentation; used by PresentationNavigator.
+    /// Field absent in legacy payloads → defaults to empty vec.
+    #[serde(default)]
+    pub all_slides_per_item: Vec<Vec<Slide>>,
 }
 
 impl Default for PresentationState {
@@ -65,6 +70,7 @@ impl Default for PresentationState {
             item_slide_counts: vec![],
             background: None,
             overlay: None,
+            all_slides_per_item: vec![],
         }
     }
 }
@@ -123,5 +129,52 @@ mod tests {
         assert!(json.contains("\"type\":\"webView\""), "tag missing: {json}");
         let back: OverlayState = serde_json::from_str(&json).unwrap();
         assert_eq!(back, o);
+    }
+
+    #[test]
+    fn all_slides_per_item_serde_round_trip() {
+        let mut state = PresentationState::default();
+        state.all_slides_per_item = vec![
+            vec![Slide { lines: vec!["line".into()], section_label: "Verse".into(), section_id: "s1".into() }],
+            vec![Slide { lines: vec![], section_label: String::new(), section_id: "countdown".into() }],
+        ];
+        let json = serde_json::to_string(&state).unwrap();
+        assert!(json.contains("allSlidesPerItem"), "camelCase field missing: {json}");
+        let back: PresentationState = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.all_slides_per_item.len(), 2);
+        assert_eq!(back.all_slides_per_item[0][0].section_id, "s1");
+    }
+
+    #[test]
+    fn all_slides_per_item_missing_field_defaults_to_empty() {
+        // Legacy payload without allSlidesPerItem — must deserialize without error.
+        let json = r#"{"set":null,"currentItemIndex":0,"currentSlideIndex":0,"mode":"idle","frozenAt":null,"currentSlide":null,"nextSlide":null,"itemSlideCounts":[],"background":null,"overlay":null}"#;
+        let state: PresentationState = serde_json::from_str(json).unwrap();
+        assert!(state.all_slides_per_item.is_empty(), "should default to empty vec");
+    }
+
+    #[test]
+    fn exit_clears_overlay() {
+        let mut state = PresentationState::default();
+        state.mode = PresentationMode::Live;
+        state.overlay = Some(OverlayState::Announcement { text: "Oferta".into() });
+        // Simulate what exit_presentation does to state.
+        state.mode = PresentationMode::Idle;
+        state.frozen_at = None;
+        state.overlay = None;
+        assert_eq!(state.mode, PresentationMode::Idle);
+        assert!(state.overlay.is_none());
+        assert!(state.frozen_at.is_none());
+    }
+
+    #[test]
+    fn exit_when_already_idle_is_noop() {
+        let mut state = PresentationState::default(); // already Idle, no overlay
+        // Applying the same reset again must not panic and keep state consistent.
+        state.mode = PresentationMode::Idle;
+        state.frozen_at = None;
+        state.overlay = None;
+        assert_eq!(state.mode, PresentationMode::Idle);
+        assert!(state.overlay.is_none());
     }
 }

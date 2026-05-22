@@ -160,11 +160,13 @@ export interface PresentationState {
   mode: PresentationMode;
   frozenAt?: [number, number];
   currentSlide?: Slide;
-  /** Next slide from the current navigation position. Used by the stage display. */
+  /** Next slide from the current navigation position. */
   nextSlide?: Slide;
   itemSlideCounts: number[];
   background?: BackgroundInfo;
   overlay?: OverlayState;
+  /** All slides for every set item, parallel to set.items. Absent in legacy payloads. */
+  allSlidesPerItem?: Slide[][];
 }
 
 export interface Slide {

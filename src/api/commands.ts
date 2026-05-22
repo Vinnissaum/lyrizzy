@@ -36,8 +36,22 @@ export function normalizeError(err: unknown): ErrorPayload {
 
 // ─── Window management ──────────────────────────────────────────────────────
 
-export const openPresentationWindow = () =>
-  invoke<void>("open_presentation_window");
+export const enterPresentation = () =>
+  invoke<void>("enter_presentation");
+
+/** Kept for any ActionId bindings that still reference the old name. */
+export const openPresentationWindow = enterPresentation;
+
+export const exitPresentation = () =>
+  invoke<void>("exit_presentation");
+
+export const onPresentationLifecycle = (
+  cb: (phase: "entered" | "exited") => void
+) =>
+  listen<{ phase: "entered" | "exited" }>(
+    "presentation_lifecycle",
+    (e) => cb(e.payload.phase)
+  );
 
 export const listMonitors = () =>
   invoke<MonitorInfo[]>("list_monitors");

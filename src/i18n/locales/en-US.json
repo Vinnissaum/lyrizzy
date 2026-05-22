@@ -148,6 +148,10 @@
   "presentation": {
     "noPresentation": "No active presentation.",
     "noSetLoaded": "No set loaded.",
+    "emptySet": "Add items to the set before presenting",
+    "action": {
+      "present": "Present"
+    },
     "mode": {
       "idle": "Idle",
       "live": "Live",

@@ -148,6 +148,10 @@
   "presentation": {
     "noPresentation": "Sem apresentação ativa.",
     "noSetLoaded": "Nenhum conjunto carregado.",
+    "emptySet": "Adicione itens ao conjunto antes de apresentar",
+    "action": {
+      "present": "Apresentar"
+    },
     "mode": {
       "idle": "Inativo",
       "live": "Ao Vivo",

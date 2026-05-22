@@ -5,6 +5,7 @@ import {
   checkRestoreInProgress,
   clearOverlay,
   onLocaleChanged,
+  onPresentationLifecycle,
   onSetChanged,
   onSongsChanged,
   openPresentationWindow,
@@ -18,6 +19,7 @@ import { SetBuilder } from "../../components/set/SetBuilder";
 import { SetList } from "../../components/set/SetList";
 import { SlideController } from "../../components/presentation/SlideController";
 import { OperatorNotesPanel } from "../../components/presentation/OperatorNotesPanel";
+import { PresentationNavigator } from "../../components/presentation/PresentationNavigator";
 import { CountdownPanel } from "../../components/countdown/CountdownPanel";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
 import { BackupScreen } from "../../components/backup/BackupScreen";
@@ -69,6 +71,11 @@ export const OperatorApp: React.FC = () => {
       i18n.changeLanguage(locale);
       setLocale(locale);
     });
+    const unlistenLifecycle = onPresentationLifecycle((phase) => {
+      if (phase === "exited") {
+        useLibraryStore.getState().setView("home");
+      }
+    });
     loadBindings();
     const unsubBindings = subscribeBindings();
     loadTheme();
@@ -87,6 +94,7 @@ export const OperatorApp: React.FC = () => {
       unsubPresentation.then((u) => u());
       unsubCountdown.then((u) => u());
       unlistenLocale.then((u) => u());
+      unlistenLifecycle.then((u) => u());
       unsubBindings.then((u) => u());
     };
   }, []);
@@ -170,6 +178,10 @@ export const OperatorApp: React.FC = () => {
   const isSettingsSection = currentView === "settings";
 
   const serviceSet = presState?.set;
+  const isPresenting =
+    presState?.mode === "live" ||
+    presState?.mode === "blank" ||
+    presState?.mode === "frozen";
 
   return (
     <div className="h-screen bg-bg text-inherit flex flex-col">
@@ -261,64 +273,70 @@ export const OperatorApp: React.FC = () => {
 
       {/* Main content */}
       <main className="flex-1 min-h-0">
-        {currentView === "home" && <HomeSetBuilder />}
+        {isPresenting ? (
+          <PresentationNavigator />
+        ) : (
+          <>
+            {currentView === "home" && <HomeSetBuilder />}
 
-        {currentView === "library" && (
-          <SongList
-            onSongClick={handleSongClick}
-            onImportHolyrics={() => setView("import-holyrics")}
-            onCreateSong={() => openEditor(undefined)}
-          />
+            {currentView === "library" && (
+              <SongList
+                onSongClick={handleSongClick}
+                onImportHolyrics={() => setView("import-holyrics")}
+                onCreateSong={() => openEditor(undefined)}
+              />
+            )}
+
+            {currentView === "editor" && <SongEditor />}
+
+            {currentView === "import-text" && (
+              <PlainTextImport
+                onImported={(songId) => {
+                  refresh();
+                  openEditor(songId);
+                }}
+                onCancel={() => setView("library")}
+              />
+            )}
+
+            {currentView === "import-holyrics" && (
+              <HolyricsImport
+                onDone={() => {
+                  refresh();
+                  setView("library");
+                }}
+                onCancel={() => setView("library")}
+              />
+            )}
+
+            {currentView === "sets" && <SetList />}
+
+            {currentView === "set-builder" && (
+              <SetBuilder setId={editingSetId} />
+            )}
+
+            {currentView === "set-player" && serviceSet ? (
+              <div className="flex h-full overflow-hidden">
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <SlideController serviceSet={serviceSet} />
+                </div>
+                <OperatorNotesPanel />
+              </div>
+            ) : currentView === "set-player" ? (
+              <div className="h-full flex items-center justify-center text-muted text-sm">
+                {t("presentation.noSetLoaded")}
+              </div>
+            ) : null}
+
+            {currentView === "countdown" && <CountdownPanel />}
+
+            {currentView === "media" && <MediaLibrary />}
+
+            {currentView === "backup" && <BackupScreen />}
+
+            {currentView === "settings" && <SettingsScreen />}
+          </>
         )}
-
-        {currentView === "editor" && <SongEditor />}
-
-        {currentView === "import-text" && (
-          <PlainTextImport
-            onImported={(songId) => {
-              refresh();
-              openEditor(songId);
-            }}
-            onCancel={() => setView("library")}
-          />
-        )}
-
-        {currentView === "import-holyrics" && (
-          <HolyricsImport
-            onDone={() => {
-              refresh();
-              setView("library");
-            }}
-            onCancel={() => setView("library")}
-          />
-        )}
-
-        {currentView === "sets" && <SetList />}
-
-        {currentView === "set-builder" && (
-          <SetBuilder setId={editingSetId} />
-        )}
-
-        {currentView === "set-player" && serviceSet ? (
-          <div className="flex h-full overflow-hidden">
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <SlideController serviceSet={serviceSet} />
-            </div>
-            <OperatorNotesPanel />
-          </div>
-        ) : currentView === "set-player" ? (
-          <div className="h-full flex items-center justify-center text-gray-500 text-sm">
-            {t("presentation.noSetLoaded")}
-          </div>
-        ) : null}
-
-        {currentView === "countdown" && <CountdownPanel />}
-
-        {currentView === "media" && <MediaLibrary />}
-
-        {currentView === "backup" && <BackupScreen />}
-
-        {currentView === "settings" && <SettingsScreen />}
       </main>
     </div>
   );

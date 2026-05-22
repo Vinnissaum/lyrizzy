@@ -11,6 +11,7 @@ pub enum SetItemType {
     Countdown,
     WebView,
     Blank,
+    SlideShow,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -84,6 +85,10 @@ mod tests {
             serde_json::to_string(&SetItemType::Blank).unwrap(),
             "\"blank\""
         );
+        assert_eq!(
+            serde_json::to_string(&SetItemType::SlideShow).unwrap(),
+            "\"slide_show\""
+        );
     }
 
     #[test]
@@ -129,7 +134,7 @@ mod tests {
             media_kind: None,
             media_options: None,
             countdown_config: Some(CountdownConfig {
-                duration_ms: 600_000,
+                target: crate::domain::countdown::CountdownTarget::Duration { duration_ms: 600_000 },
                 message: Some("Serviço em breve".into()),
                 end_behavior: CountdownEndBehavior::HoldZero,
                 background_media_id: None,

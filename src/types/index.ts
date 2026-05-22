@@ -49,7 +49,7 @@ export interface Song {
 
 // ── Media ────────────────────────────────────────────────────────────────────
 
-export type MediaKind = 'image' | 'video';
+export type MediaKind = 'image' | 'video' | 'presentation';
 
 export interface Media {
   id: string;
@@ -65,6 +65,8 @@ export interface Media {
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;
+  /** Number of converted PNG slides. Set only for kind === 'presentation'. */
+  slideCount?: number;
 }
 
 export interface MediaSongRef {
@@ -100,7 +102,7 @@ export interface MediaItemOptions {
 
 // ── Sets ─────────────────────────────────────────────────────────────────────
 
-export type SetItemType = 'song' | 'media' | 'countdown' | 'web_view' | 'blank';
+export type SetItemType = 'song' | 'media' | 'countdown' | 'web_view' | 'blank' | 'slide_show';
 
 export type WebViewMode = 'iframe' | 'mjpeg';
 
@@ -181,8 +183,12 @@ export interface SlideConfig {
 export type CountdownMode = 'idle' | 'running' | 'paused' | 'finished';
 export type CountdownEndBehavior = 'holdZero' | 'blackout' | 'advanceSet';
 
+export type CountdownTarget =
+  | { kind: 'duration'; durationMs: number }
+  | { kind: 'fixedTime'; hour: number; minute: number };
+
 export interface CountdownConfig {
-  durationMs: number;
+  target: CountdownTarget;
   message?: string;
   endBehavior: CountdownEndBehavior;
   backgroundMediaId?: string;

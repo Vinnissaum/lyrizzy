@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   addSetItem,
   duplicateSetItem,
   getSet,
+  importPresentation,
   loadSetForPresentation,
   onSetChanged,
   removeSetItem,
@@ -18,10 +20,12 @@ import { CountdownSetItemEditor } from "./CountdownSetItemEditor";
 import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
 import { MediaSetItemEditor } from "./MediaSetItemEditor";
 import { BlankItemNotesEditor } from "./BlankItemNotesEditor";
+import { SlideshowSetItemEditor } from "./SlideshowSetItemEditor";
 import type { Media, ServiceSet, SetItem, Song } from "../../types";
 
 interface Props {
   setId: string | null;
+  hideBack?: boolean;
 }
 
 function itemIcon(item: SetItem): string {
@@ -30,6 +34,7 @@ function itemIcon(item: SetItem): string {
     case "media": return item.mediaKind === "video" ? "▶" : "🖼";
     case "countdown": return "⏱";
     case "web_view": return "🌐";
+    case "slide_show": return "📄";
     default: return "▪";
   }
 }
@@ -39,11 +44,12 @@ function isExpandable(item: SetItem): boolean {
     item.itemType === "countdown" ||
     item.itemType === "web_view" ||
     item.itemType === "blank" ||
+    item.itemType === "slide_show" ||
     (item.itemType === "media" && item.mediaKind === "video")
   );
 }
 
-export const SetBuilder: React.FC<Props> = ({ setId }) => {
+export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
   const { t } = useTranslation();
   const { setView } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
@@ -58,6 +64,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [isImportingPresentation, setIsImportingPresentation] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSet = async () => {
@@ -149,7 +156,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         setId: serviceSet.id,
         itemType: "countdown",
         countdownConfig: {
-          durationMs: 600_000,
+          target: { kind: 'duration' as const, durationMs: 600_000 },
           message: t("countdown.editor.defaultMessage"),
           endBehavior: "holdZero",
         },
@@ -180,6 +187,30 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       await addSetItem({ setId: serviceSet.id, itemType: "blank" });
     } catch (err) {
       console.error("add blank failed:", err);
+    }
+  };
+
+  const handleAddPresentation = async () => {
+    if (!serviceSet) return;
+    const selected = await open({
+      title: t("media.slideshow.import"),
+      filters: [{ name: "Presentation", extensions: ["pptx", "ppt", "pdf"] }],
+      multiple: false,
+    });
+    if (!selected) return;
+    setIsImportingPresentation(true);
+    try {
+      const imported = await importPresentation(selected as string);
+      const item = await addSetItem({
+        setId: serviceSet.id,
+        itemType: "slide_show",
+        mediaId: imported.id,
+      });
+      setExpandedItemId(item.id);
+    } catch (err) {
+      console.error("import presentation failed:", err);
+    } finally {
+      setIsImportingPresentation(false);
     }
   };
 
@@ -232,6 +263,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
   const isInvalidRef = (item: SetItem): boolean => {
     if (item.itemType === "song") return !songById(item.songId);
     if (item.itemType === "media") return !mediaById(item.mediaId);
+    if (item.itemType === "slide_show") return !mediaById(item.mediaId);
     return false;
   };
 
@@ -251,7 +283,7 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
 
   const itemSummary = (item: SetItem) => {
     const song = item.itemType === "song" ? songById(item.songId) : undefined;
-    const mediaItem = item.itemType === "media" ? mediaById(item.mediaId) : undefined;
+    const mediaItem = (item.itemType === "media" || item.itemType === "slide_show") ? mediaById(item.mediaId) : undefined;
     const invalid = isInvalidRef(item);
 
     if (invalid) {
@@ -280,7 +312,8 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
         );
       case "countdown": {
         const cfg = item.countdownConfig;
-        const durLabel = cfg ? `${Math.floor(cfg.durationMs / 60000)}min` : "10min";
+        const cfgDurationMs = cfg?.target?.kind === 'duration' ? cfg.target.durationMs : 0;
+        const durLabel = cfgDurationMs > 0 ? `${Math.floor(cfgDurationMs / 60000)}min` : "10min";
         return (
           <p className="text-sm text-amber-400 font-medium">
             {t("builder.countdownSummary", { dur: durLabel })}
@@ -298,6 +331,21 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
           </p>
         );
       }
+      case "slide_show": {
+        const slideCount = mediaItem?.slideCount ?? 0;
+        return (
+          <>
+            <p className="text-sm text-orange-400 font-medium truncate">
+              {mediaItem?.displayName ?? t("builder.slideshowItem")}
+            </p>
+            <p className="text-xs text-muted">
+              {slideCount === 1
+                ? t("media.slideshow.slide")
+                : t("media.slideshow.slides", { count: slideCount })}
+            </p>
+          </>
+        );
+      }
       default:
         return <p className="text-sm text-muted italic">{t("builder.blank")}</p>;
     }
@@ -308,12 +356,14 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center gap-2 mb-2">
-          <button
-            onClick={() => setView("sets")}
-            className="text-muted hover:text-inherit p-1 rounded transition-colors"
-          >
-            ←
-          </button>
+          {!hideBack && (
+            <button
+              onClick={() => setView("sets")}
+              className="text-muted hover:text-inherit p-1 rounded transition-colors"
+            >
+              ←
+            </button>
+          )}
           {editingName ? (
             <form
               onSubmit={(e) => {
@@ -444,6 +494,9 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
                     )}
                     {item.itemType === "blank" && (
                       <BlankItemNotesEditor item={item} />
+                    )}
+                    {item.itemType === "slide_show" && (
+                      <SlideshowSetItemEditor item={item} />
                     )}
                   </div>
                 )}
@@ -599,6 +652,13 @@ export const SetBuilder: React.FC<Props> = ({ setId }) => {
             className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-muted"
           >
             {t("builder.add.blank")}
+          </button>
+          <button
+            onClick={handleAddPresentation}
+            disabled={isImportingPresentation}
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-orange-400 disabled:opacity-50"
+          >
+            {isImportingPresentation ? t("media.slideshow.importing") : t("builder.add.slideShow")}
           </button>
         </div>
         <button

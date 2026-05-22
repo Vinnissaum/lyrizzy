@@ -42,8 +42,9 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const { t } = useTranslation();
   const config = item.countdownConfig;
 
+  const configDurationMs = config?.target?.kind === 'duration' ? config.target.durationMs : 600_000;
   const [durationInput, setDurationInput] = useState(
-    msToDuration(config?.durationMs ?? 600_000)
+    msToDuration(configDurationMs)
   );
   const [message, setMessage] = useState(config?.message ?? t("countdown.editor.defaultMessage"));
   const [endBehavior, setEndBehavior] = useState<CountdownEndBehavior>(
@@ -58,7 +59,8 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setDurationInput(msToDuration(config?.durationMs ?? 600_000));
+    const initDurationMs = config?.target?.kind === 'duration' ? config.target.durationMs : 600_000;
+    setDurationInput(msToDuration(initDurationMs));
     setMessage(config?.message ?? t("countdown.editor.defaultMessage"));
     setEndBehavior(config?.endBehavior ?? "holdZero");
     setBackgroundMediaId(config?.backgroundMediaId);
@@ -78,7 +80,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     const durationMs = durationToMs(durationInput);
     if (durationMs === null || durationMs <= 0) return null;
     return {
-      durationMs,
+      target: { kind: 'duration' as const, durationMs },
       message: message.trim() || undefined,
       endBehavior,
       backgroundMediaId,
@@ -156,7 +158,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                     updateSetItem({
                       id: item.id,
                       countdownConfig: {
-                        durationMs,
+                        target: { kind: 'duration' as const, durationMs },
                         message: message.trim() || undefined,
                         endBehavior: value,
                         backgroundMediaId,
@@ -189,7 +191,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
               updateSetItem({
                 id: item.id,
                 countdownConfig: {
-                  durationMs,
+                  target: { kind: 'duration' as const, durationMs },
                   message: message.trim() || undefined,
                   endBehavior,
                   backgroundMediaId: newId,

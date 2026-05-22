@@ -11,6 +11,10 @@ import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRend
 import { CountdownRenderer } from "../../components/presentation/CountdownRenderer";
 import { WebViewRenderer } from "../../components/presentation/WebViewRenderer";
 import { TransitionStage } from "../../components/presentation/TransitionStage";
+import { AnnouncementRenderer } from "../../components/presentation/AnnouncementRenderer";
+import { QuickMediaRenderer } from "../../components/presentation/QuickMediaRenderer";
+import { QuickWebViewRenderer } from "../../components/presentation/QuickWebViewRenderer";
+import { SlideshowRenderer } from "../../components/presentation/SlideshowRenderer";
 import type { BackgroundInfo } from "../../types";
 
 function formatMs(ms: number): string {
@@ -95,8 +99,8 @@ export const PresentationApp: React.FC = () => {
   // Auto-start countdown when the runtime lands on a countdown set item.
   useEffect(() => {
     if (currentItem?.itemType === "countdown" && currentItem.countdownConfig) {
-      const { durationMs, message, endBehavior } = currentItem.countdownConfig;
-      startCountdown({ durationMs, message, endBehavior });
+      const { target, message, endBehavior } = currentItem.countdownConfig;
+      startCountdown({ target, message, endBehavior });
     }
   }, [currentItem?.id]);
 
@@ -132,6 +136,20 @@ export const PresentationApp: React.FC = () => {
     return <div className="h-screen bg-black" />;
   }
 
+  // Overlay takes precedence over normal set content (but not over blank)
+  const overlay = state?.overlay;
+  if (overlay) {
+    if (overlay.type === "announcement") {
+      return <AnnouncementRenderer text={overlay.text} />;
+    }
+    if (overlay.type === "media") {
+      return <QuickMediaRenderer mediaId={overlay.mediaId} />;
+    }
+    if (overlay.type === "webView") {
+      return <QuickWebViewRenderer url={overlay.url} />;
+    }
+  }
+
   const itemType = currentItem?.itemType ?? "blank";
 
   // Compute a stable transition key: changes on item or slide
@@ -144,7 +162,7 @@ export const PresentationApp: React.FC = () => {
       ? media.find((m) => m.id === currentItem.mediaId)
       : undefined;
     const assetUrl = mediaRecord ? buildAssetUrl(mediaRecord.fileName) : "";
-    const kind = currentItem?.mediaKind ?? "image";
+    const kind: "image" | "video" = currentItem?.mediaKind === "video" ? "video" : "image";
 
     content = assetUrl ? (
       <MediaSlideRenderer
@@ -193,6 +211,15 @@ export const PresentationApp: React.FC = () => {
           WebView não configurada
         </p>
       </div>
+    );
+  } else if (itemType === "slide_show") {
+    const mediaId = currentItem?.mediaId ?? "";
+    const slideIndex = slide?.sectionId ? parseInt(slide.sectionId, 10) : 0;
+    content = (
+      <SlideshowRenderer
+        mediaId={mediaId}
+        slideIndex={isNaN(slideIndex) ? 0 : slideIndex}
+      />
     );
   } else {
     // Song or Blank

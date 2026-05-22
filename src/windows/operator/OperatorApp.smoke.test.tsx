@@ -59,7 +59,7 @@ describe("OperatorApp — smoke navigation", () => {
     expect(screen.getByRole("button", { name: "Backup" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Configurações" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Janela de Apresentação" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Janela de Stage" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Janela de Stage" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Conjuntos" })).toBeNull();
   });
 

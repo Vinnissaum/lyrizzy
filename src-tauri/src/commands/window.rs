@@ -140,40 +140,6 @@ pub async fn open_presentation_window(app: AppHandle) -> Result<(), ErrorPayload
     Ok(())
 }
 
-/// Open (or focus) the stage display window on the specified monitor.
-///
-/// Idempotent: if a window with label `"stage"` already exists, focuses it and
-/// returns `Ok(())`. Builds `stage.html`. Read-only: the stage window never
-/// invokes mutating commands.
-#[tauri::command]
-pub async fn open_stage_window(
-    app: AppHandle,
-    monitor_index: Option<usize>,
-) -> Result<(), ErrorPayload> {
-    if let Some(existing) = app.get_webview_window("stage") {
-        existing.set_focus().map_err(|e| {
-            ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
-        })?;
-        return Ok(());
-    }
-
-    let monitors = app
-        .available_monitors()
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-
-    let builder = apply_monitor(
-        WebviewWindowBuilder::new(&app, "stage", WebviewUrl::App("stage.html".into()))
-            .title("Trinity Lyrics — Stage")
-            .inner_size(1280.0, 720.0),
-        &monitors,
-        monitor_index,
-    );
-
-    builder.build().map_err(|e| {
-        ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
-    })?;
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {

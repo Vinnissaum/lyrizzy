@@ -7,9 +7,9 @@ import i18next from "./i18n/index";
 import { invoke } from "@tauri-apps/api/core";
 
 // Synchronous theme bootstrap — runs before React render.
-// Only applies to the operator window; presentation + stage are always dark-bg.
+// Only applies to the operator window; presentation window is always dark-bg.
 const _windowLabel = getCurrentWindow().label;
-if (_windowLabel !== "presentation" && _windowLabel !== "stage") {
+if (_windowLabel !== "presentation") {
   const _stored = localStorage.getItem("trinity.theme");
   const _theme = _stored ?? "light";
   if (_theme === "dark") document.documentElement.classList.add("dark");
@@ -33,9 +33,6 @@ async function init() {
   if (label === "presentation") {
     const { PresentationApp } = await import("./windows/presentation/PresentationApp");
     App = PresentationApp;
-  } else if (label === "stage") {
-    const { StageApp } = await import("./windows/stage/StageApp");
-    App = StageApp;
   } else {
     const { OperatorApp } = await import("./windows/operator/OperatorApp");
     App = OperatorApp;

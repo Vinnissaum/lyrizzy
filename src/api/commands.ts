@@ -4,6 +4,7 @@ import type {
   CountdownConfig,
   CountdownEndBehavior,
   CountdownState,
+  CountdownTarget,
   ErrorPayload,
   KeyBindings,
   Media,
@@ -37,9 +38,6 @@ export function normalizeError(err: unknown): ErrorPayload {
 
 export const openPresentationWindow = () =>
   invoke<void>("open_presentation_window");
-
-export const openStageWindow = (monitorIndex?: number) =>
-  invoke<void>("open_stage_window", { monitorIndex });
 
 export const listMonitors = () =>
   invoke<MonitorInfo[]>("list_monitors");
@@ -161,7 +159,7 @@ export interface UpdateSetPayload {
 
 export interface AddSetItemPayload {
   setId: string;
-  itemType: 'song' | 'media' | 'countdown' | 'web_view' | 'blank';
+  itemType: 'song' | 'media' | 'countdown' | 'web_view' | 'blank' | 'slide_show';
   songId?: string;
   mediaId?: string;
   mediaOptions?: MediaItemOptions;
@@ -242,8 +240,23 @@ export interface ListMediaParams {
 export const checkFfprobe = () =>
   invoke<boolean>("check_ffprobe");
 
+export const checkLibreOffice = () =>
+  invoke<boolean>("check_libreoffice");
+
 export const importMedia = (sourcePath: string) =>
   invoke<Media>("import_media", { sourcePath });
+
+export const importPresentation = (sourcePath: string) =>
+  invoke<Media>("import_presentation", { sourcePath });
+
+export interface ConversionProgress {
+  mediaId: string;
+  status: "converting" | "done" | "error";
+  message?: string;
+}
+
+export const onConversionProgress = (cb: (p: ConversionProgress) => void) =>
+  listen<ConversionProgress>("conversion_progress", (e) => cb(e.payload));
 
 export const listMedia = (params?: ListMediaParams) =>
   invoke<Media[]>("list_media", { params });
@@ -266,6 +279,7 @@ export const setCountdownDuration = (durationMs: number) =>
   invoke<CountdownState>("set_countdown_duration", { durationMs });
 
 export interface StartCountdownParams {
+  target?: CountdownTarget;
   durationMs?: number;
   message?: string;
   endBehavior?: CountdownEndBehavior;

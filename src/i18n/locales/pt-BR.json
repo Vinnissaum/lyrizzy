@@ -7,8 +7,7 @@
     "media": "Mídia",
     "backup": "Backup",
     "settings": "Configurações",
-    "presentationWindow": "Janela de Apresentação",
-    "stageWindow": "Janela de Stage"
+    "presentationWindow": "Janela de Apresentação"
   },
   "loading": "Carregando…",
   "saving": "Salvando…",
@@ -82,7 +81,7 @@
     "removeAriaLabel": "Remover seção",
     "notes": {
       "toggle": "Notas da seção",
-      "placeholder": "Notas para o apresentador (visíveis apenas no operador e no stage)…",
+      "placeholder": "Notas para o apresentador (visíveis apenas no operador)…",
       "charCountWarning": "Nota longa — considere dividir em seções"
     },
     "background": {
@@ -122,8 +121,10 @@
       "media": "▶ Mídia",
       "countdown": "⏱ Contagem",
       "webView": "🌐 WebView",
-      "blank": "▪ Branco"
+      "blank": "▪ Branco",
+      "slideShow": "📄 Apresentação"
     },
+    "slideshowItem": "Apresentação",
     "songSearch": "Pesquisar música…",
     "noMedia": "Nenhuma mídia disponível.",
     "mediaFilter": {
@@ -271,6 +272,17 @@
       "title": "ffmpeg não encontrado",
       "body": "Miniaturas e metadados de vídeo precisam do ffmpeg. Baixe em ffmpeg.org e reinicie o app.",
       "dismiss": "Fechar"
+    },
+    "libreofficeBanner": {
+      "title": "LibreOffice não encontrado",
+      "body": "A importação de apresentações PPTX/PDF precisa do LibreOffice. Baixe em libreoffice.org e reinicie o app.",
+      "dismiss": "Fechar"
+    },
+    "slideshow": {
+      "import": "Importar Apresentação",
+      "importing": "Convertendo…",
+      "slides": "{{count}} slides",
+      "slide": "1 slide"
     }
   },
   "import": {
@@ -404,25 +416,10 @@
     "windows": {
       "title": "Janelas",
       "presentationWindow": "Janela de Apresentação",
-      "stageWindow": "Janela de Stage",
       "open": "Abrir / Reabrir nesta tela",
       "autoSelect": "— Automático —",
       "current": "(atual)",
       "cameraUrl": "URL da câmera"
-    }
-  },
-  "stage": {
-    "noSet": "Sem conjunto carregado",
-    "endOfService": "Fim do culto",
-    "screenBlanked": "Tela apagada",
-    "screenFrozen": "Tela congelada",
-    "current": "Atual",
-    "next": "Próximo",
-    "notes": "Notas",
-    "preview": {
-      "media": "▶ Mídia",
-      "countdown": "⏱ Contagem",
-      "webview": "🌐 WebView"
     }
   },
   "reports": {
@@ -515,6 +512,30 @@
       "dbError": "Erro no banco de dados: {{detail}}"
     },
     "legacy": "{{message}}"
+  },
+  "home": {
+    "overlay": {
+      "oferta": "Oferta",
+      "camera": "Câmera",
+      "aviso": "Aviso",
+      "pdf": "Apresentação",
+      "pdfTooltip": "Importar PPTX ou PDF",
+      "closeOverlay": "Fechar overlay",
+      "announcementTitle": "Enviar aviso",
+      "announcementPlaceholder": "Digite o texto do aviso…",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar",
+      "cameraNoUrl": "URL da câmera não configurada. Configure em Configurações.",
+      "goToSettings": "Ir para Configurações",
+      "cameraUse": "Usar",
+      "selectMedia": "Selecionar imagem para oferta"
+    },
+    "sidebar": {
+      "title": "Músicas",
+      "searchPlaceholder": "Pesquisar músicas…",
+      "empty": "Nenhuma música encontrada.",
+      "dragHint": "Arraste ou clique para adicionar ao conjunto"
+    }
   },
   "updates": {
     "bannerMessage": "Nova versão disponível: {{version}}",

@@ -3,12 +3,11 @@ import { useTranslation } from "react-i18next";
 import {
   checkForUpdates,
   checkRestoreInProgress,
-  getSetting,
+  clearOverlay,
   onLocaleChanged,
   onSetChanged,
   onSongsChanged,
   openPresentationWindow,
-  openStageWindow,
 } from "../../api/commands";
 import { SongList } from "../../components/library/SongList";
 import { SongEditor } from "../../components/library/SongEditor";
@@ -36,16 +35,6 @@ import { useThemeStore } from "../../stores/theme";
 import { installKeyboardDispatcher } from "../../runtime/keyboard";
 import type { Song, UpdateInfo } from "../../types";
 
-async function loadPersistedMonitor(key: string): Promise<number | undefined> {
-  try {
-    const val = await getSetting(key);
-    const idx = parseInt(val, 10);
-    return isNaN(idx) ? undefined : idx;
-  } catch {
-    return undefined;
-  }
-}
-
 export const OperatorApp: React.FC = () => {
   const { t, i18n } = useTranslation();
   const {
@@ -62,7 +51,6 @@ export const OperatorApp: React.FC = () => {
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
   const { load: loadTheme } = useThemeStore();
 
-  const [stageMonitorIdx, setStageMonitorIdx] = useState<number | undefined>(undefined);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
@@ -92,7 +80,6 @@ export const OperatorApp: React.FC = () => {
       .catch(() => {});
 
     loadFixedSet();
-    loadPersistedMonitor("window.stage.monitor").then(setStageMonitorIdx);
 
     return () => {
       unlistenSongs.then((u) => u());
@@ -121,7 +108,13 @@ export const OperatorApp: React.FC = () => {
           const mode = pres().state?.mode;
           pres().setMode(mode === "frozen" ? "live" : "frozen");
         },
-        exitPresentation: () => pres().setMode("idle"),
+        exitPresentation: () => {
+          if (usePresentationStore.getState().state?.overlay) {
+            clearOverlay().catch(console.error);
+          } else {
+            pres().setMode("idle");
+          }
+        },
         jumpToItem1: () => pres().jumpToItem(0),
         jumpToItem2: () => pres().jumpToItem(1),
         jumpToItem3: () => pres().jumpToItem(2),
@@ -159,14 +152,6 @@ export const OperatorApp: React.FC = () => {
     }
   };
 
-  const handleOpenStage = async () => {
-    try {
-      await openStageWindow(stageMonitorIdx);
-    } catch (err) {
-      console.error("open stage window failed:", err);
-    }
-  };
-
   const isLibrarySection =
     currentView === "library" ||
     currentView === "editor" ||
@@ -187,7 +172,7 @@ export const OperatorApp: React.FC = () => {
   const serviceSet = presState?.set;
 
   return (
-    <div className="h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white flex flex-col">
+    <div className="h-screen bg-bg text-inherit flex flex-col">
       {restoreInProgress && (
         <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />
       )}
@@ -208,14 +193,14 @@ export const OperatorApp: React.FC = () => {
       )}
 
       {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
+      <header className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setView("home")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isHomeSection
-                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                ? "bg-surface-2"
+                : "text-muted hover:text-inherit hover:bg-surface-2"
             }`}
           >
             {t("nav.home")}
@@ -224,8 +209,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("library")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isLibrarySection
-                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                ? "bg-surface-2"
+                : "text-muted hover:text-inherit hover:bg-surface-2"
             }`}
           >
             {t("nav.library")}
@@ -234,8 +219,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("countdown")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isCountdownSection
-                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                ? "bg-surface-2"
+                : "text-muted hover:text-inherit hover:bg-surface-2"
             }`}
           >
             {t("nav.countdown")}
@@ -244,8 +229,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("media")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isMediaSection
-                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                ? "bg-surface-2"
+                : "text-muted hover:text-inherit hover:bg-surface-2"
             }`}
           >
             {t("nav.media")}
@@ -254,8 +239,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("backup")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isBackupSection
-                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                ? "bg-surface-2"
+                : "text-muted hover:text-inherit hover:bg-surface-2"
             }`}
           >
             {t("nav.backup")}
@@ -264,8 +249,8 @@ export const OperatorApp: React.FC = () => {
             onClick={() => setView("settings")}
             className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               isSettingsSection
-                ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                ? "bg-surface-2"
+                : "text-muted hover:text-inherit hover:bg-surface-2"
             }`}
           >
             {t("nav.settings")}
@@ -276,15 +261,9 @@ export const OperatorApp: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleOpenPresentation}
-            className="px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium transition-colors"
+            className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
           >
             {t("nav.presentationWindow")}
-          </button>
-          <button
-            onClick={handleOpenStage}
-            className="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white rounded-lg font-medium transition-colors"
-          >
-            {t("nav.stageWindow")}
           </button>
         </div>
       </header>

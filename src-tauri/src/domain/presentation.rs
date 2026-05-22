@@ -39,7 +39,7 @@ pub struct PresentationState {
     /// None when mode is Idle or Blank.
     pub current_slide: Option<Slide>,
     /// The slide that will be shown after the next advance from the current navigation
-    /// position (current_item_index / current_slide_index). Used by the stage display.
+    /// position (current_item_index / current_slide_index).
     /// None when there is no next slide (end of set or no set loaded).
     pub next_slide: Option<Slide>,
     /// How many slides each set item generates (parallel to set.items).

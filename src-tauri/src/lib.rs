@@ -12,7 +12,7 @@ use commands::countdown::{
     get_countdown_state, pause_countdown, reset_countdown, set_countdown_duration, start_countdown,
 };
 use commands::import::{import_holyrics_batch, parse_holyrics_file};
-use commands::media::{check_ffprobe, delete_media, get_media_references, import_media, list_media, rename_media};
+use commands::media::{check_ffprobe, check_libreoffice, delete_media, get_media_references, import_media, import_presentation, list_media, rename_media};
 use commands::presentation::{
     get_presentation_state, go_to_item, load_set_for_presentation, next_slide, prev_slide,
     set_presentation_mode,
@@ -29,7 +29,7 @@ use commands::key_bindings::{get_key_bindings, set_key_bindings, reset_key_bindi
 use commands::reports::{export_ccli_csv, preview_ccli_export};
 use commands::settings::{get_setting, set_setting};
 use commands::updates::{apply_update_and_restart, check_for_updates};
-use commands::window::{list_monitors, open_presentation_window, open_stage_window};
+use commands::window::{list_monitors, open_presentation_window};
 use state::AppState;
 use tauri::Manager;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
@@ -105,7 +105,6 @@ pub fn run() {
             check_restore_in_progress,
             abort_restore,
             open_presentation_window,
-            open_stage_window,
             list_monitors,
             create_song,
             update_song,
@@ -132,7 +131,9 @@ pub fn run() {
             set_presentation_mode,
             get_presentation_state,
             check_ffprobe,
+            check_libreoffice,
             import_media,
+            import_presentation,
             list_media,
             rename_media,
             delete_media,

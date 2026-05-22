@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { MediaPicker } from "../common/MediaPicker";
 import { NotesField } from "../common/NotesField";
+import { useThemeStore } from "../../stores/theme";
 import type { CountdownConfig, CountdownEndBehavior, SetItem } from "../../types";
 
 interface Props {
@@ -40,12 +41,19 @@ const END_BEHAVIOR_VALUES: CountdownEndBehavior[] = ["holdZero", "blackout", "ad
 
 export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const { t } = useTranslation();
+  const { theme } = useThemeStore();
   const config = item.countdownConfig;
 
-  const configDurationMs = config?.target?.kind === 'duration' ? config.target.durationMs : 600_000;
-  const [durationInput, setDurationInput] = useState(
-    msToDuration(configDurationMs)
-  );
+  const initMode = config?.target?.kind === "fixedTime" ? "fixedTime" : "duration";
+  const configDurationMs = config?.target?.kind === "duration" ? config.target.durationMs : 600_000;
+  const initFixedTime =
+    config?.target?.kind === "fixedTime"
+      ? { hour: config.target.hour, minute: config.target.minute }
+      : { hour: 9, minute: 0 };
+
+  const [mode, setMode] = useState<"duration" | "fixedTime">(initMode);
+  const [durationInput, setDurationInput] = useState(msToDuration(configDurationMs));
+  const [fixedTime, setFixedTime] = useState(initFixedTime);
   const [message, setMessage] = useState(config?.message ?? t("countdown.editor.defaultMessage"));
   const [endBehavior, setEndBehavior] = useState<CountdownEndBehavior>(
     config?.endBehavior ?? "holdZero"
@@ -59,11 +67,19 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const initDurationMs = config?.target?.kind === 'duration' ? config.target.durationMs : 600_000;
-    setDurationInput(msToDuration(initDurationMs));
-    setMessage(config?.message ?? t("countdown.editor.defaultMessage"));
-    setEndBehavior(config?.endBehavior ?? "holdZero");
-    setBackgroundMediaId(config?.backgroundMediaId);
+    const cfg = item.countdownConfig;
+    const newMode = cfg?.target?.kind === "fixedTime" ? "fixedTime" : "duration";
+    const newDurationMs = cfg?.target?.kind === "duration" ? cfg.target.durationMs : 600_000;
+    const newFixedTime =
+      cfg?.target?.kind === "fixedTime"
+        ? { hour: cfg.target.hour, minute: cfg.target.minute }
+        : { hour: 9, minute: 0 };
+    setMode(newMode);
+    setDurationInput(msToDuration(newDurationMs));
+    setFixedTime(newFixedTime);
+    setMessage(cfg?.message ?? t("countdown.editor.defaultMessage"));
+    setEndBehavior(cfg?.endBehavior ?? "holdZero");
+    setBackgroundMediaId(cfg?.backgroundMediaId);
     setDurationError(null);
     setNotes(item.notes ?? "");
   }, [item.id]);
@@ -77,14 +93,23 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   };
 
   const buildConfig = (): CountdownConfig | null => {
-    const durationMs = durationToMs(durationInput);
-    if (durationMs === null || durationMs <= 0) return null;
-    return {
-      target: { kind: 'duration' as const, durationMs },
-      message: message.trim() || undefined,
-      endBehavior,
-      backgroundMediaId,
-    };
+    if (mode === "duration") {
+      const durationMs = durationToMs(durationInput);
+      if (durationMs === null || durationMs <= 0) return null;
+      return {
+        target: { kind: "duration", durationMs },
+        message: message.trim() || undefined,
+        endBehavior,
+        backgroundMediaId,
+      };
+    } else {
+      return {
+        target: { kind: "fixedTime", hour: fixedTime.hour, minute: fixedTime.minute },
+        message: message.trim() || undefined,
+        endBehavior,
+        backgroundMediaId,
+      };
+    }
   };
 
   const handleSave = async () => {
@@ -104,23 +129,60 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     }
   };
 
+  const timeValue = `${String(fixedTime.hour).padStart(2, "0")}:${String(fixedTime.minute).padStart(2, "0")}`;
+
+  const toggleBtnClass = (active: boolean) =>
+    `px-3 py-1 text-sm rounded border transition-colors ${
+      active
+        ? "bg-primary text-white border-primary"
+        : "bg-surface-2 border-border text-muted hover:text-inherit"
+    }`;
+
   return (
     <div className="p-3 space-y-3">
-      {/* Duration */}
+      {/* Mode toggle + target input */}
       <div>
-        <label className="text-xs text-muted mb-1 block">{t("countdown.editor.duration")}</label>
-        <input
-          type="text"
-          value={durationInput}
-          onChange={(e) => setDurationInput(e.target.value)}
-          onBlur={handleSave}
-          placeholder="10:00"
-          className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
-            durationError ? "border-red-500" : "border-border"
-          }`}
-        />
-        {durationError && (
-          <p className="text-xs text-red-400 mt-1">{durationError}</p>
+        <div className="flex gap-1 mb-2">
+          <button type="button" onClick={() => setMode("duration")} className={toggleBtnClass(mode === "duration")}>
+            {t("countdown.mode.duration")}
+          </button>
+          <button type="button" onClick={() => setMode("fixedTime")} className={toggleBtnClass(mode === "fixedTime")}>
+            {t("countdown.mode.fixedTime")}
+          </button>
+        </div>
+
+        {mode === "duration" ? (
+          <>
+            <label className="text-xs text-muted mb-1 block">{t("countdown.editor.duration")}</label>
+            <input
+              type="text"
+              value={durationInput}
+              onChange={(e) => setDurationInput(e.target.value)}
+              onBlur={handleSave}
+              placeholder="10:00"
+              className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
+                durationError ? "border-red-500" : "border-border"
+              }`}
+            />
+            {durationError && <p className="text-xs text-red-400 mt-1">{durationError}</p>}
+          </>
+        ) : (
+          <>
+            <label className="text-xs text-muted mb-1 block">{t("countdown.fixedTime.input.label")}</label>
+            <input
+              type="time"
+              value={timeValue}
+              onChange={(e) => {
+                const [h, m] = e.target.value.split(":").map(Number);
+                if (!isNaN(h) && !isNaN(m)) {
+                  setFixedTime({ hour: h, minute: m });
+                }
+              }}
+              onBlur={handleSave}
+              style={{ colorScheme: theme }}
+              className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
+            />
+          </>
         )}
       </div>
 
@@ -142,10 +204,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
         <label className="text-xs text-muted mb-1 block">{t("countdown.editor.endBehavior")}</label>
         <div className="space-y-1">
           {END_BEHAVIOR_VALUES.map((value) => (
-            <label
-              key={value}
-              className="flex items-center gap-2 cursor-pointer"
-            >
+            <label key={value} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name={`end-behavior-${item.id}`}
@@ -153,12 +212,24 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                 checked={endBehavior === value}
                 onChange={() => {
                   setEndBehavior(value);
-                  const durationMs = durationToMs(durationInput);
-                  if (durationMs && durationMs > 0) {
+                  if (mode === "duration") {
+                    const durationMs = durationToMs(durationInput);
+                    if (durationMs && durationMs > 0) {
+                      updateSetItem({
+                        id: item.id,
+                        countdownConfig: {
+                          target: { kind: "duration" as const, durationMs },
+                          message: message.trim() || undefined,
+                          endBehavior: value,
+                          backgroundMediaId,
+                        },
+                      }).catch(console.error);
+                    }
+                  } else {
                     updateSetItem({
                       id: item.id,
                       countdownConfig: {
-                        target: { kind: 'duration' as const, durationMs },
+                        target: { kind: "fixedTime" as const, hour: fixedTime.hour, minute: fixedTime.minute },
                         message: message.trim() || undefined,
                         endBehavior: value,
                         backgroundMediaId,
@@ -168,9 +239,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                 }}
                 className="accent-primary"
               />
-              <span className="text-sm">
-                {t(`countdown.endBehavior.${value}`)}
-              </span>
+              <span className="text-sm">{t(`countdown.endBehavior.${value}`)}</span>
             </label>
           ))}
         </div>
@@ -186,12 +255,24 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
           onSelect={(media) => {
             const newId = media?.id ?? undefined;
             setBackgroundMediaId(newId);
-            const durationMs = durationToMs(durationInput);
-            if (durationMs && durationMs > 0) {
+            if (mode === "duration") {
+              const durationMs = durationToMs(durationInput);
+              if (durationMs && durationMs > 0) {
+                updateSetItem({
+                  id: item.id,
+                  countdownConfig: {
+                    target: { kind: "duration" as const, durationMs },
+                    message: message.trim() || undefined,
+                    endBehavior,
+                    backgroundMediaId: newId,
+                  },
+                }).catch(console.error);
+              }
+            } else {
               updateSetItem({
                 id: item.id,
                 countdownConfig: {
-                  target: { kind: 'duration' as const, durationMs },
+                  target: { kind: "fixedTime" as const, hour: fixedTime.hour, minute: fixedTime.minute },
                   message: message.trim() || undefined,
                   endBehavior,
                   backgroundMediaId: newId,
@@ -202,9 +283,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
         />
       </div>
 
-      {saving && (
-        <p className="text-xs text-muted">{t("countdown.editor.saving")}</p>
-      )}
+      {saving && <p className="text-xs text-muted">{t("countdown.editor.saving")}</p>}
 
       <div>
         <p className="text-xs text-muted mb-1">{t("builder.itemNotes.label")}</p>

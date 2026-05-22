@@ -12,7 +12,7 @@ export const UpdateBanner: React.FC<Props> = ({ update, onDismiss, onUpdate }) =
   const { t } = useTranslation();
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-emerald-600 text-white text-sm shrink-0">
+    <div className="flex items-center justify-between px-4 py-2 bg-primary text-fg-on-primary text-sm shrink-0">
       <span>
         {t("updates.bannerMessage", { version: update.version })}
       </span>
@@ -25,7 +25,7 @@ export const UpdateBanner: React.FC<Props> = ({ update, onDismiss, onUpdate }) =
         </button>
         <button
           onClick={onDismiss}
-          className="text-emerald-100 hover:text-white"
+          className="opacity-80 hover:opacity-100"
           aria-label={t("updates.dismissButton")}
         >
           ×

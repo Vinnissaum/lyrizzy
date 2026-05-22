@@ -5,10 +5,10 @@ import { useLibraryStore } from "../../stores/library";
 import type { PresentationMode, ServiceSet } from "../../types";
 
 const MODE_COLORS: Record<PresentationMode, string> = {
-  idle: "bg-gray-600",
-  live: "bg-emerald-600",
-  blank: "bg-gray-800 border border-gray-600",
-  frozen: "bg-blue-700",
+  idle: "bg-surface-2 text-muted",
+  live: "bg-green-600 text-white",
+  blank: "bg-surface-2 border border-border text-muted",
+  frozen: "bg-blue-700 text-white",
 };
 
 interface ItemRowProps {
@@ -32,15 +32,15 @@ const ItemRow: React.FC<ItemRowProps> = ({
     onClick={onClick}
     className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${
       isCurrent
-        ? "bg-emerald-700 border border-emerald-500"
-        : "bg-gray-800 hover:bg-gray-700"
+        ? "bg-primary/20 border border-primary"
+        : "bg-surface-2 hover:bg-border"
     }`}
   >
     <div className="flex items-center justify-between gap-2">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-white truncate">{label}</p>
+        <p className="text-sm font-medium text-fg truncate">{label}</p>
         {subtitle && (
-          <p className="text-xs text-gray-400 truncate">{subtitle}</p>
+          <p className="text-xs text-muted truncate">{subtitle}</p>
         )}
       </div>
       {isCurrent && (
@@ -68,7 +68,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
 
   if (!state) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+      <div className="h-full flex items-center justify-center text-muted text-sm">
         {t("presentation.noPresentation")}
       </div>
     );
@@ -80,11 +80,11 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-gray-700">
+      <div className="px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center gap-2 mb-3">
           <button
             onClick={() => setView("set-builder")}
-            className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+            className="text-muted hover:text-inherit p-1 rounded transition-colors"
           >
             ←
           </button>
@@ -104,8 +104,8 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
               onClick={() => setMode(m)}
               className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                 currentMode === m
-                  ? `${MODE_COLORS[m]} text-white`
-                  : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  ? MODE_COLORS[m]
+                  : "bg-surface-2 hover:bg-border text-muted"
               }`}
             >
               {t(`presentation.mode.${m}`)}
@@ -141,21 +141,21 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
       </div>
 
       {/* Navigation */}
-      <div className="px-4 py-3 border-t border-gray-700">
+      <div className="px-4 py-3 border-t border-border">
         {state.currentSlide && (
-          <div className="mb-3 px-3 py-2 bg-gray-800 rounded-lg">
-            <p className="text-xs text-gray-500 mb-1">
+          <div className="mb-3 px-3 py-2 bg-surface-2 rounded-lg">
+            <p className="text-xs text-muted mb-1">
               {state.currentSlide.sectionLabel || t("presentation.currentSlide")}
             </p>
             <div className="space-y-0.5">
               {state.currentSlide.lines.length > 0 ? (
                 state.currentSlide.lines.map((line, i) => (
-                  <p key={i} className="text-sm text-white/80 leading-snug">
+                  <p key={i} className="text-sm text-fg leading-snug">
                     {line}
                   </p>
                 ))
               ) : (
-                <p className="text-sm text-gray-600 italic">{t("presentation.blankSlide")}</p>
+                <p className="text-sm text-muted italic">{t("presentation.blankSlide")}</p>
               )}
             </div>
           </div>
@@ -164,13 +164,13 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
         <div className="flex gap-2">
           <button
             onClick={prev}
-            className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
+            className="flex-1 py-2.5 bg-surface-2 hover:bg-border rounded-lg text-sm font-medium transition-colors"
           >
             {t("presentation.prev")}
           </button>
           <button
             onClick={next}
-            className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
+            className="flex-1 py-2.5 bg-surface-2 hover:bg-border rounded-lg text-sm font-medium transition-colors"
           >
             {t("presentation.next")}
           </button>

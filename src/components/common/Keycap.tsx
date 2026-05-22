@@ -21,7 +21,7 @@ export const Keycap: React.FC<Props> = ({ shortcut }) => {
       {parts.map((p, i) => (
         <kbd
           key={i}
-          className="px-1.5 py-0.5 text-xs font-mono bg-gray-700 border border-gray-600 rounded text-gray-200 leading-none"
+          className="px-1.5 py-0.5 text-xs font-mono bg-surface-2 border border-border rounded text-fg leading-none"
         >
           {p}
         </kbd>

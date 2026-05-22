@@ -105,7 +105,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
           <button
             onClick={handlePickFile}
             disabled={isLoading}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 rounded-lg font-medium transition-colors"
+            className="px-5 py-2.5 bg-primary hover:bg-primary-hover disabled:bg-surface-2 disabled:text-muted rounded-lg font-medium transition-colors text-fg-on-primary"
           >
             {isLoading ? t("import.holyrics.step1.loading") : t("import.holyrics.step1.chooseFile")}
           </button>
@@ -136,7 +136,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
             <label
               key={idx}
               className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                row.checked ? "bg-gray-800" : "bg-gray-850 opacity-60"
+                row.checked ? "bg-surface-2" : "bg-surface opacity-60"
               }`}
             >
               <input
@@ -200,7 +200,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
         )}
         <button
           onClick={onDone}
-          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+          className="px-5 py-2.5 bg-primary hover:bg-primary-hover rounded-lg font-medium transition-colors text-fg-on-primary"
         >
           {t("import.holyrics.step3.viewLibrary")}
         </button>

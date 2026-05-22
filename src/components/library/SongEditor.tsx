@@ -65,24 +65,24 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
           <img
             src={thumbUrl}
             alt={t("editor.bg.none")}
-            className="w-16 h-10 object-cover rounded border border-gray-600"
+            className="w-16 h-10 object-cover rounded border border-border"
           />
         ) : (
-          <div className="w-16 h-10 rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-600 text-xs">
+          <div className="w-16 h-10 rounded border border-border bg-surface-2 flex items-center justify-center text-muted text-xs">
             {t("editor.bg.none")}
           </div>
         )}
         <div className="flex gap-1.5 flex-1">
           <button
             onClick={onOpenPicker}
-            className="flex-1 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
+            className="flex-1 py-1.5 text-xs bg-surface-2 hover:bg-border text-muted hover:text-inherit rounded-lg transition-colors"
           >
             {current ? t("editor.bg.change") : t("editor.bg.choose")}
           </button>
           {current && (
             <button
               onClick={onRemove}
-              className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-red-100 dark:bg-gray-800 dark:hover:bg-red-800 text-gray-500 dark:text-gray-400 hover:text-red-700 dark:hover:text-white rounded-lg transition-colors"
+              className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-muted hover:text-red-600 rounded-lg transition-colors"
             >
               {t("editor.bg.remove")}
             </button>
@@ -92,7 +92,7 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
 
       {current && (
         <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-between text-xs text-muted">
             <span>{t("editor.bg.scrimLabel")}</span>
             <span>{scrimOpacity}%</span>
           </div>
@@ -102,26 +102,26 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
             max={100}
             value={scrimOpacity}
             onChange={(e) => onScrimChange(Number(e.target.value))}
-            className="w-full accent-blue-500"
+            className="w-full accent-primary"
           />
         </div>
       )}
 
       {showPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+          <div className="bg-surface border border-border rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="text-sm font-semibold">{t("editor.bg.modalTitle")}</h3>
               <button
                 onClick={onClosePicker}
-                className="text-gray-400 hover:text-white text-lg leading-none"
+                className="text-muted hover:text-inherit text-lg leading-none"
               >
                 ×
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
               {media.length === 0 && (
-                <p className="col-span-3 text-center text-gray-500 text-sm py-8">
+                <p className="col-span-3 text-center text-muted text-sm py-8">
                   {t("editor.bg.noMedia")}
                 </p>
               )}
@@ -134,7 +134,7 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
                     key={m.id}
                     onClick={() => { onSelect(m.id); onClosePicker(); }}
                     className={`relative rounded-lg overflow-hidden border-2 transition-colors ${
-                      m.id === backgroundId ? "border-blue-500" : "border-transparent hover:border-gray-500"
+                      m.id === backgroundId ? "border-primary" : "border-transparent hover:border-muted"
                     }`}
                   >
                     <img
@@ -348,7 +348,7 @@ export const SongEditor: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex items-center justify-center h-full text-muted">
         {t("loading")}
       </div>
     );
@@ -361,8 +361,8 @@ export const SongEditor: React.FC = () => {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`px-4 py-2 rounded-lg text-sm shadow-lg ${
-              toast.type === "success" ? "bg-emerald-600" : "bg-red-600"
+            className={`px-4 py-2 rounded-lg text-sm shadow-lg text-fg-on-primary ${
+              toast.type === "success" ? "bg-green-600" : "bg-red-600"
             }`}
           >
             {toast.message}
@@ -371,10 +371,10 @@ export const SongEditor: React.FC = () => {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <button
           onClick={closeEditor}
-          className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+          className="text-sm text-muted hover:text-inherit transition-colors"
         >
           {t("editor.back")}
         </button>
@@ -382,7 +382,7 @@ export const SongEditor: React.FC = () => {
           {editingSongId && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-fg-on-primary rounded-lg transition-colors"
             >
               {t("editor.delete")}
             </button>
@@ -390,7 +390,7 @@ export const SongEditor: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={!isValid || isSaving}
-            className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-white"
+            className="px-4 py-1.5 text-sm bg-primary hover:bg-primary-hover disabled:bg-surface-2 disabled:text-muted disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-fg-on-primary"
           >
             {isSaving ? t("saving") : t("editor.save")}
           </button>
@@ -405,7 +405,7 @@ export const SongEditor: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("editor.titlePlaceholder")}
-              className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-lg font-medium text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-lg font-medium text-fg focus:outline-none focus:border-primary"
             />
             {titleError && (
               <p className="text-red-400 text-xs mt-1">{titleError}</p>
@@ -416,14 +416,14 @@ export const SongEditor: React.FC = () => {
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
             placeholder={t("editor.artistPlaceholder")}
-            className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
           />
 
           <div className="flex gap-3">
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+              className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
             >
               <option value="pt">{t("editor.lang.pt")}</option>
               <option value="en">{t("editor.lang.en")}</option>
@@ -442,7 +442,7 @@ export const SongEditor: React.FC = () => {
 
         {/* Background */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
             {t("editor.background")}
           </h3>
           <BackgroundPicker
@@ -460,7 +460,7 @@ export const SongEditor: React.FC = () => {
 
         {/* Sections */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
             {t("editor.sections")}
           </h3>
           {bodyError && (
@@ -492,7 +492,7 @@ export const SongEditor: React.FC = () => {
 
           <button
             onClick={addSection}
-            className="w-full py-2 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-dashed border-gray-300 hover:border-gray-500 dark:border-gray-600 dark:hover:border-gray-400 rounded-lg transition-colors"
+            className="w-full py-2 text-sm text-muted hover:text-inherit border border-dashed border-border hover:border-muted rounded-lg transition-colors"
           >
             {t("editor.addSection")}
           </button>
@@ -503,7 +503,7 @@ export const SongEditor: React.FC = () => {
           <button
             type="button"
             onClick={() => setRightsOpen((o) => !o)}
-            className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+            className="flex items-center gap-2 text-sm font-medium text-muted uppercase tracking-wider hover:text-inherit transition-colors w-full text-left"
           >
             <span className={`text-xs transition-transform ${rightsOpen ? "rotate-90" : ""}`}>▶</span>
             {t("editor.rights.title")}
@@ -514,19 +514,19 @@ export const SongEditor: React.FC = () => {
                 value={ccliNumber}
                 onChange={(e) => setCcliNumber(e.target.value)}
                 placeholder={t("editor.rights.ccliNumber")}
-                className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
               />
               <input
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
                 placeholder={t("editor.rights.author")}
-                className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
               />
               <input
                 value={copyright}
                 onChange={(e) => setCopyright(e.target.value)}
                 placeholder={t("editor.rights.copyright")}
-                className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
               />
             </div>
           )}

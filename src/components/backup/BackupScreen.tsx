@@ -75,7 +75,7 @@ const ExportCard: React.FC = () => {
           </div>
           <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-emerald-500 transition-all"
+              className="h-full bg-primary transition-all"
               style={{ width: `${progress.filesTotal > 0 ? Math.round((progress.filesDone / progress.filesTotal) * 100) : 0}%` }}
             />
           </div>

@@ -34,7 +34,7 @@ export const UpdateCheckButton: React.FC = () => {
   return (
     <>
       {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-gray-700 dark:bg-gray-600 text-white text-sm rounded-lg shadow-lg">
+        <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-surface-2 text-fg text-sm rounded-lg shadow-lg border border-border">
           {toast}
         </div>
       )}
@@ -44,7 +44,7 @@ export const UpdateCheckButton: React.FC = () => {
       <button
         onClick={handleCheck}
         disabled={checking}
-        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50 transition-colors"
+        className="w-full text-left px-3 py-2 text-sm text-muted hover:text-inherit disabled:opacity-50 transition-colors"
       >
         {checking ? t("loading") : t("updates.checkManual")}
       </button>

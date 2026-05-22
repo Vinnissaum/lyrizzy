@@ -75,20 +75,20 @@ export const MediaUploadDropzone: React.FC<Props> = ({ onImportComplete }) => {
       data-testid="upload-dropzone"
       className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
         progress
-          ? "border-gray-700 cursor-default"
+          ? "border-border cursor-default"
           : isDragging
-          ? "border-blue-500 bg-blue-500/10 cursor-copy"
-          : "border-gray-600 hover:border-gray-500 hover:bg-gray-800 cursor-pointer"
+          ? "border-primary bg-primary/10 cursor-copy"
+          : "border-border hover:border-muted hover:bg-surface-2 cursor-pointer"
       }`}
     >
       {progress ? (
         <div className="space-y-2">
-          <p className="text-gray-400 text-sm">
+          <p className="text-muted text-sm">
             {t("media.dropzone.uploading", { current: progress.current, total: progress.total })}
           </p>
-          <div className="w-full bg-gray-700 rounded-full h-1.5">
+          <div className="w-full bg-surface-2 rounded-full h-1.5">
             <div
-              className="bg-blue-500 h-1.5 rounded-full transition-all"
+              className="bg-primary h-1.5 rounded-full transition-all"
               style={{
                 width: `${(progress.current / progress.total) * 100}%`,
               }}
@@ -97,12 +97,12 @@ export const MediaUploadDropzone: React.FC<Props> = ({ onImportComplete }) => {
         </div>
       ) : (
         <>
-          <Upload className="w-7 h-7 text-gray-500 mx-auto mb-2" />
-          <p className="text-gray-400 text-sm">
+          <Upload className="w-7 h-7 text-muted mx-auto mb-2" />
+          <p className="text-muted text-sm">
             {t("media.dropzone.drop")}{" "}
-            <span className="text-blue-400">{t("media.dropzone.clickToSelect")}</span>
+            <span className="text-primary">{t("media.dropzone.clickToSelect")}</span>
           </p>
-          <p className="text-gray-600 text-xs mt-1">
+          <p className="text-muted text-xs mt-1">
             PNG, JPG, WebP, GIF, MP4, WebM
           </p>
         </>

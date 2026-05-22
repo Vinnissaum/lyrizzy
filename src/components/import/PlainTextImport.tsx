@@ -105,34 +105,34 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-muted mb-1">
               {t("import.plain.step1.titleLabel")}
             </label>
             <input
               value={songTitle}
               onChange={(e) => setSongTitle(e.target.value)}
               placeholder={t("import.plain.step1.titlePlaceholder")}
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 focus:outline-none focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-muted mb-1">
               {t("import.plain.step1.artistLabel")}
             </label>
             <input
               value={artist}
               onChange={(e) => setArtist(e.target.value)}
               placeholder={t("import.plain.step1.artistPlaceholder")}
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 focus:outline-none focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-muted mb-1">
               {t("import.plain.step1.lyricsLabel")}
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-muted mb-2">
               {t("import.plain.step1.lyricsHint")}
             </p>
             <textarea
@@ -140,7 +140,7 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
               onChange={(e) => setLyrics(e.target.value)}
               placeholder={t("import.plain.step1.lyricsPlaceholder")}
               rows={14}
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 font-mono text-sm resize-y focus:outline-none focus:border-blue-500"
+              className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 font-mono text-sm resize-y focus:outline-none focus:border-primary"
             />
           </div>
         </div>
@@ -164,7 +164,7 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
         {sections.map((section) => (
           <div
             key={section.key}
-            className="bg-gray-800 rounded-lg p-3 space-y-2"
+            className="bg-surface-2 rounded-lg p-3 space-y-2"
           >
             <div className="flex gap-2">
               <input
@@ -172,14 +172,14 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
                 onChange={(e) =>
                   updateSection(section.key, { label: e.target.value })
                 }
-                className="flex-1 text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+                className="flex-1 text-sm bg-surface border border-border text-fg rounded px-2 py-1 focus:outline-none focus:border-primary"
               />
               <select
                 value={section.sectionType}
                 onChange={(e) =>
                   updateSection(section.key, { sectionType: e.target.value })
                 }
-                className="text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1"
+                className="text-sm bg-surface border border-border text-fg rounded px-2 py-1"
               >
                 {SECTION_TYPE_VALUES.map((v) => (
                   <option key={v} value={v}>
@@ -194,7 +194,7 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
                 updateSection(section.key, { body: e.target.value })
               }
               rows={3}
-              className="w-full text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1.5 font-mono resize-y focus:outline-none focus:border-blue-500"
+              className="w-full text-sm bg-surface border border-border text-fg rounded px-2 py-1.5 font-mono resize-y focus:outline-none focus:border-primary"
             />
           </div>
         ))}

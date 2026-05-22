@@ -80,17 +80,9 @@ describe("OperatorApp", () => {
     });
   });
 
-  it("renders the presentation window button", () => {
+  it("does not render a presentation window button in the toolbar", () => {
     render(<OperatorApp />);
-    expect(screen.getByText("Janela de Apresentação")).toBeInTheDocument();
-  });
-
-  it("calls open_presentation_window with no args when the button is clicked", async () => {
-    render(<OperatorApp />);
-    screen.getByText("Janela de Apresentação").click();
-    await waitFor(() =>
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith("open_presentation_window")
-    );
+    expect(screen.queryByText("Janela de Apresentação")).toBeNull();
   });
 
   it("subscribes to songs_changed on mount", async () => {

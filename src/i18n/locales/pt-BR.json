@@ -6,8 +6,7 @@
     "countdown": "Cronômetro",
     "media": "Mídia",
     "backup": "Backup",
-    "settings": "Configurações",
-    "presentationWindow": "Janela de Apresentação"
+    "settings": "Configurações"
   },
   "loading": "Carregando…",
   "saving": "Salvando…",
@@ -184,6 +183,15 @@
       "durationError": "Formato inválido. Use mm:ss ou hh:mm:ss",
       "defaultMessage": "O culto começa em…",
       "bgLabel": "Selecionar vídeo de fundo…"
+    },
+    "mode": {
+      "duration": "Duração",
+      "fixedTime": "Horário fixo"
+    },
+    "fixedTime": {
+      "input": {
+        "label": "Terminar em"
+      }
     },
     "endBehavior": {
       "holdZero": "Manter 00:00",

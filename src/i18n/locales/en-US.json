@@ -6,8 +6,7 @@
     "countdown": "Countdown",
     "media": "Media",
     "backup": "Backup",
-    "settings": "Settings",
-    "presentationWindow": "Presentation Window"
+    "settings": "Settings"
   },
   "loading": "Loading…",
   "saving": "Saving…",
@@ -184,6 +183,15 @@
       "durationError": "Invalid format. Use mm:ss or hh:mm:ss",
       "defaultMessage": "Service starts in…",
       "bgLabel": "Select background video…"
+    },
+    "mode": {
+      "duration": "Duration",
+      "fixedTime": "Fixed time"
+    },
+    "fixedTime": {
+      "input": {
+        "label": "Finish at"
+      }
     },
     "endBehavior": {
       "holdZero": "Hold at 00:00",

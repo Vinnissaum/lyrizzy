@@ -257,15 +257,6 @@ export const OperatorApp: React.FC = () => {
           </button>
         </div>
 
-        {/* Window buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleOpenPresentation}
-            className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
-          >
-            {t("nav.presentationWindow")}
-          </button>
-        </div>
       </header>
 
       {/* Main content */}

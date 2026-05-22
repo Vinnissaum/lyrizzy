@@ -41,9 +41,16 @@ function matchAction(sig: string, bindings: KeyBindings): ActionId | null {
 
 export type ActionCallbacks = Partial<Record<ActionId, () => void>>;
 
+export interface HardcodedKeyHandlers {
+  getIsPresenting: () => boolean;
+  onEscape: () => void;
+  onF10: () => void;
+}
+
 export function installKeyboardDispatcher(
   getBindings: () => KeyBindings | null,
-  callbacks: ActionCallbacks
+  callbacks: ActionCallbacks,
+  hardcoded?: HardcodedKeyHandlers
 ): () => void {
   const handler = (e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;
@@ -53,6 +60,19 @@ export function installKeyboardDispatcher(
       (e.target as HTMLElement).isContentEditable
     ) {
       return;
+    }
+    // Hardcoded keys take priority over user bindings (PowerPoint parity — not rebindable)
+    if (hardcoded && hardcoded.getIsPresenting()) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        hardcoded.onEscape();
+        return;
+      }
+      if (e.key === "F10") {
+        e.preventDefault();
+        hardcoded.onF10();
+        return;
+      }
     }
     const bindings = getBindings();
     if (!bindings) return;

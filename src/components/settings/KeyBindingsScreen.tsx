@@ -27,6 +27,9 @@ const ACTION_IDS: ActionId[] = [
   "focusSearch",
 ];
 
+// Hardcoded keys — shown for reference but not rebindable
+const READONLY_ACTIONS = new Set<ActionId>(["exitPresentation"]);
+
 type RecordingTarget = { action: ActionId; replaceIndex: number | null };
 
 export const KeyBindingsScreen: React.FC = () => {
@@ -152,6 +155,7 @@ export const KeyBindingsScreen: React.FC = () => {
             const shortcuts = bindings.bindings?.[action] ?? [];
             const isRecordingThis = recording?.action === action;
             const rowError = rowErrors[action];
+            const isReadonly = READONLY_ACTIONS.has(action);
 
             return (
               <div
@@ -167,14 +171,16 @@ export const KeyBindingsScreen: React.FC = () => {
                     {shortcuts.map((sc, i) => (
                       <span key={i} className="flex items-center gap-0.5">
                         <Keycap shortcut={sc} />
-                        <button
-                          onClick={() => removeShortcut(action, i)}
-                          disabled={saving}
-                          title={t("keyBindings.removeShortcut")}
-                          className="text-xs text-gray-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 px-0.5"
-                        >
-                          ×
-                        </button>
+                        {!isReadonly && (
+                          <button
+                            onClick={() => removeShortcut(action, i)}
+                            disabled={saving}
+                            title={t("keyBindings.removeShortcut")}
+                            className="text-xs text-gray-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 px-0.5"
+                          >
+                            ×
+                          </button>
+                        )}
                       </span>
                     ))}
 
@@ -184,7 +190,14 @@ export const KeyBindingsScreen: React.FC = () => {
                       </span>
                     )}
 
-                    {isRecordingThis ? (
+                    {isReadonly ? (
+                      <span
+                        className="text-xs text-gray-400 dark:text-gray-500 cursor-default"
+                        title={t("keyBindings.hardcodedTooltip")}
+                      >
+                        🔒
+                      </span>
+                    ) : isRecordingThis ? (
                       <>
                         <span className="text-xs text-amber-500 dark:text-amber-400 animate-pulse">
                           {t("keyBindings.pressKey")}

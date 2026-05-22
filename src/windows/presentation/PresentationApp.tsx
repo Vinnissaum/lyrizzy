@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { onLocaleChanged } from "../../api/commands";
+import { exitPresentation, onLocaleChanged } from "../../api/commands";
 import { forwardKeydown } from "../../runtime/keyboard";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
@@ -87,12 +87,30 @@ export const PresentationApp: React.FC = () => {
     });
     refreshMedia();
 
-    window.addEventListener("keydown", forwardKeydown);
+    const keydownHandler = (e: KeyboardEvent) => {
+      const s = usePresentationStore.getState();
+      const mode = s.state?.mode;
+      const isPresenting = mode === "live" || mode === "blank" || mode === "frozen";
+      if (isPresenting) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          exitPresentation().catch(console.error);
+          return;
+        }
+        if (e.key === "F10") {
+          e.preventDefault();
+          s.setMode(mode === "blank" ? "live" : "blank");
+          return;
+        }
+      }
+      forwardKeydown(e);
+    };
+    window.addEventListener("keydown", keydownHandler);
     return () => {
       unsub.then((u) => u());
       unsubCd.then((u) => u());
       unsubLocale.then((u) => u());
-      window.removeEventListener("keydown", forwardKeydown);
+      window.removeEventListener("keydown", keydownHandler);
     };
   }, []);
 

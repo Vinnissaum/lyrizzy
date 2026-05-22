@@ -466,6 +466,7 @@
     "addShortcut": "Add shortcut",
     "removeShortcut": "Remove shortcut",
     "modifierOnly": "Include a main key in addition to modifiers",
+    "hardcodedTooltip": "PowerPoint parity — not rebindable",
     "resetConfirmTitle": "Reset to defaults",
     "resetConfirmMessage": "Reset all shortcuts to their default values?",
     "actions": {

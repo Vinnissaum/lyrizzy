@@ -4,6 +4,7 @@ import {
   checkForUpdates,
   checkRestoreInProgress,
   clearOverlay,
+  exitPresentation,
   onLocaleChanged,
   onPresentationLifecycle,
   onSetChanged,
@@ -143,6 +144,17 @@ export const OperatorApp: React.FC = () => {
         openPresentationWindow: () => handleOpenPresentation(),
         focusSearch: () =>
           window.dispatchEvent(new CustomEvent("app:focus-search")),
+      },
+      {
+        getIsPresenting: () => {
+          const mode = usePresentationStore.getState().state?.mode;
+          return mode === "live" || mode === "blank" || mode === "frozen";
+        },
+        onEscape: () => exitPresentation().catch(console.error),
+        onF10: () => {
+          const s = usePresentationStore.getState();
+          s.setMode(s.state?.mode === "blank" ? "live" : "blank");
+        },
       }
     );
     return uninstall;

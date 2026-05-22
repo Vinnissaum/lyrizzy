@@ -466,6 +466,7 @@
     "addShortcut": "Adicionar atalho",
     "removeShortcut": "Remover atalho",
     "modifierOnly": "Inclua uma tecla principal além dos modificadores",
+    "hardcodedTooltip": "PowerPoint parity — não reatribuível",
     "resetConfirmTitle": "Restaurar padrões",
     "resetConfirmMessage": "Restaurar todos os atalhos para os valores padrão?",
     "actions": {

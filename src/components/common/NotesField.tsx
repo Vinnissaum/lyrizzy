@@ -35,7 +35,7 @@ export const NotesField: React.FC<Props> = ({ value, onChange, placeholder }) =>
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? t("sectionCard.notes.placeholder")}
         rows={2}
-        className="w-full text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1.5 resize-none focus:outline-none focus:border-blue-500 whitespace-pre-wrap"
+        className="w-full text-sm bg-surface-2 border border-border text-fg rounded px-2 py-1.5 resize-none focus:outline-none focus:border-primary whitespace-pre-wrap"
         style={{ overflowY: "hidden" }}
       />
       {value.length > CHAR_WARN_LIMIT && (

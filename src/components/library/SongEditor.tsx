@@ -436,7 +436,7 @@ export const SongEditor: React.FC = () => {
             onChange={(e) => setNotes(e.target.value)}
             placeholder={t("editor.notesPlaceholder")}
             rows={2}
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-blue-500"
+            className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-primary"
           />
         </div>
 

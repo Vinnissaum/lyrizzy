@@ -5,13 +5,15 @@
 
 /* Light-mode defaults; registers utility classes: bg-surface, bg-primary, border-border, text-muted, etc. */
 @theme {
-  --color-bg:            #F5F5F5;
-  --color-surface:       #FFFFFF;
-  --color-surface-2:     #F0F0F0;
-  --color-border:        #E0E0E0;
-  --color-muted:         #666666;
-  --color-primary:       #19A4DD;
-  --color-primary-hover: #1494C5;
+  --color-bg:             #F5F5F5;
+  --color-surface:        #FFFFFF;
+  --color-surface-2:      #F0F0F0;
+  --color-border:         #E0E0E0;
+  --color-muted:          #666666;
+  --color-primary:        #19A4DD;
+  --color-primary-hover:  #1494C5;
+  --color-fg:             #111111;
+  --color-fg-on-primary:  #FFFFFF;
 }
 
 /* Dark-mode surface overrides (primary is the same in both themes) */
@@ -21,4 +23,12 @@
   --color-surface-2: #252525;
   --color-border:    #333333;
   --color-muted:     #888888;
+  --color-fg:        #EAEAEA;
+}
+
+/* T9: dark color-scheme for native time/number inputs */
+.dark input[type="time"],
+.dark input[type="number"],
+.dark input[type="date"] {
+  color-scheme: dark;
 }

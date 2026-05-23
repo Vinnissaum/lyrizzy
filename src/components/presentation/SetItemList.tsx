@@ -20,7 +20,8 @@ export const SetItemList: React.FC = () => {
             key={idx}
             aria-current={isActive ? "true" : undefined}
             onClick={() => {
-              if (!isActive) goToItem(idx, 0).catch(console.error);
+              const liveIdx = usePresentationStore.getState().state?.currentItemIndex ?? -1;
+              if (idx !== liveIdx) goToItem(idx, 0).catch(console.error);
             }}
             className={`flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm w-full
               ${isActive

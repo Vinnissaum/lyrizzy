@@ -5,7 +5,7 @@ use crate::db::media::{
 use crate::domain::error::ErrorPayload;
 use crate::domain::media::{Media, MediaKind};
 use crate::protocol::asset;
-use crate::services::{media_probe, thumbnail};
+use crate::services::{libreoffice, media_probe, thumbnail};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -172,6 +172,7 @@ pub async fn import_media(
         created_at: now,
         updated_at: now,
         deleted_at: None,
+        slide_count: None,
     };
 
     if let Err(e) = db_insert_media(pool, &media).await {
@@ -274,6 +275,171 @@ pub fn check_ffprobe() -> bool {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
+}
+
+#[tauri::command]
+pub fn check_libreoffice(app: AppHandle) -> bool {
+    let resource_dir = app.path().resource_dir().ok();
+    libreoffice::soffice_path(resource_dir.as_deref()).is_some()
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversionProgress {
+    pub media_id: String,
+    pub status: String,
+    pub message: Option<String>,
+}
+
+/// Import a PPTX, PDF, PPT, or ODP file into the media library.
+///
+/// Copies the source, runs LibreOffice headless conversion to PNG slides,
+/// normalises filenames to slide_000.png…, inserts a Presentation media record.
+#[tauri::command]
+pub async fn import_presentation(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    source_path: String,
+) -> Result<Media, ErrorPayload> {
+    let src = Path::new(&source_path);
+
+    let ext = src
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .ok_or_else(|| ErrorPayload::new("media.no_extension"))?;
+
+    match ext.as_str() {
+        "pptx" | "ppt" | "pdf" | "odp" => {}
+        _ => {
+            return Err(
+                ErrorPayload::new("media.unsupported_container").with_param("ext", &ext),
+            )
+        }
+    }
+
+    let resource_dir = app.path().resource_dir().ok();
+    let soffice = libreoffice::soffice_path(resource_dir.as_deref())
+        .ok_or_else(|| ErrorPayload::new("media.libreoffice_not_found"))?;
+
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    let media_dir = asset::media_dir(&data_dir);
+    let pool = state.db.get().expect("db must be initialized");
+
+    let uuid = Uuid::new_v4().to_string();
+    let file_name = format!("{uuid}.{ext}");
+    let dest = media_dir.join(&file_name);
+    let out_dir = media_dir.join(&uuid);
+
+    // Copy source file
+    std::fs::copy(&source_path, &dest)
+        .map_err(|e| ErrorPayload::new("media.copy_error").with_param("detail", e.to_string()))?;
+
+    // Create output directory for PNG slides
+    if let Err(e) = std::fs::create_dir_all(&out_dir) {
+        let _ = std::fs::remove_file(&dest);
+        return Err(
+            ErrorPayload::new("media.conversion_failed").with_param("detail", e.to_string()),
+        );
+    }
+
+    // Signal conversion in progress
+    let _ = app.emit(
+        "conversion_progress",
+        ConversionProgress {
+            media_id: uuid.clone(),
+            status: "converting".to_string(),
+            message: None,
+        },
+    );
+
+    // Run LibreOffice conversion
+    let slides = match libreoffice::convert_to_png(&soffice, &dest, &out_dir).await {
+        Ok(s) => s,
+        Err(e) => {
+            let _ = std::fs::remove_file(&dest);
+            let _ = std::fs::remove_dir_all(&out_dir);
+            let _ = app.emit(
+                "conversion_progress",
+                ConversionProgress {
+                    media_id: uuid.clone(),
+                    status: "error".to_string(),
+                    message: Some(e.clone()),
+                },
+            );
+            return Err(
+                ErrorPayload::new("media.conversion_failed").with_param("detail", e),
+            );
+        }
+    };
+
+    let slide_count = slides.len() as i64;
+    if slide_count == 0 {
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_dir_all(&out_dir);
+        return Err(ErrorPayload::new("media.conversion_failed")
+            .with_param("detail", "no slides produced"));
+    }
+
+    let original_name = src
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&file_name)
+        .to_string();
+    let display_name = unique_display_name(pool, &original_name)
+        .await
+        .map_err(|e| ErrorPayload::new("media.db_error").with_param("detail", e.to_string()))?;
+
+    let byte_size = std::fs::metadata(&dest).map(|m| m.len() as i64).unwrap_or(0);
+    let now = now_ms();
+    let thumbnail_file = format!("{uuid}/slide_000.png");
+    let mime_type = match ext.as_str() {
+        "pdf" => "application/pdf",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "ppt" => "application/vnd.ms-powerpoint",
+        "odp" => "application/vnd.oasis.opendocument.presentation",
+        _ => "application/octet-stream",
+    };
+
+    let media = Media {
+        id: uuid.clone(),
+        file_name: file_name.clone(),
+        display_name,
+        kind: MediaKind::Presentation,
+        mime_type: mime_type.to_string(),
+        width: None,
+        height: None,
+        duration_ms: None,
+        thumbnail_file: Some(thumbnail_file),
+        byte_size,
+        created_at: now,
+        updated_at: now,
+        deleted_at: None,
+        slide_count: Some(slide_count),
+    };
+
+    if let Err(e) = db_insert_media(pool, &media).await {
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_dir_all(&out_dir);
+        return Err(
+            ErrorPayload::new("media.db_error").with_param("detail", e.to_string()),
+        );
+    }
+
+    let _ = app.emit("media_library_changed", ());
+    let _ = app.emit(
+        "conversion_progress",
+        ConversionProgress {
+            media_id: uuid,
+            status: "done".to_string(),
+            message: None,
+        },
+    );
+
+    Ok(media)
 }
 
 #[tauri::command]

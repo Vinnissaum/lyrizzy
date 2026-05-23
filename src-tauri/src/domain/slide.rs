@@ -16,6 +16,17 @@ impl Slide {
             section_id: String::new(),
         }
     }
+
+    /// Creates a pseudo-slide for a SlideShow set item.
+    /// `section_label = "slide_show"`, `section_id = index.to_string()`.
+    /// The presentation renderer reads `section_id` as the zero-based slide index.
+    pub fn pseudo_slideshow(index: usize) -> Self {
+        Self {
+            lines: vec![],
+            section_label: "slide_show".to_string(),
+            section_id: index.to_string(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -57,6 +68,14 @@ mod tests {
         let config = SlideConfig::default();
         assert_eq!(config.max_lines, 4);
         assert_eq!(config.max_chars_per_line, 60);
+    }
+
+    #[test]
+    fn slide_pseudo_slideshow_encodes_index() {
+        let s = Slide::pseudo_slideshow(3);
+        assert_eq!(s.section_label, "slide_show");
+        assert_eq!(s.section_id, "3");
+        assert!(s.lines.is_empty());
     }
 
     #[test]

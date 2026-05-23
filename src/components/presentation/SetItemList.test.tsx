@@ -48,6 +48,10 @@ const mockMedia = [
 describe("SetItemList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Provide a default getState so tests that don't override it don't crash on click
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: { set: mockSet, currentItemIndex: 0 } }),
+    });
     vi.mocked(useLibraryStore).mockImplementation((selector: any) =>
       selector ? selector({ songs: mockSongs }) : { songs: mockSongs }
     );
@@ -87,6 +91,9 @@ describe("SetItemList", () => {
     vi.mocked(usePresentationStore).mockImplementation((selector: (s: any) => any) =>
       selector({ state: { set: mockSet, currentItemIndex: 0 } })
     );
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: { set: mockSet, currentItemIndex: 0 } }),
+    });
 
     render(<SetItemList />);
 
@@ -100,6 +107,9 @@ describe("SetItemList", () => {
     vi.mocked(usePresentationStore).mockImplementation((selector: (s: any) => any) =>
       selector({ state: { set: mockSet, currentItemIndex: 0 } })
     );
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: { set: mockSet, currentItemIndex: 0 } }),
+    });
 
     render(<SetItemList />);
 
@@ -107,6 +117,26 @@ describe("SetItemList", () => {
     // Click the first item (idx 0), which is active
     fireEvent.click(buttons[0]);
     expect(goToItem).not.toHaveBeenCalled();
+  });
+
+  // ── Closure-staleness: getState() read at click time ─────────────────────
+
+  it("reads currentItemIndex from getState() at click time, not from the render closure", () => {
+    // Render with currentItemIndex=1 (item-2 active)
+    vi.mocked(usePresentationStore).mockImplementation((selector: (s: any) => any) =>
+      selector({ state: { set: mockSet, currentItemIndex: 1 } })
+    );
+    // Store updates to currentItemIndex=2 before the click fires
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: { set: mockSet, currentItemIndex: 2 } }),
+    });
+
+    render(<SetItemList />);
+
+    const buttons = screen.getAllByRole("button");
+    // Click item-1 (idx 0) — live active is idx 2, so this should fire
+    fireEvent.click(buttons[0]);
+    expect(goToItem).toHaveBeenCalledWith(0, 0);
   });
 
   it("displays the item icon and label for each row", () => {

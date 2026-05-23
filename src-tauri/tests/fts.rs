@@ -152,6 +152,10 @@ fn make_song(title: &str, body: &str) -> CreateSongPayload {
         scrim_opacity: None,
         slide_config: None,
         source: None,
+        background_mode: None,
+        background_preset: None,
+        font_family: None,
+        font_size: None,
         sections: vec![SectionPayload {
             label: "Estrofe 1".to_string(),
             section_type: SectionType::Verse,
@@ -160,6 +164,10 @@ fn make_song(title: &str, body: &str) -> CreateSongPayload {
             repeat_count: None,
             notes: None,
             background_id: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
         }],
     }
 }
@@ -231,6 +239,10 @@ async fn fts_search_finds_song_by_author() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,
@@ -239,6 +251,10 @@ async fn fts_search_finds_song_by_author() {
                 repeat_count: None,
                 notes: None,
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             }],
         },
     )
@@ -260,6 +276,10 @@ async fn fts_search_finds_song_by_author() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,
@@ -268,6 +288,10 @@ async fn fts_search_finds_song_by_author() {
                 repeat_count: None,
                 notes: None,
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             }],
         },
     )

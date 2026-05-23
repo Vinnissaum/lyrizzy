@@ -6,7 +6,7 @@ import { mediaUrl } from "../../api/assets";
 import { AnnouncementRenderer } from "./AnnouncementRenderer";
 import { CountdownRenderer } from "./CountdownRenderer";
 import { SlideshowRenderer } from "./SlideshowRenderer";
-import type { BackgroundInfo, PresentationState, SetItem } from "../../types";
+import type { BackgroundInfo, BackgroundPreset, PresentationState, SetItem } from "../../types";
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -32,6 +32,11 @@ const FrameTag: React.FC<{ label: string }> = ({ label }) => (
 // Song slide preview (text-only, scale-friendly)
 // ---------------------------------------------------------------------------
 
+const PRESET_BG_PREVIEW: Record<BackgroundPreset, { bg: string; fg: string }> = {
+  "preto-branco": { bg: "#000000", fg: "#FFFFFF" },
+  "branco-preto": { bg: "#FFFFFF", fg: "#000000" },
+};
+
 function SongSlidePreview({
   lines,
   background,
@@ -39,7 +44,20 @@ function SongSlidePreview({
   lines: string[];
   background?: BackgroundInfo;
 }) {
-  const bgStyle: React.CSSProperties = background
+  if (background?.preset) {
+    const { bg, fg } = PRESET_BG_PREVIEW[background.preset];
+    return (
+      <div className="w-full h-full relative flex items-center justify-center" style={{ backgroundColor: bg }}>
+        <div className="relative z-10 w-full px-2">
+          <p className="text-center text-xs leading-snug whitespace-pre-wrap line-clamp-6" style={{ color: fg }}>
+            {lines.join("\n")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const bgStyle: React.CSSProperties = background?.assetUrl
     ? background.mediaKind === "image"
       ? {
           backgroundImage: `url(${background.assetUrl})`,

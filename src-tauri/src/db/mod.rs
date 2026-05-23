@@ -17,7 +17,7 @@ pub async fn init_db(app: &AppHandle) -> Result<SqlitePool, sqlx::Error> {
         .expect("could not resolve app data directory");
 
     std::fs::create_dir_all(&data_dir)
-        .map_err(|e| sqlx::Error::Io(e))?;
+        .map_err(sqlx::Error::Io)?;
 
     let db_path = data_dir.join("database.db");
     let db_url = format!("sqlite://{}?mode=rwc", db_path.to_string_lossy());

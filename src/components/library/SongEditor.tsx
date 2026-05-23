@@ -21,37 +21,67 @@ import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { SectionCard, SectionDraft } from "./SectionCard";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import type { Media, SectionType } from "../../types";
+import type { Media, SectionType, BackgroundPreset, FontFamily, FontSize } from "../../types";
 
 let dndCounter = 0;
 const nextDndId = () => `sec-${++dndCounter}`;
 
-// ── BackgroundPicker ──────────────────────────────────────────────────────────
+// ── BackgroundEditor (3-tab: Preset | Media) for the song level ──────────────
 
-interface BackgroundPickerProps {
+type BgMode = "none" | "preset" | "media";
+
+interface BackgroundEditorProps {
+  backgroundMode?: string;
+  backgroundPreset?: string;
+  fontFamily?: string;
+  fontSize?: string;
   backgroundId?: string;
   scrimOpacity: number;
   media: Media[];
-  onSelect: (id: string) => void;
-  onRemove: () => void;
-  onScrimChange: (v: number) => void;
-  showPicker: boolean;
-  onOpenPicker: () => void;
-  onClosePicker: () => void;
+  onChange: (patch: {
+    backgroundMode?: string;
+    backgroundPreset?: string;
+    fontFamily?: string;
+    fontSize?: string;
+    backgroundId?: string;
+    scrimOpacity?: number;
+  }) => void;
 }
 
-const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
+const PRESET_OPTIONS: { value: BackgroundPreset; label: string; bg: string; fg: string }[] = [
+  { value: "preto-branco", label: "Preto/Branco", bg: "#000", fg: "#fff" },
+  { value: "branco-preto", label: "Branco/Preto", bg: "#fff", fg: "#000" },
+];
+
+const FONT_FAMILY_OPTIONS: { value: FontFamily; label: string }[] = [
+  { value: "sans", label: "Sans" },
+  { value: "serif", label: "Serif" },
+  { value: "mono", label: "Mono" },
+];
+
+const FONT_SIZE_OPTIONS: { value: FontSize; label: string }[] = [
+  { value: "sm", label: "Sm" },
+  { value: "md", label: "Md" },
+  { value: "lg", label: "Lg" },
+  { value: "xl", label: "Xl" },
+];
+
+const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
+  backgroundMode,
+  backgroundPreset,
+  fontFamily,
+  fontSize,
   backgroundId,
   scrimOpacity,
   media,
-  onSelect,
-  onRemove,
-  onScrimChange,
-  showPicker,
-  onOpenPicker,
-  onClosePicker,
+  onChange,
 }) => {
   const { t } = useTranslation();
+  const [showPicker, setShowPicker] = useState(false);
+
+  const activeMode: BgMode =
+    backgroundMode === "preset" ? "preset" : backgroundMode === "media" ? "media" : "none";
+
   const current = backgroundId ? media.find((m) => m.id === backgroundId) : undefined;
   const thumbUrl = current?.thumbnailFile
     ? mediaUrl(current.thumbnailFile)
@@ -59,96 +89,163 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
     ? mediaUrl(current.fileName)
     : undefined;
 
+  const setMode = (m: BgMode) => {
+    if (m === "none") onChange({ backgroundMode: undefined, backgroundId: undefined, backgroundPreset: undefined });
+    else if (m === "media") onChange({ backgroundMode: "media", backgroundPreset: undefined });
+    else onChange({ backgroundMode: "preset", backgroundId: undefined, backgroundPreset: backgroundPreset ?? "preto-branco" });
+  };
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        {thumbUrl ? (
-          <img
-            src={thumbUrl}
-            alt={t("editor.bg.none")}
-            className="w-16 h-10 object-cover rounded border border-border"
-          />
-        ) : (
-          <div className="w-16 h-10 rounded border border-border bg-surface-2 flex items-center justify-center text-muted text-xs">
-            {t("editor.bg.none")}
-          </div>
-        )}
-        <div className="flex gap-1.5 flex-1">
+      {/* Mode tabs */}
+      <div className="flex gap-1 bg-surface-2 rounded-lg p-0.5">
+        {(["none", "preset", "media"] as BgMode[]).map((m) => (
           <button
-            onClick={onOpenPicker}
-            className="flex-1 py-1.5 text-xs bg-surface-2 hover:bg-border text-muted hover:text-inherit rounded-lg transition-colors"
+            key={m}
+            onClick={() => setMode(m)}
+            className={`flex-1 py-1 text-xs rounded-md transition-colors ${
+              activeMode === m
+                ? "bg-surface border border-border text-fg font-medium"
+                : "text-muted hover:text-inherit"
+            }`}
           >
-            {current ? t("editor.bg.change") : t("editor.bg.choose")}
+            {t(`editor.bg.mode.${m}`)}
           </button>
-          {current && (
-            <button
-              onClick={onRemove}
-              className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-muted hover:text-red-600 rounded-lg transition-colors"
-            >
-              {t("editor.bg.remove")}
-            </button>
-          )}
-        </div>
+        ))}
       </div>
 
-      {current && (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted">
-            <span>{t("editor.bg.scrimLabel")}</span>
-            <span>{scrimOpacity}%</span>
+      {/* Preset tab */}
+      {activeMode === "preset" && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            {PRESET_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onChange({ backgroundPreset: opt.value })}
+                className={`flex-1 py-2 px-3 rounded-lg border-2 text-xs font-medium transition-colors ${
+                  (backgroundPreset ?? "preto-branco") === opt.value
+                    ? "border-primary"
+                    : "border-border hover:border-muted"
+                }`}
+                style={{ backgroundColor: opt.bg, color: opt.fg }}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={scrimOpacity}
-            onChange={(e) => onScrimChange(Number(e.target.value))}
-            className="w-full accent-primary"
-          />
+          {/* Font family */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted w-16 shrink-0">{t("editor.bg.font.family")}</span>
+            <div className="flex gap-1 flex-1">
+              {FONT_FAMILY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onChange({ fontFamily: opt.value })}
+                  className={`flex-1 py-1 text-xs rounded border transition-colors ${
+                    (fontFamily ?? "sans") === opt.value
+                      ? "border-primary bg-primary/10 text-primary font-medium"
+                      : "border-border text-muted hover:text-inherit"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Font size */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted w-16 shrink-0">{t("editor.bg.font.size")}</span>
+            <div className="flex gap-1 flex-1">
+              {FONT_SIZE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onChange({ fontSize: opt.value })}
+                  className={`flex-1 py-1 text-xs rounded border transition-colors ${
+                    (fontSize ?? "lg") === opt.value
+                      ? "border-primary bg-primary/10 text-primary font-medium"
+                      : "border-border text-muted hover:text-inherit"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
+      {/* Media tab */}
+      {activeMode === "media" && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            {thumbUrl ? (
+              <img src={thumbUrl} alt="" className="w-16 h-10 object-cover rounded border border-border" />
+            ) : (
+              <div className="w-16 h-10 rounded border border-border bg-surface-2 flex items-center justify-center text-muted text-xs">
+                {t("editor.bg.none")}
+              </div>
+            )}
+            <div className="flex gap-1.5 flex-1">
+              <button
+                onClick={() => setShowPicker(true)}
+                className="flex-1 py-1.5 text-xs bg-surface-2 hover:bg-border text-muted hover:text-inherit rounded-lg transition-colors"
+              >
+                {current ? t("editor.bg.change") : t("editor.bg.choose")}
+              </button>
+              {current && (
+                <button
+                  onClick={() => onChange({ backgroundId: undefined })}
+                  className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-muted hover:text-red-600 rounded-lg transition-colors"
+                >
+                  {t("editor.bg.remove")}
+                </button>
+              )}
+            </div>
+          </div>
+          {current && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted">
+                <span>{t("editor.bg.scrimLabel")}</span>
+                <span>{scrimOpacity}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={scrimOpacity}
+                onChange={(e) => onChange({ scrimOpacity: Number(e.target.value) })}
+                className="w-full accent-primary"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Media picker modal */}
       {showPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-surface border border-border rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="text-sm font-semibold">{t("editor.bg.modalTitle")}</h3>
-              <button
-                onClick={onClosePicker}
-                className="text-muted hover:text-inherit text-lg leading-none"
-              >
-                ×
-              </button>
+              <button onClick={() => setShowPicker(false)} className="text-muted hover:text-inherit text-lg leading-none">×</button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
               {media.length === 0 && (
-                <p className="col-span-3 text-center text-muted text-sm py-8">
-                  {t("editor.bg.noMedia")}
-                </p>
+                <p className="col-span-3 text-center text-muted text-sm py-8">{t("editor.bg.noMedia")}</p>
               )}
               {media.map((m) => {
-                const url = m.thumbnailFile
-                  ? mediaUrl(m.thumbnailFile)
-                  : mediaUrl(m.fileName);
+                const url = m.thumbnailFile ? mediaUrl(m.thumbnailFile) : mediaUrl(m.fileName);
                 return (
                   <button
                     key={m.id}
-                    onClick={() => { onSelect(m.id); onClosePicker(); }}
+                    onClick={() => { onChange({ backgroundId: m.id }); setShowPicker(false); }}
                     className={`relative rounded-lg overflow-hidden border-2 transition-colors ${
                       m.id === backgroundId ? "border-primary" : "border-transparent hover:border-muted"
                     }`}
                   >
-                    <img
-                      src={url}
-                      alt={m.displayName}
-                      className="w-full h-20 object-cover"
-                    />
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-xs text-gray-300 truncate">
-                      {m.displayName}
-                    </div>
-                    {m.kind === "video" && (
-                      <div className="absolute top-1 right-1 text-xs bg-black/70 rounded px-1 text-gray-300">▶</div>
-                    )}
+                    <img src={url} alt={m.displayName} className="w-full h-20 object-cover" />
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-xs text-gray-300 truncate">{m.displayName}</div>
+                    {m.kind === "video" && <div className="absolute top-1 right-1 text-xs bg-black/70 rounded px-1 text-gray-300">▶</div>}
                   </button>
                 );
               })}
@@ -192,8 +289,11 @@ export const SongEditor: React.FC = () => {
   const [notes, setNotes] = useState("");
   const [backgroundId, setBackgroundId] = useState<string | undefined>();
   const [scrimOpacity, setScrimOpacity] = useState(35);
+  const [backgroundMode, setBackgroundMode] = useState<string | undefined>();
+  const [backgroundPreset, setBackgroundPreset] = useState<string | undefined>();
+  const [fontFamily, setFontFamily] = useState<string | undefined>();
+  const [fontSize, setFontSize] = useState<string | undefined>();
   const [rightsOpen, setRightsOpen] = useState(false);
-  const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [sections, setSections] = useState<SectionDraft[]>([
     newSection("verse", []),
   ]);
@@ -229,6 +329,10 @@ export const SongEditor: React.FC = () => {
         setNotes(song.notes ?? "");
         setBackgroundId(song.backgroundId);
         setScrimOpacity(song.scrimOpacity ?? 35);
+        setBackgroundMode(song.backgroundMode);
+        setBackgroundPreset(song.backgroundPreset);
+        setFontFamily(song.fontFamily);
+        setFontSize(song.fontSize);
         const hasRights = !!(song.author || song.copyright || song.ccliNumber);
         setRightsOpen(hasRights);
         setSections(
@@ -284,6 +388,10 @@ export const SongEditor: React.FC = () => {
         notes: notes.trim() || undefined,
         backgroundId: backgroundId || undefined,
         scrimOpacity,
+        backgroundMode: backgroundMode || undefined,
+        backgroundPreset: backgroundPreset || undefined,
+        fontFamily: fontFamily || undefined,
+        fontSize: fontSize || undefined,
         sections: sections.map((s, i) => ({
           label: s.label,
           type: s.type,
@@ -292,6 +400,10 @@ export const SongEditor: React.FC = () => {
           repeatCount: s.repeatCount,
           notes: s.notes || undefined,
           backgroundId: s.backgroundId || undefined,
+          backgroundMode: s.backgroundMode || undefined,
+          backgroundPreset: s.backgroundPreset || undefined,
+          fontFamily: s.fontFamily || undefined,
+          fontSize: s.fontSize || undefined,
         })),
       };
 
@@ -446,16 +558,22 @@ export const SongEditor: React.FC = () => {
           <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
             {t("editor.background")}
           </h3>
-          <BackgroundPicker
+          <BackgroundEditor
+            backgroundMode={backgroundMode}
+            backgroundPreset={backgroundPreset}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
             backgroundId={backgroundId}
             scrimOpacity={scrimOpacity}
             media={media}
-            onSelect={(id) => setBackgroundId(id)}
-            onRemove={() => setBackgroundId(undefined)}
-            onScrimChange={(v) => setScrimOpacity(v)}
-            showPicker={showMediaPicker}
-            onOpenPicker={() => setShowMediaPicker(true)}
-            onClosePicker={() => setShowMediaPicker(false)}
+            onChange={(patch) => {
+              if ("backgroundMode" in patch) setBackgroundMode(patch.backgroundMode);
+              if ("backgroundPreset" in patch) setBackgroundPreset(patch.backgroundPreset);
+              if ("fontFamily" in patch) setFontFamily(patch.fontFamily);
+              if ("fontSize" in patch) setFontSize(patch.fontSize);
+              if ("backgroundId" in patch) setBackgroundId(patch.backgroundId);
+              if ("scrimOpacity" in patch && patch.scrimOpacity !== undefined) setScrimOpacity(patch.scrimOpacity);
+            }}
           />
         </div>
 

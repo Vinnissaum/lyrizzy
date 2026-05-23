@@ -25,6 +25,10 @@ export interface SongSection {
   repeatCount: number;
   notes?: string;
   backgroundId?: string;
+  backgroundMode?: string;
+  backgroundPreset?: string;
+  fontFamily?: string;
+  fontSize?: string;
 }
 
 export interface Song {
@@ -41,6 +45,10 @@ export interface Song {
   scrimOpacity: number;
   slideConfig?: string;
   source?: string;
+  backgroundMode?: string;
+  backgroundPreset?: string;
+  fontFamily?: string;
+  fontSize?: string;
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;
@@ -141,11 +149,22 @@ export interface ServiceSet {
 
 export type PresentationMode = 'idle' | 'live' | 'blank' | 'frozen';
 
+export type BackgroundPreset = 'preto-branco' | 'branco-preto';
+export type FontFamily = 'sans' | 'serif' | 'mono';
+export type FontSize = 'sm' | 'md' | 'lg' | 'xl';
+
+export interface Typography {
+  fontFamily: FontFamily;
+  fontSize: FontSize;
+}
+
 export interface BackgroundInfo {
-  mediaKind: MediaKind;
-  assetUrl: string;
+  mediaKind?: MediaKind;
+  assetUrl?: string;
   scrimOpacity: number;
   restartOnSectionBoundary: boolean;
+  preset?: BackgroundPreset;
+  typography?: Typography;
 }
 
 export type OverlayState =

@@ -5,15 +5,25 @@ interface Props {
   shortcut: Shortcut;
 }
 
+const SPECIAL_LABELS: Record<string, string> = {
+  "Escape": "ESC",
+  " ": "Space",
+  "ArrowRight": "→",
+  "ArrowLeft": "←",
+  "ArrowUp": "↑",
+  "ArrowDown": "↓",
+};
+
 export const Keycap: React.FC<Props> = ({ shortcut }) => {
   const parts: string[] = [];
   if (shortcut.ctrl) parts.push("Ctrl");
   if (shortcut.shift) parts.push("Shift");
   if (shortcut.alt) parts.push("Alt");
   const keyLabel =
-    shortcut.key.length === 1
+    SPECIAL_LABELS[shortcut.key] ??
+    (shortcut.key.length === 1
       ? shortcut.key.toUpperCase()
-      : shortcut.key.charAt(0).toUpperCase() + shortcut.key.slice(1);
+      : shortcut.key.charAt(0).toUpperCase() + shortcut.key.slice(1));
   parts.push(keyLabel);
 
   return (

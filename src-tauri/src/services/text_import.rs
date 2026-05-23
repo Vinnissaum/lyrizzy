@@ -16,11 +16,11 @@ fn label_to_type(bracket_label: &str) -> (&'static str, Option<&'static str>) {
     // Returns (section_type, forced_label_override)
     match lower {
         s if s.starts_with("estrofe") => ("verse", None),
-        s if s == "refrão" || s == "refrao" || s == "refrao" => ("chorus", None),
-        s if s == "ponte" => ("bridge", None),
-        s if s == "intro" => ("verse", Some("Intro")),
-        s if s == "final" => ("outro", None),
-        s if s == "pré-refrão" || s == "pre-refrão" || s == "pre-refrao" || s == "pré-refrao" => {
+        "refrão" | "refrao" => ("chorus", None),
+        "ponte" => ("bridge", None),
+        "intro" => ("verse", Some("Intro")),
+        "final" => ("outro", None),
+        "pré-refrão" | "pre-refrão" | "pre-refrao" | "pré-refrao" => {
             ("pre_chorus", None)
         }
         _ => ("verse", None),

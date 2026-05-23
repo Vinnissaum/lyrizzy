@@ -130,7 +130,11 @@ export const StrophesGrid: React.FC = () => {
           isActive={slideIdx === currentSlideIndex}
           itemType={activeItem.itemType}
           activeRef={slideIdx === currentSlideIndex ? setRef : undefined}
-          onClick={() => goToItem(currentItemIndex, slideIdx).catch(console.error)}
+          onClick={() => {
+            const live = usePresentationStore.getState().state;
+            const idx = live?.currentItemIndex ?? 0;
+            goToItem(idx, slideIdx).catch(console.error);
+          }}
         />
       ))}
     </div>

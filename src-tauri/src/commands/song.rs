@@ -47,7 +47,8 @@ pub async fn load_sections(
     song_id: &str,
 ) -> Result<Vec<SongSection>, ErrorPayload> {
     let rows = sqlx::query(
-        "SELECT id, song_id, label, type, body, sort_order, repeat_count, notes, background_id
+        "SELECT id, song_id, label, type, body, sort_order, repeat_count, notes, background_id,
+                background_mode, background_preset, font_family, font_size
          FROM song_sections WHERE song_id = ? ORDER BY sort_order ASC",
     )
     .bind(song_id)
@@ -69,6 +70,10 @@ pub async fn load_sections(
                 repeat_count: row.get("repeat_count"),
                 notes: row.get("notes"),
                 background_id: row.get("background_id"),
+                background_mode: row.get("background_mode"),
+                background_preset: row.get("background_preset"),
+                font_family: row.get("font_family"),
+                font_size: row.get("font_size"),
             }
         })
         .collect())
@@ -91,6 +96,10 @@ pub struct SectionPayload {
     pub repeat_count: Option<i32>,
     pub notes: Option<String>,
     pub background_id: Option<String>,
+    pub background_mode: Option<String>,
+    pub background_preset: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -108,6 +117,10 @@ pub struct CreateSongPayload {
     pub scrim_opacity: Option<i32>,
     pub slide_config: Option<String>,
     pub source: Option<String>,
+    pub background_mode: Option<String>,
+    pub background_preset: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<String>,
     pub sections: Vec<SectionPayload>,
 }
 
@@ -127,6 +140,10 @@ pub struct UpdateSongPayload {
     pub scrim_opacity: Option<i32>,
     pub slide_config: Option<String>,
     pub source: Option<String>,
+    pub background_mode: Option<String>,
+    pub background_preset: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<String>,
     pub sections: Vec<SectionPayload>,
 }
 
@@ -164,8 +181,9 @@ pub async fn db_create_song(
     sqlx::query(
         "INSERT INTO songs (id, title, artist, author, copyright, ccli_number, key_signature,
                             language, notes, background_id, scrim_opacity, slide_config, source,
+                            background_mode, background_preset, font_family, font_size,
                             created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&payload.title)
@@ -180,6 +198,10 @@ pub async fn db_create_song(
     .bind(scrim_opacity)
     .bind(&payload.slide_config)
     .bind(&payload.source)
+    .bind(&payload.background_mode)
+    .bind(&payload.background_preset)
+    .bind(&payload.font_family)
+    .bind(&payload.font_size)
     .bind(now)
     .bind(now)
     .execute(&mut *tx)
@@ -192,10 +214,15 @@ pub async fn db_create_song(
         let repeat_count = sec.repeat_count.unwrap_or(1);
         let sec_notes = trim_to_none(sec.notes.clone());
         let sec_background_id = trim_to_none(sec.background_id.clone());
+        let sec_background_mode = sec.background_mode.clone();
+        let sec_background_preset = sec.background_preset.clone();
+        let sec_font_family = sec.font_family.clone();
+        let sec_font_size = sec.font_size.clone();
         sqlx::query(
             "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count,
-                                        notes, background_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                        notes, background_id,
+                                        background_mode, background_preset, font_family, font_size)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&sec_id)
         .bind(&id)
@@ -206,6 +233,10 @@ pub async fn db_create_song(
         .bind(repeat_count)
         .bind(&sec_notes)
         .bind(&sec_background_id)
+        .bind(&sec_background_mode)
+        .bind(&sec_background_preset)
+        .bind(&sec_font_family)
+        .bind(&sec_font_size)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
@@ -223,6 +254,10 @@ pub async fn db_create_song(
             repeat_count,
             notes: sec_notes,
             background_id: sec_background_id,
+            background_mode: sec_background_mode,
+            background_preset: sec_background_preset,
+            font_family: sec_font_family,
+            font_size: sec_font_size,
         });
     }
 
@@ -244,6 +279,10 @@ pub async fn db_create_song(
         scrim_opacity,
         slide_config: payload.slide_config,
         source: payload.source,
+        background_mode: payload.background_mode,
+        background_preset: payload.background_preset,
+        font_family: payload.font_family,
+        font_size: payload.font_size,
         created_at: now,
         updated_at: now,
         deleted_at: None,
@@ -278,7 +317,9 @@ pub async fn db_update_song(
     sqlx::query(
         "UPDATE songs SET title=?, artist=?, author=?, copyright=?, ccli_number=?,
                           key_signature=?, language=?, notes=?, background_id=?,
-                          scrim_opacity=?, slide_config=?, source=?, updated_at=?
+                          scrim_opacity=?, slide_config=?, source=?,
+                          background_mode=?, background_preset=?, font_family=?, font_size=?,
+                          updated_at=?
          WHERE id=?",
     )
     .bind(&payload.title)
@@ -293,6 +334,10 @@ pub async fn db_update_song(
     .bind(scrim_opacity)
     .bind(&payload.slide_config)
     .bind(&payload.source)
+    .bind(&payload.background_mode)
+    .bind(&payload.background_preset)
+    .bind(&payload.font_family)
+    .bind(&payload.font_size)
     .bind(now)
     .bind(&payload.id)
     .execute(&mut *tx)
@@ -311,10 +356,15 @@ pub async fn db_update_song(
         let repeat_count = sec.repeat_count.unwrap_or(1);
         let sec_notes = trim_to_none(sec.notes.clone());
         let sec_background_id = trim_to_none(sec.background_id.clone());
+        let sec_background_mode = sec.background_mode.clone();
+        let sec_background_preset = sec.background_preset.clone();
+        let sec_font_family = sec.font_family.clone();
+        let sec_font_size = sec.font_size.clone();
         sqlx::query(
             "INSERT INTO song_sections (id, song_id, label, type, body, sort_order, repeat_count,
-                                        notes, background_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                        notes, background_id,
+                                        background_mode, background_preset, font_family, font_size)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&sec_id)
         .bind(&payload.id)
@@ -325,6 +375,10 @@ pub async fn db_update_song(
         .bind(repeat_count)
         .bind(&sec_notes)
         .bind(&sec_background_id)
+        .bind(&sec_background_mode)
+        .bind(&sec_background_preset)
+        .bind(&sec_font_family)
+        .bind(&sec_font_size)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
@@ -342,6 +396,10 @@ pub async fn db_update_song(
             repeat_count,
             notes: sec_notes,
             background_id: sec_background_id,
+            background_mode: sec_background_mode,
+            background_preset: sec_background_preset,
+            font_family: sec_font_family,
+            font_size: sec_font_size,
         });
     }
 
@@ -363,6 +421,10 @@ pub async fn db_update_song(
         scrim_opacity,
         slide_config: payload.slide_config,
         source: payload.source,
+        background_mode: payload.background_mode,
+        background_preset: payload.background_preset,
+        font_family: payload.font_family,
+        font_size: payload.font_size,
         created_at,
         updated_at: now,
         deleted_at: None,
@@ -399,6 +461,7 @@ pub async fn db_list_songs(
                 "SELECT s.id, s.title, s.artist, s.author, s.copyright, s.ccli_number,
                          s.key_signature, s.language, s.notes, s.background_id,
                          s.scrim_opacity, s.slide_config, s.source,
+                         s.background_mode, s.background_preset, s.font_family, s.font_size,
                          s.created_at, s.updated_at, s.deleted_at
                  FROM songs s
                  JOIN songs_fts ON songs_fts.rowid = s.rowid
@@ -418,6 +481,7 @@ pub async fn db_list_songs(
                 sqlx::query(
                     "SELECT id, title, artist, author, copyright, ccli_number, key_signature,
                              language, notes, background_id, scrim_opacity, slide_config, source,
+                             background_mode, background_preset, font_family, font_size,
                              created_at, updated_at, deleted_at
                      FROM songs WHERE deleted_at IS NULL
                        AND (title LIKE ? OR artist LIKE ?)
@@ -435,6 +499,7 @@ pub async fn db_list_songs(
         _ => sqlx::query(
             "SELECT id, title, artist, author, copyright, ccli_number, key_signature, language,
                      notes, background_id, scrim_opacity, slide_config, source,
+                     background_mode, background_preset, font_family, font_size,
                      created_at, updated_at, deleted_at
              FROM songs WHERE deleted_at IS NULL ORDER BY title ASC LIMIT ? OFFSET ?",
         )
@@ -463,6 +528,10 @@ pub async fn db_list_songs(
             scrim_opacity: row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35),
             slide_config: row.get("slide_config"),
             source: row.get("source"),
+            background_mode: row.get("background_mode"),
+            background_preset: row.get("background_preset"),
+            font_family: row.get("font_family"),
+            font_size: row.get("font_size"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
             deleted_at: row.get("deleted_at"),
@@ -476,6 +545,7 @@ pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPaylo
     let row = sqlx::query(
         "SELECT id, title, artist, author, copyright, ccli_number, key_signature, language,
                 notes, background_id, scrim_opacity, slide_config, source,
+                background_mode, background_preset, font_family, font_size,
                 created_at, updated_at, deleted_at
          FROM songs WHERE id = ?",
     )
@@ -501,6 +571,10 @@ pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPaylo
         scrim_opacity: row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35),
         slide_config: row.get("slide_config"),
         source: row.get("source"),
+        background_mode: row.get("background_mode"),
+        background_preset: row.get("background_preset"),
+        font_family: row.get("font_family"),
+        font_size: row.get("font_size"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
         deleted_at: row.get("deleted_at"),

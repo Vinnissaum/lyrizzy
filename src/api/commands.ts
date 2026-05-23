@@ -42,8 +42,14 @@ export const enterPresentation = () =>
 /** Kept for any ActionId bindings that still reference the old name. */
 export const openPresentationWindow = enterPresentation;
 
-export const exitPresentation = () =>
-  invoke<void>("exit_presentation");
+let exitInflight: Promise<void> | null = null;
+export const exitPresentation = (): Promise<void> => {
+  if (exitInflight) return exitInflight;
+  exitInflight = invoke<void>("exit_presentation").finally(() => {
+    exitInflight = null;
+  });
+  return exitInflight;
+};
 
 export const onPresentationLifecycle = (
   cb: (phase: "entered" | "exited") => void
@@ -66,6 +72,10 @@ export interface SectionPayload {
   repeatCount?: number;
   notes?: string;
   backgroundId?: string;
+  backgroundMode?: string;
+  backgroundPreset?: string;
+  fontFamily?: string;
+  fontSize?: string;
 }
 
 export interface CreateSongPayload {
@@ -81,6 +91,10 @@ export interface CreateSongPayload {
   scrimOpacity?: number;
   slideConfig?: string;
   source?: string;
+  backgroundMode?: string;
+  backgroundPreset?: string;
+  fontFamily?: string;
+  fontSize?: string;
   sections: SectionPayload[];
 }
 

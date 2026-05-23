@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum MediaKind {
     Image,
     Video,
+    Presentation,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -23,6 +24,8 @@ pub struct Media {
     pub created_at: i64,
     pub updated_at: i64,
     pub deleted_at: Option<i64>,
+    /// Number of converted slide images; set only for `MediaKind::Presentation`.
+    pub slide_count: Option<i64>,
 }
 
 /// Per-set-item playback overrides for media items.
@@ -60,6 +63,10 @@ mod tests {
             serde_json::to_string(&MediaKind::Video).unwrap(),
             "\"video\""
         );
+        assert_eq!(
+            serde_json::to_string(&MediaKind::Presentation).unwrap(),
+            "\"presentation\""
+        );
     }
 
     #[test]
@@ -88,6 +95,7 @@ mod tests {
             created_at: 1_000_000,
             updated_at: 1_000_000,
             deleted_at: None,
+            slide_count: None,
         };
         let json = serde_json::to_string(&media).unwrap();
         assert!(json.contains("\"fileName\""), "expected camelCase: {json}");
@@ -97,6 +105,32 @@ mod tests {
         assert!(json.contains("\"byteSize\""), "expected camelCase: {json}");
         assert!(json.contains("\"createdAt\""), "expected camelCase: {json}");
         assert!(json.contains("\"updatedAt\""), "expected camelCase: {json}");
+        assert!(json.contains("\"slideCount\""), "expected slideCount field: {json}");
+        let back: Media = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, media);
+    }
+
+    #[test]
+    fn media_presentation_kind_round_trips() {
+        let media = Media {
+            id: "uuid-pptx".into(),
+            file_name: "uuid-pptx.pptx".into(),
+            display_name: "Slides Culto.pptx".into(),
+            kind: MediaKind::Presentation,
+            mime_type: "application/vnd.openxmlformats-officedocument.presentationml.presentation".into(),
+            width: None,
+            height: None,
+            duration_ms: None,
+            thumbnail_file: Some("uuid-pptx/slide_000.png".into()),
+            byte_size: 512_000,
+            created_at: 1_000_000,
+            updated_at: 1_000_000,
+            deleted_at: None,
+            slide_count: Some(5),
+        };
+        let json = serde_json::to_string(&media).unwrap();
+        assert!(json.contains("\"presentation\""), "expected presentation kind: {json}");
+        assert!(json.contains("\"slideCount\":5"), "expected slideCount: {json}");
         let back: Media = serde_json::from_str(&json).unwrap();
         assert_eq!(back, media);
     }

@@ -51,7 +51,18 @@
       "remove": "Remover",
       "scrimLabel": "Opacidade do fundo escuro",
       "modalTitle": "Escolher fundo",
-      "noMedia": "Nenhuma mídia importada"
+      "noMedia": "Nenhuma mídia importada",
+      "mode": {
+        "none": "Nenhum",
+        "preset": "Preset",
+        "media": "Mídia",
+        "inherit": "Herdar",
+        "inheritHint": "Usa o fundo da música (ou nenhum, se não definido)"
+      },
+      "font": {
+        "family": "Fonte",
+        "size": "Tamanho"
+      }
     },
     "rights": {
       "title": "Direitos / Licença",
@@ -176,7 +187,10 @@
     "singleItem": {
       "hint": "Esta apresentação está sendo exibida"
     },
-    "noSlides": "Nenhum slide encontrado"
+    "noSlides": "Nenhum slide encontrado",
+    "countdown": {
+      "noConfig": "Contagem regressiva não configurada"
+    }
   },
   "countdown": {
     "title": "Cronômetro",
@@ -252,6 +266,7 @@
     "importToast_other": "{{count}} importadas",
     "importToastSkipped_one": "{{count}} ignorada",
     "importToastSkipped_other": "{{count}} ignoradas",
+    "thumbPending": "Thumb pendente",
     "detail": {
       "title": "Detalhes",
       "name": "Nome",

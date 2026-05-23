@@ -103,6 +103,10 @@ mod tests {
             repeat_count,
             notes: None,
             background_id: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
         }
     }
 

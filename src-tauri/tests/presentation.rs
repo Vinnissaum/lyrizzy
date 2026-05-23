@@ -55,6 +55,7 @@ async fn build_slide_groups(
             SetItemType::Countdown => vec![Slide::pseudo("countdown")],
             SetItemType::WebView => vec![Slide::pseudo("webview")],
             SetItemType::Blank => vec![Slide { lines: vec![], section_label: String::new(), section_id: String::new() }],
+            SetItemType::SlideShow => vec![Slide::pseudo_slideshow(0)],
         };
         computed.push(slides);
     }
@@ -83,6 +84,10 @@ async fn five_variant_set_produces_correct_slide_counts() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![
                 SectionPayload {
                     label: "Verse 1".into(),
@@ -92,6 +97,10 @@ async fn five_variant_set_produces_correct_slide_counts() {
                     repeat_count: Some(1),
                     notes: None,
                     background_id: None,
+                    background_mode: None,
+                    background_preset: None,
+                    font_family: None,
+                    font_size: None,
                 },
                 SectionPayload {
                     label: "Chorus".into(),
@@ -101,6 +110,10 @@ async fn five_variant_set_produces_correct_slide_counts() {
                     repeat_count: Some(1),
                     notes: None,
                     background_id: None,
+                    background_mode: None,
+                    background_preset: None,
+                    font_family: None,
+                    font_size: None,
                 },
             ],
         },

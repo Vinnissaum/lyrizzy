@@ -77,6 +77,10 @@ const makeState = (
 describe("StrophesGrid", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Provide a default getState so tests that don't override it don't crash on click
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: makeState() }),
+    });
     vi.mocked(useLibraryStore).mockReturnValue({
       songs: [
         {
@@ -127,9 +131,13 @@ describe("StrophesGrid", () => {
   // ── Test 3: Clicking card N calls goToItem(currentItemIndex, N) ──────────
 
   it("calls goToItem with (currentItemIndex, slideIndex) when a card is clicked", () => {
+    const liveState = makeState({ currentItemIndex: 0 });
     vi.mocked(usePresentationStore).mockReturnValue({
-      state: makeState({ currentItemIndex: 0 }),
+      state: liveState,
     } as ReturnType<typeof usePresentationStore>);
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: liveState }),
+    });
 
     render(<StrophesGrid />);
 
@@ -138,6 +146,30 @@ describe("StrophesGrid", () => {
     fireEvent.click(buttons[3]);
 
     expect(goToItem).toHaveBeenCalledWith(0, 3);
+  });
+
+  // ── Test 3b: Closure-staleness — getState() is read at click time ────────
+
+  it("uses getState() currentItemIndex at click time, not the render-time closure", () => {
+    // Render with currentItemIndex=0
+    vi.mocked(usePresentationStore).mockReturnValue({
+      state: makeState({ currentItemIndex: 0 }),
+    } as ReturnType<typeof usePresentationStore>);
+    // Store updates to currentItemIndex=2 before the click fires
+    const liveState = makeState({ currentItemIndex: 2 });
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: liveState }),
+    });
+
+    render(<StrophesGrid />);
+
+    const grid = screen.getByTestId("strophes-grid");
+    const buttons = grid.querySelectorAll("button");
+    fireEvent.click(buttons[3]);
+
+    // Must use the live index (2), not the stale render-time index (0)
+    expect(goToItem).toHaveBeenCalledWith(2, 3);
+    expect(goToItem).not.toHaveBeenCalledWith(0, 3);
   });
 
   // ── Test 4: Countdown item renders a single info card ───────────────────

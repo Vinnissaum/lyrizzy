@@ -42,8 +42,13 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
           className="w-full h-full object-cover"
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-muted">
+        <div className="flex h-full flex-col items-center justify-center text-muted gap-1">
           <Film className="w-10 h-10" />
+          {media.kind === "video" && (
+            <span className="text-[10px] uppercase tracking-wide">
+              {t("media.thumbPending")}
+            </span>
+          )}
         </div>
       )}
 

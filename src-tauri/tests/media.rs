@@ -34,6 +34,7 @@ fn make_media(id: &str, file_name: &str, kind: MediaKind) -> Media {
         created_at: 1_000_000,
         updated_at: 1_000_000,
         deleted_at: None,
+        slide_count: None,
     }
 }
 

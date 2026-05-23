@@ -87,7 +87,8 @@ function mockStores(
   state: PresentationState | null,
   mediaList: Media[] = []
 ) {
-  vi.mocked(usePresentationStore).mockImplementation((selector?: (s: { state: PresentationState | null }) => unknown) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  vi.mocked(usePresentationStore).mockImplementation((selector?: (s: any) => unknown) => {
     const store = { state };
     if (typeof selector === "function") return selector(store) as ReturnType<typeof usePresentationStore>;
     return store as ReturnType<typeof usePresentationStore>;

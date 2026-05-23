@@ -73,7 +73,7 @@ export const usePresentationStore = create<PresentationStore>((set, get) => ({
 
   jumpToItem: async (itemIndex: number) => {
     try {
-      const newState = await goToItem(itemIndex);
+      const newState = await goToItem(itemIndex, 0);
       set({ state: newState });
     } catch (err) {
       console.error("Falha ao ir para item:", err);

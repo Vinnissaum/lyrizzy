@@ -86,6 +86,13 @@ async fn resolve_background_for_item(
 }
 
 async fn emit_state(app: &AppHandle, state: &PresentationState) -> Result<(), ErrorPayload> {
+    tracing::info!(
+        item = state.current_item_index,
+        slide = state.current_slide_index,
+        mode = ?state.mode,
+        overlay = state.overlay.is_some(),
+        "emit state_changed"
+    );
     app.emit("state_changed", state)
         .map_err(|e| ErrorPayload::from(e.to_string()))
 }

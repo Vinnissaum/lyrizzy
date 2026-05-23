@@ -25,6 +25,10 @@ pub struct SongSection {
     pub repeat_count: i32,
     pub notes: Option<String>,
     pub background_id: Option<String>,
+    pub background_mode: Option<String>,
+    pub background_preset: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -43,6 +47,10 @@ pub struct Song {
     pub scrim_opacity: i32,
     pub slide_config: Option<String>,
     pub source: Option<String>,
+    pub background_mode: Option<String>,
+    pub background_preset: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
     pub deleted_at: Option<i64>,
@@ -65,6 +73,10 @@ mod tests {
             repeat_count: 1,
             notes: Some("Presenter note".into()),
             background_id: Some("bg-id".into()),
+            background_mode: Some("preset".into()),
+            background_preset: Some("preto-branco".into()),
+            font_family: Some("serif".into()),
+            font_size: Some("lg".into()),
         };
         let json = serde_json::to_string(&section).unwrap();
         assert!(json.contains("\"songId\""), "expected camelCase: {json}");
@@ -72,6 +84,10 @@ mod tests {
         assert!(json.contains("\"repeatCount\""), "expected camelCase: {json}");
         assert!(json.contains("\"type\":\"verse\""), "expected snake_case enum: {json}");
         assert!(json.contains("\"backgroundId\""), "expected camelCase: {json}");
+        assert!(json.contains("\"backgroundMode\""), "expected camelCase: {json}");
+        assert!(json.contains("\"backgroundPreset\""), "expected camelCase: {json}");
+        assert!(json.contains("\"fontFamily\""), "expected camelCase: {json}");
+        assert!(json.contains("\"fontSize\""), "expected camelCase: {json}");
         let back: SongSection = serde_json::from_str(&json).unwrap();
         assert_eq!(back, section);
     }
@@ -92,6 +108,10 @@ mod tests {
             scrim_opacity: 35,
             slide_config: None,
             source: None,
+            background_mode: Some("preset".into()),
+            background_preset: Some("preto-branco".into()),
+            font_family: Some("sans".into()),
+            font_size: Some("lg".into()),
             created_at: 1000,
             updated_at: 2000,
             deleted_at: None,

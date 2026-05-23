@@ -36,12 +36,14 @@ fn kind_to_str(kind: &MediaKind) -> &'static str {
     match kind {
         MediaKind::Image => "image",
         MediaKind::Video => "video",
+        MediaKind::Presentation => "presentation",
     }
 }
 
 fn kind_from_str(s: &str) -> MediaKind {
     match s {
         "video" => MediaKind::Video,
+        "presentation" => MediaKind::Presentation,
         _ => MediaKind::Image,
     }
 }
@@ -64,6 +66,7 @@ fn row_to_media(row: &sqlx::sqlite::SqliteRow) -> Media {
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
         deleted_at: row.get("deleted_at"),
+        slide_count: row.get("slide_count"),
     }
 }
 
@@ -72,8 +75,8 @@ pub async fn db_insert_media(pool: &SqlitePool, media: &Media) -> Result<(), sql
     sqlx::query(
         "INSERT INTO media \
          (id, file_path, file_name, kind, mime_type, width, height, duration_ms, \
-          thumbnail_file, display_name, byte_size, created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          thumbnail_file, display_name, byte_size, created_at, updated_at, slide_count) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&media.id)
     .bind(&media.file_name) // file_path reuses file_name (uuid-based, no separate path needed)
@@ -88,6 +91,7 @@ pub async fn db_insert_media(pool: &SqlitePool, media: &Media) -> Result<(), sql
     .bind(media.byte_size)
     .bind(media.created_at)
     .bind(media.updated_at)
+    .bind(media.slide_count)
     .execute(pool)
     .await?;
     Ok(())
@@ -99,7 +103,7 @@ pub async fn db_list_media(
 ) -> Result<Vec<Media>, sqlx::Error> {
     let mut builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
         "SELECT id, file_name, display_name, kind, mime_type, width, height, \
-         duration_ms, thumbnail_file, byte_size, created_at, updated_at, deleted_at \
+         duration_ms, thumbnail_file, byte_size, created_at, updated_at, deleted_at, slide_count \
          FROM media WHERE deleted_at IS NULL",
     );
 
@@ -140,7 +144,7 @@ pub async fn db_rename_media(
 
     let row = sqlx::query(
         "SELECT id, file_name, display_name, kind, mime_type, width, height, \
-         duration_ms, thumbnail_file, byte_size, created_at, updated_at, deleted_at \
+         duration_ms, thumbnail_file, byte_size, created_at, updated_at, deleted_at, slide_count \
          FROM media WHERE id = ?",
     )
     .bind(id)
@@ -259,7 +263,7 @@ pub async fn db_get_media_by_id(
 ) -> Result<Option<Media>, sqlx::Error> {
     let row = sqlx::query(
         "SELECT id, file_name, display_name, kind, mime_type, width, height, \
-         duration_ms, thumbnail_file, byte_size, created_at, updated_at, deleted_at \
+         duration_ms, thumbnail_file, byte_size, created_at, updated_at, deleted_at, slide_count \
          FROM media WHERE id = ? AND deleted_at IS NULL",
     )
     .bind(id)

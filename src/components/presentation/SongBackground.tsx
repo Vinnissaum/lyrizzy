@@ -1,5 +1,10 @@
 import React, { useRef, useEffect } from "react";
-import type { BackgroundInfo } from "../../types";
+import type { BackgroundInfo, BackgroundPreset } from "../../types";
+
+const PRESET_BG: Record<BackgroundPreset, string> = {
+  "preto-branco": "#000000",
+  "branco-preto": "#FFFFFF",
+};
 
 interface Props {
   background: BackgroundInfo;
@@ -8,7 +13,6 @@ interface Props {
 
 export const SongBackground: React.FC<Props> = ({ background, frozen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const scrimStyle = { backgroundColor: `rgba(0,0,0,${background.scrimOpacity / 100})` };
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -18,6 +22,19 @@ export const SongBackground: React.FC<Props> = ({ background, frozen }) => {
       videoRef.current.play().catch(() => {});
     }
   }, [frozen]);
+
+  if (background.preset) {
+    return (
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: PRESET_BG[background.preset] }}
+      />
+    );
+  }
+
+  if (!background.assetUrl) return null;
+
+  const scrimStyle = { backgroundColor: `rgba(0,0,0,${background.scrimOpacity / 100})` };
 
   // Section-level backgrounds (restartOnSectionBoundary=true): key on assetUrl so React
   // unmounts and remounts the element when the section background changes.

@@ -64,6 +64,10 @@ async fn run_batch(
                 repeat_count: Some(1),
                 notes: None,
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             })
             .collect();
 
@@ -86,6 +90,10 @@ async fn run_batch(
                 scrim_opacity: None,
                 slide_config: None,
                 source: Some("holyrics".to_string()),
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
                 sections,
             },
         )
@@ -119,6 +127,10 @@ async fn import_batch_skips_duplicate_and_imports_unique() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,
@@ -127,6 +139,10 @@ async fn import_batch_skips_duplicate_and_imports_unique() {
                 repeat_count: None,
                 notes: None,
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             }],
         },
     )

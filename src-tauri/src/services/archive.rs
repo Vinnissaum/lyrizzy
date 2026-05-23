@@ -20,6 +20,9 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 pub const SUPPORTED_SCHEMA_VERSION: u32 = 1;
 pub const RESTORE_IN_PROGRESS_FLAG: &str = ".restore_in_progress";
 
+/// Return type alias for `read_archive_data` to avoid complex-type lint.
+type ArchiveReadResult = Result<(ArchiveJsonData, Vec<(String, Vec<u8>)>), ArchiveError>;
+
 // ── Errors ───────────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
@@ -656,7 +659,7 @@ struct ArchiveJsonData {
 
 fn read_archive_data(
     path: &Path,
-) -> Result<(ArchiveJsonData, Vec<(String, Vec<u8>)>), ArchiveError> {
+) -> ArchiveReadResult {
     let file = File::open(path)?;
     let mut archive = ZipArchive::new(file)?;
 

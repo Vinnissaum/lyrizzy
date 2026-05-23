@@ -31,6 +31,10 @@ fn verse_section(label: &str, body: &str) -> SectionPayload {
         repeat_count: None,
         notes: None,
         background_id: None,
+        background_mode: None,
+        background_preset: None,
+        font_family: None,
+        font_size: None,
     }
 }
 
@@ -51,6 +55,10 @@ async fn create_song_inserts_song_and_sections() {
         scrim_opacity: None,
         slide_config: None,
         source: None,
+        background_mode: None,
+        background_preset: None,
+        font_family: None,
+        font_size: None,
         sections: vec![
             SectionPayload {
                 label: "Estrofe 1".to_string(),
@@ -60,6 +68,10 @@ async fn create_song_inserts_song_and_sections() {
                 repeat_count: Some(1),
                 notes: None,
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             },
             SectionPayload {
                 label: "Refrão".to_string(),
@@ -69,6 +81,10 @@ async fn create_song_inserts_song_and_sections() {
                 repeat_count: None,
                 notes: None,
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             },
         ],
     };
@@ -111,6 +127,10 @@ async fn update_song_replaces_sections_in_transaction() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![verse_section("Estrofe 1", "Old body")],
         },
     )
@@ -133,6 +153,10 @@ async fn update_song_replaces_sections_in_transaction() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![
                 verse_section("Estrofe 1", "New body 1"),
                 verse_section("Estrofe 2", "New body 2"),
@@ -177,6 +201,10 @@ async fn update_song_returns_error_for_nonexistent_id() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![],
         },
     )
@@ -205,6 +233,10 @@ async fn delete_song_sets_deleted_at() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![verse_section("Estrofe 1", "corpo")],
         },
     )
@@ -241,6 +273,10 @@ async fn delete_song_returns_error_for_already_deleted() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![],
         },
     )
@@ -271,6 +307,10 @@ async fn list_songs_excludes_soft_deleted() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![],
         },
     )
@@ -292,6 +332,10 @@ async fn list_songs_excludes_soft_deleted() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![],
         },
     )
@@ -324,6 +368,10 @@ async fn get_song_returns_sections_in_sort_order() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![
                 SectionPayload {
                     label: "Segundo".to_string(),
@@ -333,6 +381,10 @@ async fn get_song_returns_sections_in_sort_order() {
                     repeat_count: None,
                     notes: None,
                     background_id: None,
+                    background_mode: None,
+                    background_preset: None,
+                    font_family: None,
+                    font_size: None,
                 },
                 SectionPayload {
                     label: "Primeiro".to_string(),
@@ -342,6 +394,10 @@ async fn get_song_returns_sections_in_sort_order() {
                     repeat_count: None,
                     notes: None,
                     background_id: None,
+                    background_mode: None,
+                    background_preset: None,
+                    font_family: None,
+                    font_size: None,
                 },
             ],
         },
@@ -374,6 +430,10 @@ async fn round_trips_notes_background_author_copyright() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,
@@ -382,6 +442,10 @@ async fn round_trips_notes_background_author_copyright() {
                 repeat_count: Some(1),
                 notes: Some("Cantar devagar".to_string()),
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             }],
         },
     )
@@ -415,6 +479,10 @@ async fn round_trips_notes_background_author_copyright() {
             scrim_opacity: None,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,
@@ -423,6 +491,10 @@ async fn round_trips_notes_background_author_copyright() {
                 repeat_count: Some(1),
                 notes: Some("".to_string()),   // empty → None
                 background_id: None,
+                background_mode: None,
+                background_preset: None,
+                font_family: None,
+                font_size: None,
             }],
         },
     )

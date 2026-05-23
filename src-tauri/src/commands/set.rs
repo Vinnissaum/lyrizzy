@@ -21,6 +21,7 @@ fn item_type_from_db(s: &str) -> SetItemType {
         "countdown" => SetItemType::Countdown,
         "web_view" | "webview" => SetItemType::WebView,
         "blank" => SetItemType::Blank,
+        "slide_show" => SetItemType::SlideShow,
         _ => SetItemType::Song,
     }
 }
@@ -32,6 +33,7 @@ fn item_type_to_db(t: &SetItemType) -> &'static str {
         SetItemType::Countdown => "countdown",
         SetItemType::WebView => "web_view",
         SetItemType::Blank => "blank",
+        SetItemType::SlideShow => "slide_show",
     }
 }
 
@@ -39,6 +41,7 @@ fn media_kind_from_db(s: &str) -> Option<MediaKind> {
     match s {
         "image" => Some(MediaKind::Image),
         "video" => Some(MediaKind::Video),
+        "presentation" => Some(MediaKind::Presentation),
         _ => None,
     }
 }

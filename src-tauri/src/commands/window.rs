@@ -190,16 +190,30 @@ pub async fn enter_presentation(
     Ok(())
 }
 
-/// Exit presentation mode: closes the presentation window and resets state to Idle.
+/// Returns `true` when `exit_presentation` can short-circuit:
+/// state is already idle and no presentation window is open.
+fn is_already_exited(mode: &PresentationMode, window_exists: bool) -> bool {
+    *mode == PresentationMode::Idle && !window_exists
+}
+
+/// Exit presentation mode: resets state to Idle, emits `state_changed`,
+/// then closes the presentation window.
 ///
-/// Idempotent: safe to call when the window is already closed.
+/// Idempotent: returns `Ok(())` immediately when already idle and no window exists.
+/// `state_changed` is emitted BEFORE `w.close()` so the operator window can
+/// react before the presentation window disappears.
 #[tauri::command]
 pub async fn exit_presentation(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), ErrorPayload> {
-    if let Some(w) = app.get_webview_window("presentation") {
-        w.close().map_err(|e| ErrorPayload::from(e.to_string()))?;
+    let window_exists = app.get_webview_window("presentation").is_some();
+
+    {
+        let pres = state.presentation.read().await;
+        if is_already_exited(&pres.mode, window_exists) {
+            return Ok(());
+        }
     }
 
     {
@@ -213,8 +227,14 @@ pub async fn exit_presentation(
     app.emit("state_changed", &state_snapshot)
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
 
+    if let Some(w) = app.get_webview_window("presentation") {
+        w.close().map_err(|e| ErrorPayload::from(e.to_string()))?;
+    }
+
     app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "exited" })
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
+
+    tracing::info!("exit_presentation: completed");
 
     Ok(())
 }
@@ -237,6 +257,21 @@ mod tests {
             items: vec![],
         });
         s
+    }
+
+    #[test]
+    fn is_already_exited_when_idle_and_no_window() {
+        assert!(is_already_exited(&PresentationMode::Idle, false));
+    }
+
+    #[test]
+    fn is_already_exited_false_when_idle_with_window() {
+        assert!(!is_already_exited(&PresentationMode::Idle, true));
+    }
+
+    #[test]
+    fn is_already_exited_false_when_live_and_no_window() {
+        assert!(!is_already_exited(&PresentationMode::Live, false));
     }
 
     #[test]

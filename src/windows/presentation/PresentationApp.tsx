@@ -16,7 +16,25 @@ import { AnnouncementRenderer } from "../../components/presentation/Announcement
 import { QuickMediaRenderer } from "../../components/presentation/QuickMediaRenderer";
 import { QuickWebViewRenderer } from "../../components/presentation/QuickWebViewRenderer";
 import { SlideshowRenderer } from "../../components/presentation/SlideshowRenderer";
-import type { BackgroundInfo } from "../../types";
+import type { BackgroundInfo, BackgroundPreset, FontFamily, FontSize } from "../../types";
+
+const PRESET_FG: Record<BackgroundPreset, string> = {
+  "preto-branco": "#FFFFFF",
+  "branco-preto": "#000000",
+};
+
+const FONT_CLASS: Record<FontFamily, string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  mono: "font-mono",
+};
+
+const SIZE_STYLE: Record<FontSize, React.CSSProperties> = {
+  sm: { fontSize: "clamp(1rem, 2.5vw, 1.875rem)" },
+  md: { fontSize: "clamp(1.25rem, 3.5vw, 2.5rem)" },
+  lg: { fontSize: "clamp(1.5rem, 4vw, 3rem)" },
+  xl: { fontSize: "clamp(2rem, 5vw, 4rem)" },
+};
 
 function formatMs(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
@@ -36,6 +54,10 @@ function SongSlide({
   frozen?: boolean;
   mode: string;
 }) {
+  const fg = background?.preset ? PRESET_FG[background.preset] : "#FFFFFF";
+  const fontClass = FONT_CLASS[background?.typography?.fontFamily ?? "sans"];
+  const sizeStyle = SIZE_STYLE[background?.typography?.fontSize ?? "lg"];
+
   return (
     <div className="relative h-full bg-black overflow-hidden select-none">
       {background && <SongBackground background={background} frozen={frozen} />}
@@ -50,8 +72,8 @@ function SongSlide({
             {slideLines.map((line, i) => (
               <p
                 key={i}
-                className="text-white font-medium leading-relaxed drop-shadow-lg"
-                style={{ fontSize: "clamp(1.5rem, 4vw, 3rem)" }}
+                className={`font-medium leading-relaxed drop-shadow-lg ${fontClass}`}
+                style={{ color: fg, ...sizeStyle }}
               >
                 {line}
               </p>
@@ -66,7 +88,7 @@ function SongSlide({
 }
 
 export const PresentationApp: React.FC = () => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { state, subscribe: subscribePresentation, next } = usePresentationStore();
   const { state: countdown, subscribe: subscribeCountdown, start: startCountdown } =
     useCountdownStore();
@@ -214,7 +236,9 @@ export const PresentationApp: React.FC = () => {
         frozen={frozen}
       />
     ) : (
-      <div className="h-screen bg-black" />
+      <div className="h-screen bg-black flex items-center justify-center">
+        <p className="text-white text-sm">{t("presentation.countdown.noConfig")}</p>
+      </div>
     );
   } else if (itemType === "web_view") {
     const wvConfig = currentItem?.webviewConfig;

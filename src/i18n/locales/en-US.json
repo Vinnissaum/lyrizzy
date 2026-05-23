@@ -51,7 +51,18 @@
       "remove": "Remove",
       "scrimLabel": "Dark overlay opacity",
       "modalTitle": "Choose background",
-      "noMedia": "No media imported"
+      "noMedia": "No media imported",
+      "mode": {
+        "none": "None",
+        "preset": "Preset",
+        "media": "Media",
+        "inherit": "Inherit",
+        "inheritHint": "Uses the song's background (or none, if not set)"
+      },
+      "font": {
+        "family": "Font",
+        "size": "Size"
+      }
     },
     "rights": {
       "title": "Rights / License",
@@ -176,7 +187,10 @@
     "singleItem": {
       "hint": "This presentation is being displayed"
     },
-    "noSlides": "No slides found"
+    "noSlides": "No slides found",
+    "countdown": {
+      "noConfig": "Countdown not configured"
+    }
   },
   "countdown": {
     "title": "Countdown",
@@ -252,6 +266,7 @@
     "importToast_other": "{{count}} imported",
     "importToastSkipped_one": "{{count}} skipped",
     "importToastSkipped_other": "{{count}} skipped",
+    "thumbPending": "Thumb pending",
     "detail": {
       "title": "Details",
       "name": "Name",

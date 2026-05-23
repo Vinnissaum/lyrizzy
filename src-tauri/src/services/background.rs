@@ -1,6 +1,49 @@
-use crate::domain::background::BackgroundInfo;
+use crate::domain::background::{BackgroundInfo, BackgroundPreset, FontFamily, FontSize, Typography};
 use crate::domain::media::MediaKind;
 use sqlx::{Row, SqlitePool};
+
+fn kind_from_str(s: &str) -> MediaKind {
+    if s == "video" {
+        MediaKind::Video
+    } else {
+        MediaKind::Image
+    }
+}
+
+fn parse_preset(s: &str) -> BackgroundPreset {
+    match s {
+        "branco-preto" => BackgroundPreset::BrancoPreto,
+        _ => BackgroundPreset::PretoBranco,
+    }
+}
+
+fn parse_font_family(s: Option<&str>) -> FontFamily {
+    match s {
+        Some("serif") => FontFamily::Serif,
+        Some("mono") => FontFamily::Mono,
+        _ => FontFamily::Sans,
+    }
+}
+
+fn parse_font_size(s: Option<&str>) -> FontSize {
+    match s {
+        Some("sm") => FontSize::Sm,
+        Some("md") => FontSize::Md,
+        Some("xl") => FontSize::Xl,
+        _ => FontSize::Lg,
+    }
+}
+
+fn typography_from(family_str: Option<&str>, size_str: Option<&str>) -> Option<Typography> {
+    if family_str.is_some() || size_str.is_some() {
+        Some(Typography {
+            font_family: parse_font_family(family_str),
+            font_size: parse_font_size(size_str),
+        })
+    } else {
+        None
+    }
+}
 
 /// Resolves the effective background for a song slide via the
 /// section → song → None fallback chain.
@@ -15,7 +58,9 @@ pub async fn resolve_for_slide(
     // 1. Section-level override
     if !section_id.is_empty() {
         let row = sqlx::query(
-            "SELECT ss.background_id, m.file_name, m.kind, s.scrim_opacity \
+            "SELECT ss.background_id, ss.background_mode, ss.background_preset, \
+                    ss.font_family, ss.font_size, \
+                    m.file_name, m.kind, s.scrim_opacity \
              FROM song_sections ss \
              JOIN songs s ON s.id = ss.song_id \
              LEFT JOIN media m ON m.id = ss.background_id AND m.deleted_at IS NULL \
@@ -27,6 +72,26 @@ pub async fn resolve_for_slide(
         .await?;
 
         if let Some(row) = row {
+            let mode: Option<String> = row.get("background_mode");
+            let family_str: Option<String> = row.get("font_family");
+            let size_str: Option<String> = row.get("font_size");
+
+            if mode.as_deref() == Some("preset") {
+                let preset_str: Option<String> = row.get("background_preset");
+                let preset = parse_preset(preset_str.as_deref().unwrap_or("preto-branco"));
+                return Ok(Some(BackgroundInfo {
+                    media_kind: None,
+                    asset_url: None,
+                    scrim_opacity: 0,
+                    restart_on_section_boundary: true,
+                    preset: Some(preset),
+                    typography: typography_from(
+                        family_str.as_deref(),
+                        size_str.as_deref(),
+                    ),
+                }));
+            }
+
             let bg_id: Option<String> = row.get("background_id");
             let file_name: Option<String> = row.get("file_name");
             let scrim: i32 = row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35);
@@ -35,10 +100,15 @@ pub async fn resolve_for_slide(
                 if let Some(fname) = file_name {
                     let kind_str: String = row.get("kind");
                     return Ok(Some(BackgroundInfo {
-                        media_kind: kind_from_str(&kind_str),
-                        asset_url: crate::protocol::asset::url_for(&fname),
+                        media_kind: Some(kind_from_str(&kind_str)),
+                        asset_url: Some(crate::protocol::asset::url_for(&fname)),
                         scrim_opacity: scrim.clamp(0, 100) as u8,
                         restart_on_section_boundary: true,
+                        preset: None,
+                        typography: typography_from(
+                            family_str.as_deref(),
+                            size_str.as_deref(),
+                        ),
                     }));
                 }
                 // background_id set but media is soft-deleted — fall through
@@ -49,7 +119,9 @@ pub async fn resolve_for_slide(
 
     // 2. Song-level fallback
     let song_row = sqlx::query(
-        "SELECT s.background_id, s.scrim_opacity, m.file_name, m.kind \
+        "SELECT s.background_id, s.background_mode, s.background_preset, \
+                s.font_family, s.font_size, \
+                s.scrim_opacity, m.file_name, m.kind \
          FROM songs s \
          LEFT JOIN media m ON m.id = s.background_id AND m.deleted_at IS NULL \
          WHERE s.id = ? AND s.deleted_at IS NULL",
@@ -59,29 +131,46 @@ pub async fn resolve_for_slide(
     .await?;
 
     if let Some(row) = song_row {
+        let mode: Option<String> = row.get("background_mode");
+        let family_str: Option<String> = row.get("font_family");
+        let size_str: Option<String> = row.get("font_size");
+
+        if mode.as_deref() == Some("preset") {
+            let preset_str: Option<String> = row.get("background_preset");
+            let preset = parse_preset(preset_str.as_deref().unwrap_or("preto-branco"));
+            return Ok(Some(BackgroundInfo {
+                media_kind: None,
+                asset_url: None,
+                scrim_opacity: 0,
+                restart_on_section_boundary: false,
+                preset: Some(preset),
+                typography: typography_from(
+                    family_str.as_deref(),
+                    size_str.as_deref(),
+                ),
+            }));
+        }
+
         let file_name: Option<String> = row.get("file_name");
         let scrim: i32 = row.get::<Option<i32>, _>("scrim_opacity").unwrap_or(35);
 
         if let Some(fname) = file_name {
             let kind_str: String = row.get("kind");
             return Ok(Some(BackgroundInfo {
-                media_kind: kind_from_str(&kind_str),
-                asset_url: crate::protocol::asset::url_for(&fname),
+                media_kind: Some(kind_from_str(&kind_str)),
+                asset_url: Some(crate::protocol::asset::url_for(&fname)),
                 scrim_opacity: scrim.clamp(0, 100) as u8,
                 restart_on_section_boundary: false,
+                preset: None,
+                typography: typography_from(
+                    family_str.as_deref(),
+                    size_str.as_deref(),
+                ),
             }));
         }
     }
 
     Ok(None)
-}
-
-fn kind_from_str(s: &str) -> MediaKind {
-    if s == "video" {
-        MediaKind::Video
-    } else {
-        MediaKind::Image
-    }
 }
 
 #[cfg(test)]
@@ -135,6 +224,26 @@ mod tests {
             repeat_count: Some(1),
             notes: None,
             background_id: bg.map(|s| s.to_string()),
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
+        }
+    }
+
+    fn sec_preset(preset: &str, family: &str, size: &str) -> SectionPayload {
+        SectionPayload {
+            label: "V1".into(),
+            section_type: SectionType::Verse,
+            body: "line".into(),
+            sort_order: 0,
+            repeat_count: Some(1),
+            notes: None,
+            background_id: None,
+            background_mode: Some("preset".into()),
+            background_preset: Some(preset.into()),
+            font_family: Some(family.into()),
+            font_size: Some(size.into()),
         }
     }
 
@@ -152,6 +261,32 @@ mod tests {
             scrim_opacity: scrim,
             slide_config: None,
             source: None,
+            background_mode: None,
+            background_preset: None,
+            font_family: None,
+            font_size: None,
+            sections: vec![section],
+        }
+    }
+
+    fn song_preset_payload(preset: &str, family: &str, size: &str, section: SectionPayload) -> CreateSongPayload {
+        CreateSongPayload {
+            title: "Song".into(),
+            artist: None,
+            author: None,
+            copyright: None,
+            ccli_number: None,
+            key_signature: None,
+            language: None,
+            notes: None,
+            background_id: None,
+            scrim_opacity: None,
+            slide_config: None,
+            source: None,
+            background_mode: Some("preset".into()),
+            background_preset: Some(preset.into()),
+            font_family: Some(family.into()),
+            font_size: Some(size.into()),
             sections: vec![section],
         }
     }
@@ -173,8 +308,9 @@ mod tests {
             .expect("should resolve section bg");
 
         assert!(bg.restart_on_section_boundary);
-        assert!(bg.asset_url.contains("sec-bg.mp4"));
+        assert!(bg.asset_url.as_deref().unwrap_or("").contains("sec-bg.mp4"));
         assert_eq!(bg.scrim_opacity, 40);
+        assert!(bg.preset.is_none());
     }
 
     #[tokio::test]
@@ -202,7 +338,7 @@ mod tests {
             .expect("should fall through to song bg");
 
         assert!(!bg.restart_on_section_boundary);
-        assert!(bg.asset_url.contains("song-bg.mp4"));
+        assert!(bg.asset_url.as_deref().unwrap_or("").contains("song-bg.mp4"));
     }
 
     #[tokio::test]
@@ -221,7 +357,7 @@ mod tests {
             .expect("should resolve song bg");
 
         assert!(!bg.restart_on_section_boundary);
-        assert_eq!(bg.media_kind, MediaKind::Video);
+        assert_eq!(bg.media_kind, Some(MediaKind::Video));
     }
 
     #[tokio::test]
@@ -237,5 +373,55 @@ mod tests {
             .unwrap();
 
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn section_preset_overrides_song_media() {
+        let (pool, _dir) = open_db().await;
+        db_insert_media(&pool, &make_media("song-media", DomainKind::Image)).await.unwrap();
+
+        let song = db_create_song(
+            &pool,
+            song_payload(Some("song-media"), None, sec_preset("preto-branco", "serif", "lg")),
+        )
+        .await
+        .unwrap();
+
+        let section_id = &song.sections[0].id;
+        let bg = resolve_for_slide(&pool, &song.id, section_id)
+            .await
+            .unwrap()
+            .expect("should resolve section preset");
+
+        assert_eq!(bg.preset, Some(BackgroundPreset::PretoBranco));
+        assert!(bg.asset_url.is_none());
+        assert!(bg.restart_on_section_boundary);
+        let typo = bg.typography.expect("typography set");
+        assert_eq!(typo.font_family, FontFamily::Serif);
+        assert_eq!(typo.font_size, FontSize::Lg);
+    }
+
+    #[tokio::test]
+    async fn song_level_preset_returned_when_section_has_nothing() {
+        let (pool, _dir) = open_db().await;
+
+        let song = db_create_song(
+            &pool,
+            song_preset_payload("branco-preto", "mono", "xl", sec(None)),
+        )
+        .await
+        .unwrap();
+
+        let section_id = &song.sections[0].id;
+        let bg = resolve_for_slide(&pool, &song.id, section_id)
+            .await
+            .unwrap()
+            .expect("should resolve song preset");
+
+        assert_eq!(bg.preset, Some(BackgroundPreset::BrancoPreto));
+        assert!(!bg.restart_on_section_boundary);
+        let typo = bg.typography.expect("typography set");
+        assert_eq!(typo.font_family, FontFamily::Mono);
+        assert_eq!(typo.font_size, FontSize::Xl);
     }
 }

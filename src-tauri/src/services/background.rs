@@ -36,7 +36,7 @@ pub async fn resolve_for_slide(
                     let kind_str: String = row.get("kind");
                     return Ok(Some(BackgroundInfo {
                         media_kind: kind_from_str(&kind_str),
-                        asset_url: format!("asset://localhost/media/{fname}"),
+                        asset_url: crate::protocol::asset::url_for(&fname),
                         scrim_opacity: scrim.clamp(0, 100) as u8,
                         restart_on_section_boundary: true,
                     }));
@@ -66,7 +66,7 @@ pub async fn resolve_for_slide(
             let kind_str: String = row.get("kind");
             return Ok(Some(BackgroundInfo {
                 media_kind: kind_from_str(&kind_str),
-                asset_url: format!("asset://localhost/media/{fname}"),
+                asset_url: crate::protocol::asset::url_for(&fname),
                 scrim_opacity: scrim.clamp(0, 100) as u8,
                 restart_on_section_boundary: false,
             }));
@@ -122,6 +122,7 @@ mod tests {
             created_at: 0,
             updated_at: 0,
             deleted_at: None,
+            slide_count: None,
         }
     }
 

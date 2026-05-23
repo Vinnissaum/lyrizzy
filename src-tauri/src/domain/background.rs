@@ -23,7 +23,7 @@ mod tests {
     fn background_info_round_trips_with_camel_case() {
         let bg = BackgroundInfo {
             media_kind: MediaKind::Video,
-            asset_url: "asset://localhost/media/bg.mp4".into(),
+            asset_url: "http://asset.localhost/media/bg.mp4".into(),
             scrim_opacity: 35,
             restart_on_section_boundary: true,
         };

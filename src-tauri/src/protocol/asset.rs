@@ -47,6 +47,14 @@ fn mime_type_for_ext(ext: &str) -> &'static str {
     }
 }
 
+/// Return the canonical `http://asset.localhost/media/{file_name}` URL for a
+/// media file.  This is the Windows-correct form required by Tauri 2's
+/// registered protocol handler; `asset://localhost/...` does NOT resolve in
+/// WebView2.
+pub fn url_for(file_name: &str) -> String {
+    format!("http://asset.localhost/media/{file_name}")
+}
+
 /// Build the asset protocol handler closure. Reads the canonical media dir
 /// from `CANONICAL_MEDIA_DIR` on each request — by then `setup` has populated it.
 pub fn build_handler() -> impl Fn(
@@ -132,6 +140,22 @@ mod tests {
 
     fn make_temp_media_dir() -> TempDir {
         tempfile::tempdir().expect("failed to create temp dir")
+    }
+
+    #[test]
+    fn url_for_returns_http_asset_localhost_scheme() {
+        assert_eq!(
+            url_for("foo.png"),
+            "http://asset.localhost/media/foo.png"
+        );
+    }
+
+    #[test]
+    fn url_for_preserves_subdirectory_paths() {
+        assert_eq!(
+            url_for("abc123/slide_000.png"),
+            "http://asset.localhost/media/abc123/slide_000.png"
+        );
     }
 
     #[test]

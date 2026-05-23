@@ -259,7 +259,7 @@ export const HomeSetBuilder: React.FC = () => {
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleSongDrop}
         >
-          <SetBuilder setId={fixedSetId} hideBack />
+          <SetBuilder setId={fixedSetId} hideBack hidePresentButton />
         </div>
 
         {/* Sidebar collapse toggle */}

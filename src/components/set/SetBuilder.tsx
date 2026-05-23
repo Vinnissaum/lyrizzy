@@ -27,6 +27,7 @@ import type { Media, ServiceSet, SetItem, Song } from "../../types";
 interface Props {
   setId: string | null;
   hideBack?: boolean;
+  hidePresentButton?: boolean;
 }
 
 function itemIcon(item: SetItem): string {
@@ -50,7 +51,7 @@ function isExpandable(item: SetItem): boolean {
   );
 }
 
-export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
+export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton }) => {
   const { t } = useTranslation();
   const { setView } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
@@ -662,13 +663,15 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
             {isImportingPresentation ? t("media.slideshow.importing") : t("builder.add.slideShow")}
           </button>
         </div>
-        <button
-          onClick={handleLoadForPresentation}
-          disabled={isLoading || serviceSet.items.length === 0}
-          className="w-full px-3 py-2 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
-        >
-          {isLoading ? t("builder.loading") : t("builder.present")}
-        </button>
+        {!hidePresentButton && (
+          <button
+            onClick={handleLoadForPresentation}
+            disabled={isLoading || serviceSet.items.length === 0}
+            className="w-full px-3 py-2 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+          >
+            {isLoading ? t("builder.loading") : t("builder.present")}
+          </button>
+        )}
       </div>
     </div>
   );

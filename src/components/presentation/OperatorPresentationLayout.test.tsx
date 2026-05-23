@@ -41,6 +41,19 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+// Stub child components introduced in P7 so they don't need their own stores
+vi.mock("./SetItemList", () => ({
+  SetItemList: () => <div data-testid="set-item-list-stub" />,
+}));
+
+vi.mock("./StrophesGrid", () => ({
+  StrophesGrid: () => <div data-testid="strophes-grid-stub" />,
+}));
+
+vi.mock("./LivePreview", () => ({
+  LivePreview: () => <div data-testid="live-preview-stub" />,
+}));
+
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { usePresentationStore } from "../../stores/presentation";
@@ -93,10 +106,10 @@ const makePresentationState = (
 });
 
 function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
-  vi.mocked(usePresentationStore).mockReturnValue(
-    makePresentationState(stateOverrides) as unknown as ReturnType<
-      typeof usePresentationStore
-    >,
+  const state = makePresentationState(stateOverrides);
+  const storeShape = { state };
+  vi.mocked(usePresentationStore).mockImplementation((selector: any) =>
+    selector ? selector(storeShape) : storeShape,
   );
   vi.mocked(useLibraryStore).mockReturnValue({
     songs: [
@@ -139,13 +152,13 @@ describe("OperatorPresentationLayout", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders all 3 pane stubs when state has a non-empty set", () => {
+  it("renders all 3 pane components when state has a non-empty set", () => {
     setupDefaultMocks();
     render(<OperatorPresentationLayout />);
 
-    expect(screen.getByTestId("set-pane-stub")).toBeInTheDocument();
-    expect(screen.getByTestId("strophes-pane-stub")).toBeInTheDocument();
-    expect(screen.getByTestId("live-pane-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("set-item-list-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("strophes-grid-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("live-preview-stub")).toBeInTheDocument();
   });
 
   it("renders pane header i18n keys", () => {
@@ -160,8 +173,8 @@ describe("OperatorPresentationLayout", () => {
   });
 
   it("renders empty-state placeholder when state has no set", () => {
-    vi.mocked(usePresentationStore).mockReturnValue(
-      null as unknown as ReturnType<typeof usePresentationStore>,
+    vi.mocked(usePresentationStore).mockImplementation((selector: any) =>
+      selector ? selector({ state: null }) : { state: null },
     );
     vi.mocked(useLibraryStore).mockReturnValue({
       songs: [],
@@ -181,7 +194,7 @@ describe("OperatorPresentationLayout", () => {
 
     expect(screen.getByText("presentation.empty")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("set-pane-stub"),
+      screen.queryByTestId("set-item-list-stub"),
     ).not.toBeInTheDocument();
   });
 
@@ -199,7 +212,7 @@ describe("OperatorPresentationLayout", () => {
 
     expect(screen.getByText("presentation.empty")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("set-pane-stub"),
+      screen.queryByTestId("set-item-list-stub"),
     ).not.toBeInTheDocument();
   });
 

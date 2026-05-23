@@ -16,6 +16,9 @@ import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { OverlayActionBar } from "./OverlayActionBar";
 import { itemLabel } from "./itemMeta";
+import { SetItemList } from "./SetItemList";
+import { StrophesGrid } from "./StrophesGrid";
+import { LivePreview } from "./LivePreview";
 
 export const OperatorPresentationLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -180,8 +183,8 @@ export const OperatorPresentationLayout: React.FC = () => {
           <header className="text-xs text-muted px-2 py-1">
             {t("presentation.pane.set")}
           </header>
-          <div data-testid="set-pane-stub" className="flex-1 overflow-y-auto">
-            SetItemList placeholder
+          <div className="flex-1 overflow-hidden">
+            <SetItemList />
           </div>
         </div>
 
@@ -190,8 +193,8 @@ export const OperatorPresentationLayout: React.FC = () => {
           <header className="text-xs text-muted px-2 py-1">
             {t("presentation.pane.strophes")} — {activeItemLabel}
           </header>
-          <div data-testid="strophes-pane-stub" className="flex-1 overflow-y-auto">
-            StrophesGrid placeholder
+          <div className="flex-1 overflow-hidden">
+            <StrophesGrid />
           </div>
         </div>
 
@@ -200,8 +203,8 @@ export const OperatorPresentationLayout: React.FC = () => {
           <header className="text-xs text-muted px-2 py-1">
             {t("presentation.pane.live")}
           </header>
-          <div data-testid="live-pane-stub" className="flex-1">
-            LivePreview placeholder
+          <div data-testid="live-pane" className="flex-1 p-2">
+            <LivePreview />
           </div>
         </div>
       </div>

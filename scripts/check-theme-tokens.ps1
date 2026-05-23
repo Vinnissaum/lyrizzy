@@ -35,6 +35,7 @@ $AllowlistPaths = @(
     "src/components/presentation/SlideshowRenderer",
     "src/components/presentation/QuickMediaRenderer",
     "src/components/presentation/QuickWebViewRenderer",
+    "src/components/presentation/LivePreview",
     "src/windows/presentation"
 )
 

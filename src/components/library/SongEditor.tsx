@@ -18,6 +18,7 @@ import {
 import { createSong, updateSong, deleteSong, getSong } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import { SectionCard, SectionDraft } from "./SectionCard";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import type { Media, SectionType } from "../../types";
@@ -53,9 +54,9 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
   const { t } = useTranslation();
   const current = backgroundId ? media.find((m) => m.id === backgroundId) : undefined;
   const thumbUrl = current?.thumbnailFile
-    ? `asset://localhost/media/${current.thumbnailFile}`
+    ? mediaUrl(current.thumbnailFile)
     : current
-    ? `asset://localhost/media/${current.fileName}`
+    ? mediaUrl(current.fileName)
     : undefined;
 
   return (
@@ -127,8 +128,8 @@ const BackgroundPicker: React.FC<BackgroundPickerProps> = ({
               )}
               {media.map((m) => {
                 const url = m.thumbnailFile
-                  ? `asset://localhost/media/${m.thumbnailFile}`
-                  : `asset://localhost/media/${m.fileName}`;
+                  ? mediaUrl(m.thumbnailFile)
+                  : mediaUrl(m.fileName);
                 return (
                   <button
                     key={m.id}

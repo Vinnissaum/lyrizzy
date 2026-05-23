@@ -15,6 +15,7 @@ import {
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import { listSongs } from "../../api/commands";
 import { CountdownSetItemEditor } from "./CountdownSetItemEditor";
 import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
@@ -587,7 +588,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
                 >
                   <div className="aspect-video bg-surface relative">
                     <img
-                      src={`asset://localhost/media/${m.thumbnailFile ?? m.fileName}`}
+                      src={mediaUrl(m.thumbnailFile ?? m.fileName)}
                       alt=""
                       className="w-full h-full object-cover"
                       onError={(e) => {

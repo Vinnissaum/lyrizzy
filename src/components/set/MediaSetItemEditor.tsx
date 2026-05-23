@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import { NotesField } from "../common/NotesField";
 import type { MediaItemOptions, SetItem } from "../../types";
 
@@ -52,7 +53,7 @@ export const MediaSetItemEditor: React.FC<Props> = ({ item }) => {
         <div className="flex items-center gap-2">
           {selectedMedia.thumbnailFile || selectedMedia.kind === "image" ? (
             <img
-              src={`asset://localhost/media/${selectedMedia.thumbnailFile ?? selectedMedia.fileName}`}
+              src={mediaUrl(selectedMedia.thumbnailFile ?? selectedMedia.fileName)}
               alt=""
               className="w-12 h-8 object-cover rounded"
               onError={(e) => {

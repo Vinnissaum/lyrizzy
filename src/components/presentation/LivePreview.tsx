@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import { AnnouncementRenderer } from "./AnnouncementRenderer";
 import { CountdownRenderer } from "./CountdownRenderer";
 import { SlideshowRenderer } from "./SlideshowRenderer";
@@ -26,10 +27,6 @@ const FrameTag: React.FC<{ label: string }> = ({ label }) => (
     {label}
   </span>
 );
-
-function buildAssetUrl(fileName: string): string {
-  return `asset://localhost/media/${fileName}`;
-}
 
 // ---------------------------------------------------------------------------
 // Song slide preview (text-only, scale-friendly)
@@ -105,7 +102,7 @@ function ActiveItemContent({
       return <PlaceholderCard icon="▶" label={mediaRecord.displayName} />;
     }
     if (mediaRecord?.kind === "image") {
-      const assetUrl = buildAssetUrl(mediaRecord.fileName);
+      const assetUrl = mediaUrl(mediaRecord.fileName);
       return (
         <img
           src={assetUrl}
@@ -128,7 +125,7 @@ function ActiveItemContent({
       if (bgMedia) {
         cdBackground = {
           mediaKind: bgMedia.kind,
-          assetUrl: buildAssetUrl(bgMedia.fileName),
+          assetUrl: mediaUrl(bgMedia.fileName),
           scrimOpacity: 35,
           restartOnSectionBoundary: false,
         };
@@ -182,7 +179,7 @@ function OverlayContent({ state }: { state: PresentationState }) {
       return <PlaceholderCard icon="▶" label={mediaRecord.displayName} />;
     }
     if (mediaRecord?.kind === "image") {
-      const assetUrl = buildAssetUrl(mediaRecord.fileName);
+      const assetUrl = mediaUrl(mediaRecord.fileName);
       return (
         <img
           src={assetUrl}

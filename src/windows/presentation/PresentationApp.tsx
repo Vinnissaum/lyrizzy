@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { exitPresentation, onLocaleChanged } from "../../api/commands";
+import { mediaUrl } from "../../api/assets";
 import { forwardKeydown } from "../../runtime/keyboard";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
@@ -22,10 +23,6 @@ function formatMs(ms: number): string {
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
-
-function buildAssetUrl(fileName: string): string {
-  return `asset://localhost/media/${fileName}`;
 }
 
 function SongSlide({
@@ -179,7 +176,7 @@ export const PresentationApp: React.FC = () => {
     const mediaRecord = currentItem?.mediaId
       ? media.find((m) => m.id === currentItem.mediaId)
       : undefined;
-    const assetUrl = mediaRecord ? buildAssetUrl(mediaRecord.fileName) : "";
+    const assetUrl = mediaRecord ? mediaUrl(mediaRecord.fileName) : "";
     const kind: "image" | "video" = currentItem?.mediaKind === "video" ? "video" : "image";
 
     content = assetUrl ? (
@@ -204,7 +201,7 @@ export const PresentationApp: React.FC = () => {
       if (bgMedia) {
         cdBackground = {
           mediaKind: bgMedia.kind,
-          assetUrl: buildAssetUrl(bgMedia.fileName),
+          assetUrl: mediaUrl(bgMedia.fileName),
           scrimOpacity: 35,
           restartOnSectionBoundary: false,
         };

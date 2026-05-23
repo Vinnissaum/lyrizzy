@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import type { Media, MediaKind } from "../../types";
 
 interface Props {
@@ -12,9 +13,9 @@ interface Props {
 
 function buildThumbUrl(m: Media): string {
   if (m.kind === "video" && m.thumbnailFile) {
-    return `asset://localhost/media/${m.thumbnailFile}`;
+    return mediaUrl(m.thumbnailFile);
   }
-  return `asset://localhost/media/${m.fileName}`;
+  return mediaUrl(m.fileName);
 }
 
 export const MediaPicker: React.FC<Props> = ({

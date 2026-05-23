@@ -16,6 +16,7 @@ import {
 } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
 import { SetBuilder } from "../set/SetBuilder";
@@ -438,7 +439,7 @@ export const HomeSetBuilder: React.FC = () => {
                   >
                     <div className="aspect-video bg-surface-2 relative">
                       <img
-                        src={`asset://localhost/media/${m.thumbnailFile ?? m.fileName}`}
+                        src={mediaUrl(m.thumbnailFile ?? m.fileName)}
                         alt=""
                         className="w-full h-full object-cover"
                         onError={(e) => {

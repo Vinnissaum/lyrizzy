@@ -6,6 +6,7 @@ import { GripVertical, Trash2, StickyNote, Image as ImageIcon, X } from "lucide-
 import type { SectionType } from "../../types";
 import { NotesField } from "../common/NotesField";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 
 export interface SectionDraft {
   /** Stable client-side key for dnd-kit */
@@ -59,9 +60,9 @@ export const SectionCard: React.FC<Props> = ({
 
   const currentBg = section.backgroundId ? media.find((m) => m.id === section.backgroundId) : undefined;
   const thumbUrl = currentBg?.thumbnailFile
-    ? `asset://localhost/media/${currentBg.thumbnailFile}`
+    ? mediaUrl(currentBg.thumbnailFile)
     : currentBg
-    ? `asset://localhost/media/${currentBg.fileName}`
+    ? mediaUrl(currentBg.fileName)
     : undefined;
 
   return (
@@ -185,8 +186,8 @@ export const SectionCard: React.FC<Props> = ({
             <div className="grid grid-cols-4 gap-1.5 max-h-32 overflow-y-auto">
               {media.map((m) => {
                 const url = m.thumbnailFile
-                  ? `asset://localhost/media/${m.thumbnailFile}`
-                  : `asset://localhost/media/${m.fileName}`;
+                  ? mediaUrl(m.thumbnailFile)
+                  : mediaUrl(m.fileName);
                 return (
                   <button
                     key={m.id}

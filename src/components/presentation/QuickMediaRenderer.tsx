@@ -1,13 +1,10 @@
 import React from "react";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import { MediaSlideRenderer } from "./MediaSlideRenderer";
 
 interface Props {
   mediaId: string;
-}
-
-function buildAssetUrl(fileName: string): string {
-  return `asset://localhost/media/${fileName}`;
 }
 
 export const QuickMediaRenderer: React.FC<Props> = ({ mediaId }) => {
@@ -20,7 +17,7 @@ export const QuickMediaRenderer: React.FC<Props> = ({ mediaId }) => {
 
   return (
     <MediaSlideRenderer
-      assetUrl={buildAssetUrl(item.fileName)}
+      assetUrl={mediaUrl(item.fileName)}
       kind={item.kind}
     />
   );

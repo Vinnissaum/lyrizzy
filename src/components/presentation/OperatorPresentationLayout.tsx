@@ -13,6 +13,7 @@ import {
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { mediaUrl } from "../../api/assets";
 import { useSettingsStore } from "../../stores/settings";
 import { OverlayActionBar } from "./OverlayActionBar";
 import { itemLabel } from "./itemMeta";
@@ -331,7 +332,7 @@ export const OperatorPresentationLayout: React.FC = () => {
                   >
                     <div className="aspect-video bg-surface-2 relative">
                       <img
-                        src={`asset://localhost/media/${m.thumbnailFile ?? m.fileName}`}
+                        src={mediaUrl(m.thumbnailFile ?? m.fileName)}
                         alt=""
                         className="w-full h-full object-cover"
                         onError={(e) => {

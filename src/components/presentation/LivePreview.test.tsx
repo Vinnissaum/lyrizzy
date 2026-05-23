@@ -1,0 +1,212 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+
+// ── Store mocks ──────────────────────────────────────────────────────────────
+vi.mock("../../stores/presentation", () => ({
+  usePresentationStore: vi.fn(),
+}));
+
+vi.mock("../../stores/media", () => ({
+  useMediaStore: vi.fn(),
+}));
+
+// Mock react-i18next
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { changeLanguage: vi.fn() },
+  }),
+}));
+
+// Stub useCountdownDigits so CountdownRenderer renders without runtime hooks
+vi.mock("../../runtime/useCountdownDigits", () => ({
+  useCountdownDigits: () => ({
+    formattedTime: "10:00",
+    isFinished: false,
+    isLow: false,
+  }),
+}));
+
+import { usePresentationStore } from "../../stores/presentation";
+import { useMediaStore } from "../../stores/media";
+import { LivePreview } from "./LivePreview";
+import type { PresentationState, ServiceSet, Media } from "../../types";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const mockSet: ServiceSet = {
+  id: "set-1",
+  name: "Culto",
+  createdAt: 0,
+  updatedAt: 0,
+  items: [
+    {
+      id: "item-1",
+      setId: "set-1",
+      itemType: "song",
+      songId: "song-1",
+      sortOrder: 0,
+    },
+  ],
+};
+
+const baseState = (): PresentationState => ({
+  mode: "live",
+  currentItemIndex: 0,
+  currentSlideIndex: 0,
+  itemSlideCounts: [2],
+  set: mockSet,
+  currentSlide: { lines: ["Aleluia"], sectionLabel: "Verse", sectionId: "s1" },
+});
+
+const mockVideoMedia: Media = {
+  id: "vid-1",
+  fileName: "promo.mp4",
+  displayName: "Promo Video",
+  kind: "video",
+  mimeType: "video/mp4",
+  byteSize: 9999,
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+const mockImageMedia: Media = {
+  id: "img-1",
+  fileName: "offer.jpg",
+  displayName: "Oferta",
+  kind: "image",
+  mimeType: "image/jpeg",
+  byteSize: 1000,
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+function mockStores(
+  state: PresentationState | null,
+  mediaList: Media[] = []
+) {
+  vi.mocked(usePresentationStore).mockImplementation((selector?: (s: { state: PresentationState | null }) => unknown) => {
+    const store = { state };
+    if (typeof selector === "function") return selector(store) as ReturnType<typeof usePresentationStore>;
+    return store as ReturnType<typeof usePresentationStore>;
+  });
+  vi.mocked(useMediaStore).mockReturnValue({
+    media: mediaList,
+    refresh: vi.fn(),
+  } as ReturnType<typeof useMediaStore>);
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("LivePreview", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders the 16:9 container (aspect-video) when state is provided", () => {
+    mockStores(baseState());
+    const { container } = render(<LivePreview />);
+    const wrapper = container.querySelector('[data-testid="live-preview"]');
+    expect(wrapper).toBeTruthy();
+    expect(wrapper!.className).toContain("aspect-video");
+  });
+
+  it("shows BLACKOUT tag when state.mode === 'blank'", () => {
+    mockStores({ ...baseState(), mode: "blank" });
+    render(<LivePreview />);
+    expect(screen.getByText("BLACKOUT")).toBeInTheDocument();
+  });
+
+  it("shows CONGELADO tag when state.mode === 'frozen'", () => {
+    mockStores({ ...baseState(), mode: "frozen" });
+    render(<LivePreview />);
+    expect(screen.getByText("CONGELADO")).toBeInTheDocument();
+  });
+
+  it("renders announcement overlay when state.overlay.type === 'announcement'", () => {
+    mockStores({
+      ...baseState(),
+      overlay: { type: "announcement", text: "Bem-vindos ao culto!" },
+    });
+    render(<LivePreview />);
+    expect(screen.getByText("Bem-vindos ao culto!")).toBeInTheDocument();
+  });
+
+  it("renders a placeholder card (no <video> element) when active item is a video media", () => {
+    const state: PresentationState = {
+      ...baseState(),
+      set: {
+        ...mockSet,
+        items: [
+          {
+            id: "item-1",
+            setId: "set-1",
+            itemType: "media",
+            mediaId: "vid-1",
+            mediaKind: "video",
+            sortOrder: 0,
+          },
+        ],
+      },
+    };
+    mockStores(state, [mockVideoMedia]);
+    const { container } = render(<LivePreview />);
+    expect(container.querySelector("video")).toBeNull();
+    expect(screen.getByText("Promo Video")).toBeInTheDocument();
+  });
+
+  it("renders a placeholder card (no <iframe> element) when active item is webview", () => {
+    const state: PresentationState = {
+      ...baseState(),
+      set: {
+        ...mockSet,
+        items: [
+          {
+            id: "item-1",
+            setId: "set-1",
+            itemType: "web_view",
+            webviewConfig: { mode: "iframe", url: "http://example.com" },
+            sortOrder: 0,
+          },
+        ],
+      },
+    };
+    mockStores(state);
+    const { container } = render(<LivePreview />);
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(screen.getByText("http://example.com")).toBeInTheDocument();
+  });
+
+  it("renders placeholder when state.set is undefined", () => {
+    mockStores({ ...baseState(), set: undefined });
+    render(<LivePreview />);
+    const wrapper = screen.getByTestId("live-preview");
+    expect(wrapper).toBeTruthy();
+    // The aspect-video container is still rendered
+    expect(wrapper.className).toContain("aspect-video");
+  });
+
+  it("renders placeholder when state is null", () => {
+    mockStores(null);
+    render(<LivePreview />);
+    const wrapper = screen.getByTestId("live-preview");
+    expect(wrapper).toBeTruthy();
+    expect(wrapper.className).toContain("aspect-video");
+  });
+
+  it("renders an img for image media overlay", () => {
+    const state: PresentationState = {
+      ...baseState(),
+      overlay: { type: "media", mediaId: "img-1" },
+    };
+    mockStores(state, [mockImageMedia]);
+    const { container } = render(<LivePreview />);
+    const img = container.querySelector("img");
+    expect(img).toBeTruthy();
+    expect(img?.src).toContain("offer.jpg");
+  });
+});

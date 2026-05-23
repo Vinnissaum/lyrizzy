@@ -21,6 +21,7 @@ import { SetList } from "../../components/set/SetList";
 import { SlideController } from "../../components/presentation/SlideController";
 import { OperatorNotesPanel } from "../../components/presentation/OperatorNotesPanel";
 import { PresentationNavigator } from "../../components/presentation/PresentationNavigator";
+import { OperatorPresentationLayout } from "../../components/presentation/OperatorPresentationLayout";
 import { CountdownPanel } from "../../components/countdown/CountdownPanel";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
 import { BackupScreen } from "../../components/backup/BackupScreen";
@@ -286,7 +287,7 @@ export const OperatorApp: React.FC = () => {
       {/* Main content */}
       <main className="flex-1 min-h-0">
         {isPresenting ? (
-          <PresentationNavigator />
+          <OperatorPresentationLayout />
         ) : (
           <>
             {currentView === "home" && <HomeSetBuilder />}

@@ -149,6 +149,12 @@
     "noPresentation": "Sem apresentação ativa.",
     "noSetLoaded": "Nenhum conjunto carregado.",
     "emptySet": "Adicione itens ao conjunto antes de apresentar",
+    "empty": "Aguardando início",
+    "pane": {
+      "set": "Conjunto",
+      "strophes": "Estrofes",
+      "live": "Ao vivo"
+    },
     "action": {
       "present": "Apresentar"
     },

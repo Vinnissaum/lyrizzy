@@ -149,6 +149,12 @@
     "noPresentation": "No active presentation.",
     "noSetLoaded": "No set loaded.",
     "emptySet": "Add items to the set before presenting",
+    "empty": "Waiting to start",
+    "pane": {
+      "set": "Set",
+      "strophes": "Strophes",
+      "live": "Live"
+    },
     "action": {
       "present": "Present"
     },

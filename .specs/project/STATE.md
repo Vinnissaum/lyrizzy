@@ -1,7 +1,8 @@
 # Trinity Lyrics v2 — State
 
-**Last updated:** 2026-05-22
-**Current phase:** Phase 6 complete (2026-05-22). Corrections & polish — theme token sweep, in-operator PresentationNavigator, ESC/F10 keyboard parity, Stage window removed, CountdownTarget enum. All 9 P6 requirements done.
+**Last updated:** 2026-05-23
+**Current phase:** Phase 7 complete (2026-05-23). All 8 P7-01..P7-08 requirements delivered.
+**Previous phase:** Phase 6 complete (2026-05-22). All 9 P6 requirements done.
 
 ---
 
@@ -37,6 +38,13 @@
 | D-26 | Phase 5 Sentry crash reporting skipped entirely (not just deferred) | Out of scope per user decision 2026-05-21 | 2026-05-21 |
 | D-27 | Phase 6 removes the Stage window (D-15 superseded): 3-window design (operator + presentation + stage) reverted to 2-window. Stage display replaced by `PresentationNavigator` embedded in the operator window. | Stage window added latency + complexity without clear gain for current workflow; in-operator navigator is always-visible and eliminates focus-switching | 2026-05-22 |
 | D-28 | `open_presentation_window` replaced by `enter_presentation` / `exit_presentation` command pair. `enter_presentation` is idempotent (focus-only if window exists), guards against empty set, emits `presentation_lifecycle {phase: "entered"}`. `exit_presentation` resets state, clears overlay, emits `presentation_lifecycle {phase: "exited"}`. | Lifecycle events let operator window react to presentation state without polling; idempotency makes retry safe; empty-set guard gives user feedback before the window opens | 2026-05-22 |
+| D-29 | Phase 7 single-monitor `Apresentar` uses `.always_on_top(true)` + `.fullscreen(true)`; multi-monitor branch (D-20) stays without `always_on_top` to avoid stealing focus from operator on primary. Phantom monitors (size 0×0) filtered at enumeration. | User confirmed PowerPoint-style single-screen behavior; previous P6-04 single-monitor fullscreen alone was invisible on user's machine (z-order issue) | 2026-05-22 |
+| D-30 | Phase 7 replaces the linear `PresentationNavigator` with a Holyrics-style 3-pane `OperatorPresentationLayout`: LEFT = SET items list (~240px), CENTER = STROPHES wrapping grid (flex-1), RIGHT = LIVE preview (~320px). Clicking a non-active set item is REPLACE semantics (`goto_slide(itemIdx, 0)`), not overlay. Overlay system (Oferta/Câmera/Aviso/PDF from P4H) stays for transient layering. | User cited Holyrics as the reference; the long-vertical list grouping all items together was hard to scan. 3-pane mirrors Holyrics/OpenLP/ProPresenter ergonomics. Replace semantics for set-item clicks matches conventional slide software. | 2026-05-22 |
+| D-31 | Phase 7 LIVE preview pane renders the projection state in-app (reuses the same renderer components used in the presentation window), NOT a screen capture (no DXGI / desktop duplication). Strategy choice (direct composition vs. CSS `transform: scale()`) deferred to design.md. | Screen-capture in WebView2 adds complexity with no correctness benefit — we already own the `PresentationState` that drives the projection, so re-rendering is always accurate | 2026-05-22 |
+| D-32 | Monitor filter: `width > 0 && height > 0` applied at enumeration time; `presentation.no_monitors` error returned if all monitors are filtered out. | Phantom monitors with 0×0 size appeared on user's machine and were selected by the auto-pick logic, resulting in a silent invisible window | 2026-05-23 |
+| D-33 | Single-monitor path uses `always_on_top(true)` + `fullscreen(true)` (PowerPoint browse-mode parity). Multi-monitor branch (D-20) keeps `always_on_top` off to avoid stealing focus from operator on primary. | Previous P6-04 single-monitor fullscreen alone was invisible on user's machine (z-order issue); always-on-top resolves it | 2026-05-23 |
+| D-34 | LivePreview hybrid strategy: full render for text/image/countdown items; placeholder cards for video/iframe items (avoids double-mounting media in the same WebView). | Double-mounting `<video>` or `<iframe>` elements inside the preview pane caused audio bleed and janky seek; placeholder cards convey enough context without media side-effects | 2026-05-23 |
+| D-35 | `OverlayDialogs` stay inline in `OperatorPresentationLayout`; only the toolbar action row is extracted as `<OverlayActionBar />` for reuse between `HomeSetBuilder` and the presentation layout. | Full dialog extraction would have required prop-drilling all overlay commands; toolbar-row extraction alone gives P4H HomeSetBuilder reuse without complexity overhead | 2026-05-23 |
 
 ---
 
@@ -80,6 +88,26 @@
 - **L-4:** When testing canonical path containment, use two independent temp dirs. A file in the *parent* of `media/` could accidentally start_with `media/` if using the same `TempDir`.
 - **L-5:** `http` crate must be added explicitly to `Cargo.toml` for the protocol handler; it is not re-exported from `tauri` in a usable way for custom handlers.
 - **L-6:** Tauri 2 built-in `asset://` protocol requires `protocol-asset` feature. To use a custom media directory without that feature, register your own `asset` scheme via `register_uri_scheme_protocol`.
+
+## Phase 7 Completion Summary (2026-05-23)
+
+All 8 P7-01..P7-08 requirements delivered:
+
+| Area | Tasks | Delivered |
+|---|---|---|
+| Monitor fix | P7-01 | `width > 0 && height > 0` filter at enumeration; toast on `enter_presentation` error (D-32) |
+| Single-monitor fullscreen | P7-02 | `always_on_top(true)` + `fullscreen(true)` on single-monitor path (D-33); multi-monitor unchanged |
+| Dark-theme sweep | P7-03 | Zero hardcoded color hits in operator components; `check-theme-tokens.ps1` deny-list updated |
+| 3-pane shell | P7-04 | `OperatorPresentationLayout` — LEFT SET pane (~240 px) + CENTER STROPHES flex-1 + RIGHT LIVE preview (~320 px) |
+| Strophes grid | P7-05 | `StrophesGrid` — wrapping thumbnail grid replaces vertical slide list |
+| LIVE preview | P7-06 | `LivePreview` hybrid strategy: full render for text/image/countdown; placeholder cards for video/iframe (D-34) |
+| SET pane | P7-07 | `SetItemList` — click-to-replace (`goto_slide(itemIdx, 0)`) inter-item navigation |
+| OverlayActionBar | P7-08 | `<OverlayActionBar />` extracted; dialogs stay inline (D-35); reused in `HomeSetBuilder` |
+| Cleanup | T10 | `PresentationNavigator` component + test deleted; `VideoDims` type alias added to fix clippy type_complexity |
+
+**Test results at completion:** 141 Rust unit tests, 124 Vitest tests — all passing. `tsc --noEmit` clean. `cargo clippy -D warnings` clean. `check-theme-tokens.ps1` exits 0.
+
+---
 
 ## Phase 6 Completion Summary (2026-05-22)
 

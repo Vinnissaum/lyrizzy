@@ -178,3 +178,25 @@
 | P6-09 | `CountdownTarget` enum (`Duration` \| `FixedTime`) + `CountdownSetItemEditor` mode toggle | Done |
 
 **Deliverable:** Fully theme-consistent operator UI in light and dark mode, PowerPoint-style in-operator slide navigator with click-to-jump, countdown fixed-time mode, ESC/F10 keyboard parity.
+
+---
+
+## Phase 7: Presentation Rework (Holyrics-style operator, single-monitor fullscreen, dark contrast) — DONE
+
+**Goal:** Make `Apresentar` reliably visible (diagnose silent-failure path), add single-monitor fullscreen-on-top mode, finish the dark-theme contrast sweep, and replace the long-vertical `PresentationNavigator` with a 3-pane Holyrics-style operator workspace (SET | STROPHES grid | LIVE preview).
+**Completed:** 2026-05-23.
+**Spec:** `.specs/features/phase7-presentation-rework/spec.md` (8 requirements P7-01..P7-08).
+**Context:** `.specs/features/phase7-presentation-rework/context.md` (4 gray-area decisions resolved).
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P7-01 | Diagnose & fix silent `Apresentar` failure (toast on error, monitor filter, observability) | Done |
+| P7-02 | Single-monitor `always_on_top` fullscreen presentation | Done |
+| P7-03 | Finish dark-theme hardcoded-color sweep (zero hits in operator components) | Done |
+| P7-04 | `OperatorPresentationLayout` — 3-pane Holyrics-style shell | Done |
+| P7-05 | STROPHES pane — wrapping thumbnail grid (replaces vertical list) | Done |
+| P7-06 | LIVE preview pane — rendered from `PresentationState`, not screen-captured | Done |
+| P7-07 | SET pane — click-to-replace inter-item navigation | Done |
+| P7-08 | Extract `<OverlayActionBar />` for reuse between home and presentation | Done |
+
+**Deliverable:** `Apresentar` works on every hardware configuration with visible feedback; operator presentation surface mirrors Holyrics's three-pane workspace; dark theme passes a zero-tolerance contrast audit.

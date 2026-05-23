@@ -1,6 +1,9 @@
 use crate::domain::media::MediaKind;
 use std::path::Path;
 
+/// `(width, height, duration_ms)` returned by [`probe_video_with_cmd`].
+pub type VideoDims = (Option<u32>, Option<u32>, Option<i64>);
+
 pub struct MediaMetadata {
     pub width: Option<u32>,
     pub height: Option<u32>,
@@ -76,6 +79,15 @@ pub fn probe(path: &Path, kind: MediaKind) -> Result<MediaMetadata, ProbeError> 
                 byte_size,
             })
         }
+        // Presentation files are not probed for dimensions — metadata comes from the
+        // LibreOffice conversion output (slide count). Return byte_size only.
+        MediaKind::Presentation => Ok(MediaMetadata {
+            width: None,
+            height: None,
+            duration_ms: None,
+            mime_type,
+            byte_size,
+        }),
     }
 }
 
@@ -92,7 +104,7 @@ fn probe_image_dimensions(path: &Path) -> Result<(u32, u32), ProbeError> {
 pub fn probe_video_with_cmd(
     path: &Path,
     cmd: &str,
-) -> Result<(Option<u32>, Option<u32>, Option<i64>), ProbeError> {
+) -> Result<VideoDims, ProbeError> {
     let output = std::process::Command::new(cmd)
         .args([
             "-v",

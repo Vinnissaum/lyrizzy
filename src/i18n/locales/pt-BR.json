@@ -172,7 +172,11 @@
       "title": "Notas",
       "collapse": "Recolher painel de notas",
       "expand": "Expandir painel de notas"
-    }
+    },
+    "singleItem": {
+      "hint": "Esta apresentação está sendo exibida"
+    },
+    "noSlides": "Nenhum slide encontrado"
   },
   "countdown": {
     "title": "Cronômetro",

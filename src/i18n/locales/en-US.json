@@ -172,7 +172,11 @@
       "title": "Notes",
       "collapse": "Collapse notes panel",
       "expand": "Expand notes panel"
-    }
+    },
+    "singleItem": {
+      "hint": "This presentation is being displayed"
+    },
+    "noSlides": "No slides found"
   },
   "countdown": {
     "title": "Countdown",

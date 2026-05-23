@@ -44,6 +44,10 @@ pub fn run() {
         .manage(AppState::default())
         .register_uri_scheme_protocol("asset", protocol::asset::build_handler())
         .setup(|app| {
+            // Initialize tracing for structured log output (dev builds).
+            #[cfg(debug_assertions)]
+            let _ = tracing_subscriber::fmt().try_init();
+
             let handle = app.handle().clone();
 
             // Resolve storage layout up front so we can fail loudly if anything goes wrong.

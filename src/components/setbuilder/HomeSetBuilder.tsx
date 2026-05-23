@@ -19,6 +19,7 @@ import { useMediaStore } from "../../stores/media";
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
 import { SetBuilder } from "../set/SetBuilder";
+import { OverlayActionBar } from "../presentation/OverlayActionBar";
 import type { Song } from "../../types";
 
 export const HomeSetBuilder: React.FC = () => {
@@ -180,6 +181,12 @@ export const HomeSetBuilder: React.FC = () => {
     }
   };
 
+  const handleAvisoClick = () => {
+    setAnnouncementText("");
+    setShowAnnouncementDialog(true);
+    setTimeout(() => announcementRef.current?.focus(), 50);
+  };
+
   const handleImportPresentation = async () => {
     if (!fixedSetId) return;
     const selected = await open({
@@ -224,53 +231,17 @@ export const HomeSetBuilder: React.FC = () => {
       )}
 
       {/* Overlay action bar */}
-      <div className="px-3 py-2 border-b border-border flex items-center gap-2 flex-wrap shrink-0">
-        <button
-          onClick={handleApresentar}
-          className="px-3 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors"
-          data-testid="apresentar-button"
-        >
-          ▶ {t("presentation.action.present")}
-        </button>
-        {isOverlayActive && (
-          <button
-            onClick={handleClearOverlay}
-            className="px-3 py-1 text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-lg font-medium hover:bg-amber-500/30 transition-colors"
-          >
-            ✕ {t("home.overlay.closeOverlay")}
-          </button>
-        )}
-        <button
-          onClick={handleOferta}
-          className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
-        >
-          🖼 {t("home.overlay.oferta")}
-        </button>
-        <button
-          onClick={handleCamera}
-          className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
-        >
-          📷 {t("home.overlay.camera")}
-        </button>
-        <button
-          onClick={() => {
-            setAnnouncementText("");
-            setShowAnnouncementDialog(true);
-            setTimeout(() => announcementRef.current?.focus(), 50);
-          }}
-          className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
-        >
-          📢 {t("home.overlay.aviso")}
-        </button>
-        <button
-          onClick={handleImportPresentation}
-          disabled={isImportingPresentation}
-          title={t("home.overlay.pdfTooltip")}
-          className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors disabled:opacity-50"
-        >
-          📄 {isImportingPresentation ? t("media.slideshow.importing") : t("home.overlay.pdf")}
-        </button>
-      </div>
+      <OverlayActionBar
+        showApresentarButton={true}
+        onApresentar={handleApresentar}
+        onOferta={handleOferta}
+        onCamera={handleCamera}
+        onAviso={handleAvisoClick}
+        onPdf={handleImportPresentation}
+        onClearOverlay={handleClearOverlay}
+        isOverlayActive={isOverlayActive}
+        isImportingPresentation={isImportingPresentation}
+      />
 
       {/* Content area */}
       <div className="flex-1 min-h-0 flex">

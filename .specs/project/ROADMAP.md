@@ -200,3 +200,24 @@
 | P7-08 | Extract `<OverlayActionBar />` for reuse between home and presentation | Done |
 
 **Deliverable:** `Apresentar` works on every hardware configuration with visible feedback; operator presentation surface mirrors Holyrics's three-pane workspace; dark theme passes a zero-tolerance contrast audit.
+
+---
+
+## Phase 8: Presentation Fix-ups + Background Presets — DONE
+
+**Goal:** Fix eight accumulated UX issues: click-handler state-sync, ESC-freeze, countdown fallback, ESC label display, Windows asset URL scheme, background presets with typography control, and Apresentar button consolidation.  
+**Completed:** 2026-05-23.  
+**Spec:** `.specs/features/phase8-presentation-fixes/spec.md` (8 requirements P8-01..P8-08).
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P8-01 | Fix stale closure in StrophesGrid click handlers | Done |
+| P8-02 | Fix stale closure in SetItemList click handlers | Done |
+| P8-03 | Countdown no-config fallback message in presentation window | Done |
+| P8-04 | ESC freeze — `exit_presentation` idempotency + state-before-close + frontend dedup | Done |
+| P8-05 | ESC label (`Keycap` canonical labels + `exitPresentation` binding normaliser) | Done |
+| P8-06 | Windows asset URL scheme (`asset://localhost` → `http://asset.localhost`) + `mediaUrl()` + thumb-pending UX | Done |
+| P8-07 | Background presets (None/Preset/Media tabs, FontFamily/FontSize typography, migration 007) | Done |
+| P8-08 | Apresentar button consolidation (`hidePresentButton` prop, unified handler, `set-player` removed) | Done |
+
+**Deliverable:** All critical presentation-flow bugs fixed; background presets let operators choose black/white palette + font for any song or section without importing media.

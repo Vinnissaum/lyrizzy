@@ -1,8 +1,8 @@
 # Trinity Lyrics v2 — State
 
 **Last updated:** 2026-05-23
-**Current phase:** Phase 7 complete (2026-05-23). All 8 P7-01..P7-08 requirements delivered.
-**Previous phase:** Phase 6 complete (2026-05-22). All 9 P6 requirements done.
+**Current phase:** Phase 8 complete (2026-05-23). All 8 P8-01..P8-08 requirements delivered.
+**Previous phase:** Phase 7 complete (2026-05-23). All 8 P7-01..P7-08 requirements done.
 
 ---
 
@@ -88,6 +88,24 @@
 - **L-4:** When testing canonical path containment, use two independent temp dirs. A file in the *parent* of `media/` could accidentally start_with `media/` if using the same `TempDir`.
 - **L-5:** `http` crate must be added explicitly to `Cargo.toml` for the protocol handler; it is not re-exported from `tauri` in a usable way for custom handlers.
 - **L-6:** Tauri 2 built-in `asset://` protocol requires `protocol-asset` feature. To use a custom media directory without that feature, register your own `asset` scheme via `register_uri_scheme_protocol`.
+
+## Phase 8 Completion Summary (2026-05-23)
+
+All 8 P8-01..P8-08 requirements delivered:
+
+| Area | Tasks | Delivered |
+|---|---|---|
+| State sync | P8-01, P8-02 | `StrophesGrid`/`SetItemList` click handlers read store via `getState()` at click time; `emit_state` tracing added |
+| Countdown fallback | P8-03 | No-config countdown set item renders `t("presentation.countdown.noConfig")` instead of silent black |
+| ESC freeze | P8-04 | `exit_presentation` idempotent; `state_changed` emitted before `w.close()`; frontend `exitInflight` dedup |
+| ESC label | P8-05 | `Keycap` maps Escape→ESC, arrows→glyphs, Space→"Space"; `exitPresentation` normalised to `[{Escape}]` on boot |
+| URL scheme | P8-06 | `protocol::asset::url_for()` helper; `mediaUrl()` frontend helper; all `asset://localhost/...` literals swept |
+| Background presets | P8-07 | Migration 007 (8 new columns); `BackgroundPreset`/`FontFamily`/`FontSize`/`Typography` domain types; preset-mode resolver branch; `SongEditor` 3-tab BackgroundEditor (None/Preset/Media at song level; Inherit/Preset/Media at section level); `SongBackground`/`SongSlide`/`LivePreview` honour preset + typography |
+| Apresentar buttons | P8-08 | `SetBuilder.hidePresentButton` prop; `HomeSetBuilder` suppresses bottom button; standalone set-builder bottom button unified with home handler; `set-player` dead view removed |
+
+**Test results at completion:** 148 Vitest tests green. `tsc --noEmit` clean. `cargo test` green. `cargo clippy -D warnings` clean. `Grep "asset://localhost"` = 0 code matches. `Grep "ESCAPE/SPACE"` = 0 matches.
+
+---
 
 ## Phase 7 Completion Summary (2026-05-23)
 

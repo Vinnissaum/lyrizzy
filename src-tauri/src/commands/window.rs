@@ -107,6 +107,13 @@ struct PresentationLifecyclePayload {
     phase: &'static str,
 }
 
+/// Returns true when the presentation window should be pinned on top of all
+/// other windows. This is needed in single-monitor setups so the fullscreen
+/// presentation window stays above the operator window.
+pub(crate) fn should_pin_on_top(monitor_count: usize) -> bool {
+    monitor_count == 1
+}
+
 /// Returns true when no set is loaded or the loaded set has no items.
 fn presentation_set_is_empty(state: &PresentationState) -> bool {
     state.set.as_ref().map(|s| s.items.is_empty()).unwrap_or(true)
@@ -159,6 +166,8 @@ pub async fn enter_presentation(
 
     let secondary_idx = pick_secondary_index(primary_xy, &all_xy);
 
+    let pin_on_top = should_pin_on_top(monitors.len());
+
     let base = WebviewWindowBuilder::new(
         &app,
         "presentation",
@@ -168,7 +177,8 @@ pub async fn enter_presentation(
     .inner_size(1280.0, 720.0);
 
     let builder = apply_monitor(base, &monitors, secondary_idx);
-    tracing::info!(monitors = monitors.len(), secondary_idx = ?secondary_idx, "enter_presentation: building window");
+    let builder = if pin_on_top { builder.always_on_top(true) } else { builder };
+    tracing::info!(monitors = monitors.len(), secondary_idx = ?secondary_idx, always_on_top = pin_on_top, "enter_presentation: building window");
     builder.fullscreen(true).build().map_err(|e| {
         ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
     })?;
@@ -227,6 +237,26 @@ mod tests {
             items: vec![],
         });
         s
+    }
+
+    #[test]
+    fn should_pin_on_top_zero_monitors() {
+        assert!(!should_pin_on_top(0));
+    }
+
+    #[test]
+    fn should_pin_on_top_single_monitor() {
+        assert!(should_pin_on_top(1));
+    }
+
+    #[test]
+    fn should_pin_on_top_two_monitors() {
+        assert!(!should_pin_on_top(2));
+    }
+
+    #[test]
+    fn should_pin_on_top_three_monitors() {
+        assert!(!should_pin_on_top(3));
     }
 
     #[test]

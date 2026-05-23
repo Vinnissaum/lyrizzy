@@ -51,7 +51,7 @@ import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
-import { enterPresentation, getSet } from "../../api/commands";
+import { enterPresentation, getSet, loadSetForPresentation } from "../../api/commands";
 import type { ServiceSet } from "../../types";
 
 const baseLibraryStore = {
@@ -75,6 +75,10 @@ describe("HomeSetBuilder — Apresentar button", () => {
     vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
     vi.mocked(usePresentationStore).mockReturnValue({ state: null } as ReturnType<typeof usePresentationStore>);
     vi.mocked(useSettingsStore).mockReturnValue({ cameraUrl: undefined, loadCameraUrl: vi.fn() } as ReturnType<typeof useSettingsStore>);
+    // Reset command mocks to their default resolved implementations
+    vi.mocked(enterPresentation).mockResolvedValue(undefined);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(loadSetForPresentation).mockResolvedValue(undefined as any);
   });
 
   it("renders the Apresentar button", () => {
@@ -90,7 +94,40 @@ describe("HomeSetBuilder — Apresentar button", () => {
     fireEvent.click(screen.getByTestId("apresentar-button"));
 
     await waitFor(() => {
-      expect(screen.getByText("presentation.emptySet")).toBeInTheDocument();
+      expect(screen.getByText("error.presentation.empty_set")).toBeInTheDocument();
+    });
+    expect(enterPresentation).not.toHaveBeenCalled();
+  });
+
+  it("shows no_monitors toast when enterPresentation rejects with presentation.no_monitors", async () => {
+    const setWithItems: ServiceSet = {
+      ...baseSet,
+      items: [{ id: "item-1", setId: "set-1", itemType: "song", sortOrder: 0 }],
+    };
+    vi.mocked(getSet).mockResolvedValue(setWithItems);
+    vi.mocked(enterPresentation).mockRejectedValue({ code: "presentation.no_monitors" });
+
+    render(<HomeSetBuilder />);
+    fireEvent.click(screen.getByTestId("apresentar-button"));
+
+    await waitFor(() => {
+      expect(screen.getByText("error.presentation.no_monitors")).toBeInTheDocument();
+    });
+  });
+
+  it("does NOT call enterPresentation when loadSetForPresentation rejects", async () => {
+    const setWithItems: ServiceSet = {
+      ...baseSet,
+      items: [{ id: "item-1", setId: "set-1", itemType: "song", sortOrder: 0 }],
+    };
+    vi.mocked(getSet).mockResolvedValue(setWithItems);
+    vi.mocked(loadSetForPresentation).mockRejectedValue({ code: "some.error" });
+
+    render(<HomeSetBuilder />);
+    fireEvent.click(screen.getByTestId("apresentar-button"));
+
+    await waitFor(() => {
+      expect(screen.getByText("error.some.error")).toBeInTheDocument();
     });
     expect(enterPresentation).not.toHaveBeenCalled();
   });

@@ -489,6 +489,13 @@
       "focusSearch": "Focar pesquisa de músicas"
     }
   },
+  "error": {
+    "presentation": {
+      "no_monitors": "Nenhum monitor detectado",
+      "empty_set": "Adicione itens ao conjunto antes de apresentar"
+    },
+    "unknown": "Erro ao iniciar apresentação"
+  },
   "errors": {
     "song": {
       "notFound": "Música não encontrada",

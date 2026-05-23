@@ -489,6 +489,13 @@
       "focusSearch": "Focus song search"
     }
   },
+  "error": {
+    "presentation": {
+      "no_monitors": "No monitor detected",
+      "empty_set": "Add items to the set before presenting"
+    },
+    "unknown": "Failed to start presentation"
+  },
   "errors": {
     "song": {
       "notFound": "Song not found",

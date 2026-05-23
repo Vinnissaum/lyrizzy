@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -41,7 +41,7 @@ export const HomeSetBuilder: React.FC = () => {
   const [showCameraPrompt, setShowCameraPrompt] = useState(false);
   const [tempCameraUrl, setTempCameraUrl] = useState("");
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
-  const [emptySetToast, setEmptySetToast] = useState(false);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const announcementRef = useRef<HTMLTextAreaElement>(null);
 
@@ -75,23 +75,21 @@ export const HomeSetBuilder: React.FC = () => {
     );
   }, [songs, sidebarSearch]);
 
-  const showEmptySetToast = useCallback(() => {
-    setEmptySetToast(true);
-    setTimeout(() => setEmptySetToast(false), 3000);
-  }, []);
-
   const handleApresentar = async () => {
     if (!fixedSetId) return;
     try {
       const currentSet = await getSet(fixedSetId);
       if (currentSet.items.length === 0) {
-        showEmptySetToast();
+        setErrorToast(t("error.presentation.empty_set"));
+        setTimeout(() => setErrorToast(null), 5000);
         return;
       }
       await loadSetForPresentation(fixedSetId);
       await enterPresentation();
     } catch (err) {
-      console.error("enter presentation failed:", err);
+      const payload = err as { code?: string; params?: Record<string, string> };
+      setErrorToast(t(`error.${payload.code ?? "unknown"}`, payload.params));
+      setTimeout(() => setErrorToast(null), 5000);
     }
   };
 
@@ -218,10 +216,10 @@ export const HomeSetBuilder: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Empty-set toast */}
-      {emptySetToast && (
+      {/* Error toast */}
+      {errorToast !== null && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-amber-500/90 text-fg-on-primary text-sm rounded-lg shadow-lg pointer-events-none">
-          {t("presentation.emptySet")}
+          {errorToast}
         </div>
       )}
 

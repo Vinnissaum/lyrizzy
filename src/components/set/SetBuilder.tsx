@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   addSetItem,
   duplicateSetItem,
+  enterPresentation,
   getSet,
   importPresentation,
   loadSetForPresentation,
@@ -13,7 +14,6 @@ import {
   updateSet,
 } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
-import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { listSongs } from "../../api/commands";
@@ -67,6 +67,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSet = async () => {
@@ -246,14 +247,15 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   };
 
   const handleLoadForPresentation = async () => {
-    if (!serviceSet) return;
+    if (!serviceSet || serviceSet.items.length === 0) return;
     setIsLoading(true);
     try {
       await loadSetForPresentation(serviceSet.id);
-      usePresentationStore.getState().syncState();
-      setView("set-player");
+      await enterPresentation();
     } catch (err) {
-      console.error("load presentation failed:", err);
+      const payload = err as { code?: string; params?: Record<string, string> };
+      setLoadError(t(`error.${payload.code ?? "unknown"}`, payload.params));
+      setTimeout(() => setLoadError(null), 5000);
     } finally {
       setIsLoading(false);
     }
@@ -355,6 +357,11 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
 
   return (
     <div className="flex flex-col h-full">
+      {loadError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-amber-500/90 text-fg-on-primary rounded-lg shadow-lg text-sm font-medium pointer-events-none">
+          {loadError}
+        </div>
+      )}
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center gap-2 mb-2">

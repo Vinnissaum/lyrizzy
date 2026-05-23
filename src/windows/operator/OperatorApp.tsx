@@ -18,9 +18,6 @@ import { HolyricsImport } from "../../components/import/HolyricsImport";
 import { HomeSetBuilder } from "../../components/setbuilder/HomeSetBuilder";
 import { SetBuilder } from "../../components/set/SetBuilder";
 import { SetList } from "../../components/set/SetList";
-import { SlideController } from "../../components/presentation/SlideController";
-import { OperatorNotesPanel } from "../../components/presentation/OperatorNotesPanel";
-import { PresentationNavigator } from "../../components/presentation/PresentationNavigator";
 import { OperatorPresentationLayout } from "../../components/presentation/OperatorPresentationLayout";
 import { CountdownPanel } from "../../components/countdown/CountdownPanel";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
@@ -182,15 +179,13 @@ export const OperatorApp: React.FC = () => {
   const isHomeSection =
     currentView === "home" ||
     currentView === "sets" ||
-    currentView === "set-builder" ||
-    currentView === "set-player";
+    currentView === "set-builder";
 
   const isCountdownSection = currentView === "countdown";
   const isMediaSection = currentView === "media";
   const isBackupSection = currentView === "backup";
   const isSettingsSection = currentView === "settings";
 
-  const serviceSet = presState?.set;
   const isPresenting =
     presState?.mode === "live" ||
     presState?.mode === "blank" ||
@@ -327,19 +322,6 @@ export const OperatorApp: React.FC = () => {
             {currentView === "set-builder" && (
               <SetBuilder setId={editingSetId} />
             )}
-
-            {currentView === "set-player" && serviceSet ? (
-              <div className="flex h-full overflow-hidden">
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <SlideController serviceSet={serviceSet} />
-                </div>
-                <OperatorNotesPanel />
-              </div>
-            ) : currentView === "set-player" ? (
-              <div className="h-full flex items-center justify-center text-muted text-sm">
-                {t("presentation.noSetLoaded")}
-              </div>
-            ) : null}
 
             {currentView === "countdown" && <CountdownPanel />}
 

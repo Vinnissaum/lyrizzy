@@ -66,7 +66,7 @@ describe("OperatorApp — smoke navigation", () => {
   it("shows the home set builder by default", async () => {
     render(<OperatorApp />);
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Apresentar" })).toBeInTheDocument()
+      expect(screen.getByTestId("apresentar-button")).toBeInTheDocument()
     );
   });
 
@@ -84,7 +84,7 @@ describe("OperatorApp — smoke navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Biblioteca" }));
     fireEvent.click(screen.getByRole("button", { name: "Início" }));
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Apresentar" })).toBeInTheDocument()
+      expect(screen.getByTestId("apresentar-button")).toBeInTheDocument()
     );
   });
 

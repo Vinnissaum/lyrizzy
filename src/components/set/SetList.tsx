@@ -54,7 +54,7 @@ export const SetList: React.FC = () => {
         <h2 className="text-lg font-semibold">{t("sets.title")}</h2>
         <button
           onClick={() => setIsCreating(true)}
-          className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
+          className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors"
         >
           {t("sets.newButton")}
         </button>
@@ -75,7 +75,7 @@ export const SetList: React.FC = () => {
           />
           <button
             type="submit"
-            className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
+            className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors"
           >
             {t("sets.createButton")}
           </button>

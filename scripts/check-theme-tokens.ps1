@@ -12,14 +12,15 @@ param(
 # Classes that must not appear in operator-window components.
 # Projection / presentation renderer components are excluded via the allowlist.
 $ProblemPatterns = @(
-    'bg-gray-(700|800|900)',      # dark gray backgrounds → use bg-surface / bg-surface-2
-    'border-gray-(600|700)',      # dark gray borders → use border-border
-    'bg-blue-(500|600)',          # hardcoded blue → use bg-primary
-    'bg-emerald-(500|600)',       # hardcoded emerald → use bg-primary or semantic
-    'text-gray-(800|900)',        # near-black text → use text-fg
-    'text-white(?!\s)',           # bare text-white → use text-fg-on-primary or text-fg
-    'text-black(?!\s)',           # bare text-black → use text-fg
-    'bg-white(?!\s)'              # bare bg-white → use bg-surface or bg-surface-2
+    'bg-gray-(700|800|900)\b',    # dark gray backgrounds → use bg-surface / bg-surface-2
+    'border-gray-(600|700)\b',    # dark gray borders → use border-border
+    'bg-blue-(500|600)\b',        # hardcoded blue → use bg-primary
+    'bg-emerald-(500|600)\b',     # hardcoded emerald → use bg-primary or semantic
+    'text-gray-(800|900)\b',      # near-black text → use text-fg
+    'text-white\b',               # bare text-white → use text-fg-on-primary or text-fg
+    'text-black\b',               # bare text-black → use text-fg
+    'bg-white\b',                 # bare bg-white → use bg-surface or bg-surface-2
+    'text-blue-(500|600)\b'       # hardcoded blue text → use text-primary
 )
 
 # Files/directories that are allowed to use hard-coded projection colors
@@ -34,8 +35,7 @@ $AllowlistPaths = @(
     "src/components/presentation/SlideshowRenderer",
     "src/components/presentation/QuickMediaRenderer",
     "src/components/presentation/QuickWebViewRenderer",
-    "src/windows/presentation",
-    "src/components/common/ConfirmDialog"  # modal uses red danger button with text-white intentionally
+    "src/windows/presentation"
 )
 
 $ComponentFiles = Get-ChildItem -Path $SourceDir -Recurse -Include "*.tsx","*.ts" |

@@ -134,7 +134,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const toggleBtnClass = (active: boolean) =>
     `px-3 py-1 text-sm rounded border transition-colors ${
       active
-        ? "bg-primary text-white border-primary"
+        ? "bg-primary text-fg-on-primary border-primary"
         : "bg-surface-2 border-border text-muted hover:text-inherit"
     }`;
 

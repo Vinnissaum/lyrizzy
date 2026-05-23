@@ -167,7 +167,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
               <button
                 onClick={handleSaveName}
                 disabled={isSavingName}
-                className="p-1.5 bg-primary hover:bg-primary-hover rounded text-white transition-colors disabled:opacity-50"
+                className="p-1.5 bg-primary hover:bg-primary-hover rounded text-fg-on-primary transition-colors disabled:opacity-50"
               >
                 <Check className="w-3.5 h-3.5" />
               </button>

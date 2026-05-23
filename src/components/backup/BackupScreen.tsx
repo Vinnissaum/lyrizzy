@@ -105,7 +105,7 @@ const ExportCard: React.FC = () => {
       <button
         onClick={handleExport}
         disabled={running}
-        className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors self-start"
+        className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors self-start"
       >
         {running ? t("backup.export.running") : t("backup.export.button")}
       </button>
@@ -196,7 +196,7 @@ const ImportCard: React.FC = () => {
       {step === "idle" && (
         <button
           onClick={handleSelectFile}
-          className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors self-start"
+          className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors self-start"
         >
           {t("backup.import.selectFile")}
         </button>
@@ -283,7 +283,7 @@ const ImportCard: React.FC = () => {
             <button
               onClick={handleRestore}
               disabled={!replaceConfirmed}
-              className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover text-white disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+              className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
             >
               {t("backup.import.restoreButton")}
             </button>

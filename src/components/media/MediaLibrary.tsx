@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Search, Upload } from "lucide-react";
 import { useMediaStore } from "../../stores/media";
 import { FfmpegBanner } from "./FfmpegBanner";
+import { LibreOfficeBanner } from "./LibreOfficeBanner";
 import { MediaCard } from "./MediaCard";
 import { MediaUploadDropzone } from "./MediaUploadDropzone";
 import { MediaDetailPanel } from "./MediaDetailPanel";
@@ -84,7 +85,7 @@ export const MediaLibrary: React.FC = () => {
             <button
               onClick={() => setShowDropzone((v) => !v)}
               data-testid="add-media-button"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors"
             >
               <Upload className="w-3.5 h-3.5" />
               {t("media.addButton")}
@@ -100,7 +101,7 @@ export const MediaLibrary: React.FC = () => {
                 data-testid={`filter-${opt.value ?? "all"}`}
                 className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
                   filter === opt.value
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-fg-on-primary"
                     : "bg-surface-2 text-muted hover:bg-border"
                 }`}
               >
@@ -123,8 +124,9 @@ export const MediaLibrary: React.FC = () => {
           </div>
         </div>
 
-        {/* ffmpeg availability warning */}
+        {/* tool availability warnings */}
         <FfmpegBanner />
+        <LibreOfficeBanner />
 
         {/* Toast */}
         {toast && (
@@ -159,7 +161,7 @@ export const MediaLibrary: React.FC = () => {
               <button
                 onClick={() => setShowDropzone(true)}
                 data-testid="cta-add-media"
-                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg text-sm font-medium transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 {t("media.addButton")}

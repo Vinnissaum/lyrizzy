@@ -40,7 +40,7 @@ export const MediaPicker: React.FC<Props> = ({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-colors w-full text-left"
+        className="flex items-center gap-2 px-3 py-2 bg-surface-2 hover:bg-border rounded-lg text-sm transition-colors w-full text-left"
       >
         {selected ? (
           <>
@@ -52,10 +52,10 @@ export const MediaPicker: React.FC<Props> = ({
                 (e.target as HTMLImageElement).style.display = "none";
               }}
             />
-            <span className="flex-1 truncate text-white">{selected.displayName}</span>
+            <span className="flex-1 truncate">{selected.displayName}</span>
             <button
               type="button"
-              className="text-gray-400 hover:text-red-400 ml-1"
+              className="text-muted hover:text-red-400 ml-1"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(null);
@@ -66,25 +66,25 @@ export const MediaPicker: React.FC<Props> = ({
             </button>
           </>
         ) : (
-          <span className="text-gray-400">{resolvedLabel}</span>
+          <span className="text-muted">{resolvedLabel}</span>
         )}
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-gray-900 rounded-xl shadow-2xl w-[520px] max-h-[70vh] flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <h3 className="text-sm font-semibold text-white">{resolvedLabel}</h3>
+          <div className="bg-surface rounded-xl shadow-2xl w-[520px] max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold">{resolvedLabel}</h3>
               <button
                 onClick={() => setOpen(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-muted hover:text-inherit"
               >
                 ✕
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
               {filtered.length === 0 ? (
-                <p className="col-span-3 text-center text-gray-500 py-8 text-sm">
+                <p className="col-span-3 text-center text-muted py-8 text-sm">
                   {t("media.picker.noMedia")}
                 </p>
               ) : (
@@ -97,11 +97,11 @@ export const MediaPicker: React.FC<Props> = ({
                     }}
                     className={`flex flex-col rounded-lg overflow-hidden border-2 transition-colors ${
                       m.id === value
-                        ? "border-blue-500"
-                        : "border-transparent hover:border-gray-600"
+                        ? "border-primary"
+                        : "border-transparent hover:border-border"
                     }`}
                   >
-                    <div className="aspect-video bg-gray-800 relative">
+                    <div className="aspect-video bg-surface-2 relative">
                       <img
                         src={buildThumbUrl(m)}
                         alt=""
@@ -111,12 +111,12 @@ export const MediaPicker: React.FC<Props> = ({
                         }}
                       />
                       {m.kind === "video" && (
-                        <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1 rounded">
+                        <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-fg-on-primary px-1 rounded">
                           VIDEO
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-300 truncate px-1 py-1">
+                    <p className="text-xs text-muted truncate px-1 py-1">
                       {m.displayName}
                     </p>
                   </button>

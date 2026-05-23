@@ -6,9 +6,9 @@ import type { PresentationMode, ServiceSet } from "../../types";
 
 const MODE_COLORS: Record<PresentationMode, string> = {
   idle: "bg-surface-2 text-muted",
-  live: "bg-green-600 text-white",
+  live: "bg-green-600 text-fg-on-primary",
   blank: "bg-surface-2 border border-border text-muted",
-  frozen: "bg-blue-700 text-white",
+  frozen: "bg-blue-700 text-fg-on-primary",
 };
 
 interface ItemRowProps {

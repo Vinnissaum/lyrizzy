@@ -49,10 +49,10 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
 
       {/* Bottom label */}
       <div className="absolute bottom-0 inset-x-0 bg-black/70 px-2 py-1.5 text-left">
-        <p className="text-xs text-white truncate leading-tight">
+        <p className="text-xs text-fg-on-primary truncate leading-tight">
           {media.displayName}
         </p>
-        <p className="text-xs text-gray-400">{formatBytes(media.byteSize)}</p>
+        <p className="text-xs text-muted">{formatBytes(media.byteSize)}</p>
       </div>
 
       {/* Kind badge */}
@@ -60,8 +60,8 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
         <span
           className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded font-medium ${
             media.kind === "video"
-              ? "bg-purple-700 text-white"
-              : "bg-blue-700 text-white"
+              ? "bg-purple-700 text-fg-on-primary"
+              : "bg-blue-700 text-fg-on-primary"
           }`}
         >
           {media.kind === "video" ? (

@@ -220,7 +220,7 @@ export const HomeSetBuilder: React.FC = () => {
     <div className="flex flex-col h-full relative">
       {/* Empty-set toast */}
       {emptySetToast && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-amber-500/90 text-white text-sm rounded-lg shadow-lg pointer-events-none">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-amber-500/90 text-fg-on-primary text-sm rounded-lg shadow-lg pointer-events-none">
           {t("presentation.emptySet")}
         </div>
       )}
@@ -229,7 +229,7 @@ export const HomeSetBuilder: React.FC = () => {
       <div className="px-3 py-2 border-b border-border flex items-center gap-2 flex-wrap shrink-0">
         <button
           onClick={handleApresentar}
-          className="px-3 py-1 text-xs bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
+          className="px-3 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors"
           data-testid="apresentar-button"
         >
           ▶ {t("presentation.action.present")}
@@ -381,7 +381,7 @@ export const HomeSetBuilder: React.FC = () => {
               <button
                 onClick={handleConfirmAnnouncement}
                 disabled={!announcementText.trim()}
-                className="px-4 py-2 text-sm rounded-lg bg-primary hover:bg-primary-hover text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm rounded-lg bg-primary hover:bg-primary-hover text-fg-on-primary font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t("home.overlay.confirm")}
               </button>
@@ -432,7 +432,7 @@ export const HomeSetBuilder: React.FC = () => {
                 <button
                   onClick={handleConfirmCameraUrl}
                   disabled={!tempCameraUrl.trim()}
-                  className="px-4 py-2 text-sm rounded-lg bg-primary hover:bg-primary-hover text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm rounded-lg bg-primary hover:bg-primary-hover text-fg-on-primary font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t("home.overlay.cameraUse")}
                 </button>

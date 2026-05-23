@@ -88,7 +88,7 @@ export const CountdownPanel: React.FC = () => {
         {isRunning ? (
           <button
             onClick={pause}
-            className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-semibold transition-colors"
+            className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-fg-on-primary rounded-xl text-sm font-semibold transition-colors"
           >
             {t("countdown.pause")}
           </button>
@@ -96,7 +96,7 @@ export const CountdownPanel: React.FC = () => {
           <button
             onClick={() => start()}
             disabled={state.durationMs === 0}
-            className="flex-1 py-3 bg-primary hover:bg-primary-hover text-white disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
+            className="flex-1 py-3 bg-primary hover:bg-primary-hover text-fg-on-primary disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors"
           >
             {t("countdown.start")}
           </button>

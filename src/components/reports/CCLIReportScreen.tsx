@@ -73,7 +73,7 @@ export const CCLIReportScreen: React.FC = () => {
   return (
     <div className="space-y-4 relative">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-primary text-white text-sm rounded-lg shadow-lg">
+        <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-primary text-fg-on-primary text-sm rounded-lg shadow-lg">
           {toast}
         </div>
       )}
@@ -101,7 +101,7 @@ export const CCLIReportScreen: React.FC = () => {
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="ml-auto px-4 py-1.5 text-sm bg-primary hover:bg-primary-hover text-white disabled:opacity-50 rounded-lg font-medium transition-colors"
+          className="ml-auto px-4 py-1.5 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary disabled:opacity-50 rounded-lg font-medium transition-colors"
         >
           {exporting ? t("reports.ccli.exporting") : t("reports.ccli.exportButton")}
         </button>

@@ -380,7 +380,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
               />
               <button
                 type="submit"
-                className="px-2 py-1 text-xs bg-primary hover:bg-primary-hover text-white rounded transition-colors"
+                className="px-2 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded transition-colors"
               >
                 ✓
               </button>
@@ -553,7 +553,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
                   onClick={() => setMediaFilter(f)}
                   className={`px-2 py-1 text-xs rounded transition-colors ${
                     mediaFilter === f
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-fg-on-primary"
                       : "bg-surface-2 text-muted hover:bg-border"
                   }`}
                 >
@@ -595,7 +595,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
                       }}
                     />
                     {m.kind === "video" && (
-                      <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1 rounded">
+                      <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-fg-on-primary px-1 rounded">
                         VIDEO
                       </span>
                     )}
@@ -664,7 +664,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack }) => {
         <button
           onClick={handleLoadForPresentation}
           disabled={isLoading || serviceSet.items.length === 0}
-          className="w-full px-3 py-2 text-sm bg-primary hover:bg-primary-hover text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+          className="w-full px-3 py-2 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
         >
           {isLoading ? t("builder.loading") : t("builder.present")}
         </button>

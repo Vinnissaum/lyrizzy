@@ -3,7 +3,37 @@
     "allow": [
       "PowerShell(Get-ChildItem C:\\\\git\\\\triade\\\\src-tauri -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
       "PowerShell(Get-ChildItem C:\\\\git\\\\triade\\\\src -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
-      "PowerShell(& \"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -all -format json 2>&1)"
+      "PowerShell(& \"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\Installer\\\\vswhere.exe\" -all -format json 2>&1)",
+      "WebFetch(domain:schema.tauri.app)",
+      "Bash(cargo test *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(cmd /c \"cd /d C:\\\\git\\\\triade && node node_modules/vitest/vitest.mjs run 2>&1\")",
+      "Bash(cat vite.config.ts)",
+      "Bash(cat vitest.config.ts)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(cargo build *)",
+      "Bash(xargs grep -l \"stage\")",
+      "Bash(git commit *)",
+      "PowerShell(cd C:\\\\git\\\\triade; pwsh scripts/check-theme-tokens.ps1 2>&1 | Select-Object -First 60)",
+      "Bash(powershell -ExecutionPolicy Bypass -File scripts/check-theme-tokens.ps1)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(pwsh scripts/check-theme-tokens.ps1)",
+      "PowerShell(Set-Location \"C:\\\\git\\\\triade\"; pwsh scripts/check-theme-tokens.ps1)",
+      "PowerShell(Set-Location \"C:\\\\git\\\\triade\"; powershell -File scripts/check-theme-tokens.ps1)",
+      "PowerShell(Set-Location \"C:\\\\git\\\\triade\"; powershell -File scripts/check-theme-tokens.ps1; Write-Host \"Exit: $LASTEXITCODE\")",
+      "Bash(git merge *)",
+      "Bash(git -C /c/git/triade/.claude/worktrees/agent-afa4023db0ce0e2e7 status)",
+      "Bash(git -C /c/git/triade/.claude/worktrees/agent-a6fd87598298aabe6 status)",
+      "Bash(git -C /c/git/triade/.claude/worktrees/agent-a798087edd6901d1a status)",
+      "Bash(Remove-Item \"C:\\\\git\\\\triade\\\\src\\\\components\\\\presentation\\\\PresentationNavigator.tsx\" -Force)",
+      "Bash(Remove-Item \"C:\\\\git\\\\triade\\\\src\\\\components\\\\presentation\\\\PresentationNavigator.test.tsx\" -Force)",
+      "Bash(Write-Output \"Deleted both files\")",
+      "Bash(cargo clippy *)",
+      "Bash(rustup component *)",
+      "Bash(powershell.exe *)",
+      "PowerShell(& powershell.exe -ExecutionPolicy Bypass -File scripts/check-theme-tokens.ps1 2>&1)"
     ]
   }
 }

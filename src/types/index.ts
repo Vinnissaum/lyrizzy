@@ -15,6 +15,8 @@ export type SectionType =
   | 'interlude'
   | 'tag';
 
+export type TextCasing = 'normal' | 'upper' | 'lower' | 'title';
+
 export interface SongSection {
   id: string;
   songId: string;
@@ -49,6 +51,7 @@ export interface Song {
   backgroundPreset?: string;
   fontFamily?: string;
   fontSize?: string;
+  textCasing?: TextCasing;
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;

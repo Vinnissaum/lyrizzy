@@ -44,6 +44,23 @@
     "background": "Fundo",
     "sections": "Seções",
     "addSection": "+ Adicionar seção",
+    "casing": {
+      "title": "Caixa do texto",
+      "normal": "Normal",
+      "upper": "MAIÚSCULAS",
+      "lower": "minúsculas",
+      "titleCase": "Primeira Maiúscula"
+    },
+    "paste": {
+      "button": "Colar letra completa",
+      "dialogTitle": "Colar letra completa",
+      "hint": "Cole a letra inteira. Cada bloco separado por uma linha em branco vira uma estrofe. Isso substitui todas as seções atuais.",
+      "placeholder": "Verso 1 linha 1\nVerso 1 linha 2\n\nRefrão linha 1\nRefrão linha 2",
+      "confirm": "Substituir seções",
+      "cancel": "Cancelar",
+      "applied": "{{count}} seção(ões) criada(s)",
+      "empty": "Nenhuma seção encontrada no texto colado"
+    },
     "bg": {
       "none": "Nenhum",
       "change": "Trocar",

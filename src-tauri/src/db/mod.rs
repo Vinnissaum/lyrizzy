@@ -8,8 +8,11 @@ use tauri::Manager;
 
 /// Initialize the SQLite database pool and run pending migrations.
 ///
-/// Creates the data directory at `%APPDATA%\TrinityLyrics\` if it does not exist.
-/// The database file is at `%APPDATA%\TrinityLyrics\database.db`.
+/// The data directory is resolved per-platform via `app_data_dir()`:
+/// - Windows: `%APPDATA%\TrinityLyrics\`
+/// - Linux:   `$XDG_DATA_HOME/TrinityLyrics/` (default `~/.local/share/TrinityLyrics/`)
+/// - macOS:   `~/Library/Application Support/TrinityLyrics/`
+/// It is created if missing; the database file is `database.db` inside it.
 pub async fn init_db(app: &AppHandle) -> Result<SqlitePool, sqlx::Error> {
     let data_dir = app
         .path()

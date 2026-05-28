@@ -17,6 +17,7 @@ import type {
   ServiceSet,
   SetItem,
   Song,
+  TextCasing,
   UpdateInfo,
   WebViewConfig,
 } from "../types";
@@ -95,6 +96,7 @@ export interface CreateSongPayload {
   backgroundPreset?: string;
   fontFamily?: string;
   fontSize?: string;
+  textCasing?: TextCasing;
   sections: SectionPayload[];
 }
 

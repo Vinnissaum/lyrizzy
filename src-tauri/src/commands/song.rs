@@ -121,6 +121,7 @@ pub struct CreateSongPayload {
     pub background_preset: Option<String>,
     pub font_family: Option<String>,
     pub font_size: Option<String>,
+    pub text_casing: Option<String>,
     pub sections: Vec<SectionPayload>,
 }
 
@@ -144,6 +145,7 @@ pub struct UpdateSongPayload {
     pub background_preset: Option<String>,
     pub font_family: Option<String>,
     pub font_size: Option<String>,
+    pub text_casing: Option<String>,
     pub sections: Vec<SectionPayload>,
 }
 
@@ -181,9 +183,9 @@ pub async fn db_create_song(
     sqlx::query(
         "INSERT INTO songs (id, title, artist, author, copyright, ccli_number, key_signature,
                             language, notes, background_id, scrim_opacity, slide_config, source,
-                            background_mode, background_preset, font_family, font_size,
+                            background_mode, background_preset, font_family, font_size, text_casing, text_casing,
                             created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&payload.title)
@@ -202,6 +204,7 @@ pub async fn db_create_song(
     .bind(&payload.background_preset)
     .bind(&payload.font_family)
     .bind(&payload.font_size)
+    .bind(&payload.text_casing)
     .bind(now)
     .bind(now)
     .execute(&mut *tx)
@@ -283,6 +286,7 @@ pub async fn db_create_song(
         background_preset: payload.background_preset,
         font_family: payload.font_family,
         font_size: payload.font_size,
+        text_casing: payload.text_casing,
         created_at: now,
         updated_at: now,
         deleted_at: None,
@@ -319,7 +323,7 @@ pub async fn db_update_song(
                           key_signature=?, language=?, notes=?, background_id=?,
                           scrim_opacity=?, slide_config=?, source=?,
                           background_mode=?, background_preset=?, font_family=?, font_size=?,
-                          updated_at=?
+                          text_casing=?, updated_at=?
          WHERE id=?",
     )
     .bind(&payload.title)
@@ -338,6 +342,7 @@ pub async fn db_update_song(
     .bind(&payload.background_preset)
     .bind(&payload.font_family)
     .bind(&payload.font_size)
+    .bind(&payload.text_casing)
     .bind(now)
     .bind(&payload.id)
     .execute(&mut *tx)
@@ -425,6 +430,7 @@ pub async fn db_update_song(
         background_preset: payload.background_preset,
         font_family: payload.font_family,
         font_size: payload.font_size,
+        text_casing: payload.text_casing,
         created_at,
         updated_at: now,
         deleted_at: None,
@@ -462,6 +468,7 @@ pub async fn db_list_songs(
                          s.key_signature, s.language, s.notes, s.background_id,
                          s.scrim_opacity, s.slide_config, s.source,
                          s.background_mode, s.background_preset, s.font_family, s.font_size,
+                         s.text_casing,
                          s.created_at, s.updated_at, s.deleted_at
                  FROM songs s
                  JOIN songs_fts ON songs_fts.rowid = s.rowid
@@ -481,7 +488,7 @@ pub async fn db_list_songs(
                 sqlx::query(
                     "SELECT id, title, artist, author, copyright, ccli_number, key_signature,
                              language, notes, background_id, scrim_opacity, slide_config, source,
-                             background_mode, background_preset, font_family, font_size,
+                             background_mode, background_preset, font_family, font_size, text_casing,
                              created_at, updated_at, deleted_at
                      FROM songs WHERE deleted_at IS NULL
                        AND (title LIKE ? OR artist LIKE ?)
@@ -499,7 +506,7 @@ pub async fn db_list_songs(
         _ => sqlx::query(
             "SELECT id, title, artist, author, copyright, ccli_number, key_signature, language,
                      notes, background_id, scrim_opacity, slide_config, source,
-                     background_mode, background_preset, font_family, font_size,
+                     background_mode, background_preset, font_family, font_size, text_casing,
                      created_at, updated_at, deleted_at
              FROM songs WHERE deleted_at IS NULL ORDER BY title ASC LIMIT ? OFFSET ?",
         )
@@ -532,6 +539,7 @@ pub async fn db_list_songs(
             background_preset: row.get("background_preset"),
             font_family: row.get("font_family"),
             font_size: row.get("font_size"),
+            text_casing: row.get("text_casing"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
             deleted_at: row.get("deleted_at"),
@@ -545,7 +553,7 @@ pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPaylo
     let row = sqlx::query(
         "SELECT id, title, artist, author, copyright, ccli_number, key_signature, language,
                 notes, background_id, scrim_opacity, slide_config, source,
-                background_mode, background_preset, font_family, font_size,
+                background_mode, background_preset, font_family, font_size, text_casing,
                 created_at, updated_at, deleted_at
          FROM songs WHERE id = ?",
     )
@@ -575,6 +583,7 @@ pub async fn db_get_song(pool: &SqlitePool, id: &str) -> Result<Song, ErrorPaylo
         background_preset: row.get("background_preset"),
         font_family: row.get("font_family"),
         font_size: row.get("font_size"),
+        text_casing: row.get("text_casing"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
         deleted_at: row.get("deleted_at"),

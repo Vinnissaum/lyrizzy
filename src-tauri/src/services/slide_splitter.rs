@@ -1,7 +1,17 @@
 use crate::domain::slide::{Slide, SlideConfig};
-use crate::domain::song::SongSection;
+use crate::domain::song::{SongSection, TextCasing};
 
+/// Split a section into slides without any casing transform.
 pub fn split(section: &SongSection, config: &SlideConfig) -> Vec<Slide> {
+    split_with_casing(section, config, TextCasing::Normal)
+}
+
+/// Split a section into slides, applying `casing` to every display line.
+pub fn split_with_casing(
+    section: &SongSection,
+    config: &SlideConfig,
+    casing: TextCasing,
+) -> Vec<Slide> {
     if section.body.trim().is_empty() {
         return vec![];
     }
@@ -28,7 +38,7 @@ pub fn split(section: &SongSection, config: &SlideConfig) -> Vec<Slide> {
                         section_id: section.id.clone(),
                     });
                 }
-                current_lines.push(display_line);
+                current_lines.push(casing.apply(&display_line));
             }
         }
     }
@@ -187,6 +197,22 @@ mod tests {
         assert_eq!(slides.len(), 2, "blank line must force a slide boundary");
         assert_eq!(slides[0].lines, vec!["Verse line one", "Verse line two"]);
         assert_eq!(slides[1].lines, vec!["Chorus line one", "Chorus line two"]);
+    }
+
+    #[test]
+    fn casing_is_applied_to_display_lines() {
+        let section = make_section("graça divina\nque me salvou", 1);
+        let config = SlideConfig::default();
+        let slides = split_with_casing(&section, &config, TextCasing::Upper);
+        assert_eq!(slides.len(), 1);
+        assert_eq!(slides[0].lines, vec!["GRAÇA DIVINA", "QUE ME SALVOU"]);
+    }
+
+    #[test]
+    fn split_defaults_to_no_casing() {
+        let section = make_section("Graça Divina", 1);
+        let slides = split(&section, &SlideConfig::default());
+        assert_eq!(slides[0].lines, vec!["Graça Divina"]);
     }
 
     #[test]

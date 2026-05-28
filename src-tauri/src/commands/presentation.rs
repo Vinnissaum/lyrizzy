@@ -22,10 +22,11 @@ fn blank_slide() -> Slide {
 fn sections_to_slides(
     sections: &[crate::domain::song::SongSection],
     config: &SlideConfig,
+    casing: crate::domain::song::TextCasing,
 ) -> Vec<Slide> {
     sections
         .iter()
-        .flat_map(|s| slide_splitter::split(s, config))
+        .flat_map(|s| slide_splitter::split_with_casing(s, config, casing))
         .collect()
 }
 
@@ -178,7 +179,16 @@ pub async fn load_set_for_presentation(
             SetItemType::Song => {
                 if let Some(song_id) = &item.song_id {
                     let sections = load_sections(pool, song_id).await?;
-                    let s = sections_to_slides(&sections, &config);
+                    let casing_str: Option<String> = sqlx::query_scalar(
+                        "SELECT text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
+                    )
+                    .bind(song_id)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None)
+                    .flatten();
+                    let casing = crate::domain::song::TextCasing::from_opt(casing_str.as_deref());
+                    let s = sections_to_slides(&sections, &config, casing);
                     if s.is_empty() { vec![blank_slide()] } else { s }
                 } else {
                     vec![blank_slide()]

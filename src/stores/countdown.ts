@@ -27,12 +27,14 @@ const DEFAULT_STATE: CountdownState = {
   endBehavior: "holdZero",
 };
 
-export const useCountdownStore = create<CountdownStore>((set, get) => ({
+export const useCountdownStore = create<CountdownStore>((set) => ({
   state: DEFAULT_STATE,
   isSubscribed: false,
 
   subscribe: async () => {
-    if (get().isSubscribed) return () => {};
+    // Per-mount listener registration with a real unlisten cleanup — see the
+    // matching note in stores/presentation.ts for why the `isSubscribed` guard
+    // was removed (it strands the listener under React 18 StrictMode).
     set({ isSubscribed: true });
 
     try {
@@ -45,7 +47,6 @@ export const useCountdownStore = create<CountdownStore>((set, get) => ({
     });
 
     return async () => {
-      set({ isSubscribed: false });
       (await unlistenPromise)();
     };
   },

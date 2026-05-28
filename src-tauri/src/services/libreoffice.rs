@@ -1,19 +1,27 @@
 /// LibreOffice sidecar service — path detection and PPTX/PDF → PNG conversion.
 use std::path::{Path, PathBuf};
 
-/// Resolve the `soffice` executable path.
+/// Bundled LibreOffice executable file name, per platform.
+/// Windows ships `soffice.exe`; Linux/macOS use the extension-less `soffice`.
+#[cfg(windows)]
+const BUNDLED_SOFFICE_BIN: &str = "soffice.exe";
+#[cfg(not(windows))]
+const BUNDLED_SOFFICE_BIN: &str = "soffice";
+
+/// Resolve the LibreOffice executable path.
 ///
 /// Priority:
-/// 1. Bundled: `<resource_dir>/soffice/program/soffice.exe` (Windows)
+/// 1. Bundled: `<resource_dir>/soffice/program/<soffice|soffice.exe>`
 /// 2. `SOFFICE_PATH` environment variable
 /// 3. `soffice` on PATH (probed via `--version`)
+/// 4. `libreoffice` on PATH (common on Debian/Ubuntu, where `soffice` may be absent)
 pub fn soffice_path(resource_dir: Option<&Path>) -> Option<PathBuf> {
     // 1. Bundled binary
     if let Some(res) = resource_dir {
         let bundled = res
             .join("soffice")
             .join("program")
-            .join("soffice.exe");
+            .join(BUNDLED_SOFFICE_BIN);
         if bundled.exists() {
             return Some(bundled);
         }
@@ -27,14 +35,16 @@ pub fn soffice_path(resource_dir: Option<&Path>) -> Option<PathBuf> {
         }
     }
 
-    // 3. soffice on PATH
-    let ok = std::process::Command::new("soffice")
-        .arg("--version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
-    if ok {
-        return Some(PathBuf::from("soffice"));
+    // 3/4. `soffice` then `libreoffice` on PATH.
+    for bin in ["soffice", "libreoffice"] {
+        let ok = std::process::Command::new(bin)
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        if ok {
+            return Some(PathBuf::from(bin));
+        }
     }
 
     None
@@ -104,11 +114,20 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let prog_dir = tmp.path().join("soffice").join("program");
         std::fs::create_dir_all(&prog_dir).unwrap();
-        let exe = prog_dir.join("soffice.exe");
+        let exe = prog_dir.join(BUNDLED_SOFFICE_BIN);
         std::fs::write(&exe, b"stub").unwrap();
 
         let result = soffice_path(Some(tmp.path()));
         assert_eq!(result, Some(exe));
+    }
+
+    #[test]
+    fn bundled_bin_name_is_platform_correct() {
+        if cfg!(windows) {
+            assert_eq!(BUNDLED_SOFFICE_BIN, "soffice.exe");
+        } else {
+            assert_eq!(BUNDLED_SOFFICE_BIN, "soffice");
+        }
     }
 
     #[test]

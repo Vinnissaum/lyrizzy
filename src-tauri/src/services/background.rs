@@ -265,6 +265,7 @@ mod tests {
             background_preset: None,
             font_family: None,
             font_size: None,
+            text_casing: None,
             sections: vec![section],
         }
     }
@@ -287,6 +288,7 @@ mod tests {
             background_preset: Some(preset.into()),
             font_family: Some(family.into()),
             font_size: Some(size.into()),
+            text_casing: None,
             sections: vec![section],
         }
     }

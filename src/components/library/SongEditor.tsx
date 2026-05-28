@@ -15,13 +15,13 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { createSong, updateSong, deleteSong, getSong } from "../../api/commands";
+import { createSong, updateSong, deleteSong, getSong, parsePlainTextImport } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { SectionCard, SectionDraft } from "./SectionCard";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import type { Media, SectionType, BackgroundPreset, FontFamily, FontSize } from "../../types";
+import type { Media, SectionType, BackgroundPreset, FontFamily, FontSize, TextCasing } from "../../types";
 
 let dndCounter = 0;
 const nextDndId = () => `sec-${++dndCounter}`;
@@ -293,7 +293,11 @@ export const SongEditor: React.FC = () => {
   const [backgroundPreset, setBackgroundPreset] = useState<string | undefined>();
   const [fontFamily, setFontFamily] = useState<string | undefined>();
   const [fontSize, setFontSize] = useState<string | undefined>();
+  const [textCasing, setTextCasing] = useState<TextCasing | undefined>();
   const [rightsOpen, setRightsOpen] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteBusy, setPasteBusy] = useState(false);
   const [sections, setSections] = useState<SectionDraft[]>([
     newSection("verse", []),
   ]);
@@ -333,6 +337,7 @@ export const SongEditor: React.FC = () => {
         setBackgroundPreset(song.backgroundPreset);
         setFontFamily(song.fontFamily);
         setFontSize(song.fontSize);
+        setTextCasing(song.textCasing);
         const hasRights = !!(song.author || song.copyright || song.ccliNumber);
         setRightsOpen(hasRights);
         setSections(
@@ -392,6 +397,7 @@ export const SongEditor: React.FC = () => {
         backgroundPreset: backgroundPreset || undefined,
         fontFamily: fontFamily || undefined,
         fontSize: fontSize || undefined,
+        textCasing: textCasing && textCasing !== "normal" ? textCasing : undefined,
         sections: sections.map((s, i) => ({
           label: s.label,
           type: s.type,
@@ -447,6 +453,36 @@ export const SongEditor: React.FC = () => {
 
   const addSection = () => {
     setSections((prev) => [...prev, newSection("verse", prev)]);
+  };
+
+  // Parse pasted full lyrics (blank line = new strophe) and REPLACE all sections.
+  const applyPaste = async () => {
+    const text = pasteText.trim();
+    if (!text) return;
+    setPasteBusy(true);
+    try {
+      const parsed = await parsePlainTextImport(text);
+      if (parsed.length === 0) {
+        addToast(t("editor.paste.empty"), "error");
+        return;
+      }
+      setSections(
+        parsed.map((p) => ({
+          dndId: nextDndId(),
+          label: p.label,
+          type: p.sectionType as SectionType,
+          body: p.body,
+          repeatCount: 1,
+        }))
+      );
+      setShowPaste(false);
+      setPasteText("");
+      addToast(t("editor.paste.applied", { count: parsed.length }), "success");
+    } catch (err) {
+      addToast(String(err), "error");
+    } finally {
+      setPasteBusy(false);
+    }
   };
 
   const updateSection = (idx: number, updated: SectionDraft) => {
@@ -577,11 +613,37 @@ export const SongEditor: React.FC = () => {
           />
         </div>
 
-        {/* Sections */}
+        {/* Text casing */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
-            {t("editor.sections")}
+            {t("editor.casing.title")}
           </h3>
+          <select
+            value={textCasing ?? "normal"}
+            onChange={(e) => setTextCasing(e.target.value as TextCasing)}
+            className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+          >
+            <option value="normal">{t("editor.casing.normal")}</option>
+            <option value="upper">{t("editor.casing.upper")}</option>
+            <option value="lower">{t("editor.casing.lower")}</option>
+            <option value="title">{t("editor.casing.titleCase")}</option>
+          </select>
+        </div>
+
+        {/* Sections */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
+              {t("editor.sections")}
+            </h3>
+            <button
+              type="button"
+              onClick={() => { setPasteText(""); setShowPaste(true); }}
+              className="text-xs text-muted hover:text-inherit border border-border hover:border-muted rounded-lg px-2.5 py-1 transition-colors"
+            >
+              {t("editor.paste.button")}
+            </button>
+          </div>
           {bodyError && (
             <p className="text-red-400 text-xs">{bodyError}</p>
           )}
@@ -663,6 +725,41 @@ export const SongEditor: React.FC = () => {
         }}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {/* Paste full lyrics — blank line separates strophes; replaces all sections */}
+      {showPaste && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg bg-surface border border-border rounded-xl shadow-xl p-4 space-y-3">
+            <h3 className="text-sm font-medium text-fg">{t("editor.paste.dialogTitle")}</h3>
+            <p className="text-xs text-muted">{t("editor.paste.hint")}</p>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder={t("editor.paste.placeholder")}
+              rows={12}
+              autoFocus
+              className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:border-primary"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPaste(false)}
+                className="px-3 py-1.5 text-sm text-muted hover:text-inherit rounded-lg transition-colors"
+              >
+                {t("editor.paste.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={applyPaste}
+                disabled={!pasteText.trim() || pasteBusy}
+                className="px-4 py-1.5 text-sm bg-primary hover:bg-primary-hover disabled:bg-surface-2 disabled:text-muted disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-fg-on-primary"
+              >
+                {t("editor.paste.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

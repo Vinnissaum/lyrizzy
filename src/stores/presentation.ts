@@ -20,12 +20,19 @@ interface PresentationStore {
   setMode: (mode: PresentationMode) => Promise<void>;
 }
 
-export const usePresentationStore = create<PresentationStore>((set, get) => ({
+export const usePresentationStore = create<PresentationStore>((set) => ({
   state: null,
   isSubscribed: false,
 
   subscribe: async () => {
-    if (get().isSubscribed) return () => {};
+    // Each mount registers its own `state_changed` listener and returns a
+    // cleanup that unlistens exactly that listener. We deliberately do NOT gate
+    // on an `isSubscribed` flag: under React 18 StrictMode the mount→unmount→
+    // remount cycle interleaves so that a flag-guarded remount returns a no-op
+    // while the first cleanup unlistens the only live listener — leaving the
+    // presentation window with no listener (slides emitted but never reflected
+    // on screen). Registering per-mount yields register L1 → unlisten L1 →
+    // register L2, so exactly one listener stays live.
     set({ isSubscribed: true });
 
     // Hydrate immediately
@@ -39,7 +46,6 @@ export const usePresentationStore = create<PresentationStore>((set, get) => ({
     });
 
     return async () => {
-      set({ isSubscribed: false });
       (await unlistenPromise)();
     };
   },

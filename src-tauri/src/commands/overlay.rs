@@ -3,6 +3,15 @@ use crate::domain::presentation::OverlayState;
 use crate::state::AppState;
 use tauri::{AppHandle, Emitter, State};
 
+/// Read back the full presentation state (lock dropped before emit) and broadcast
+/// it as `state_changed`. Overlay commands previously emitted an empty `()` payload,
+/// which set the presentation window's store to `null` and blanked the screen.
+async fn emit_state_changed(app: &AppHandle, state: &AppState) -> Result<(), ErrorPayload> {
+    let snapshot = state.presentation.read().await.clone();
+    app.emit("state_changed", &snapshot)
+        .map_err(|e| ErrorPayload::from(e.to_string()))
+}
+
 #[tauri::command]
 pub async fn set_announcement_overlay(
     state: State<'_, AppState>,
@@ -13,9 +22,7 @@ pub async fn set_announcement_overlay(
         let mut p = state.presentation.write().await;
         p.overlay = Some(OverlayState::Announcement { text });
     }
-    app.emit("state_changed", ())
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(())
+    emit_state_changed(&app, &state).await
 }
 
 #[tauri::command]
@@ -28,9 +35,7 @@ pub async fn set_media_overlay(
         let mut p = state.presentation.write().await;
         p.overlay = Some(OverlayState::Media { media_id });
     }
-    app.emit("state_changed", ())
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(())
+    emit_state_changed(&app, &state).await
 }
 
 #[tauri::command]
@@ -43,9 +48,7 @@ pub async fn set_webview_overlay(
         let mut p = state.presentation.write().await;
         p.overlay = Some(OverlayState::WebView { url });
     }
-    app.emit("state_changed", ())
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(())
+    emit_state_changed(&app, &state).await
 }
 
 #[tauri::command]
@@ -57,9 +60,7 @@ pub async fn clear_overlay(
         let mut p = state.presentation.write().await;
         p.overlay = None;
     }
-    app.emit("state_changed", ())
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(())
+    emit_state_changed(&app, &state).await
 }
 
 #[cfg(test)]

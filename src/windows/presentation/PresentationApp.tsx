@@ -1,12 +1,12 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { onLocaleChanged } from "../../api/commands";
+import { onLocaleChanged, onSettingChanged } from "../../api/commands";
 import { mediaUrl } from "../../api/assets";
 import { forwardKeydown } from "../../runtime/keyboard";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
-import { useSettingsStore } from "../../stores/settings";
+import { useSettingsStore, PRESENTATION_FONT_SIZE_KEY } from "../../stores/settings";
 import { SongBackground } from "../../components/presentation/SongBackground";
 import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRenderer";
 import { CountdownRenderer } from "../../components/presentation/CountdownRenderer";
@@ -48,15 +48,17 @@ function SongSlide({
   background,
   frozen,
   mode,
+  defaultFontSize,
 }: {
   slideLines: string[];
   background?: BackgroundInfo;
   frozen?: boolean;
   mode: string;
+  defaultFontSize: FontSize;
 }) {
   const fg = background?.preset ? PRESET_FG[background.preset] : "#FFFFFF";
   const fontClass = FONT_CLASS[background?.typography?.fontFamily ?? "sans"];
-  const sizeStyle = SIZE_STYLE[background?.typography?.fontSize ?? "lg"];
+  const sizeStyle = SIZE_STYLE[background?.typography?.fontSize ?? defaultFontSize];
 
   return (
     <div className="relative h-full bg-black overflow-hidden select-none">
@@ -93,7 +95,13 @@ export const PresentationApp: React.FC = () => {
   const { state: countdown, subscribe: subscribeCountdown, start: startCountdown } =
     useCountdownStore();
   const { refresh: refreshMedia, media } = useMediaStore();
-  const { transitionMs, reduceMotion, setLocale } = useSettingsStore();
+  const {
+    transitionMs,
+    reduceMotion,
+    setLocale,
+    presentationFontSize,
+    loadPresentationFontSize,
+  } = useSettingsStore();
 
   const currentItem = state?.set?.items[state?.currentItemIndex ?? 0];
 
@@ -104,6 +112,12 @@ export const PresentationApp: React.FC = () => {
       i18n.changeLanguage(locale);
       setLocale(locale);
     });
+    const unsubSetting = onSettingChanged((key) => {
+      if (key === PRESENTATION_FONT_SIZE_KEY) {
+        loadPresentationFontSize();
+      }
+    });
+    loadPresentationFontSize();
     refreshMedia();
 
     const keydownHandler = (e: KeyboardEvent) => {
@@ -132,6 +146,7 @@ export const PresentationApp: React.FC = () => {
       unsub.then((u) => u());
       unsubCd.then((u) => u());
       unsubLocale.then((u) => u());
+      unsubSetting.then((u) => u());
       window.removeEventListener("keydown", keydownHandler);
     };
   }, []);
@@ -271,6 +286,7 @@ export const PresentationApp: React.FC = () => {
         background={background}
         frozen={frozen}
         mode={mode}
+        defaultFontSize={presentationFontSize}
       />
     );
   }

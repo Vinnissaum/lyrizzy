@@ -47,7 +47,7 @@ export const OperatorApp: React.FC = () => {
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const { subscribe: subscribeCountdown } = useCountdownStore();
-  const { setLocale } = useSettingsStore();
+  const { setLocale, loadPresentationFontSize } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
   const [restoreInProgress, setRestoreInProgress] = useState(false);
@@ -74,6 +74,7 @@ export const OperatorApp: React.FC = () => {
       }
     });
     loadBindings();
+    loadPresentationFontSize();
     const unsubBindings = subscribeBindings();
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});

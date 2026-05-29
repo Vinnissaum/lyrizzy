@@ -6,10 +6,14 @@ import { MonitorPicker } from "./MonitorPicker";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { UpdateCheckButton } from "../system/UpdateCheckButton";
 import { useSettingsStore } from "../../stores/settings";
+import type { FontSize } from "../../types";
+
+const FONT_SIZE_OPTIONS: FontSize[] = ["sm", "md", "lg", "xl"];
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
-  const { cameraUrl, setCameraUrl } = useSettingsStore();
+  const { cameraUrl, setCameraUrl, presentationFontSize, setPresentationFontSize } =
+    useSettingsStore();
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -28,6 +32,28 @@ export const SettingsScreen: React.FC = () => {
             {t("settings.windows.title")}
           </h3>
           <MonitorPicker />
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              {t("settings.windows.fontSize")}
+            </p>
+            <div className="flex gap-1">
+              {FONT_SIZE_OPTIONS.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  aria-pressed={presentationFontSize === size}
+                  onClick={() => setPresentationFontSize(size)}
+                  className={`flex-1 px-2 py-1.5 text-sm rounded-lg border transition-colors ${
+                    presentationFontSize === size
+                      ? "bg-primary text-fg-on-primary border-primary"
+                      : "bg-surface border-border text-muted hover:text-inherit"
+                  }`}
+                >
+                  {t(`settings.windows.fontSizes.${size}`)}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-1">
             <p className="text-sm font-medium">
               {t("settings.windows.cameraUrl")}

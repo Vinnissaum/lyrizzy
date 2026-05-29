@@ -129,6 +129,61 @@ struct PresentationLifecyclePayload {
     phase: &'static str,
 }
 
+/// Linux: fullscreen the window directly onto the GTK/GDK monitor that contains
+/// the target monitor's logical origin. On Wayland (incl. WSLg) a client cannot
+/// position its own top-level window, so the `set_position` + `set_fullscreen`
+/// path lands on the primary monitor. `gtk_window_fullscreen_on_monitor` asks the
+/// compositor to fullscreen on a specific monitor, which X11 and Xwayland honor.
+///
+/// Returns `true` if it successfully issued the monitor-targeted fullscreen.
+#[cfg(target_os = "linux")]
+fn fullscreen_on_monitor_linux<R: Runtime>(
+    window: &tauri::WebviewWindow<R>,
+    monitor: &Monitor,
+) -> bool {
+    use gtk::prelude::*;
+
+    let Ok(gtk_window) = window.gtk_window() else {
+        return false;
+    };
+    let Some(screen) = GtkWindowExt::screen(&gtk_window) else {
+        return false;
+    };
+    let display = screen.display();
+
+    // Target origin in logical (DPI-scaled) coords — GDK geometry is logical too.
+    let pos = monitor.position();
+    let scale = monitor.scale_factor();
+    let (lx, ly) = if scale > 0.0 {
+        ((pos.x as f64 / scale) as i32, (pos.y as f64 / scale) as i32)
+    } else {
+        (pos.x, pos.y)
+    };
+
+    // Match the GDK monitor whose origin is nearest the target origin. GDK's
+    // monitor ordering can differ from Tauri's `available_monitors()`, so match
+    // by geometry rather than reusing the Tauri index.
+    let n = display.n_monitors();
+    let mut best: Option<(i32, i64)> = None; // (index, squared distance)
+    for i in 0..n {
+        if let Some(m) = display.monitor(i) {
+            let geo = m.geometry();
+            let dx = (geo.x() - lx) as i64;
+            let dy = (geo.y() - ly) as i64;
+            let dist = dx * dx + dy * dy;
+            if best.map_or(true, |(_, b)| dist < b) {
+                best = Some((i, dist));
+            }
+        }
+    }
+
+    let Some((monitor_idx, _)) = best else {
+        return false;
+    };
+    gtk_window.fullscreen_on_monitor(&screen, monitor_idx);
+    true
+}
+
 /// Returns true when the presentation window should be pinned on top of all
 /// other windows. This is needed in single-monitor setups so the fullscreen
 /// presentation window stays above the operator window.
@@ -212,21 +267,40 @@ pub async fn enter_presentation(
         ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
     })?;
 
-    if let Some(idx) = target_idx {
-        if let Some(m) = monitors.get(idx) {
-            let pos = m.position();
-            let size = m.size();
-            if let Some((lx, ly, _, _)) =
-                logical_placement(pos.x, pos.y, size.width, size.height, m.scale_factor())
-            {
-                if let Err(e) = window.set_position(LogicalPosition::new(lx, ly)) {
-                    tracing::warn!(error = %e, "enter_presentation: set_position failed (ignored)");
+    // On Linux, try the compositor-honored monitor-targeted fullscreen first.
+    let mut placed_fullscreen = false;
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(idx) = target_idx {
+            if let Some(m) = monitors.get(idx) {
+                placed_fullscreen = fullscreen_on_monitor_linux(&window, m);
+                if placed_fullscreen {
+                    tracing::info!(target_idx = idx, "enter_presentation: GTK fullscreen_on_monitor");
+                } else {
+                    tracing::warn!("enter_presentation: GTK fullscreen_on_monitor failed, falling back");
                 }
             }
         }
     }
-    if let Err(e) = window.set_fullscreen(true) {
-        tracing::warn!(error = %e, "enter_presentation: set_fullscreen failed (ignored)");
+
+    // Cross-platform path (and Linux fallback): place then fullscreen.
+    if !placed_fullscreen {
+        if let Some(idx) = target_idx {
+            if let Some(m) = monitors.get(idx) {
+                let pos = m.position();
+                let size = m.size();
+                if let Some((lx, ly, _, _)) =
+                    logical_placement(pos.x, pos.y, size.width, size.height, m.scale_factor())
+                {
+                    if let Err(e) = window.set_position(LogicalPosition::new(lx, ly)) {
+                        tracing::warn!(error = %e, "enter_presentation: set_position failed (ignored)");
+                    }
+                }
+            }
+        }
+        if let Err(e) = window.set_fullscreen(true) {
+            tracing::warn!(error = %e, "enter_presentation: set_fullscreen failed (ignored)");
+        }
     }
 
     app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "entered" })

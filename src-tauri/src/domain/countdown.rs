@@ -28,6 +28,27 @@ pub enum CountdownTarget {
     FixedTime { hour: u8, minute: u8 },
 }
 
+/// Where the countdown digits are anchored on the presentation screen.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum CountdownPosition {
+    TopLeft,
+    TopCenter,
+    TopRight,
+    CenterLeft,
+    Center,
+    CenterRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+}
+
+impl Default for CountdownPosition {
+    fn default() -> Self {
+        CountdownPosition::Center
+    }
+}
+
 /// Configuration for a countdown set item.
 ///
 /// Custom Deserialize provides backward compatibility with the old flat shape
@@ -40,6 +61,10 @@ pub struct CountdownConfig {
     pub end_behavior: CountdownEndBehavior,
     /// Optional media ID for a looped video background behind the digits.
     pub background_media_id: Option<String>,
+    /// Where the digits are anchored on screen. Defaults to center for configs
+    /// saved before this field existed.
+    #[serde(default)]
+    pub position: CountdownPosition,
 }
 
 impl<'de> Deserialize<'de> for CountdownConfig {
@@ -62,6 +87,11 @@ impl<'de> Deserialize<'de> for CountdownConfig {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
+        let position: CountdownPosition = value
+            .get("position")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
         // New format: has a "target" field.
         let target = if let Some(target_val) = value.get("target") {
             serde_json::from_value(target_val.clone())
@@ -78,6 +108,7 @@ impl<'de> Deserialize<'de> for CountdownConfig {
             message,
             end_behavior,
             background_media_id,
+            position,
         })
     }
 }
@@ -136,8 +167,10 @@ mod tests {
             message: Some("O culto começa em…".into()),
             end_behavior: CountdownEndBehavior::AdvanceSet,
             background_media_id: Some("media-uuid-123".into()),
+            position: CountdownPosition::BottomRight,
         };
         let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("\"position\":\"bottom-right\""), "{json}");
         assert!(json.contains("\"target\""), "{json}");
         assert!(json.contains("\"kind\":\"duration\""), "{json}");
         assert!(json.contains("\"durationMs\":600000"), "{json}");
@@ -152,6 +185,7 @@ mod tests {
             message: None,
             end_behavior: CountdownEndBehavior::HoldZero,
             background_media_id: None,
+            position: CountdownPosition::Center,
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"kind\":\"fixedTime\""), "{json}");
@@ -170,6 +204,15 @@ mod tests {
             CountdownTarget::Duration { duration_ms: 600_000 }
         );
         assert_eq!(config.end_behavior, CountdownEndBehavior::AdvanceSet);
+        // Legacy configs (no "position" field) default to center.
+        assert_eq!(config.position, CountdownPosition::Center);
+    }
+
+    #[test]
+    fn countdown_config_position_round_trips() {
+        let json = r#"{"target":{"kind":"duration","durationMs":1000},"message":null,"endBehavior":"holdZero","backgroundMediaId":null,"position":"top-left"}"#;
+        let config: CountdownConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.position, CountdownPosition::TopLeft);
     }
 
     #[test]

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { MediaPicker } from "../common/MediaPicker";
 import { NotesField } from "../common/NotesField";
-import type { CountdownConfig, CountdownEndBehavior, SetItem } from "../../types";
+import type { CountdownConfig, CountdownEndBehavior, CountdownPosition, SetItem } from "../../types";
 
 interface Props {
   item: SetItem;
@@ -38,6 +38,13 @@ function durationToMs(value: string): number | null {
 
 const END_BEHAVIOR_VALUES: CountdownEndBehavior[] = ["holdZero", "blackout", "advanceSet"];
 
+// 3×3 grid of anchor positions, in display order (row-major).
+const POSITION_GRID: CountdownPosition[] = [
+  "top-left", "top-center", "top-right",
+  "center-left", "center", "center-right",
+  "bottom-left", "bottom-center", "bottom-right",
+];
+
 export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const { t } = useTranslation();
   const config = item.countdownConfig;
@@ -59,6 +66,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const [backgroundMediaId, setBackgroundMediaId] = useState<string | undefined>(
     config?.backgroundMediaId
   );
+  const [position, setPosition] = useState<CountdownPosition>(config?.position ?? "center");
   const [durationError, setDurationError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState(item.notes ?? "");
@@ -78,6 +86,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     setMessage(cfg?.message ?? t("countdown.editor.defaultMessage"));
     setEndBehavior(cfg?.endBehavior ?? "holdZero");
     setBackgroundMediaId(cfg?.backgroundMediaId);
+    setPosition(cfg?.position ?? "center");
     setDurationError(null);
     setNotes(item.notes ?? "");
   }, [item.id]);
@@ -90,24 +99,32 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     }, 300);
   };
 
-  const buildConfig = (): CountdownConfig | null => {
+  const buildConfig = (overrides?: Partial<CountdownConfig>): CountdownConfig | null => {
+    let target: CountdownConfig["target"];
     if (mode === "duration") {
       const durationMs = durationToMs(durationInput);
       if (durationMs === null || durationMs <= 0) return null;
-      return {
-        target: { kind: "duration", durationMs },
-        message: message.trim() || undefined,
-        endBehavior,
-        backgroundMediaId,
-      };
+      target = { kind: "duration", durationMs };
     } else {
-      return {
-        target: { kind: "fixedTime", hour: fixedTime.hour, minute: fixedTime.minute },
-        message: message.trim() || undefined,
-        endBehavior,
-        backgroundMediaId,
-      };
+      target = { kind: "fixedTime", hour: fixedTime.hour, minute: fixedTime.minute };
     }
+    return {
+      target,
+      message: message.trim() || undefined,
+      endBehavior,
+      backgroundMediaId,
+      position,
+      ...overrides,
+    };
+  };
+
+  // Persist the current config with optional overrides applied. Used by the
+  // controls that save immediately (end behavior, background, position), since
+  // their new value isn't reflected in state yet at save time.
+  const persist = (overrides?: Partial<CountdownConfig>) => {
+    const newConfig = buildConfig(overrides);
+    if (!newConfig) return;
+    updateSetItem({ id: item.id, countdownConfig: newConfig }).catch(console.error);
   };
 
   const handleSave = async () => {
@@ -209,30 +226,7 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                 checked={endBehavior === value}
                 onChange={() => {
                   setEndBehavior(value);
-                  if (mode === "duration") {
-                    const durationMs = durationToMs(durationInput);
-                    if (durationMs && durationMs > 0) {
-                      updateSetItem({
-                        id: item.id,
-                        countdownConfig: {
-                          target: { kind: "duration" as const, durationMs },
-                          message: message.trim() || undefined,
-                          endBehavior: value,
-                          backgroundMediaId,
-                        },
-                      }).catch(console.error);
-                    }
-                  } else {
-                    updateSetItem({
-                      id: item.id,
-                      countdownConfig: {
-                        target: { kind: "fixedTime" as const, hour: fixedTime.hour, minute: fixedTime.minute },
-                        message: message.trim() || undefined,
-                        endBehavior: value,
-                        backgroundMediaId,
-                      },
-                    }).catch(console.error);
-                  }
+                  persist({ endBehavior: value });
                 }}
                 className="accent-primary"
               />
@@ -252,32 +246,40 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
           onSelect={(media) => {
             const newId = media?.id ?? undefined;
             setBackgroundMediaId(newId);
-            if (mode === "duration") {
-              const durationMs = durationToMs(durationInput);
-              if (durationMs && durationMs > 0) {
-                updateSetItem({
-                  id: item.id,
-                  countdownConfig: {
-                    target: { kind: "duration" as const, durationMs },
-                    message: message.trim() || undefined,
-                    endBehavior,
-                    backgroundMediaId: newId,
-                  },
-                }).catch(console.error);
-              }
-            } else {
-              updateSetItem({
-                id: item.id,
-                countdownConfig: {
-                  target: { kind: "fixedTime" as const, hour: fixedTime.hour, minute: fixedTime.minute },
-                  message: message.trim() || undefined,
-                  endBehavior,
-                  backgroundMediaId: newId,
-                },
-              }).catch(console.error);
-            }
+            persist({ backgroundMediaId: newId });
           }}
         />
+      </div>
+
+      {/* Position */}
+      <div>
+        <label className="text-xs text-muted mb-1 block">{t("countdown.editor.position")}</label>
+        <div className="grid grid-cols-3 gap-1 w-24">
+          {POSITION_GRID.map((pos) => (
+            <button
+              key={pos}
+              type="button"
+              aria-label={t(`countdown.position.${pos}`)}
+              aria-pressed={position === pos}
+              title={t(`countdown.position.${pos}`)}
+              onClick={() => {
+                setPosition(pos);
+                persist({ position: pos });
+              }}
+              className={`h-7 rounded border transition-colors ${
+                position === pos
+                  ? "bg-primary border-primary"
+                  : "bg-surface-2 border-border hover:border-primary"
+              }`}
+            >
+              <span
+                className={`block w-1.5 h-1.5 rounded-full m-auto ${
+                  position === pos ? "bg-fg-on-primary" : "bg-muted"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
       </div>
 
       {saving && <p className="text-xs text-muted">{t("countdown.editor.saving")}</p>}

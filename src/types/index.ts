@@ -211,11 +211,17 @@ export type CountdownTarget =
   | { kind: 'duration'; durationMs: number }
   | { kind: 'fixedTime'; hour: number; minute: number };
 
+export type CountdownPosition =
+  | 'top-left' | 'top-center' | 'top-right'
+  | 'center-left' | 'center' | 'center-right'
+  | 'bottom-left' | 'bottom-center' | 'bottom-right';
+
 export interface CountdownConfig {
   target: CountdownTarget;
   message?: string;
   endBehavior: CountdownEndBehavior;
   backgroundMediaId?: string;
+  position?: CountdownPosition;
 }
 
 export interface CountdownState {

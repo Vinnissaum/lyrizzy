@@ -138,6 +138,7 @@ mod tests {
                 message: Some("Serviço em breve".into()),
                 end_behavior: CountdownEndBehavior::HoldZero,
                 background_media_id: None,
+                position: Default::default(),
             }),
             webview_config: None,
             sort_order: 0,

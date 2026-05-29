@@ -423,6 +423,13 @@ export const setSetting = (key: string, value: string) =>
 export const onLocaleChanged = (cb: (locale: string) => void) =>
   listen<string>("locale_changed", (e) => cb(e.payload));
 
+export const onSettingChanged = (
+  cb: (key: string, value: string) => void,
+) =>
+  listen<{ key: string; value: string }>("setting_changed", (e) =>
+    cb(e.payload.key, e.payload.value),
+  );
+
 // ─── Events ─────────────────────────────────────────────────────────────────
 
 export const onSongsChanged = (cb: () => void) =>

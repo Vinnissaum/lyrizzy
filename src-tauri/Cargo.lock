@@ -4566,6 +4566,7 @@ name = "tauri-app"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "gtk",
  "http",
  "image",
  "serde",

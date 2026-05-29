@@ -68,6 +68,9 @@ WebKitGTK, but it has not been exercised on Linux. **Verify** images and videos 
 the presentation window on a real Linux session. Path-traversal validation is
 platform-independent and already in place.
 
+> **Note:** WSL/WSLg cannot validate the dual-monitor presentation window — it runs
+> over a Wayland→RDP bridge with virtual displays. See `docs/installation.md §0`.
+
 ## 6. Monitor ordering — test on real dual-monitor hardware
 
 `src-tauri/src/commands/window.rs` picks the secondary monitor by comparing positions

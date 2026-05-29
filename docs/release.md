@@ -2,6 +2,9 @@
 
 Manual signing + GitHub Releases workflow for the Tauri updater plugin.
 
+> For end-user install, dual-monitor setup, and the presentation-window acceptance
+> test, see `docs/installation.md`.
+
 ---
 
 ## Prerequisites

@@ -183,7 +183,7 @@ pub async fn db_create_song(
     sqlx::query(
         "INSERT INTO songs (id, title, artist, author, copyright, ccli_number, key_signature,
                             language, notes, background_id, scrim_opacity, slide_config, source,
-                            background_mode, background_preset, font_family, font_size, text_casing, text_casing,
+                            background_mode, background_preset, font_family, font_size, text_casing,
                             created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )

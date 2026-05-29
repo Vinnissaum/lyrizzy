@@ -88,6 +88,7 @@ async fn five_variant_set_produces_correct_slide_counts() {
             background_preset: None,
             font_family: None,
             font_size: None,
+            text_casing: None,
             sections: vec![
                 SectionPayload {
                     label: "Verse 1".into(),

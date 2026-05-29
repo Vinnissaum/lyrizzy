@@ -156,6 +156,7 @@ fn make_song(title: &str, body: &str) -> CreateSongPayload {
         background_preset: None,
         font_family: None,
         font_size: None,
+        text_casing: None,
         sections: vec![SectionPayload {
             label: "Estrofe 1".to_string(),
             section_type: SectionType::Verse,
@@ -243,6 +244,7 @@ async fn fts_search_finds_song_by_author() {
             background_preset: None,
             font_family: None,
             font_size: None,
+            text_casing: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,
@@ -280,6 +282,7 @@ async fn fts_search_finds_song_by_author() {
             background_preset: None,
             font_family: None,
             font_size: None,
+            text_casing: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,

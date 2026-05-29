@@ -94,6 +94,7 @@ async fn run_batch(
                 background_preset: None,
                 font_family: None,
                 font_size: None,
+                text_casing: None,
                 sections,
             },
         )
@@ -131,6 +132,7 @@ async fn import_batch_skips_duplicate_and_imports_unique() {
             background_preset: None,
             font_family: None,
             font_size: None,
+            text_casing: None,
             sections: vec![SectionPayload {
                 label: "Estrofe 1".to_string(),
                 section_type: SectionType::Verse,

@@ -37,11 +37,33 @@ export function normalizeError(err: unknown): ErrorPayload {
 
 // ─── Window management ──────────────────────────────────────────────────────
 
-export const enterPresentation = () =>
-  invoke<void>("enter_presentation");
+/** Settings key for the operator's saved presentation-monitor choice. */
+export const PRESENTATION_MONITOR_KEY = "presentation.monitor_index";
+
+/**
+ * Enter presentation mode. Pass `monitorIndex` to force a specific monitor.
+ * When omitted, the saved operator preference (`presentation.monitor_index`)
+ * is used; if that's unset/"auto", the backend auto-detects the secondary
+ * monitor. This means every existing call site honours the monitor picker.
+ */
+export const enterPresentation = async (monitorIndex?: number): Promise<void> => {
+  let idx = monitorIndex;
+  if (idx === undefined) {
+    try {
+      const stored = await getSetting(PRESENTATION_MONITOR_KEY);
+      if (stored && stored !== "auto") {
+        const n = parseInt(stored, 10);
+        if (!Number.isNaN(n)) idx = n;
+      }
+    } catch {
+      // Setting missing → auto-detect.
+    }
+  }
+  return invoke<void>("enter_presentation", { monitorIndex: idx ?? null });
+};
 
 /** Kept for any ActionId bindings that still reference the old name. */
-export const openPresentationWindow = enterPresentation;
+export const openPresentationWindow = () => enterPresentation();
 
 let exitInflight: Promise<void> | null = null;
 export const exitPresentation = (): Promise<void> => {

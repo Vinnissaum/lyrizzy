@@ -139,21 +139,16 @@ describe("SetItemList", () => {
     expect(goToItem).toHaveBeenCalledWith(0, 0);
   });
 
-  it("displays the item icon and label for each row", () => {
+  it("displays the item label (text only) for each row", () => {
     vi.mocked(usePresentationStore).mockImplementation((selector: (s: any) => any) =>
       selector({ state: { set: mockSet, currentItemIndex: 0 } })
     );
 
     render(<SetItemList />);
 
-    // The label spans contain the full itemLabel text (icon + title)
-    expect(screen.getByText("♪ Aleluia")).toBeInTheDocument();
-    expect(screen.getByText("🖼 Fundo Azul")).toBeInTheDocument();
-    expect(screen.getByText("⏱ Cronômetro — 05:00")).toBeInTheDocument();
-
-    // Icon spans are rendered separately too
-    expect(screen.getByText("♪")).toBeInTheDocument();
-    expect(screen.getByText("🖼")).toBeInTheDocument();
-    expect(screen.getByText("⏱")).toBeInTheDocument();
+    // itemLabel now returns plain text; the type icon is a separate lucide SVG.
+    expect(screen.getByText("Aleluia")).toBeInTheDocument();
+    expect(screen.getByText("Fundo Azul")).toBeInTheDocument();
+    expect(screen.getByText("Cronômetro — 05:00")).toBeInTheDocument();
   });
 });

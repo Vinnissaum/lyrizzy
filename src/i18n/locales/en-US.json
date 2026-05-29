@@ -461,11 +461,6 @@
       "ptBR": "Português (Brasil)",
       "enUS": "English"
     },
-    "theme": {
-      "label": "Theme",
-      "light": "Light",
-      "dark": "Dark"
-    },
     "about": "About",
     "windows": {
       "title": "Windows",
@@ -473,7 +468,10 @@
       "open": "Open / Reopen on this screen",
       "autoSelect": "— Auto —",
       "current": "(current)",
-      "cameraUrl": "Camera URL"
+      "cameraUrl": "Camera URL",
+      "monitorLabel": "Presentation monitor",
+      "monitorHelp": "Which screen to open the presentation on. Auto picks the extended monitor.",
+      "monitorOption": "Monitor {{index}}"
     }
   },
   "reports": {

@@ -4,7 +4,7 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { goToItem } from "../../api/commands";
-import { itemIcon, itemLabel } from "./itemMeta";
+import { ItemTypeIcon, itemLabel } from "./itemMeta";
 import type { Slide, SetItem } from "../../types";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ export const StrophesGrid: React.FC = () => {
   if (!isSongOrSlideshow(activeItem)) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-fg">
-        <span className="text-2xl">{itemIcon(activeItem)}</span>
+        <ItemTypeIcon item={activeItem} size={32} />
         <p className="text-sm font-medium mt-2">{itemLabel(activeItem, songs, media)}</p>
         <p className="text-xs text-muted mt-1">{t("presentation.singleItem.hint")}</p>
       </div>

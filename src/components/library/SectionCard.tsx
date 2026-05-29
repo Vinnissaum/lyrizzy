@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, StickyNote, Image as ImageIcon, X } from "lucide-react";
+import { GripVertical, Trash2, StickyNote, Image as ImageIcon, X, Play } from "lucide-react";
 import type { SectionType, BackgroundPreset, FontFamily, FontSize } from "../../types";
 import { NotesField } from "../common/NotesField";
 import { useMediaStore } from "../../stores/media";
@@ -180,7 +180,7 @@ const SectionBgEditor: React.FC<SectionBgEditorProps> = ({ section, onUpdate, on
             {currentBg && (
               <button
                 onClick={() => onUpdate({ backgroundId: undefined })}
-                className="text-xs text-red-500 hover:text-red-700 px-1"
+                className="text-xs text-danger hover:text-danger px-1"
               >
                 {t("editor.bg.remove")}
               </button>
@@ -195,7 +195,7 @@ const SectionBgEditor: React.FC<SectionBgEditorProps> = ({ section, onUpdate, on
           <div className="bg-surface border border-border rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="text-sm font-semibold">{t("editor.bg.modalTitle")}</h3>
-              <button onClick={() => setShowMediaPicker(false)} className="text-muted hover:text-inherit text-lg leading-none">×</button>
+              <button onClick={() => setShowMediaPicker(false)} className="text-muted hover:text-inherit leading-none"><X size={18} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-4 gap-1.5">
               {media.length === 0 ? (
@@ -210,7 +210,7 @@ const SectionBgEditor: React.FC<SectionBgEditorProps> = ({ section, onUpdate, on
                       className={`relative rounded overflow-hidden border-2 ${m.id === section.backgroundId ? "border-primary" : "border-transparent hover:border-border"}`}
                     >
                       <img src={url} alt={m.displayName} className="w-full h-12 object-cover" />
-                      {m.kind === "video" && <span className="absolute top-0.5 right-0.5 text-xs bg-black/70 rounded px-0.5 text-gray-300">▶</span>}
+                      {m.kind === "video" && <span className="absolute top-0.5 right-0.5 bg-black/70 rounded px-0.5 text-white"><Play size={10} className="fill-current" /></span>}
                     </button>
                   );
                 })
@@ -343,7 +343,7 @@ export const SectionCard: React.FC<Props> = ({
           onClick={() => setBgEditorOpen((o) => !o)}
           aria-label={t("sectionCard.background.pick")}
           title={t("sectionCard.background.pick")}
-          className={`shrink-0 ${hasBgOverride ? "text-emerald-500" : "text-muted hover:text-inherit"}`}
+          className={`shrink-0 ${hasBgOverride ? "text-success" : "text-muted hover:text-inherit"}`}
         >
           <ImageIcon size={16} />
         </button>
@@ -361,7 +361,7 @@ export const SectionCard: React.FC<Props> = ({
           <button
             onClick={onRemove}
             aria-label={t("sectionCard.removeAriaLabel")}
-            className="text-muted hover:text-red-500 shrink-0"
+            className="text-muted hover:text-danger shrink-0"
           >
             <Trash2 size={16} />
           </button>

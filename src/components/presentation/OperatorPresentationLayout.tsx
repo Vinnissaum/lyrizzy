@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   clearOverlay,
@@ -315,7 +316,7 @@ export const OperatorPresentationLayout: React.FC = () => {
                 onClick={() => setShowMediaPicker(false)}
                 className="text-muted hover:text-inherit"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">

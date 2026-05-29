@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import type { UpdateInfo } from "../../types";
 
 interface Props {
@@ -25,10 +26,10 @@ export const UpdateBanner: React.FC<Props> = ({ update, onDismiss, onUpdate }) =
         </button>
         <button
           onClick={onDismiss}
-          className="opacity-80 hover:opacity-100"
+          className="opacity-80 hover:opacity-100 inline-flex items-center"
           aria-label={t("updates.dismissButton")}
         >
-          ×
+          <X size={16} />
         </button>
       </div>
     </div>

@@ -20,22 +20,22 @@ describe("Keycap", () => {
     expect(screen.getByText("Space")).toBeTruthy();
   });
 
-  it("renders arrow glyphs", () => {
+  it("renders arrow keys as icons (labelled by key)", () => {
     const { unmount } = render(<Keycap shortcut={shortcut("ArrowRight")} />);
-    expect(screen.getByText("→")).toBeTruthy();
+    expect(screen.getByLabelText("ArrowRight")).toBeTruthy();
     unmount();
 
     render(<Keycap shortcut={shortcut("ArrowLeft")} />);
-    expect(screen.getByText("←")).toBeTruthy();
+    expect(screen.getByLabelText("ArrowLeft")).toBeTruthy();
   });
 
-  it("renders ArrowUp and ArrowDown glyphs", () => {
+  it("renders ArrowUp and ArrowDown as icons (labelled by key)", () => {
     const { unmount } = render(<Keycap shortcut={shortcut("ArrowUp")} />);
-    expect(screen.getByText("↑")).toBeTruthy();
+    expect(screen.getByLabelText("ArrowUp")).toBeTruthy();
     unmount();
 
     render(<Keycap shortcut={shortcut("ArrowDown")} />);
-    expect(screen.getByText("↓")).toBeTruthy();
+    expect(screen.getByLabelText("ArrowDown")).toBeTruthy();
   });
 
   it("renders modifier+Escape as Ctrl+ESC", () => {

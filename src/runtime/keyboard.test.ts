@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { installKeyboardDispatcher } from "./keyboard";
 
+// Capture the forwarded-keydown callback so tests can simulate a key forwarded
+// from the presentation window.
+let forwardedCb: ((sig: string) => void) | null = null;
 vi.mock("../api/commands", () => ({
   emitForwardKeydown: vi.fn().mockResolvedValue(undefined),
-  onForwardKeydown: vi.fn().mockResolvedValue(vi.fn()),
+  onForwardKeydown: vi.fn((cb: (sig: string) => void) => {
+    forwardedCb = cb;
+    return Promise.resolve(() => {
+      forwardedCb = null;
+    });
+  }),
 }));
 
 function fireKey(key: string, target: EventTarget = window): KeyboardEvent {
@@ -86,6 +94,33 @@ describe("keyboard dispatcher — hardcoded ESC/F10", () => {
     fireKey("Escape");
 
     expect(bindingAction).not.toHaveBeenCalled();
+  });
+
+  it("forwarded ESC while presenting calls onEscape (single-owner exit)", () => {
+    const onEscape = vi.fn();
+    uninstall = installKeyboardDispatcher(
+      () => null,
+      {},
+      { getIsPresenting: () => true, onEscape, onF10: vi.fn() }
+    );
+
+    // Simulate Esc forwarded from the presentation window.
+    forwardedCb?.("escape");
+
+    expect(onEscape).toHaveBeenCalledOnce();
+  });
+
+  it("forwarded ESC while not presenting does not call onEscape", () => {
+    const onEscape = vi.fn();
+    uninstall = installKeyboardDispatcher(
+      () => null,
+      {},
+      { getIsPresenting: () => false, onEscape, onF10: vi.fn() }
+    );
+
+    forwardedCb?.("escape");
+
+    expect(onEscape).not.toHaveBeenCalled();
   });
 
   it("dispatcher without hardcoded config behaves as before", () => {

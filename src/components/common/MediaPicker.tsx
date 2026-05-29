@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import type { Media, MediaKind } from "../../types";
@@ -56,14 +57,14 @@ export const MediaPicker: React.FC<Props> = ({
             <span className="flex-1 truncate">{selected.displayName}</span>
             <button
               type="button"
-              className="text-muted hover:text-red-400 ml-1"
+              className="text-muted hover:text-danger ml-1 inline-flex items-center"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(null);
               }}
               title={t("editor.bg.remove")}
             >
-              ✕
+              <X size={14} />
             </button>
           </>
         ) : (
@@ -80,7 +81,7 @@ export const MediaPicker: React.FC<Props> = ({
                 onClick={() => setOpen(false)}
                 className="text-muted hover:text-inherit"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">

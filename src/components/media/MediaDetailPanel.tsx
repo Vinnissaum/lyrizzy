@@ -190,7 +190,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
             </div>
           )}
           {nameError && (
-            <p className="text-red-400 text-xs mt-1">{nameError}</p>
+            <p className="text-danger text-xs mt-1">{nameError}</p>
           )}
         </div>
 
@@ -224,7 +224,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
 
         {/* Delete error */}
         {deleteError && (
-          <p className="text-red-400 text-xs">{deleteError}</p>
+          <p className="text-danger text-xs">{deleteError}</p>
         )}
 
         {/* Delete button */}
@@ -232,7 +232,7 @@ export const MediaDetailPanel: React.FC<Props> = ({ media, onClose }) => {
           onClick={handleDeleteClick}
           disabled={isDeleting}
           data-testid="delete-button"
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-700/30 hover:bg-red-700/50 text-red-400 hover:text-red-300 text-sm transition-colors disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-danger-bg hover:bg-danger-bg text-danger hover:text-danger text-sm transition-colors disabled:opacity-50"
         >
           <Trash2 className="w-4 h-4" />
           {t("media.detail.delete")}

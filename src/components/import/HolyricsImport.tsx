@@ -98,8 +98,8 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
         onCancel={onCancel}
       >
         <div className="flex flex-col items-center justify-center h-40 gap-4">
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-          <p className="text-gray-400 text-sm text-center">
+          {error && <p className="text-danger text-sm text-center">{error}</p>}
+          <p className="text-muted text-sm text-center">
             {t("import.holyrics.step1.hint")}
           </p>
           <button
@@ -131,7 +131,7 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
         nextDisabled={isLoading || checkedCount === 0}
       >
         <div className="space-y-2">
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-danger text-sm">{error}</p>}
           {rows.map((row, idx) => (
             <label
               key={idx}
@@ -148,12 +148,12 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
               <div className="min-w-0">
                 <p className="font-medium truncate">{row.song.title}</p>
                 {row.song.artist && (
-                  <p className="text-sm text-gray-400 truncate">
+                  <p className="text-sm text-muted truncate">
                     {row.song.artist}
                   </p>
                 )}
                 {row.isDuplicate && (
-                  <p className="text-xs text-yellow-500 mt-0.5">
+                  <p className="text-xs text-warning mt-0.5">
                     {t("import.holyrics.step2.duplicate")}
                   </p>
                 )}
@@ -180,17 +180,17 @@ export const HolyricsImport: React.FC<Props> = ({ onDone, onCancel }) => {
               {t("import.holyrics.step3.imported", { count: report.imported })}
             </p>
             {report.skipped > 0 && (
-              <p className="text-gray-400 text-sm">
+              <p className="text-muted text-sm">
                 {t("import.holyrics.step3.skipped", { count: report.skipped })}
               </p>
             )}
             {report.failed.length > 0 && (
               <div className="text-left mt-3 space-y-1">
-                <p className="text-red-400 text-sm font-medium">
+                <p className="text-danger text-sm font-medium">
                   {t("import.holyrics.step3.failures", { count: report.failed.length })}
                 </p>
                 {report.failed.map((f, i) => (
-                  <p key={i} className="text-xs text-gray-400">
+                  <p key={i} className="text-xs text-muted">
                     {f.title}: {f.reason}
                   </p>
                 ))}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { X, Play, ChevronRight } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -195,7 +196,7 @@ const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
               {current && (
                 <button
                   onClick={() => onChange({ backgroundId: undefined })}
-                  className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-muted hover:text-red-600 rounded-lg transition-colors"
+                  className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-danger-bg text-muted hover:text-danger rounded-lg transition-colors"
                 >
                   {t("editor.bg.remove")}
                 </button>
@@ -227,7 +228,7 @@ const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
           <div className="bg-surface border border-border rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="text-sm font-semibold">{t("editor.bg.modalTitle")}</h3>
-              <button onClick={() => setShowPicker(false)} className="text-muted hover:text-inherit text-lg leading-none">×</button>
+              <button onClick={() => setShowPicker(false)} className="text-muted hover:text-inherit leading-none"><X size={18} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
               {media.length === 0 && (
@@ -244,8 +245,8 @@ const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
                     }`}
                   >
                     <img src={url} alt={m.displayName} className="w-full h-20 object-cover" />
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-xs text-gray-300 truncate">{m.displayName}</div>
-                    {m.kind === "video" && <div className="absolute top-1 right-1 text-xs bg-black/70 rounded px-1 text-gray-300">▶</div>}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-xs text-muted truncate">{m.displayName}</div>
+                    {m.kind === "video" && <div className="absolute top-1 right-1 bg-black/70 rounded px-1 text-white"><Play size={10} className="fill-current" /></div>}
                   </button>
                 );
               })}
@@ -511,7 +512,7 @@ export const SongEditor: React.FC = () => {
           <div
             key={toast.id}
             className={`px-4 py-2 rounded-lg text-sm shadow-lg text-fg-on-primary ${
-              toast.type === "success" ? "bg-green-600" : "bg-red-600"
+              toast.type === "success" ? "bg-success" : "bg-danger"
             }`}
           >
             {toast.message}
@@ -531,7 +532,7 @@ export const SongEditor: React.FC = () => {
           {editingSongId && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-fg-on-primary rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm bg-danger hover:bg-danger text-fg-on-primary rounded-lg transition-colors"
             >
               {t("editor.delete")}
             </button>
@@ -557,7 +558,7 @@ export const SongEditor: React.FC = () => {
               className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-lg font-medium text-fg focus:outline-none focus:border-primary"
             />
             {titleError && (
-              <p className="text-red-400 text-xs mt-1">{titleError}</p>
+              <p className="text-danger text-xs mt-1">{titleError}</p>
             )}
           </div>
 
@@ -645,7 +646,7 @@ export const SongEditor: React.FC = () => {
             </button>
           </div>
           {bodyError && (
-            <p className="text-red-400 text-xs">{bodyError}</p>
+            <p className="text-danger text-xs">{bodyError}</p>
           )}
 
           <DndContext
@@ -686,7 +687,7 @@ export const SongEditor: React.FC = () => {
             onClick={() => setRightsOpen((o) => !o)}
             className="flex items-center gap-2 text-sm font-medium text-muted uppercase tracking-wider hover:text-inherit transition-colors w-full text-left"
           >
-            <span className={`text-xs transition-transform ${rightsOpen ? "rotate-90" : ""}`}>▶</span>
+            <ChevronRight size={14} className={`transition-transform ${rightsOpen ? "rotate-90" : ""}`} />
             {t("editor.rights.title")}
           </button>
           {rightsOpen && (

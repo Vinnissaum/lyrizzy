@@ -117,7 +117,7 @@ export const SetList: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setDeletingSet(s)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-muted hover:text-red-400 hover:bg-surface-2 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-muted hover:text-danger hover:bg-surface-2 transition-all"
                     title={t("sets.delete.title")}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

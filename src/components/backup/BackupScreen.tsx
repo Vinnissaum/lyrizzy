@@ -56,7 +56,7 @@ const ExportCard: React.FC = () => {
     <div className="bg-surface rounded-xl p-6 flex flex-col gap-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-          <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
@@ -83,8 +83,8 @@ const ExportCard: React.FC = () => {
       )}
 
       {summary && (
-        <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-lg p-3 text-xs space-y-0.5">
-          <p className="text-emerald-300 font-medium">{t("backup.export.success")}</p>
+        <div className="bg-success-bg border border-success rounded-lg p-3 text-xs space-y-0.5">
+          <p className="text-success font-medium">{t("backup.export.success")}</p>
           <p className="text-muted">
             {t("backup.export.stats", {
               songs: summary.counts.songs,
@@ -97,7 +97,7 @@ const ExportCard: React.FC = () => {
       )}
 
       {error && (
-        <p className="text-xs text-red-400 bg-red-900/20 border border-red-700/30 rounded-lg px-3 py-2">
+        <p className="text-xs text-danger bg-danger-bg border border-danger rounded-lg px-3 py-2">
           {error}
         </p>
       )}
@@ -181,7 +181,7 @@ const ImportCard: React.FC = () => {
     <div className="bg-surface rounded-xl p-6 flex flex-col gap-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-          <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
           </svg>
@@ -260,7 +260,7 @@ const ImportCard: React.FC = () => {
           {/* Typed confirmation for Replace */}
           {mode === "replace" && (
             <div className="space-y-1.5">
-              <p className="text-xs text-amber-400">
+              <p className="text-xs text-warning">
                 {t("backup.import.typedConfirmHint")}
               </p>
               <input
@@ -268,13 +268,13 @@ const ImportCard: React.FC = () => {
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
                 placeholder={confirmWord}
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-sm placeholder-muted focus:outline-none focus:border-amber-500"
+                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-sm placeholder-muted focus:outline-none focus:border-warning"
               />
             </div>
           )}
 
           {error && (
-            <p className="text-xs text-red-400 bg-red-900/20 border border-red-700/30 rounded-lg px-3 py-2">
+            <p className="text-xs text-danger bg-danger-bg border border-danger rounded-lg px-3 py-2">
               {error}
             </p>
           )}
@@ -311,8 +311,8 @@ const ImportCard: React.FC = () => {
       {/* Done */}
       {step === "done" && summary && (
         <div className="space-y-3">
-          <div className="bg-blue-900/30 border border-blue-700/40 rounded-lg p-3 text-xs space-y-0.5">
-            <p className="text-blue-300 font-medium">{t("backup.import.success")}</p>
+          <div className="bg-info-bg border border-info rounded-lg p-3 text-xs space-y-0.5">
+            <p className="text-info font-medium">{t("backup.import.success")}</p>
             <p className="text-muted">
               {t("backup.import.successStats", {
                 songs: summary.songsImported,
@@ -331,7 +331,7 @@ const ImportCard: React.FC = () => {
             )}
           </div>
           <p className="text-xs text-muted">{t("backup.import.restartHint")}</p>
-          <button onClick={reset} className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+          <button onClick={reset} className="text-sm text-info hover:text-info transition-colors">
             {t("backup.import.importAnother")}
           </button>
         </div>

@@ -32,7 +32,6 @@ import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
 import { useKeyBindingsStore } from "../../stores/keyBindings";
-import { useThemeStore } from "../../stores/theme";
 import { installKeyboardDispatcher } from "../../runtime/keyboard";
 import type { Song, UpdateInfo } from "../../types";
 
@@ -50,7 +49,6 @@ export const OperatorApp: React.FC = () => {
   const { subscribe: subscribeCountdown } = useCountdownStore();
   const { setLocale } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
-  const { load: loadTheme } = useThemeStore();
 
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
@@ -77,7 +75,6 @@ export const OperatorApp: React.FC = () => {
     });
     loadBindings();
     const unsubBindings = subscribeBindings();
-    loadTheme();
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
 

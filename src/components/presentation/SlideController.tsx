@@ -1,14 +1,15 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import type { PresentationMode, ServiceSet } from "../../types";
 
 const MODE_COLORS: Record<PresentationMode, string> = {
   idle: "bg-surface-2 text-muted",
-  live: "bg-green-600 text-fg-on-primary",
+  live: "bg-success text-fg-on-primary",
   blank: "bg-surface-2 border border-border text-muted",
-  frozen: "bg-blue-700 text-fg-on-primary",
+  frozen: "bg-info text-fg-on-primary",
 };
 
 interface ItemRowProps {
@@ -44,7 +45,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
         )}
       </div>
       {isCurrent && (
-        <span className="text-xs text-emerald-300 shrink-0 tabular-nums">
+        <span className="text-xs text-success shrink-0 tabular-nums">
           {currentSlide + 1}/{slideCount}
         </span>
       )}
@@ -86,7 +87,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
             onClick={() => setView("set-builder")}
             className="text-muted hover:text-inherit p-1 rounded transition-colors"
           >
-            ←
+            <ArrowLeft size={18} />
           </button>
           <h2 className="text-base font-semibold truncate flex-1">{serviceSet.name}</h2>
           <span

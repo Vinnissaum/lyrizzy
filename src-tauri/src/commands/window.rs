@@ -2,7 +2,10 @@ use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::state::AppState;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, Monitor, Runtime, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, Emitter, LogicalPosition, Manager, Monitor, Runtime, State, WebviewUrl,
+    WebviewWindowBuilder,
+};
 
 /// Drop phantom monitors (size 0×0) that some drivers report.
 /// Returns a new Vec containing only monitors with non-zero width AND height.
@@ -81,6 +84,25 @@ pub fn pick_secondary_index(
     all_xy.iter().position(|&xy| xy != primary)
 }
 
+/// Choose which monitor to place the presentation window on.
+///
+/// If `override_index` is provided and in range, it wins (the operator's manual
+/// monitor picker). Otherwise fall back to auto-detecting the first non-primary
+/// monitor. Returns `None` when there's nothing to position explicitly (single
+/// monitor with no override) so the OS picks the position. Pure for testability.
+pub fn resolve_target_index(
+    override_index: Option<usize>,
+    primary_xy: Option<(i32, i32)>,
+    all_xy: &[(i32, i32)],
+) -> Option<usize> {
+    if let Some(idx) = override_index {
+        if idx < all_xy.len() {
+            return Some(idx);
+        }
+    }
+    pick_secondary_index(primary_xy, all_xy)
+}
+
 /// Apply monitor-based positioning to a window builder. If `monitor_index` is
 /// `None` or out of range the builder is returned unchanged (OS picks position).
 fn apply_monitor<'a, R: Runtime, M: Manager<R>>(
@@ -128,6 +150,7 @@ fn presentation_set_is_empty(state: &PresentationState) -> bool {
 pub async fn enter_presentation(
     app: AppHandle,
     state: State<'_, AppState>,
+    monitor_index: Option<usize>,
 ) -> Result<(), ErrorPayload> {
     {
         let pres = state.presentation.read().await;
@@ -164,7 +187,8 @@ pub async fn enter_presentation(
         (p.x, p.y)
     }).collect();
 
-    let secondary_idx = pick_secondary_index(primary_xy, &all_xy);
+    // Manual picker (monitor_index) wins; otherwise auto-detect the secondary.
+    let target_idx = resolve_target_index(monitor_index, primary_xy, &all_xy);
 
     let pin_on_top = should_pin_on_top(monitors.len());
 
@@ -176,12 +200,34 @@ pub async fn enter_presentation(
     .title("Trinity Lyrics — Presentation")
     .inner_size(1280.0, 720.0);
 
-    let builder = apply_monitor(base, &monitors, secondary_idx);
+    let builder = apply_monitor(base, &monitors, target_idx);
     let builder = if pin_on_top { builder.always_on_top(true) } else { builder };
-    tracing::info!(monitors = monitors.len(), secondary_idx = ?secondary_idx, always_on_top = pin_on_top, "enter_presentation: building window");
-    builder.fullscreen(true).build().map_err(|e| {
+    tracing::info!(monitors = monitors.len(), target_idx = ?target_idx, always_on_top = pin_on_top, "enter_presentation: building window");
+
+    // Build WITHOUT fullscreen first. On many Linux WMs (and Wayland), creating a
+    // window already-fullscreen makes the position hint get ignored, so it lands
+    // on the primary monitor. Instead: place it on the target monitor, then move
+    // + fullscreen the live window so the WM fullscreens where the window sits.
+    let window = builder.build().map_err(|e| {
         ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
     })?;
+
+    if let Some(idx) = target_idx {
+        if let Some(m) = monitors.get(idx) {
+            let pos = m.position();
+            let size = m.size();
+            if let Some((lx, ly, _, _)) =
+                logical_placement(pos.x, pos.y, size.width, size.height, m.scale_factor())
+            {
+                if let Err(e) = window.set_position(LogicalPosition::new(lx, ly)) {
+                    tracing::warn!(error = %e, "enter_presentation: set_position failed (ignored)");
+                }
+            }
+        }
+    }
+    if let Err(e) = window.set_fullscreen(true) {
+        tracing::warn!(error = %e, "enter_presentation: set_fullscreen failed (ignored)");
+    }
 
     app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "entered" })
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
@@ -207,28 +253,33 @@ pub async fn exit_presentation(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), ErrorPayload> {
-    let window_exists = app.get_webview_window("presentation").is_some();
-
-    {
-        let pres = state.presentation.read().await;
+    // Esc fires in BOTH the operator and presentation windows, so two
+    // `exit_presentation` invokes can race. Serialize the whole exit under the
+    // write lock and short-circuit the loser: hold the lock, decide, and mutate
+    // in one critical section so the second caller sees Idle and no-ops.
+    let state_snapshot = {
+        let mut pres = state.presentation.write().await;
+        let window_exists = app.get_webview_window("presentation").is_some();
         if is_already_exited(&pres.mode, window_exists) {
             return Ok(());
         }
-    }
-
-    {
-        let mut pres = state.presentation.write().await;
         pres.mode = PresentationMode::Idle;
         pres.frozen_at = None;
         pres.overlay = None;
-    }
+        pres.clone()
+    };
 
-    let state_snapshot = state.presentation.read().await.clone();
+    // Emit BEFORE closing so the operator can react while the presentation
+    // window still exists.
     app.emit("state_changed", &state_snapshot)
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
 
+    // The window may already be tearing down (the racing call closed it, or the
+    // user hit the OS close button) — ignore close errors, they are not fatal.
     if let Some(w) = app.get_webview_window("presentation") {
-        w.close().map_err(|e| ErrorPayload::from(e.to_string()))?;
+        if let Err(e) = w.close() {
+            tracing::warn!(error = %e, "exit_presentation: window close failed (ignored)");
+        }
     }
 
     app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "exited" })
@@ -340,6 +391,32 @@ mod tests {
     fn pick_secondary_single_monitor_returns_none() {
         let all = [(0_i32, 0_i32)];
         assert_eq!(pick_secondary_index(Some((0, 0)), &all), None);
+    }
+
+    #[test]
+    fn resolve_target_uses_override_when_in_range() {
+        let all = [(0_i32, 0_i32), (1920_i32, 0_i32)];
+        assert_eq!(resolve_target_index(Some(0), Some((0, 0)), &all), Some(0));
+        assert_eq!(resolve_target_index(Some(1), Some((0, 0)), &all), Some(1));
+    }
+
+    #[test]
+    fn resolve_target_ignores_out_of_range_override_and_auto_detects() {
+        let all = [(0_i32, 0_i32), (1920_i32, 0_i32)];
+        // Override index 5 is out of range → fall back to auto (secondary = 1).
+        assert_eq!(resolve_target_index(Some(5), Some((0, 0)), &all), Some(1));
+    }
+
+    #[test]
+    fn resolve_target_auto_detects_secondary_without_override() {
+        let all = [(0_i32, 0_i32), (1920_i32, 0_i32)];
+        assert_eq!(resolve_target_index(None, Some((0, 0)), &all), Some(1));
+    }
+
+    #[test]
+    fn resolve_target_single_monitor_no_override_returns_none() {
+        let all = [(0_i32, 0_i32)];
+        assert_eq!(resolve_target_index(None, Some((0, 0)), &all), None);
     }
 
     // ── filter_real_monitors ──────────────────────────────────────────────────

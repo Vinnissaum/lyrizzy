@@ -87,6 +87,20 @@ export function installKeyboardDispatcher(
   window.addEventListener("keydown", handler);
 
   const unlistenForwarded = onForwardKeydown((sig) => {
+    // Hardcoded Esc/F10 forwarded from the presentation window must reach the
+    // same handlers as locally-pressed keys — otherwise pressing Esc with the
+    // presentation window focused would do nothing (these keys aren't user
+    // bindings). This makes the operator the single owner of presentation exit.
+    if (hardcoded && hardcoded.getIsPresenting()) {
+      if (sig === "escape") {
+        hardcoded.onEscape();
+        return;
+      }
+      if (sig === "f10") {
+        hardcoded.onF10();
+        return;
+      }
+    }
     const bindings = getBindings();
     if (!bindings) return;
     const action = matchAction(sig, bindings);

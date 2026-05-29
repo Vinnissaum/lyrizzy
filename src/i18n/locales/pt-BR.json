@@ -461,11 +461,6 @@
       "ptBR": "Português (Brasil)",
       "enUS": "English"
     },
-    "theme": {
-      "label": "Tema",
-      "light": "Claro",
-      "dark": "Escuro"
-    },
     "about": "Sobre",
     "windows": {
       "title": "Janelas",
@@ -473,7 +468,10 @@
       "open": "Abrir / Reabrir nesta tela",
       "autoSelect": "— Automático —",
       "current": "(atual)",
-      "cameraUrl": "URL da câmera"
+      "cameraUrl": "URL da câmera",
+      "monitorLabel": "Monitor da apresentação",
+      "monitorHelp": "Em qual tela abrir a apresentação. Automático escolhe o monitor estendido.",
+      "monitorOption": "Monitor {{index}}"
     }
   },
   "reports": {

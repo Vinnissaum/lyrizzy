@@ -66,7 +66,7 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
           className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded font-medium ${
             media.kind === "video"
               ? "bg-purple-700 text-fg-on-primary"
-              : "bg-blue-700 text-fg-on-primary"
+              : "bg-info text-fg-on-primary"
           }`}
         >
           {media.kind === "video" ? (

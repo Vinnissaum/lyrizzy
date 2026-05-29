@@ -39,7 +39,7 @@ export const NotesField: React.FC<Props> = ({ value, onChange, placeholder }) =>
         style={{ overflowY: "hidden" }}
       />
       {value.length > CHAR_WARN_LIMIT && (
-        <p className="text-xs text-yellow-500">
+        <p className="text-xs text-warning">
           {t("sectionCard.notes.charCountWarning")}
         </p>
       )}

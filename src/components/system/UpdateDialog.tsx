@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { applyUpdateAndRestart } from "../../api/commands";
 import type { UpdateInfo } from "../../types";
 
@@ -44,10 +45,10 @@ export const UpdateDialog: React.FC<Props> = ({ update, onClose }) => {
           <button
             onClick={onClose}
             disabled={applying}
-            className="text-muted hover:text-inherit text-xl leading-none disabled:opacity-50"
+            className="text-muted hover:text-inherit leading-none disabled:opacity-50"
             aria-label={t("updates.cancelButton")}
           >
-            ×
+            <X size={20} />
           </button>
         </div>
 
@@ -68,7 +69,7 @@ export const UpdateDialog: React.FC<Props> = ({ update, onClose }) => {
 
         {error && (
           <div className="px-5 pb-2">
-            <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
           </div>
         )}
 

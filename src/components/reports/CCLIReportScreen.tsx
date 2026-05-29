@@ -107,7 +107,7 @@ export const CCLIReportScreen: React.FC = () => {
         </button>
       </div>
 
-      {error && <p className="text-red-400 text-xs">{error}</p>}
+      {error && <p className="text-danger text-xs">{error}</p>}
 
       {/* Preview table */}
       {loading ? (

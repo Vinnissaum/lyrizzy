@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { exitPresentation, onLocaleChanged } from "../../api/commands";
+import { onLocaleChanged } from "../../api/commands";
 import { mediaUrl } from "../../api/assets";
 import { forwardKeydown } from "../../runtime/keyboard";
 import { usePresentationStore } from "../../stores/presentation";
@@ -112,8 +112,11 @@ export const PresentationApp: React.FC = () => {
       const isPresenting = mode === "live" || mode === "blank" || mode === "frozen";
       if (isPresenting) {
         if (e.key === "Escape") {
+          // Single-owner exit: forward Esc to the operator window, which owns
+          // the one `exitPresentation()` call. Calling it here too caused a
+          // cross-window double-dispatch race that froze the close.
           e.preventDefault();
-          exitPresentation().catch(console.error);
+          forwardKeydown(e);
           return;
         }
         if (e.key === "F10") {

@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
 import { KeyBindingsScreen } from "./KeyBindingsScreen";
-import { ThemeToggle } from "./ThemeToggle";
+import { MonitorPicker } from "./MonitorPicker";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { UpdateCheckButton } from "../system/UpdateCheckButton";
 import { useSettingsStore } from "../../stores/settings";
@@ -21,13 +21,13 @@ export const SettingsScreen: React.FC = () => {
             {t("settings.general")}
           </h3>
           <LanguagePicker />
-          <ThemeToggle />
         </div>
 
         <div className="bg-surface-2 rounded-xl p-4 space-y-4">
           <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
             {t("settings.windows.title")}
           </h3>
+          <MonitorPicker />
           <div className="space-y-1">
             <p className="text-sm font-medium">
               {t("settings.windows.cameraUrl")}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   addSetItem,
@@ -226,7 +227,7 @@ export const HomeSetBuilder: React.FC = () => {
     <div className="flex flex-col h-full relative">
       {/* Error toast */}
       {errorToast !== null && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-amber-500/90 text-fg-on-primary text-sm rounded-lg shadow-lg pointer-events-none">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-warning text-fg-on-primary text-sm rounded-lg shadow-lg pointer-events-none">
           {errorToast}
         </div>
       )}
@@ -421,8 +422,8 @@ export const HomeSetBuilder: React.FC = () => {
               <button
                 onClick={() => setShowMediaPicker(false)}
                 className="text-muted hover:text-inherit"
-              >
-                ✕
+               inline-flex items-center>
+                <X size={16} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">

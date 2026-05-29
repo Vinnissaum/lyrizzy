@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Play, X, Image as ImageIcon, Camera, Megaphone, FileText } from "lucide-react";
 
 interface Props {
   showApresentarButton: boolean;
@@ -31,45 +32,45 @@ export const OverlayActionBar: React.FC<Props> = ({
       {showApresentarButton && (
         <button
           onClick={onApresentar}
-          className="px-3 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors"
+          className="px-3 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors inline-flex items-center gap-1"
           data-testid="apresentar-button"
         >
-          ▶ {t("presentation.action.present")}
+          <Play size={12} className="fill-current" /> {t("presentation.action.present")}
         </button>
       )}
       {isOverlayActive && (
         <button
           onClick={onClearOverlay}
-          className="px-3 py-1 text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-lg font-medium hover:bg-amber-500/30 transition-colors"
+          className="px-3 py-1 text-xs bg-warning-bg text-warning border border-warning rounded-lg font-medium hover:bg-warning-bg transition-colors inline-flex items-center gap-1"
         >
-          ✕ {t("home.overlay.closeOverlay")}
+          <X size={12} /> {t("home.overlay.closeOverlay")}
         </button>
       )}
       <button
         onClick={onOferta}
-        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
+        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors inline-flex items-center gap-1"
       >
-        🖼 {t("home.overlay.oferta")}
+        <ImageIcon size={12} /> {t("home.overlay.oferta")}
       </button>
       <button
         onClick={onCamera}
-        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
+        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors inline-flex items-center gap-1"
       >
-        📷 {t("home.overlay.camera")}
+        <Camera size={12} /> {t("home.overlay.camera")}
       </button>
       <button
         onClick={onAviso}
-        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
+        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors inline-flex items-center gap-1"
       >
-        📢 {t("home.overlay.aviso")}
+        <Megaphone size={12} /> {t("home.overlay.aviso")}
       </button>
       <button
         onClick={onPdf}
         disabled={isImportingPresentation}
         title={t("home.overlay.pdfTooltip")}
-        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors disabled:opacity-50"
+        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors disabled:opacity-50 inline-flex items-center gap-1"
       >
-        📄 {isImportingPresentation ? t("media.slideshow.importing") : t("home.overlay.pdf")}
+        <FileText size={12} /> {isImportingPresentation ? t("media.slideshow.importing") : t("home.overlay.pdf")}
       </button>
     </div>
   );

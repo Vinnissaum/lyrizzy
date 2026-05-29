@@ -1,34 +1,40 @@
 @import "tailwindcss";
 
-/* Tailwind v4 dark variant: triggered by .dark class on <html> */
-@variant dark (&:where(.dark, .dark *));
-
-/* Light-mode defaults; registers utility classes: bg-surface, bg-primary, border-border, text-muted, etc. */
+/*
+ * Trinity Lyrics — single fixed dark theme (indigo accent).
+ * There is no light mode and no theme toggle: the operator UI is dark, the
+ * presentation output is its own pure black. All colours are semantic tokens so
+ * components never hardcode hex/palette values.
+ */
 @theme {
-  --color-bg:             #F5F5F5;
-  --color-surface:        #FFFFFF;
-  --color-surface-2:      #F0F0F0;
-  --color-border:         #E0E0E0;
-  --color-muted:          #666666;
-  --color-primary:        #19A4DD;
-  --color-primary-hover:  #1494C5;
-  --color-fg:             #111111;
+  /* Surfaces — deep slate / charcoal */
+  --color-bg:             #0F1115;
+  --color-surface:        #171A21;
+  --color-surface-2:      #1F232C;
+  --color-border:         #2A2F3A;
+  --color-muted:          #8A91A0;
+  --color-fg:             #ECEEF2;
+
+  /* Accent — indigo / violet */
+  --color-primary:        #6366F1;
+  --color-primary-hover:  #4F46E5;
   --color-fg-on-primary:  #FFFFFF;
+
+  /* Status — used for errors / warnings / success / info. Mid-tones chosen so
+     each works both as text/icon/border on dark AND as a solid button fill with
+     white/black text. The `*-bg` variants are muted translucent-style fills. */
+  --color-danger:         #E5484D;
+  --color-danger-bg:      #2A1416;
+  --color-warning:        #F5A524;
+  --color-warning-bg:     #2A2210;
+  --color-success:        #30A46C;
+  --color-success-bg:     #0F2A20;
+  --color-info:           #3B82F6;
+  --color-info-bg:        #122036;
 }
 
-/* Dark-mode surface overrides (primary is the same in both themes) */
-.dark {
-  --color-bg:        #111111;
-  --color-surface:   #1C1C1C;
-  --color-surface-2: #252525;
-  --color-border:    #333333;
-  --color-muted:     #888888;
-  --color-fg:        #EAEAEA;
-}
-
-/* T9: dark color-scheme for native time/number inputs */
-.dark input[type="time"],
-.dark input[type="number"],
-.dark input[type="date"] {
+/* Dark color-scheme everywhere so native controls (time/number/date, scrollbars,
+   selects) render dark to match. The app has no light mode. */
+:root {
   color-scheme: dark;
 }

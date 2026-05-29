@@ -102,7 +102,7 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
         nextDisabled={isParsing || !songTitle.trim() || !lyrics.trim()}
       >
         <div className="space-y-4">
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-danger text-sm">{error}</p>}
 
           <div>
             <label className="block text-sm text-muted mb-1">
@@ -160,7 +160,7 @@ export const PlainTextImport: React.FC<Props> = ({ onImported, onCancel }) => {
       nextDisabled={isSaving}
     >
       <div className="space-y-3">
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
         {sections.map((section) => (
           <div
             key={section.key}

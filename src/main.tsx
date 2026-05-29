@@ -6,15 +6,8 @@ import "./i18n/index";
 import i18next from "./i18n/index";
 import { invoke } from "@tauri-apps/api/core";
 
-// Synchronous theme bootstrap — runs before React render.
-// Only applies to the operator window; presentation window is always dark-bg.
-const _windowLabel = getCurrentWindow().label;
-if (_windowLabel !== "presentation") {
-  const _stored = localStorage.getItem("trinity.theme");
-  const _theme = _stored ?? "light";
-  if (_theme === "dark") document.documentElement.classList.add("dark");
-  if (!_stored) localStorage.setItem("trinity.theme", "light");
-}
+// The app is dark-only — no theme toggle, no bootstrap. Colours come entirely
+// from the semantic tokens in index.css (@theme).
 
 async function init() {
   // Load persisted locale before first render to avoid a flash of wrong language.

@@ -61,7 +61,7 @@ export const SongList: React.FC<Props> = ({
 
       <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
-          <p className="text-gray-500 text-sm text-center py-8">
+          <p className="text-muted text-sm text-center py-8">
             {t("loading")}
           </p>
         ) : songs.length === 0 ? (

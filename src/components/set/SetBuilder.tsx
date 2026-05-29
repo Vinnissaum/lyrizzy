@@ -1,6 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  ChevronUp,
+  ChevronDown,
+  Copy,
+  X,
+} from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { ItemTypeIcon } from "../presentation/itemMeta";
 import {
   addSetItem,
   duplicateSetItem,
@@ -30,16 +41,6 @@ interface Props {
   hidePresentButton?: boolean;
 }
 
-function itemIcon(item: SetItem): string {
-  switch (item.itemType) {
-    case "song": return "♪";
-    case "media": return item.mediaKind === "video" ? "▶" : "🖼";
-    case "countdown": return "⏱";
-    case "web_view": return "🌐";
-    case "slide_show": return "📄";
-    default: return "▪";
-  }
-}
 
 function isExpandable(item: SetItem): boolean {
   return (
@@ -292,7 +293,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
 
     if (invalid) {
       return (
-        <p className="text-xs text-red-400 font-medium">
+        <p className="text-xs text-danger font-medium">
           {t("builder.invalidRef")}
         </p>
       );
@@ -310,7 +311,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
         );
       case "media":
         return (
-          <p className="text-sm text-blue-400 font-medium truncate">
+          <p className="text-sm text-info font-medium truncate">
             {mediaItem?.displayName ?? "Mídia"}
           </p>
         );
@@ -319,7 +320,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
         const cfgDurationMs = cfg?.target?.kind === 'duration' ? cfg.target.durationMs : 0;
         const durLabel = cfgDurationMs > 0 ? `${Math.floor(cfgDurationMs / 60000)}min` : "10min";
         return (
-          <p className="text-sm text-amber-400 font-medium">
+          <p className="text-sm text-warning font-medium">
             {t("builder.countdownSummary", { dur: durLabel })}
           </p>
         );
@@ -339,7 +340,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
         const slideCount = mediaItem?.slideCount ?? 0;
         return (
           <>
-            <p className="text-sm text-orange-400 font-medium truncate">
+            <p className="text-sm text-warning font-medium truncate">
               {mediaItem?.displayName ?? t("builder.slideshowItem")}
             </p>
             <p className="text-xs text-muted">
@@ -358,7 +359,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   return (
     <div className="flex flex-col h-full">
       {loadError && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-amber-500/90 text-fg-on-primary rounded-lg shadow-lg text-sm font-medium pointer-events-none">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-warning text-fg-on-primary rounded-lg shadow-lg text-sm font-medium pointer-events-none">
           {loadError}
         </div>
       )}
@@ -370,7 +371,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               onClick={() => setView("sets")}
               className="text-muted hover:text-inherit p-1 rounded transition-colors"
             >
-              ←
+              <ArrowLeft size={18} />
             </button>
           )}
           {editingName ? (
@@ -389,9 +390,9 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               />
               <button
                 type="submit"
-                className="px-2 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded transition-colors"
+                className="px-2 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded transition-colors inline-flex items-center"
               >
-                ✓
+                <Check size={14} />
               </button>
               <button
                 type="button"
@@ -399,9 +400,9 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                   setEditingName(false);
                   setNameInput(serviceSet.name);
                 }}
-                className="px-2 py-1 text-xs bg-surface-2 hover:bg-border rounded transition-colors"
+                className="px-2 py-1 text-xs bg-surface-2 hover:bg-border rounded transition-colors inline-flex items-center"
               >
-                ✕
+                <X size={14} />
               </button>
             </form>
           ) : (
@@ -436,9 +437,8 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                   <span className="text-xs text-muted w-5 text-right shrink-0">
                     {idx + 1}
                   </span>
-                  <span className="text-sm shrink-0 w-4 text-center">
-                    {itemIcon(item)}
-                  </span>
+                  <ItemTypeIcon item={item} size={16} className="shrink-0 text-muted" />
+
                   <div
                     className={`flex-1 min-w-0 ${canExpand ? "cursor-pointer" : ""}`}
                     onClick={() =>
@@ -450,10 +450,10 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                   {canExpand && (
                     <button
                       onClick={() => setExpandedItemId(expanded ? null : item.id)}
-                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 transition-all text-xs"
+                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 transition-all"
                       title={t("builder.actions.edit")}
                     >
-                      {expanded ? "▲" : "▼"}
+                      {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </button>
                   )}
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -462,7 +462,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                       className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"
                       title={t("builder.actions.duplicate")}
                     >
-                      ⧉
+                      <Copy size={14} />
                     </button>
                     <button
                       onClick={() => handleMove(idx, "up")}
@@ -470,7 +470,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                       className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
                       title={t("builder.actions.moveUp")}
                     >
-                      ↑
+                      <ArrowUp size={14} />
                     </button>
                     <button
                       onClick={() => handleMove(idx, "down")}
@@ -478,14 +478,14 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                       className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
                       title={t("builder.actions.moveDown")}
                     >
-                      ↓
+                      <ArrowDown size={14} />
                     </button>
                     <button
                       onClick={() => handleRemoveItem(item)}
-                      className="p-1 rounded text-muted hover:text-red-400 hover:bg-surface-2 transition-all"
+                      className="p-1 rounded text-muted hover:text-danger hover:bg-surface-2 transition-all"
                       title={t("builder.actions.remove")}
                     >
-                      ✕
+                      <X size={14} />
                     </button>
                   </div>
                 </div>
@@ -531,7 +531,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               onClick={() => setShowSongPicker(false)}
               className="text-muted hover:text-inherit p-1"
             >
-              ✕
+              <X size={16} />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
@@ -579,7 +579,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               onClick={() => setShowMediaPicker(false)}
               className="text-muted hover:text-inherit p-1"
             >
-              ✕
+              <X size={16} />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 gap-2">
@@ -640,13 +640,13 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               refreshMedia();
               setShowMediaPicker((v) => !v);
             }}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-blue-400"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-info"
           >
             {t("builder.add.media")}
           </button>
           <button
             onClick={handleAddCountdown}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-amber-400"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-warning"
           >
             {t("builder.add.countdown")}
           </button>
@@ -665,7 +665,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
           <button
             onClick={handleAddPresentation}
             disabled={isImportingPresentation}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-orange-400 disabled:opacity-50"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-warning disabled:opacity-50"
           >
             {isImportingPresentation ? t("media.slideshow.importing") : t("builder.add.slideShow")}
           </button>

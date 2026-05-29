@@ -127,14 +127,14 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
               : "http://192.168.1.10/stream"
           }
           className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
-            urlError ? "border-red-500" : "border-border"
+            urlError ? "border-danger" : "border-border"
           }`}
         />
         {urlError && (
-          <p className="text-xs text-red-400 mt-1">{urlError}</p>
+          <p className="text-xs text-danger mt-1">{urlError}</p>
         )}
         {httpWarning && !urlError && (
-          <p className="text-xs text-yellow-400 mt-1">
+          <p className="text-xs text-warning mt-1">
             {t("webview.editor.warnings.http")}
           </p>
         )}

@@ -2,8 +2,9 @@ import React from "react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { Play } from "lucide-react";
 import { goToItem } from "../../api/commands";
-import { itemIcon, itemLabel } from "./itemMeta";
+import { ItemTypeIcon, itemLabel } from "./itemMeta";
 
 export const SetItemList: React.FC = () => {
   const items = usePresentationStore((s) => s.state?.set?.items ?? []);
@@ -29,8 +30,8 @@ export const SetItemList: React.FC = () => {
                 : "text-fg hover:bg-surface-2"
               }`}
           >
-            <span>{itemIcon(item)}</span>
-            {isActive && <span>&#9654;</span>}
+            <ItemTypeIcon item={item} size={16} className="shrink-0" />
+            {isActive && <Play size={12} className="shrink-0 fill-current" />}
             <span className="truncate">{itemLabel(item, songs, media)}</span>
           </button>
         );

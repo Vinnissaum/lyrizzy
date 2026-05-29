@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Film, Image as ImageIcon, Timer, Globe, Square, Tv } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
@@ -12,7 +13,7 @@ import type { BackgroundInfo, BackgroundPreset, PresentationState, SetItem } fro
 // Private helpers
 // ---------------------------------------------------------------------------
 
-const PlaceholderCard: React.FC<{ icon: string; label: string }> = ({
+const PlaceholderCard: React.FC<{ icon: React.ReactNode; label: string }> = ({
   icon,
   label,
 }) => (
@@ -117,7 +118,7 @@ function ActiveItemContent({
       : undefined;
 
     if (mediaRecord?.kind === "video") {
-      return <PlaceholderCard icon="▶" label={mediaRecord.displayName} />;
+      return <PlaceholderCard icon={<Film size={28} />} label={mediaRecord.displayName} />;
     }
     if (mediaRecord?.kind === "image") {
       const assetUrl = mediaUrl(mediaRecord.fileName);
@@ -132,7 +133,7 @@ function ActiveItemContent({
         />
       );
     }
-    return <PlaceholderCard icon="🖼" label={t("media.picker.noMedia")} />;
+    return <PlaceholderCard icon={<ImageIcon size={28} />} label={t("media.picker.noMedia")} />;
   }
 
   if (itemType === "countdown") {
@@ -152,13 +153,13 @@ function ActiveItemContent({
     return cdConfig ? (
       <CountdownRenderer config={cdConfig} background={cdBackground} />
     ) : (
-      <PlaceholderCard icon="⏱" label={t("builder.add.countdown")} />
+      <PlaceholderCard icon={<Timer size={28} />} label={t("builder.add.countdown")} />
     );
   }
 
   if (itemType === "web_view") {
     const url = currentItem?.webviewConfig?.url ?? "";
-    return <PlaceholderCard icon="🌐" label={url || t("builder.noUrl")} />;
+    return <PlaceholderCard icon={<Globe size={28} />} label={url || t("builder.noUrl")} />;
   }
 
   if (itemType === "slide_show") {
@@ -173,7 +174,7 @@ function ActiveItemContent({
     );
   }
 
-  return <PlaceholderCard icon="▪" label={t("builder.blank")} />;
+  return <PlaceholderCard icon={<Square size={28} />} label={t("builder.blank")} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,7 +195,7 @@ function OverlayContent({ state }: { state: PresentationState }) {
   if (overlay.type === "media") {
     const mediaRecord = media.find((m) => m.id === overlay.mediaId);
     if (mediaRecord?.kind === "video") {
-      return <PlaceholderCard icon="▶" label={mediaRecord.displayName} />;
+      return <PlaceholderCard icon={<Film size={28} />} label={mediaRecord.displayName} />;
     }
     if (mediaRecord?.kind === "image") {
       const assetUrl = mediaUrl(mediaRecord.fileName);
@@ -209,11 +210,11 @@ function OverlayContent({ state }: { state: PresentationState }) {
         />
       );
     }
-    return <PlaceholderCard icon="🖼" label={t("media.picker.noMedia")} />;
+    return <PlaceholderCard icon={<ImageIcon size={28} />} label={t("media.picker.noMedia")} />;
   }
 
   if (overlay.type === "webView") {
-    return <PlaceholderCard icon="🌐" label={overlay.url} />;
+    return <PlaceholderCard icon={<Globe size={28} />} label={overlay.url} />;
   }
 
   return null;
@@ -233,7 +234,7 @@ export const LivePreview: React.FC = () => {
         data-testid="live-preview"
         className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative flex items-center justify-center"
       >
-        <PlaceholderCard icon="📺" label={t("presentation.empty")} />
+        <PlaceholderCard icon={<Tv size={28} />} label={t("presentation.empty")} />
       </div>
     );
   }

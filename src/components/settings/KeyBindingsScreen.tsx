@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Lock, X } from "lucide-react";
 import { Keycap } from "../common/Keycap";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useKeyBindingsStore } from "../../stores/keyBindings";
@@ -135,7 +136,7 @@ export const KeyBindingsScreen: React.FC = () => {
   };
 
   if (!bindings) {
-    return <p className="text-gray-500 text-sm py-4">{t("loading")}</p>;
+    return <p className="text-muted text-sm py-4">{t("loading")}</p>;
   }
 
   return (
@@ -176,9 +177,9 @@ export const KeyBindingsScreen: React.FC = () => {
                             onClick={() => removeShortcut(action, i)}
                             disabled={saving}
                             title={t("keyBindings.removeShortcut")}
-                            className="text-xs text-gray-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 px-0.5"
+                            className="text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 px-0.5 inline-flex items-center"
                           >
-                            ×
+                            <X size={12} />
                           </button>
                         )}
                       </span>
@@ -192,14 +193,14 @@ export const KeyBindingsScreen: React.FC = () => {
 
                     {isReadonly ? (
                       <span
-                        className="text-xs text-muted cursor-default"
+                        className="text-muted cursor-default inline-flex items-center"
                         title={t("keyBindings.hardcodedTooltip")}
                       >
-                        🔒
+                        <Lock size={12} />
                       </span>
                     ) : isRecordingThis ? (
                       <>
-                        <span className="text-xs text-amber-500 dark:text-amber-400 animate-pulse">
+                        <span className="text-xs text-warning animate-pulse">
                           {t("keyBindings.pressKey")}
                         </span>
                         <button
@@ -224,12 +225,12 @@ export const KeyBindingsScreen: React.FC = () => {
                 </div>
 
                 {isRecordingThis && modifierError && (
-                  <p className="text-xs text-red-400 mt-1 pl-0">
+                  <p className="text-xs text-danger mt-1 pl-0">
                     {t("keyBindings.modifierOnly")}
                   </p>
                 )}
                 {rowError && (
-                  <p className="text-xs text-red-400 mt-1">{rowError}</p>
+                  <p className="text-xs text-danger mt-1">{rowError}</p>
                 )}
               </div>
             );

@@ -35,9 +35,9 @@ export const CountdownPanel: React.FC = () => {
         <div
           className={`text-8xl font-mono font-bold tabular-nums tracking-tight select-none ${
             isFinished
-              ? "text-red-400"
+              ? "text-danger"
               : isRunning
-              ? "text-emerald-400"
+              ? "text-success"
               : ""
           }`}
         >
@@ -88,7 +88,7 @@ export const CountdownPanel: React.FC = () => {
         {isRunning ? (
           <button
             onClick={pause}
-            className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-fg-on-primary rounded-xl text-sm font-semibold transition-colors"
+            className="flex-1 py-3 bg-warning hover:bg-warning text-fg-on-primary rounded-xl text-sm font-semibold transition-colors"
           >
             {t("countdown.pause")}
           </button>
@@ -111,7 +111,7 @@ export const CountdownPanel: React.FC = () => {
       </div>
 
       {isFinished && (
-        <p className="text-center text-red-400 text-sm font-medium animate-pulse">
+        <p className="text-center text-danger text-sm font-medium animate-pulse">
           {t("countdown.finished")}
         </p>
       )}

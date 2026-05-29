@@ -21,7 +21,7 @@ export const EmptyState: React.FC<Props> = ({
         <button
           data-testid="cta-import-holyrics"
           onClick={onImportHolyrics}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium transition-colors"
+          className="px-5 py-2.5 bg-success hover:bg-success rounded-lg font-medium transition-colors"
         >
           {t("library.empty.importHolyrics")}
         </button>

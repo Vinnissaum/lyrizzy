@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { updateSetItem } from "../../api/commands";
 import { MediaPicker } from "../common/MediaPicker";
 import { NotesField } from "../common/NotesField";
-import { useThemeStore } from "../../stores/theme";
 import type { CountdownConfig, CountdownEndBehavior, SetItem } from "../../types";
 
 interface Props {
@@ -41,7 +40,6 @@ const END_BEHAVIOR_VALUES: CountdownEndBehavior[] = ["holdZero", "blackout", "ad
 
 export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
   const { t } = useTranslation();
-  const { theme } = useThemeStore();
   const config = item.countdownConfig;
 
   const initMode = config?.target?.kind === "fixedTime" ? "fixedTime" : "duration";
@@ -161,10 +159,10 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
               onBlur={handleSave}
               placeholder="10:00"
               className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
-                durationError ? "border-red-500" : "border-border"
+                durationError ? "border-danger" : "border-border"
               }`}
             />
-            {durationError && <p className="text-xs text-red-400 mt-1">{durationError}</p>}
+            {durationError && <p className="text-xs text-danger mt-1">{durationError}</p>}
           </>
         ) : (
           <>
@@ -179,7 +177,6 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
                 }
               }}
               onBlur={handleSave}
-              style={{ colorScheme: theme }}
               className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
             />
           </>

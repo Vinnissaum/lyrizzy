@@ -16,7 +16,7 @@ export const SlideshowSetItemEditor: React.FC<Props> = ({ item }) => {
   if (!m) {
     return (
       <div className="p-3">
-        <p className="text-xs text-red-400">{t("builder.invalidRef")}</p>
+        <p className="text-xs text-danger">{t("builder.invalidRef")}</p>
       </div>
     );
   }

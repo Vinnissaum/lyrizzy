@@ -7,10 +7,6 @@ vi.mock("../../api/commands", () => ({
   updateSetItem: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../stores/theme", () => ({
-  useThemeStore: () => ({ theme: "light" }),
-}));
-
 vi.mock("../common/MediaPicker", () => ({
   MediaPicker: () => null,
 }));

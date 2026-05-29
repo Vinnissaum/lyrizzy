@@ -35,5 +35,11 @@ zip = "2"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
+# Linux-only: used to fullscreen the presentation window onto a specific monitor
+# via GTK, which the Wayland/X11 compositors honor (unlike client-side
+# set_position, which Wayland ignores). Version matches Tauri's bundled gtk.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
 [dev-dependencies]
 tempfile = "3"

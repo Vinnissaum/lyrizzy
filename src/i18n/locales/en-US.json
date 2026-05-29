@@ -144,12 +144,12 @@
     "countdownSummary": "Countdown — {{dur}}",
     "noUrl": "no URL",
     "add": {
-      "song": "♪ Song",
-      "media": "▶ Media",
-      "countdown": "⏱ Countdown",
-      "webView": "🌐 WebView",
-      "blank": "▪ Blank",
-      "slideShow": "📄 Slideshow"
+      "song": "Song",
+      "media": "Media",
+      "countdown": "Countdown",
+      "webView": "WebView",
+      "blank": "Blank",
+      "slideShow": "Slideshow"
     },
     "slideshowItem": "Slideshow",
     "songSearch": "Search song…",
@@ -227,7 +227,19 @@
       "saving": "Saving…",
       "durationError": "Invalid format. Use mm:ss or hh:mm:ss",
       "defaultMessage": "Service starts in…",
-      "bgLabel": "Select background video…"
+      "bgLabel": "Select background video…",
+      "position": "Screen position"
+    },
+    "position": {
+      "top-left": "Top left",
+      "top-center": "Top center",
+      "top-right": "Top right",
+      "center-left": "Center left",
+      "center": "Center",
+      "center-right": "Center right",
+      "bottom-left": "Bottom left",
+      "bottom-center": "Bottom center",
+      "bottom-right": "Bottom right"
     },
     "mode": {
       "duration": "Duration",
@@ -469,6 +481,13 @@
       "autoSelect": "— Auto —",
       "current": "(current)",
       "cameraUrl": "Camera URL",
+      "fontSize": "Song text size",
+      "fontSizes": {
+        "sm": "Small",
+        "md": "Medium",
+        "lg": "Large",
+        "xl": "Huge"
+      },
       "monitorLabel": "Presentation monitor",
       "monitorHelp": "Which screen to open the presentation on. Auto picks the extended monitor.",
       "monitorOption": "Monitor {{index}}"

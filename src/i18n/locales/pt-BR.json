@@ -144,12 +144,12 @@
     "countdownSummary": "Contagem — {{dur}}",
     "noUrl": "sem URL",
     "add": {
-      "song": "♪ Música",
-      "media": "▶ Mídia",
-      "countdown": "⏱ Contagem",
-      "webView": "🌐 WebView",
-      "blank": "▪ Branco",
-      "slideShow": "📄 Apresentação"
+      "song": "Música",
+      "media": "Mídia",
+      "countdown": "Contagem",
+      "webView": "WebView",
+      "blank": "Branco",
+      "slideShow": "Apresentação"
     },
     "slideshowItem": "Apresentação",
     "songSearch": "Pesquisar música…",
@@ -227,7 +227,19 @@
       "saving": "Salvando…",
       "durationError": "Formato inválido. Use mm:ss ou hh:mm:ss",
       "defaultMessage": "O culto começa em…",
-      "bgLabel": "Selecionar vídeo de fundo…"
+      "bgLabel": "Selecionar vídeo de fundo…",
+      "position": "Posição na tela"
+    },
+    "position": {
+      "top-left": "Superior esquerdo",
+      "top-center": "Superior centro",
+      "top-right": "Superior direito",
+      "center-left": "Centro esquerdo",
+      "center": "Centro",
+      "center-right": "Centro direito",
+      "bottom-left": "Inferior esquerdo",
+      "bottom-center": "Inferior centro",
+      "bottom-right": "Inferior direito"
     },
     "mode": {
       "duration": "Duração",
@@ -469,6 +481,13 @@
       "autoSelect": "— Automático —",
       "current": "(atual)",
       "cameraUrl": "URL da câmera",
+      "fontSize": "Tamanho do texto das músicas",
+      "fontSizes": {
+        "sm": "Pequeno",
+        "md": "Médio",
+        "lg": "Grande",
+        "xl": "Enorme"
+      },
       "monitorLabel": "Monitor da apresentação",
       "monitorHelp": "Em qual tela abrir a apresentação. Automático escolhe o monitor estendido.",
       "monitorOption": "Monitor {{index}}"

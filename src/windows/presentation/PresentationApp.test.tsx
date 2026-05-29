@@ -44,15 +44,19 @@ vi.mock("../../stores/media", () => ({
 }));
 
 vi.mock("../../stores/settings", () => ({
+  PRESENTATION_FONT_SIZE_KEY: "presentation.font_size",
   useSettingsStore: () => ({
     transitionMs: 0,
     reduceMotion: true,
     setLocale: vi.fn(),
+    presentationFontSize: "lg",
+    loadPresentationFontSize: vi.fn(),
   }),
 }));
 
 vi.mock("../../api/commands", () => ({
   onLocaleChanged: vi.fn(() => Promise.resolve(() => {})),
+  onSettingChanged: vi.fn(() => Promise.resolve(() => {})),
 }));
 
 vi.mock("../../runtime/keyboard", () => ({

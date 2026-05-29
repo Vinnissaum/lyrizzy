@@ -1,6 +1,13 @@
 use crate::domain::error::ErrorPayload;
 use crate::state::AppState;
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
+
+#[derive(Serialize, Clone)]
+struct SettingChangedPayload {
+    key: String,
+    value: String,
+}
 
 #[tauri::command]
 pub async fn get_setting(
@@ -42,8 +49,15 @@ pub async fn set_setting(
         .map_err(|e| ErrorPayload::new("settings.db_error").with_param("detail", e.to_string()))?;
 
     if key == "app.locale" {
-        let _ = app.emit("locale_changed", value);
+        let _ = app.emit("locale_changed", value.clone());
     }
+
+    // Notify all windows so projections (e.g. the presentation window's default
+    // font size) can update live without a reload.
+    let _ = app.emit(
+        "setting_changed",
+        SettingChangedPayload { key, value },
+    );
 
     Ok(())
 }

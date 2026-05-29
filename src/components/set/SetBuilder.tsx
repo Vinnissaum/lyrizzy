@@ -9,6 +9,12 @@ import {
   ChevronDown,
   Copy,
   X,
+  Music,
+  Image as ImageIcon,
+  Timer,
+  Globe,
+  Square,
+  FileText,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ItemTypeIcon } from "../presentation/itemMeta";
@@ -629,9 +635,9 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               setShowMediaPicker(false);
               setShowSongPicker((v) => !v);
             }}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors inline-flex items-center justify-center gap-1.5"
           >
-            {t("builder.add.song")}
+            <Music size={14} className="shrink-0" /> {t("builder.add.song")}
           </button>
           <button
             onClick={() => {
@@ -640,34 +646,34 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               refreshMedia();
               setShowMediaPicker((v) => !v);
             }}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-info"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-info inline-flex items-center justify-center gap-1.5"
           >
-            {t("builder.add.media")}
+            <ImageIcon size={14} className="shrink-0" /> {t("builder.add.media")}
           </button>
           <button
             onClick={handleAddCountdown}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-warning"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-warning inline-flex items-center justify-center gap-1.5"
           >
-            {t("builder.add.countdown")}
+            <Timer size={14} className="shrink-0" /> {t("builder.add.countdown")}
           </button>
           <button
             onClick={handleAddWebView}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-purple-400"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-purple-400 inline-flex items-center justify-center gap-1.5"
           >
-            {t("builder.add.webView")}
+            <Globe size={14} className="shrink-0" /> {t("builder.add.webView")}
           </button>
           <button
             onClick={handleAddBlank}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-muted"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-muted inline-flex items-center justify-center gap-1.5"
           >
-            {t("builder.add.blank")}
+            <Square size={14} className="shrink-0" /> {t("builder.add.blank")}
           </button>
           <button
             onClick={handleAddPresentation}
             disabled={isImportingPresentation}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-warning disabled:opacity-50"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-warning disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
           >
-            {isImportingPresentation ? t("media.slideshow.importing") : t("builder.add.slideShow")}
+            <FileText size={14} className="shrink-0" /> {isImportingPresentation ? t("media.slideshow.importing") : t("builder.add.slideShow")}
           </button>
         </div>
         {!hidePresentButton && (

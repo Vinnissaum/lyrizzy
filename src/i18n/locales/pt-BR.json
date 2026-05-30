@@ -114,6 +114,11 @@
     "background": {
       "pick": "Fundo da seção",
       "clear": "Remover fundo"
+    },
+    "preview": {
+      "toggle": "Pré-visualizar na tela",
+      "empty": "Nada para pré-visualizar",
+      "slideCounter": "{{n}}/{{total}}"
     }
   },
   "sets": {

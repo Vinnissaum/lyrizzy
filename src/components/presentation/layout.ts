@@ -24,6 +24,30 @@ export const SIZE_STYLE: Record<FontSize, React.CSSProperties> = {
   xxl: { fontSize: "clamp(2.5rem, 6.5vw, 5.5rem)" },
 };
 
+// Fixed pixel sizes for the scaled-down editor/operator slide chips. These are
+// the upper bound of each `SIZE_STYLE` clamp (in px) — the size a full-screen
+// projector saturates to — so a chip rendered on a fixed virtual stage and then
+// transform-scaled stays proportional to the live slide without depending on
+// the operator window's viewport width.
+export const PREVIEW_SIZE_PX: Record<FontSize, number> = {
+  sm: 30, // 1.875rem
+  md: 40, // 2.5rem
+  lg: 48, // 3rem
+  xl: 64, // 4rem
+  xxl: 88, // 5.5rem
+};
+
+// Ordered smallest→largest so callers can step a size up or down a notch
+// (e.g. the title/author intro slide renders the title one notch above the
+// configured size and the author at the configured size).
+export const FONT_SIZE_ORDER: FontSize[] = ["sm", "md", "lg", "xl", "xxl"];
+
+export const stepSize = (s: FontSize, by: number): FontSize => {
+  const i = FONT_SIZE_ORDER.indexOf(s);
+  const clamped = Math.min(FONT_SIZE_ORDER.length - 1, Math.max(0, i + by));
+  return FONT_SIZE_ORDER[clamped];
+};
+
 // Map a 9-point anchor to flex alignment classes. `justify-*` controls the
 // vertical axis (flex-col), `items-*` the horizontal axis, and `text-*` keeps
 // inline content aligned with the anchor.

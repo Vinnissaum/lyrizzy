@@ -13,6 +13,7 @@ import {
   POSITION_CLASS,
   MARGIN_CLASS,
   PRESET_COLORS,
+  stepSize,
 } from "../../components/presentation/layout";
 import { TITLE_SLIDE_LABEL } from "../../components/presentation/slideMeta";
 import { SongBackground } from "../../components/presentation/SongBackground";
@@ -32,10 +33,6 @@ import type {
   Margin,
   ScreenPosition,
 } from "../../types";
-
-// Title/author intro slide sizing: title one notch larger, author smaller.
-const TITLE_SIZE: React.CSSProperties = SIZE_STYLE.xxl;
-const AUTHOR_SIZE: React.CSSProperties = SIZE_STYLE.md;
 
 interface Appearance {
   fontFamily: FontFamily;
@@ -75,6 +72,11 @@ function SongSlide({
   const fontClass = FONT_CLASS[appearance.fontFamily];
   const sizeStyle = SIZE_STYLE[appearance.fontSize];
   const isTitle = sectionLabel === TITLE_SLIDE_LABEL;
+  // Title/author intro slide follows the configured font size and position:
+  // the title sits one notch above the configured size for emphasis (clamped
+  // at xxl) and the author renders at the configured size beneath it.
+  const titleSize = SIZE_STYLE[stepSize(appearance.fontSize, 1)];
+  const authorSize = sizeStyle;
 
   return (
     <div
@@ -84,7 +86,7 @@ function SongSlide({
       {hasMedia && <SongBackground background={background!} frozen={frozen} />}
       <div
         className={`relative z-10 h-full flex flex-col ${MARGIN_CLASS[appearance.margin]} ${
-          isTitle ? POSITION_CLASS.center : POSITION_CLASS[appearance.position]
+          POSITION_CLASS[appearance.position]
         }`}
       >
         {mode === "frozen" && (
@@ -96,14 +98,14 @@ function SongSlide({
           <div className="w-full space-y-3">
             <p
               className={`font-bold leading-tight drop-shadow-lg ${fontClass}`}
-              style={{ color: fg, ...TITLE_SIZE }}
+              style={{ color: fg, ...titleSize }}
             >
               {slideLines[0] ?? ""}
             </p>
             {slideLines[1] && (
               <p
                 className={`font-medium leading-relaxed opacity-80 drop-shadow-lg ${fontClass}`}
-                style={{ color: fg, ...AUTHOR_SIZE }}
+                style={{ color: fg, ...authorSize }}
               >
                 {slideLines[1]}
               </p>

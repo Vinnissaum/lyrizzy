@@ -19,10 +19,12 @@ import {
 import { createSong, updateSong, deleteSong, getSong, parsePlainTextImport } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { useSettingsStore } from "../../stores/settings";
 import { mediaUrl } from "../../api/assets";
 import { SectionCard, SectionDraft } from "./SectionCard";
+import { ChipAppearance } from "../presentation/SlideChip";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import type { Media, SectionType, TextCasing } from "../../types";
+import type { BackgroundInfo, Media, SectionType, TextCasing } from "../../types";
 
 let dndCounter = 0;
 const nextDndId = () => `sec-${++dndCounter}`;
@@ -193,6 +195,14 @@ export const SongEditor: React.FC = () => {
   const { t } = useTranslation();
   const { editingSongId, closeEditor, refresh } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
+  const {
+    presentationFontFamily,
+    presentationFontSize,
+    presentationPreset,
+    presentationPosition,
+    presentationMargin,
+    presentationRepeatMode,
+  } = useSettingsStore();
 
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -392,6 +402,27 @@ export const SongEditor: React.FC = () => {
     setSections((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const appearance: ChipAppearance = {
+    fontFamily: presentationFontFamily,
+    fontSize: presentationFontSize,
+    preset: presentationPreset,
+    position: presentationPosition,
+    margin: presentationMargin,
+  };
+
+  // Per-song media background mirrored into the section previews.
+  const previewBackground: BackgroundInfo | undefined = React.useMemo(() => {
+    if (backgroundMode !== "media" || !backgroundId) return undefined;
+    const m = media.find((x) => x.id === backgroundId);
+    if (!m) return undefined;
+    return {
+      mediaKind: m.kind,
+      assetUrl: mediaUrl(m.thumbnailFile ?? m.fileName),
+      scrimOpacity,
+      restartOnSectionBoundary: false,
+    };
+  }, [backgroundMode, backgroundId, scrimOpacity, media]);
+
   const isValid = title.trim() && sections.some((s) => s.body.trim());
 
   if (isLoading) {
@@ -558,6 +589,10 @@ export const SongEditor: React.FC = () => {
                     onChange={(updated) => updateSection(idx, updated)}
                     onRemove={() => removeSection(idx)}
                     canRemove={sections.length > 1}
+                    appearance={appearance}
+                    casing={textCasing ?? "normal"}
+                    repeatMode={presentationRepeatMode}
+                    background={previewBackground}
                   />
                 ))}
               </div>

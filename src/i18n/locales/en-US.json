@@ -114,6 +114,11 @@
     "background": {
       "pick": "Section background",
       "clear": "Clear background"
+    },
+    "preview": {
+      "toggle": "Preview on screen",
+      "empty": "Nothing to preview",
+      "slideCounter": "{{n}}/{{total}}"
     }
   },
   "sets": {

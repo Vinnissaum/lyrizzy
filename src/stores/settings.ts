@@ -5,6 +5,7 @@ import type {
   FontFamily,
   FontSize,
   Margin,
+  RepeatMode,
   ScreenPosition,
 } from "../types";
 
@@ -15,6 +16,7 @@ export const PRESENTATION_POSITION_KEY = "presentation.position";
 export const PRESENTATION_MARGIN_KEY = "presentation.margin";
 export const SHOW_TITLE_SLIDE_KEY = "presentation.show_title_slide";
 export const AUTHOR_IN_PARENS_KEY = "presentation.author_in_parens";
+export const PRESENTATION_REPEAT_MODE_KEY = "presentation.repeat_mode";
 export const ANNOUNCEMENT_FONT_FAMILY_KEY = "announcement.font_family";
 export const ANNOUNCEMENT_FONT_SIZE_KEY = "announcement.font_size";
 export const ANNOUNCEMENT_PRESET_KEY = "announcement.preset";
@@ -42,12 +44,14 @@ const POSITION_VALUES: ScreenPosition[] = [
   "bottom-left", "bottom-center", "bottom-right",
 ];
 const MARGIN_VALUES: Margin[] = ["none", "sm", "md", "lg", "xl"];
+const REPEAT_MODE_VALUES: RepeatMode[] = ["duplicate", "annotate"];
 
 const DEFAULT_FONT_SIZE: FontSize = "lg";
 const DEFAULT_FONT_FAMILY: FontFamily = "sans";
 const DEFAULT_PRESET: BackgroundPreset = "preto-branco";
 const DEFAULT_POSITION: ScreenPosition = "center";
 const DEFAULT_MARGIN: Margin = "lg";
+const DEFAULT_REPEAT_MODE: RepeatMode = "duplicate";
 const DEFAULT_ANNOUNCEMENT_FONT_SIZE: FontSize = "lg";
 
 function parseEnum<T extends string>(value: string | null | undefined, valid: T[], fallback: T): T {
@@ -66,6 +70,7 @@ interface SettingsStore {
   presentationPreset: BackgroundPreset;
   presentationPosition: ScreenPosition;
   presentationMargin: Margin;
+  presentationRepeatMode: RepeatMode;
   showTitleSlide: boolean;
   authorInParens: boolean;
   // Global announcement (Aviso) appearance
@@ -85,6 +90,7 @@ interface SettingsStore {
   setPresentationPreset: (preset: BackgroundPreset) => void;
   setPresentationPosition: (position: ScreenPosition) => void;
   setPresentationMargin: (margin: Margin) => void;
+  setPresentationRepeatMode: (mode: RepeatMode) => void;
   setShowTitleSlide: (value: boolean) => void;
   setAuthorInParens: (value: boolean) => void;
   setAnnouncementFontFamily: (family: FontFamily) => void;
@@ -124,6 +130,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   presentationPreset: DEFAULT_PRESET,
   presentationPosition: DEFAULT_POSITION,
   presentationMargin: DEFAULT_MARGIN,
+  presentationRepeatMode: DEFAULT_REPEAT_MODE,
   showTitleSlide: true,
   authorInParens: true,
   announcementFontFamily: DEFAULT_FONT_FAMILY,
@@ -177,6 +184,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ presentationMargin: margin });
     setSetting(PRESENTATION_MARGIN_KEY, margin).catch(() => {});
   },
+  setPresentationRepeatMode: (mode) => {
+    set({ presentationRepeatMode: mode });
+    setSetting(PRESENTATION_REPEAT_MODE_KEY, mode).catch(() => {});
+  },
   setShowTitleSlide: (value) => {
     set({ showTitleSlide: value });
     setSetting(SHOW_TITLE_SLIDE_KEY, String(value)).catch(() => {});
@@ -204,7 +215,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
 
   loadPresentationSettings: async () => {
     const [
-      fontSize, fontFamily, preset, position, margin,
+      fontSize, fontFamily, preset, position, margin, repeatMode,
       showTitle, authorParens,
       annFamily, annSize, annPreset, annPosition,
     ] = await Promise.all([
@@ -213,6 +224,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readSetting(PRESENTATION_PRESET_KEY, PRESET_VALUES, DEFAULT_PRESET),
       readSetting(PRESENTATION_POSITION_KEY, POSITION_VALUES, DEFAULT_POSITION),
       readSetting(PRESENTATION_MARGIN_KEY, MARGIN_VALUES, DEFAULT_MARGIN),
+      readSetting(PRESENTATION_REPEAT_MODE_KEY, REPEAT_MODE_VALUES, DEFAULT_REPEAT_MODE),
       readBool(SHOW_TITLE_SLIDE_KEY, true),
       readBool(AUTHOR_IN_PARENS_KEY, true),
       readSetting(ANNOUNCEMENT_FONT_FAMILY_KEY, FONT_FAMILY_VALUES, DEFAULT_FONT_FAMILY),
@@ -226,6 +238,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       presentationPreset: preset,
       presentationPosition: position,
       presentationMargin: margin,
+      presentationRepeatMode: repeatMode,
       showTitleSlide: showTitle,
       authorInParens: authorParens,
       announcementFontFamily: annFamily,

@@ -3,7 +3,7 @@ use crate::commands::song::load_sections;
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::domain::set::{SetItem, SetItemType};
-use crate::domain::slide::{Slide, SlideConfig};
+use crate::domain::slide::{RepeatMode, Slide, SlideConfig};
 use crate::services::{background, play_counter, slide_splitter};
 use crate::state::AppState;
 use sqlx::SqlitePool;
@@ -23,10 +23,11 @@ fn sections_to_slides(
     sections: &[crate::domain::song::SongSection],
     config: &SlideConfig,
     casing: crate::domain::song::TextCasing,
+    repeat_mode: RepeatMode,
 ) -> Vec<Slide> {
     sections
         .iter()
-        .flat_map(|s| slide_splitter::split_with_casing(s, config, casing))
+        .flat_map(|s| slide_splitter::split_with_casing(s, config, casing, repeat_mode))
         .collect()
 }
 
@@ -46,6 +47,25 @@ async fn read_bool_setting(pool: &SqlitePool, key: &str, default: bool) -> bool 
         Some("false") => false,
         _ => default,
     }
+}
+
+/// Reads a string app setting, returning `None` when unset.
+async fn read_string_setting(pool: &SqlitePool, key: &str) -> Option<String> {
+    sqlx::query_scalar("SELECT value FROM settings WHERE key = ?")
+        .bind(key)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None)
+}
+
+/// Resolves the credit line for the title slide. Most users fill the prominent
+/// "Artist" field, so fall back to it when the (collapsed) "Author" field is
+/// empty/blank.
+fn resolve_title_credit<'a>(author: Option<&'a str>, artist: Option<&'a str>) -> Option<&'a str> {
+    author
+        .map(str::trim)
+        .filter(|a| !a.is_empty())
+        .or(artist)
 }
 
 /// Builds the optional title/author intro slide for a song.
@@ -231,32 +251,38 @@ pub async fn load_set_for_presentation(
 
     let show_title_slide = read_bool_setting(pool, "presentation.show_title_slide", true).await;
     let author_in_parens = read_bool_setting(pool, "presentation.author_in_parens", true).await;
+    let repeat_mode =
+        RepeatMode::from_opt(read_string_setting(pool, "presentation.repeat_mode").await.as_deref());
 
     let mut computed_slides: Vec<Vec<Slide>> = Vec::new();
     for item in &service_set.items {
         let slides = match item.item_type {
             SetItemType::Song => {
                 if let Some(song_id) = &item.song_id {
-                    let meta: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
-                        "SELECT title, author, text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
-                    )
-                    .bind(song_id)
-                    .fetch_optional(pool)
-                    .await
-                    .unwrap_or(None);
-                    let (title, author, casing_str) = match meta {
-                        Some((t, a, c)) => (t, a, c),
-                        None => (String::new(), None, None),
+                    let meta: Option<(String, Option<String>, Option<String>, Option<String>)> =
+                        sqlx::query_as(
+                            "SELECT title, author, artist, text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
+                        )
+                        .bind(song_id)
+                        .fetch_optional(pool)
+                        .await
+                        .unwrap_or(None);
+                    let (title, author, artist, casing_str) = match meta {
+                        Some((t, au, ar, c)) => (t, au, ar, c),
+                        None => (String::new(), None, None, None),
                     };
                     let casing = crate::domain::song::TextCasing::from_opt(casing_str.as_deref());
                     let sections = load_sections(pool, song_id).await?;
-                    let mut s = sections_to_slides(&sections, &config, casing);
+                    let mut s = sections_to_slides(&sections, &config, casing, repeat_mode);
                     if s.is_empty() {
                         s = vec![blank_slide()];
                     }
                     if show_title_slide {
+                        // Most users fill the prominent "Artist" field; fall back
+                        // to it when the (collapsed) "Author" field is empty.
+                        let credit = resolve_title_credit(author.as_deref(), artist.as_deref());
                         if let Some(title_slide) =
-                            build_title_slide(song_id, &title, author.as_deref(), author_in_parens)
+                            build_title_slide(song_id, &title, credit, author_in_parens)
                         {
                             s.insert(0, title_slide);
                         }
@@ -493,6 +519,20 @@ mod tests {
     fn title_slide_omits_blank_author() {
         let s = build_title_slide("song1", "Amazing Grace", Some("  "), true).unwrap();
         assert_eq!(s.lines, vec!["Amazing Grace"]);
+    }
+
+    #[test]
+    fn title_credit_falls_back_to_artist_when_author_blank() {
+        // Author empty → use artist (the field most users actually fill).
+        assert_eq!(resolve_title_credit(None, Some("Hillsong")), Some("Hillsong"));
+        assert_eq!(resolve_title_credit(Some("  "), Some("Hillsong")), Some("Hillsong"));
+        // Author present → author wins.
+        assert_eq!(
+            resolve_title_credit(Some("John Newton"), Some("Hillsong")),
+            Some("John Newton")
+        );
+        // Neither → no credit line.
+        assert_eq!(resolve_title_credit(None, None), None);
     }
 
     #[test]

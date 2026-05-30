@@ -8,6 +8,7 @@ import {
   ChevronUp,
   ChevronDown,
   Copy,
+  Pencil,
   X,
   Music,
   Image as ImageIcon,
@@ -60,7 +61,7 @@ function isExpandable(item: SetItem): boolean {
 
 export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton }) => {
   const { t } = useTranslation();
-  const { setView } = useLibraryStore();
+  const { setView, openEditor } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
   const [serviceSet, setServiceSet] = useState<ServiceSet | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -463,6 +464,15 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                     </button>
                   )}
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {item.itemType === "song" && item.songId && (
+                      <button
+                        onClick={() => openEditor(item.songId)}
+                        className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"
+                        title={t("builder.actions.editSong")}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDuplicate(item)}
                       className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"

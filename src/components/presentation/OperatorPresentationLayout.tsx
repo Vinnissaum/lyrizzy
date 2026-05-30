@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   clearOverlay,
   enterPresentation,
+  exitPresentation,
   importPresentation,
   setAnnouncementOverlay,
   setMediaOverlay,
@@ -130,6 +131,19 @@ export const OperatorPresentationLayout: React.FC = () => {
     }
   };
 
+  // Toggle blackout (blank mode) — same behavior as the F10 shortcut.
+  const handleBlackout = () => {
+    const pres = usePresentationStore.getState();
+    pres.setMode(pres.state?.mode === "blank" ? "live" : "blank");
+  };
+
+  // Stop presentation — same behavior as pressing Esc in operator mode.
+  const handleStop = () => {
+    exitPresentation().catch((err) =>
+      console.error("exit presentation failed:", err),
+    );
+  };
+
   const handleImportPresentation = async () => {
     if (!fixedSetId) return;
     const selected = await open({
@@ -175,6 +189,9 @@ export const OperatorPresentationLayout: React.FC = () => {
         onAviso={handleAvisoClick}
         onPdf={handleImportPresentation}
         onClearOverlay={handleClearOverlay}
+        onBlackout={handleBlackout}
+        onStop={handleStop}
+        isBlackoutActive={state?.mode === "blank"}
         isOverlayActive={!!state?.overlay}
         isImportingPresentation={isImportingPresentation}
       />

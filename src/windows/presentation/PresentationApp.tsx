@@ -6,7 +6,15 @@ import { forwardKeydown } from "../../runtime/keyboard";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
-import { useSettingsStore, PRESENTATION_FONT_SIZE_KEY } from "../../stores/settings";
+import { useSettingsStore } from "../../stores/settings";
+import {
+  FONT_CLASS,
+  SIZE_STYLE,
+  POSITION_CLASS,
+  MARGIN_CLASS,
+  PRESET_COLORS,
+} from "../../components/presentation/layout";
+import { TITLE_SLIDE_LABEL } from "../../components/presentation/slideMeta";
 import { SongBackground } from "../../components/presentation/SongBackground";
 import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRenderer";
 import { CountdownRenderer } from "../../components/presentation/CountdownRenderer";
@@ -16,25 +24,26 @@ import { AnnouncementRenderer } from "../../components/presentation/Announcement
 import { QuickMediaRenderer } from "../../components/presentation/QuickMediaRenderer";
 import { QuickWebViewRenderer } from "../../components/presentation/QuickWebViewRenderer";
 import { SlideshowRenderer } from "../../components/presentation/SlideshowRenderer";
-import type { BackgroundInfo, BackgroundPreset, FontFamily, FontSize } from "../../types";
+import type {
+  BackgroundInfo,
+  BackgroundPreset,
+  FontFamily,
+  FontSize,
+  Margin,
+  ScreenPosition,
+} from "../../types";
 
-const PRESET_FG: Record<BackgroundPreset, string> = {
-  "preto-branco": "#FFFFFF",
-  "branco-preto": "#000000",
-};
+// Title/author intro slide sizing: title one notch larger, author smaller.
+const TITLE_SIZE: React.CSSProperties = SIZE_STYLE.xxl;
+const AUTHOR_SIZE: React.CSSProperties = SIZE_STYLE.md;
 
-const FONT_CLASS: Record<FontFamily, string> = {
-  sans: "font-sans",
-  serif: "font-serif",
-  mono: "font-mono",
-};
-
-const SIZE_STYLE: Record<FontSize, React.CSSProperties> = {
-  sm: { fontSize: "clamp(1rem, 2.5vw, 1.875rem)" },
-  md: { fontSize: "clamp(1.25rem, 3.5vw, 2.5rem)" },
-  lg: { fontSize: "clamp(1.5rem, 4vw, 3rem)" },
-  xl: { fontSize: "clamp(2rem, 5vw, 4rem)" },
-};
+interface Appearance {
+  fontFamily: FontFamily;
+  fontSize: FontSize;
+  preset: BackgroundPreset;
+  position: ScreenPosition;
+  margin: Margin;
+}
 
 function formatMs(ms: number): string {
   const totalSec = Math.ceil(ms / 1000);
@@ -45,32 +54,63 @@ function formatMs(ms: number): string {
 
 function SongSlide({
   slideLines,
+  sectionLabel,
   background,
   frozen,
   mode,
-  defaultFontSize,
+  appearance,
 }: {
   slideLines: string[];
+  sectionLabel?: string;
   background?: BackgroundInfo;
   frozen?: boolean;
   mode: string;
-  defaultFontSize: FontSize;
+  appearance: Appearance;
 }) {
-  const fg = background?.preset ? PRESET_FG[background.preset] : "#FFFFFF";
-  const fontClass = FONT_CLASS[background?.typography?.fontFamily ?? "sans"];
-  const sizeStyle = SIZE_STYLE[background?.typography?.fontSize ?? defaultFontSize];
+  // Appearance is global: per-song media background still applies, but the
+  // solid color preset, fonts, position and margin all come from settings.
+  const hasMedia = !!background?.assetUrl;
+  const presetColors = PRESET_COLORS[appearance.preset];
+  const fg = hasMedia ? "#FFFFFF" : presetColors.fg;
+  const fontClass = FONT_CLASS[appearance.fontFamily];
+  const sizeStyle = SIZE_STYLE[appearance.fontSize];
+  const isTitle = sectionLabel === TITLE_SLIDE_LABEL;
 
   return (
-    <div className="relative h-full bg-black overflow-hidden select-none">
-      {background && <SongBackground background={background} frozen={frozen} />}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-16">
+    <div
+      className="relative h-full overflow-hidden select-none"
+      style={{ backgroundColor: hasMedia ? "#000000" : presetColors.bg }}
+    >
+      {hasMedia && <SongBackground background={background!} frozen={frozen} />}
+      <div
+        className={`relative z-10 h-full flex flex-col ${MARGIN_CLASS[appearance.margin]} ${
+          isTitle ? POSITION_CLASS.center : POSITION_CLASS[appearance.position]
+        }`}
+      >
         {mode === "frozen" && (
           <div className="absolute top-3 right-4 text-xs text-blue-400/60 font-medium uppercase tracking-wider">
             Congelado
           </div>
         )}
-        {slideLines.length > 0 ? (
-          <div className="w-full max-w-4xl text-center space-y-2">
+        {isTitle ? (
+          <div className="w-full max-w-5xl space-y-3">
+            <p
+              className={`font-bold leading-tight drop-shadow-lg ${fontClass}`}
+              style={{ color: fg, ...TITLE_SIZE }}
+            >
+              {slideLines[0] ?? ""}
+            </p>
+            {slideLines[1] && (
+              <p
+                className={`font-medium leading-relaxed opacity-80 drop-shadow-lg ${fontClass}`}
+                style={{ color: fg, ...AUTHOR_SIZE }}
+              >
+                {slideLines[1]}
+              </p>
+            )}
+          </div>
+        ) : slideLines.length > 0 ? (
+          <div className="w-full max-w-4xl space-y-2">
             {slideLines.map((line, i) => (
               <p
                 key={i}
@@ -99,9 +139,21 @@ export const PresentationApp: React.FC = () => {
     transitionMs,
     reduceMotion,
     setLocale,
+    presentationFontFamily,
     presentationFontSize,
-    loadPresentationFontSize,
+    presentationPreset,
+    presentationPosition,
+    presentationMargin,
+    loadPresentationSettings,
   } = useSettingsStore();
+
+  const appearance: Appearance = {
+    fontFamily: presentationFontFamily,
+    fontSize: presentationFontSize,
+    preset: presentationPreset,
+    position: presentationPosition,
+    margin: presentationMargin,
+  };
 
   const currentItem = state?.set?.items[state?.currentItemIndex ?? 0];
 
@@ -113,11 +165,11 @@ export const PresentationApp: React.FC = () => {
       setLocale(locale);
     });
     const unsubSetting = onSettingChanged((key) => {
-      if (key === PRESENTATION_FONT_SIZE_KEY) {
-        loadPresentationFontSize();
+      if (key.startsWith("presentation.") || key.startsWith("announcement.")) {
+        loadPresentationSettings();
       }
     });
-    loadPresentationFontSize();
+    loadPresentationSettings();
     refreshMedia();
 
     const keydownHandler = (e: KeyboardEvent) => {
@@ -283,10 +335,11 @@ export const PresentationApp: React.FC = () => {
     content = (
       <SongSlide
         slideLines={slide?.lines ?? []}
+        sectionLabel={slide?.sectionLabel}
         background={background}
         frozen={frozen}
         mode={mode}
-        defaultFontSize={presentationFontSize}
+        appearance={appearance}
       />
     );
   }

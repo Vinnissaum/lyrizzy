@@ -33,7 +33,17 @@
       "Bash(cargo clippy *)",
       "Bash(rustup component *)",
       "Bash(powershell.exe *)",
-      "PowerShell(& powershell.exe -ExecutionPolicy Bypass -File scripts/check-theme-tokens.ps1 2>&1)"
+      "PowerShell(& powershell.exe -ExecutionPolicy Bypass -File scripts/check-theme-tokens.ps1 2>&1)",
+      "Bash(npm run *)",
+      "Bash(rm -rf node_modules package-lock.json)",
+      "Bash(npm install *)",
+      "Bash(git checkout *)",
+      "Bash(cargo check *)",
+      "Bash(echo \"=== EXIT $? ===\")",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git status *)",
+      "Bash(git ls-files *)",
+      "Bash(npx vite *)"
     ]
   }
 }

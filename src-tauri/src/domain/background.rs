@@ -24,6 +24,7 @@ pub enum FontSize {
     Md,
     Lg,
     Xl,
+    Xxl,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -121,5 +122,6 @@ mod tests {
         assert_eq!(serde_json::to_string(&FontSize::Md).unwrap(), "\"md\"");
         assert_eq!(serde_json::to_string(&FontSize::Lg).unwrap(), "\"lg\"");
         assert_eq!(serde_json::to_string(&FontSize::Xl).unwrap(), "\"xl\"");
+        assert_eq!(serde_json::to_string(&FontSize::Xxl).unwrap(), "\"xxl\"");
     }
 }

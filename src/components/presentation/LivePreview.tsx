@@ -3,11 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Film, Image as ImageIcon, Timer, Globe, Square, Tv } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
+import { useSettingsStore } from "../../stores/settings";
 import { mediaUrl } from "../../api/assets";
 import { AnnouncementRenderer } from "./AnnouncementRenderer";
 import { CountdownRenderer } from "./CountdownRenderer";
 import { SlideshowRenderer } from "./SlideshowRenderer";
-import type { BackgroundInfo, BackgroundPreset, PresentationState, SetItem } from "../../types";
+import { FONT_CLASS, PRESET_COLORS } from "./layout";
+import { TITLE_SLIDE_LABEL } from "./slideMeta";
+import type { BackgroundInfo, BackgroundPreset, FontFamily, PresentationState, SetItem } from "../../types";
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -33,55 +36,64 @@ const FrameTag: React.FC<{ label: string }> = ({ label }) => (
 // Song slide preview (text-only, scale-friendly)
 // ---------------------------------------------------------------------------
 
-const PRESET_BG_PREVIEW: Record<BackgroundPreset, { bg: string; fg: string }> = {
-  "preto-branco": { bg: "#000000", fg: "#FFFFFF" },
-  "branco-preto": { bg: "#FFFFFF", fg: "#000000" },
-};
-
 function SongSlidePreview({
   lines,
+  sectionLabel,
   background,
+  preset,
+  fontFamily,
 }: {
   lines: string[];
+  sectionLabel?: string;
   background?: BackgroundInfo;
+  preset: BackgroundPreset;
+  fontFamily: FontFamily;
 }) {
-  if (background?.preset) {
-    const { bg, fg } = PRESET_BG_PREVIEW[background.preset];
-    return (
-      <div className="w-full h-full relative flex items-center justify-center" style={{ backgroundColor: bg }}>
-        <div className="relative z-10 w-full px-2">
-          <p className="text-center text-xs leading-snug whitespace-pre-wrap line-clamp-6" style={{ color: fg }}>
-            {lines.join("\n")}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const hasMedia = !!background?.assetUrl;
+  const isTitle = sectionLabel === TITLE_SLIDE_LABEL;
+  const fontClass = FONT_CLASS[fontFamily];
+  const { bg, fg } = PRESET_COLORS[preset];
 
-  const bgStyle: React.CSSProperties = background?.assetUrl
-    ? background.mediaKind === "image"
+  const bgStyle: React.CSSProperties = hasMedia
+    ? background!.mediaKind === "image"
       ? {
-          backgroundImage: `url(${background.assetUrl})`,
+          backgroundImage: `url(${background!.assetUrl})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }
       : { backgroundColor: "#000" }
-    : { backgroundColor: "#000" };
+    : { backgroundColor: bg };
 
-  const scrimStyle: React.CSSProperties = background
-    ? { backgroundColor: `rgba(0,0,0,${background.scrimOpacity / 100})` }
-    : {};
+  const textColor = hasMedia ? "#FFFFFF" : fg;
+
+  const body = isTitle ? (
+    <div className="relative z-10 w-full px-2 text-center space-y-0.5">
+      <p className={`text-sm font-bold leading-tight line-clamp-3 ${fontClass}`} style={{ color: textColor }}>
+        {lines[0] ?? ""}
+      </p>
+      {lines[1] && (
+        <p className={`text-[10px] opacity-80 leading-snug line-clamp-2 ${fontClass}`} style={{ color: textColor }}>
+          {lines[1]}
+        </p>
+      )}
+    </div>
+  ) : (
+    <div className="relative z-10 w-full px-2">
+      <p
+        className={`text-center text-xs leading-snug whitespace-pre-wrap line-clamp-6 ${fontClass}`}
+        style={{ color: textColor }}
+      >
+        {lines.join("\n")}
+      </p>
+    </div>
+  );
 
   return (
     <div className="w-full h-full relative flex items-center justify-center" style={bgStyle}>
-      {background && (
-        <div className="absolute inset-0" style={scrimStyle} />
+      {hasMedia && (
+        <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${background!.scrimOpacity / 100})` }} />
       )}
-      <div className="relative z-10 w-full px-2">
-        <p className="text-center text-xs leading-snug whitespace-pre-wrap line-clamp-6 text-white">
-          {lines.join("\n")}
-        </p>
-      </div>
+      {body}
     </div>
   );
 }
@@ -97,6 +109,8 @@ function ActiveItemContent({
 }) {
   const { t } = useTranslation();
   const { media } = useMediaStore();
+  const presentationPreset = useSettingsStore((s) => s.presentationPreset);
+  const presentationFontFamily = useSettingsStore((s) => s.presentationFontFamily);
 
   const items = state.set?.items ?? [];
   const currentItem: SetItem | undefined = items[state.currentItemIndex];
@@ -107,7 +121,10 @@ function ActiveItemContent({
     return (
       <SongSlidePreview
         lines={slide?.lines ?? []}
+        sectionLabel={slide?.sectionLabel}
         background={state.background}
+        preset={presentationPreset}
+        fontFamily={presentationFontFamily}
       />
     );
   }

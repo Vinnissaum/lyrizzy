@@ -10,7 +10,6 @@ export type AppView =
   | "import-holyrics"
   | "sets"
   | "set-builder"
-  | "countdown"
   | "media"
   | "backup"
   | "settings";

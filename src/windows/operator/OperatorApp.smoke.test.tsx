@@ -54,7 +54,7 @@ describe("OperatorApp — smoke navigation", () => {
     render(<OperatorApp />);
     expect(screen.getByRole("button", { name: "Início" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Biblioteca" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cronômetro" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cronômetro" })).toBeNull();
     expect(screen.getByRole("button", { name: "Mídia" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Backup" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Configurações" })).toBeInTheDocument();
@@ -86,16 +86,6 @@ describe("OperatorApp — smoke navigation", () => {
     await waitFor(() =>
       expect(screen.getByTestId("apresentar-button")).toBeInTheDocument()
     );
-  });
-
-  it("navigates to the countdown section", async () => {
-    render(<OperatorApp />);
-    fireEvent.click(screen.getByRole("button", { name: "Cronômetro" }));
-    await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Cronômetro" })).toBeInTheDocument()
-    );
-    expect(screen.getByText("Min")).toBeInTheDocument();
-    expect(screen.getByText("Seg")).toBeInTheDocument();
   });
 
   it("navigates to the media section", async () => {

@@ -30,6 +30,7 @@ fn parse_font_size(s: Option<&str>) -> FontSize {
         Some("sm") => FontSize::Sm,
         Some("md") => FontSize::Md,
         Some("xl") => FontSize::Xl,
+        Some("xxl") => FontSize::Xxl,
         _ => FontSize::Lg,
     }
 }

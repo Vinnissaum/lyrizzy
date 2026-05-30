@@ -22,56 +22,31 @@ import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { SectionCard, SectionDraft } from "./SectionCard";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import type { Media, SectionType, BackgroundPreset, FontFamily, FontSize, TextCasing } from "../../types";
+import type { Media, SectionType, TextCasing } from "../../types";
 
 let dndCounter = 0;
 const nextDndId = () => `sec-${++dndCounter}`;
 
-// ── BackgroundEditor (3-tab: Preset | Media) for the song level ──────────────
+// ── BackgroundEditor (None | Media) for the song level ───────────────────────
+// Fonts, theme/preset, size, position and margin are configured globally in
+// Settings; songs only optionally pick a per-song background media.
 
-type BgMode = "none" | "preset" | "media";
+type BgMode = "none" | "media";
 
 interface BackgroundEditorProps {
   backgroundMode?: string;
-  backgroundPreset?: string;
-  fontFamily?: string;
-  fontSize?: string;
   backgroundId?: string;
   scrimOpacity: number;
   media: Media[];
   onChange: (patch: {
     backgroundMode?: string;
-    backgroundPreset?: string;
-    fontFamily?: string;
-    fontSize?: string;
     backgroundId?: string;
     scrimOpacity?: number;
   }) => void;
 }
 
-const PRESET_OPTIONS: { value: BackgroundPreset; label: string; bg: string; fg: string }[] = [
-  { value: "preto-branco", label: "Preto/Branco", bg: "#000", fg: "#fff" },
-  { value: "branco-preto", label: "Branco/Preto", bg: "#fff", fg: "#000" },
-];
-
-const FONT_FAMILY_OPTIONS: { value: FontFamily; label: string }[] = [
-  { value: "sans", label: "Sans" },
-  { value: "serif", label: "Serif" },
-  { value: "mono", label: "Mono" },
-];
-
-const FONT_SIZE_OPTIONS: { value: FontSize; label: string }[] = [
-  { value: "sm", label: "Sm" },
-  { value: "md", label: "Md" },
-  { value: "lg", label: "Lg" },
-  { value: "xl", label: "Xl" },
-];
-
 const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
   backgroundMode,
-  backgroundPreset,
-  fontFamily,
-  fontSize,
   backgroundId,
   scrimOpacity,
   media,
@@ -80,8 +55,7 @@ const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
 
-  const activeMode: BgMode =
-    backgroundMode === "preset" ? "preset" : backgroundMode === "media" ? "media" : "none";
+  const activeMode: BgMode = backgroundMode === "media" ? "media" : "none";
 
   const current = backgroundId ? media.find((m) => m.id === backgroundId) : undefined;
   const thumbUrl = current?.thumbnailFile
@@ -91,16 +65,15 @@ const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
     : undefined;
 
   const setMode = (m: BgMode) => {
-    if (m === "none") onChange({ backgroundMode: undefined, backgroundId: undefined, backgroundPreset: undefined });
-    else if (m === "media") onChange({ backgroundMode: "media", backgroundPreset: undefined });
-    else onChange({ backgroundMode: "preset", backgroundId: undefined, backgroundPreset: backgroundPreset ?? "preto-branco" });
+    if (m === "none") onChange({ backgroundMode: undefined, backgroundId: undefined });
+    else onChange({ backgroundMode: "media" });
   };
 
   return (
     <div className="space-y-2">
       {/* Mode tabs */}
       <div className="flex gap-1 bg-surface-2 rounded-lg p-0.5">
-        {(["none", "preset", "media"] as BgMode[]).map((m) => (
+        {(["none", "media"] as BgMode[]).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
@@ -114,66 +87,6 @@ const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
           </button>
         ))}
       </div>
-
-      {/* Preset tab */}
-      {activeMode === "preset" && (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            {PRESET_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => onChange({ backgroundPreset: opt.value })}
-                className={`flex-1 py-2 px-3 rounded-lg border-2 text-xs font-medium transition-colors ${
-                  (backgroundPreset ?? "preto-branco") === opt.value
-                    ? "border-primary"
-                    : "border-border hover:border-muted"
-                }`}
-                style={{ backgroundColor: opt.bg, color: opt.fg }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {/* Font family */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted w-16 shrink-0">{t("editor.bg.font.family")}</span>
-            <div className="flex gap-1 flex-1">
-              {FONT_FAMILY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => onChange({ fontFamily: opt.value })}
-                  className={`flex-1 py-1 text-xs rounded border transition-colors ${
-                    (fontFamily ?? "sans") === opt.value
-                      ? "border-primary bg-primary/10 text-primary font-medium"
-                      : "border-border text-muted hover:text-inherit"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Font size */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted w-16 shrink-0">{t("editor.bg.font.size")}</span>
-            <div className="flex gap-1 flex-1">
-              {FONT_SIZE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => onChange({ fontSize: opt.value })}
-                  className={`flex-1 py-1 text-xs rounded border transition-colors ${
-                    (fontSize ?? "lg") === opt.value
-                      ? "border-primary bg-primary/10 text-primary font-medium"
-                      : "border-border text-muted hover:text-inherit"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Media tab */}
       {activeMode === "media" && (
@@ -291,9 +204,6 @@ export const SongEditor: React.FC = () => {
   const [backgroundId, setBackgroundId] = useState<string | undefined>();
   const [scrimOpacity, setScrimOpacity] = useState(35);
   const [backgroundMode, setBackgroundMode] = useState<string | undefined>();
-  const [backgroundPreset, setBackgroundPreset] = useState<string | undefined>();
-  const [fontFamily, setFontFamily] = useState<string | undefined>();
-  const [fontSize, setFontSize] = useState<string | undefined>();
   const [textCasing, setTextCasing] = useState<TextCasing | undefined>();
   const [rightsOpen, setRightsOpen] = useState(false);
   const [showPaste, setShowPaste] = useState(false);
@@ -334,10 +244,7 @@ export const SongEditor: React.FC = () => {
         setNotes(song.notes ?? "");
         setBackgroundId(song.backgroundId);
         setScrimOpacity(song.scrimOpacity ?? 35);
-        setBackgroundMode(song.backgroundMode);
-        setBackgroundPreset(song.backgroundPreset);
-        setFontFamily(song.fontFamily);
-        setFontSize(song.fontSize);
+        setBackgroundMode(song.backgroundMode === "media" ? "media" : undefined);
         setTextCasing(song.textCasing);
         const hasRights = !!(song.author || song.copyright || song.ccliNumber);
         setRightsOpen(hasRights);
@@ -349,7 +256,6 @@ export const SongEditor: React.FC = () => {
             body: s.body,
             repeatCount: s.repeatCount,
             notes: s.notes,
-            backgroundId: s.backgroundId,
           }))
         );
       })
@@ -395,9 +301,6 @@ export const SongEditor: React.FC = () => {
         backgroundId: backgroundId || undefined,
         scrimOpacity,
         backgroundMode: backgroundMode || undefined,
-        backgroundPreset: backgroundPreset || undefined,
-        fontFamily: fontFamily || undefined,
-        fontSize: fontSize || undefined,
         textCasing: textCasing && textCasing !== "normal" ? textCasing : undefined,
         sections: sections.map((s, i) => ({
           label: s.label,
@@ -406,11 +309,6 @@ export const SongEditor: React.FC = () => {
           sortOrder: i,
           repeatCount: s.repeatCount,
           notes: s.notes || undefined,
-          backgroundId: s.backgroundId || undefined,
-          backgroundMode: s.backgroundMode || undefined,
-          backgroundPreset: s.backgroundPreset || undefined,
-          fontFamily: s.fontFamily || undefined,
-          fontSize: s.fontSize || undefined,
         })),
       };
 
@@ -597,17 +495,11 @@ export const SongEditor: React.FC = () => {
           </h3>
           <BackgroundEditor
             backgroundMode={backgroundMode}
-            backgroundPreset={backgroundPreset}
-            fontFamily={fontFamily}
-            fontSize={fontSize}
             backgroundId={backgroundId}
             scrimOpacity={scrimOpacity}
             media={media}
             onChange={(patch) => {
               if ("backgroundMode" in patch) setBackgroundMode(patch.backgroundMode);
-              if ("backgroundPreset" in patch) setBackgroundPreset(patch.backgroundPreset);
-              if ("fontFamily" in patch) setFontFamily(patch.fontFamily);
-              if ("fontSize" in patch) setFontSize(patch.fontSize);
               if ("backgroundId" in patch) setBackgroundId(patch.backgroundId);
               if ("scrimOpacity" in patch && patch.scrimOpacity !== undefined) setScrimOpacity(patch.scrimOpacity);
             }}

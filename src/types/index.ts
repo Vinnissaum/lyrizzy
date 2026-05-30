@@ -154,7 +154,16 @@ export type PresentationMode = 'idle' | 'live' | 'blank' | 'frozen';
 
 export type BackgroundPreset = 'preto-branco' | 'branco-preto';
 export type FontFamily = 'sans' | 'serif' | 'mono';
-export type FontSize = 'sm' | 'md' | 'lg' | 'xl';
+export type FontSize = 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+
+/** A 9-point on-screen anchor (shared by lyrics, countdown, and announcements). */
+export type ScreenPosition =
+  | 'top-left' | 'top-center' | 'top-right'
+  | 'center-left' | 'center' | 'center-right'
+  | 'bottom-left' | 'bottom-center' | 'bottom-right';
+
+/** Edge padding stage applied around presentation content. */
+export type Margin = 'none' | 'sm' | 'md' | 'lg' | 'xl';
 
 export interface Typography {
   fontFamily: FontFamily;
@@ -211,10 +220,7 @@ export type CountdownTarget =
   | { kind: 'duration'; durationMs: number }
   | { kind: 'fixedTime'; hour: number; minute: number };
 
-export type CountdownPosition =
-  | 'top-left' | 'top-center' | 'top-right'
-  | 'center-left' | 'center' | 'center-right'
-  | 'bottom-left' | 'bottom-center' | 'bottom-right';
+export type CountdownPosition = ScreenPosition;
 
 export interface CountdownConfig {
   target: CountdownTarget;

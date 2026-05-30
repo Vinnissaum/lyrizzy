@@ -6,14 +6,144 @@ import { MonitorPicker } from "./MonitorPicker";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { UpdateCheckButton } from "../system/UpdateCheckButton";
 import { useSettingsStore } from "../../stores/settings";
-import type { FontSize } from "../../types";
+import type {
+  BackgroundPreset,
+  FontFamily,
+  FontSize,
+  Margin,
+  ScreenPosition,
+} from "../../types";
 
-const FONT_SIZE_OPTIONS: FontSize[] = ["sm", "md", "lg", "xl"];
+const FONT_SIZE_OPTIONS: FontSize[] = ["sm", "md", "lg", "xl", "xxl"];
+const FONT_FAMILY_OPTIONS: FontFamily[] = ["sans", "serif", "mono"];
+const PRESET_OPTIONS: BackgroundPreset[] = ["preto-branco", "branco-preto"];
+const MARGIN_OPTIONS: Margin[] = ["none", "sm", "md", "lg", "xl"];
+const POSITION_GRID: ScreenPosition[] = [
+  "top-left", "top-center", "top-right",
+  "center-left", "center", "center-right",
+  "bottom-left", "bottom-center", "bottom-right",
+];
+
+// ── Reusable controls ─────────────────────────────────────────────────────────
+
+function ButtonGroup<T extends string>({
+  label,
+  value,
+  options,
+  optionLabel,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: T[];
+  optionLabel: (v: T) => string;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium">{label}</p>
+      <div className="flex gap-1 flex-wrap">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            aria-pressed={value === opt}
+            onClick={() => onChange(opt)}
+            className={`flex-1 min-w-[64px] px-2 py-1.5 text-sm rounded-lg border transition-colors ${
+              value === opt
+                ? "bg-primary text-fg-on-primary border-primary"
+                : "bg-surface border-border text-muted hover:text-inherit"
+            }`}
+          >
+            {optionLabel(opt)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BoolToggle({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-medium">{label}</span>
+      <div className="flex rounded-lg overflow-hidden border border-border text-sm">
+        {[true, false].map((opt) => (
+          <button
+            key={String(opt)}
+            type="button"
+            aria-pressed={value === opt}
+            onClick={() => onChange(opt)}
+            className={`px-3 py-1.5 transition-colors ${
+              value === opt
+                ? "bg-primary text-fg-on-primary"
+                : "bg-surface text-muted hover:text-inherit hover:bg-surface-2"
+            }`}
+          >
+            {opt ? t("common.on") : t("common.off")}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PositionGrid({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: ScreenPosition;
+  onChange: (v: ScreenPosition) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium">{label}</p>
+      <div className="inline-grid grid-cols-3 gap-0.5 p-1 bg-surface border border-border rounded-lg">
+        {POSITION_GRID.map((pos) => (
+          <button
+            key={pos}
+            type="button"
+            aria-label={pos}
+            aria-pressed={value === pos}
+            onClick={() => onChange(pos)}
+            className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+              value === pos ? "bg-primary" : "bg-surface-2 hover:bg-border"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                value === pos ? "bg-fg-on-primary" : "bg-muted"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
-  const { cameraUrl, setCameraUrl, presentationFontSize, setPresentationFontSize } =
-    useSettingsStore();
+  const s = useSettingsStore();
+
+  const fontSizeLabel = (v: FontSize) => t(`settings.windows.fontSizes.${v}`);
+  const fontFamilyLabel = (v: FontFamily) => t(`settings.appearance.fontFamilies.${v}`);
+  const presetLabel = (v: BackgroundPreset) =>
+    t(`settings.appearance.themes.${v === "preto-branco" ? "dark" : "light"}`);
+  const marginLabel = (v: Margin) => t(`settings.appearance.margins.${v}`);
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -33,39 +163,96 @@ export const SettingsScreen: React.FC = () => {
           </h3>
           <MonitorPicker />
           <div className="space-y-1">
-            <p className="text-sm font-medium">
-              {t("settings.windows.fontSize")}
-            </p>
-            <div className="flex gap-1">
-              {FONT_SIZE_OPTIONS.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  aria-pressed={presentationFontSize === size}
-                  onClick={() => setPresentationFontSize(size)}
-                  className={`flex-1 px-2 py-1.5 text-sm rounded-lg border transition-colors ${
-                    presentationFontSize === size
-                      ? "bg-primary text-fg-on-primary border-primary"
-                      : "bg-surface border-border text-muted hover:text-inherit"
-                  }`}
-                >
-                  {t(`settings.windows.fontSizes.${size}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
-              {t("settings.windows.cameraUrl")}
-            </p>
+            <p className="text-sm font-medium">{t("settings.windows.cameraUrl")}</p>
             <input
               type="url"
-              value={cameraUrl}
-              onChange={(e) => setCameraUrl(e.target.value)}
+              value={s.cameraUrl}
+              onChange={(e) => s.setCameraUrl(e.target.value)}
               placeholder="http://192.168.1.x/cam"
               className="w-full bg-surface border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-primary"
             />
           </div>
+        </div>
+
+        <div className="bg-surface-2 rounded-xl p-4 space-y-4">
+          <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
+            {t("settings.appearance.title")}
+          </h3>
+          <ButtonGroup
+            label={t("settings.windows.fontSize")}
+            value={s.presentationFontSize}
+            options={FONT_SIZE_OPTIONS}
+            optionLabel={fontSizeLabel}
+            onChange={s.setPresentationFontSize}
+          />
+          <ButtonGroup
+            label={t("settings.appearance.fontFamily")}
+            value={s.presentationFontFamily}
+            options={FONT_FAMILY_OPTIONS}
+            optionLabel={fontFamilyLabel}
+            onChange={s.setPresentationFontFamily}
+          />
+          <ButtonGroup
+            label={t("settings.appearance.theme")}
+            value={s.presentationPreset}
+            options={PRESET_OPTIONS}
+            optionLabel={presetLabel}
+            onChange={s.setPresentationPreset}
+          />
+          <PositionGrid
+            label={t("settings.appearance.position")}
+            value={s.presentationPosition}
+            onChange={s.setPresentationPosition}
+          />
+          <ButtonGroup
+            label={t("settings.appearance.margin")}
+            value={s.presentationMargin}
+            options={MARGIN_OPTIONS}
+            optionLabel={marginLabel}
+            onChange={s.setPresentationMargin}
+          />
+          <BoolToggle
+            label={t("settings.appearance.titleSlide")}
+            value={s.showTitleSlide}
+            onChange={s.setShowTitleSlide}
+          />
+          <BoolToggle
+            label={t("settings.appearance.authorParens")}
+            value={s.authorInParens}
+            onChange={s.setAuthorInParens}
+          />
+        </div>
+
+        <div className="bg-surface-2 rounded-xl p-4 space-y-4">
+          <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
+            {t("settings.announcement.title")}
+          </h3>
+          <ButtonGroup
+            label={t("settings.appearance.fontFamily")}
+            value={s.announcementFontFamily}
+            options={FONT_FAMILY_OPTIONS}
+            optionLabel={fontFamilyLabel}
+            onChange={s.setAnnouncementFontFamily}
+          />
+          <ButtonGroup
+            label={t("settings.windows.fontSize")}
+            value={s.announcementFontSize}
+            options={FONT_SIZE_OPTIONS}
+            optionLabel={fontSizeLabel}
+            onChange={s.setAnnouncementFontSize}
+          />
+          <ButtonGroup
+            label={t("settings.appearance.theme")}
+            value={s.announcementPreset}
+            options={PRESET_OPTIONS}
+            optionLabel={presetLabel}
+            onChange={s.setAnnouncementPreset}
+          />
+          <PositionGrid
+            label={t("settings.appearance.position")}
+            value={s.announcementPosition}
+            onChange={s.setAnnouncementPosition}
+          />
         </div>
 
         <div className="bg-surface-2 rounded-xl p-4 space-y-2">

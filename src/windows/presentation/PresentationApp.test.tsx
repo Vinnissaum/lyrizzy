@@ -50,7 +50,11 @@ vi.mock("../../stores/settings", () => ({
     reduceMotion: true,
     setLocale: vi.fn(),
     presentationFontSize: "lg",
-    loadPresentationFontSize: vi.fn(),
+    presentationFontFamily: "sans",
+    presentationPreset: "preto-branco",
+    presentationPosition: "center",
+    presentationMargin: "lg",
+    loadPresentationSettings: vi.fn(),
   }),
 }));
 

@@ -7,6 +7,7 @@ import {
   exitPresentation,
   onLocaleChanged,
   onPresentationLifecycle,
+  onSettingChanged,
   onSetChanged,
   onSongsChanged,
   openPresentationWindow,
@@ -19,7 +20,6 @@ import { HomeSetBuilder } from "../../components/setbuilder/HomeSetBuilder";
 import { SetBuilder } from "../../components/set/SetBuilder";
 import { SetList } from "../../components/set/SetList";
 import { OperatorPresentationLayout } from "../../components/presentation/OperatorPresentationLayout";
-import { CountdownPanel } from "../../components/countdown/CountdownPanel";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
 import { BackupScreen } from "../../components/backup/BackupScreen";
 import { SettingsScreen } from "../../components/settings/SettingsScreen";
@@ -47,7 +47,7 @@ export const OperatorApp: React.FC = () => {
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const { subscribe: subscribeCountdown } = useCountdownStore();
-  const { setLocale, loadPresentationFontSize } = useSettingsStore();
+  const { setLocale, loadPresentationSettings } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
   const [restoreInProgress, setRestoreInProgress] = useState(false);
@@ -73,8 +73,14 @@ export const OperatorApp: React.FC = () => {
         useLibraryStore.getState().setView("home");
       }
     });
+    // Keep the operator's live preview in sync with global appearance changes.
+    const unlistenSetting = onSettingChanged((key) => {
+      if (key.startsWith("presentation.") || key.startsWith("announcement.")) {
+        loadPresentationSettings();
+      }
+    });
     loadBindings();
-    loadPresentationFontSize();
+    loadPresentationSettings();
     const unsubBindings = subscribeBindings();
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
@@ -92,6 +98,7 @@ export const OperatorApp: React.FC = () => {
       unsubCountdown.then((u) => u());
       unlistenLocale.then((u) => u());
       unlistenLifecycle.then((u) => u());
+      unlistenSetting.then((u) => u());
       unsubBindings.then((u) => u());
     };
   }, []);
@@ -179,7 +186,6 @@ export const OperatorApp: React.FC = () => {
     currentView === "sets" ||
     currentView === "set-builder";
 
-  const isCountdownSection = currentView === "countdown";
   const isMediaSection = currentView === "media";
   const isBackupSection = currentView === "backup";
   const isSettingsSection = currentView === "settings";
@@ -232,16 +238,6 @@ export const OperatorApp: React.FC = () => {
             }`}
           >
             {t("nav.library")}
-          </button>
-          <button
-            onClick={() => setView("countdown")}
-            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-              isCountdownSection
-                ? "bg-surface-2"
-                : "text-muted hover:text-inherit hover:bg-surface-2"
-            }`}
-          >
-            {t("nav.countdown")}
           </button>
           <button
             onClick={() => setView("media")}
@@ -320,8 +316,6 @@ export const OperatorApp: React.FC = () => {
             {currentView === "set-builder" && (
               <SetBuilder setId={editingSetId} />
             )}
-
-            {currentView === "countdown" && <CountdownPanel />}
 
             {currentView === "media" && <MediaLibrary />}
 

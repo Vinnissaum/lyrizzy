@@ -30,6 +30,49 @@ fn sections_to_slides(
         .collect()
 }
 
+/// Synthetic section label used to mark the song title/author intro slide.
+/// The frontend detects this to render the title big and the author smaller.
+pub const TITLE_SLIDE_LABEL: &str = "__title__";
+
+/// Reads a boolean app setting, returning `default` when unset/unrecognized.
+async fn read_bool_setting(pool: &SqlitePool, key: &str, default: bool) -> bool {
+    let v: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE key = ?")
+        .bind(key)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None);
+    match v.as_deref() {
+        Some("true") => true,
+        Some("false") => false,
+        _ => default,
+    }
+}
+
+/// Builds the optional title/author intro slide for a song.
+fn build_title_slide(
+    song_id: &str,
+    title: &str,
+    author: Option<&str>,
+    author_in_parens: bool,
+) -> Option<Slide> {
+    if title.trim().is_empty() {
+        return None;
+    }
+    let mut lines = vec![title.trim().to_string()];
+    if let Some(a) = author.map(str::trim).filter(|a| !a.is_empty()) {
+        lines.push(if author_in_parens {
+            format!("({a})")
+        } else {
+            a.to_string()
+        });
+    }
+    Some(Slide {
+        lines,
+        section_label: TITLE_SLIDE_LABEL.to_string(),
+        section_id: format!("{song_id}__title"),
+    })
+}
+
 fn resolve_next_slide(all_slides: &[Vec<Slide>], state: &PresentationState) -> Option<Slide> {
     if all_slides.is_empty() {
         return None;
@@ -43,6 +86,18 @@ fn resolve_next_slide(all_slides: &[Vec<Slide>], state: &PresentationState) -> O
         all_slides.get(item_idx + 1).and_then(|s| s.first()).cloned()
     } else {
         None
+    }
+}
+
+/// Operator-initiated navigation should re-light the screen. If we are blacked
+/// out (Blank — e.g. a countdown ended with the Blackout behavior), waking to
+/// Live ensures the freshly selected slide renders instead of staying black.
+/// Without this, `resolve_current_slide` returns `None` for `Blank` and the
+/// presentation appears frozen after a blackout.
+fn wake_to_live(state: &mut PresentationState) {
+    if state.mode == PresentationMode::Blank {
+        state.mode = PresentationMode::Live;
+        state.frozen_at = None;
     }
 }
 
@@ -107,6 +162,7 @@ pub async fn do_next_slide(
 ) -> Result<PresentationState, ErrorPayload> {
     let slides = presentation_slides.read().await;
     let mut pres = presentation.write().await;
+    wake_to_live(&mut pres);
     let prev_item_idx = pres.current_item_index;
     let prev_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
 
@@ -173,23 +229,39 @@ pub async fn load_set_for_presentation(
     let service_set = db_load_set(pool, &set_id).await?;
     let config = SlideConfig::default();
 
+    let show_title_slide = read_bool_setting(pool, "presentation.show_title_slide", true).await;
+    let author_in_parens = read_bool_setting(pool, "presentation.author_in_parens", true).await;
+
     let mut computed_slides: Vec<Vec<Slide>> = Vec::new();
     for item in &service_set.items {
         let slides = match item.item_type {
             SetItemType::Song => {
                 if let Some(song_id) = &item.song_id {
-                    let sections = load_sections(pool, song_id).await?;
-                    let casing_str: Option<String> = sqlx::query_scalar(
-                        "SELECT text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
+                    let meta: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+                        "SELECT title, author, text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
                     )
                     .bind(song_id)
                     .fetch_optional(pool)
                     .await
-                    .unwrap_or(None)
-                    .flatten();
+                    .unwrap_or(None);
+                    let (title, author, casing_str) = match meta {
+                        Some((t, a, c)) => (t, a, c),
+                        None => (String::new(), None, None),
+                    };
                     let casing = crate::domain::song::TextCasing::from_opt(casing_str.as_deref());
-                    let s = sections_to_slides(&sections, &config, casing);
-                    if s.is_empty() { vec![blank_slide()] } else { s }
+                    let sections = load_sections(pool, song_id).await?;
+                    let mut s = sections_to_slides(&sections, &config, casing);
+                    if s.is_empty() {
+                        s = vec![blank_slide()];
+                    }
+                    if show_title_slide {
+                        if let Some(title_slide) =
+                            build_title_slide(song_id, &title, author.as_deref(), author_in_parens)
+                        {
+                            s.insert(0, title_slide);
+                        }
+                    }
+                    s
                 } else {
                     vec![blank_slide()]
                 }
@@ -284,6 +356,7 @@ pub async fn prev_slide(
     let pool = state.db.get().expect("db initialized");
     let slides = state.presentation_slides.read().await;
     let mut pres = state.presentation.write().await;
+    wake_to_live(&mut pres);
 
     let prev_item_idx = pres.current_item_index;
     let prev_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
@@ -339,6 +412,7 @@ pub async fn go_to_item(
             .with_param("index", item_index.to_string()));
     }
 
+    wake_to_live(&mut pres);
     pres.current_item_index = item_index;
     pres.current_slide_index = slide_index.unwrap_or(0);
 
@@ -396,4 +470,48 @@ pub async fn get_presentation_state(
     state: State<'_, AppState>,
 ) -> Result<PresentationState, ErrorPayload> {
     Ok(state.presentation.read().await.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn title_slide_wraps_author_in_parens_by_default() {
+        let s = build_title_slide("song1", "Amazing Grace", Some("John Newton"), true).unwrap();
+        assert_eq!(s.section_label, TITLE_SLIDE_LABEL);
+        assert_eq!(s.lines, vec!["Amazing Grace", "(John Newton)"]);
+    }
+
+    #[test]
+    fn title_slide_author_without_parens_when_disabled() {
+        let s = build_title_slide("song1", "Amazing Grace", Some("John Newton"), false).unwrap();
+        assert_eq!(s.lines, vec!["Amazing Grace", "John Newton"]);
+    }
+
+    #[test]
+    fn title_slide_omits_blank_author() {
+        let s = build_title_slide("song1", "Amazing Grace", Some("  "), true).unwrap();
+        assert_eq!(s.lines, vec!["Amazing Grace"]);
+    }
+
+    #[test]
+    fn title_slide_skipped_when_title_empty() {
+        assert!(build_title_slide("song1", "   ", Some("John Newton"), true).is_none());
+    }
+
+    #[test]
+    fn wake_to_live_lights_screen_after_blackout() {
+        let mut state = PresentationState {
+            mode: PresentationMode::Blank,
+            ..Default::default()
+        };
+        wake_to_live(&mut state);
+        assert_eq!(state.mode, PresentationMode::Live);
+
+        // Live navigation should be left untouched.
+        state.mode = PresentationMode::Live;
+        wake_to_live(&mut state);
+        assert_eq!(state.mode, PresentationMode::Live);
+    }
 }

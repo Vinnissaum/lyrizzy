@@ -8,18 +8,20 @@ describe("AnnouncementRenderer", () => {
     expect(screen.getByText("Pais, levem as crianças")).toBeInTheDocument();
   });
 
-  it("renders on a black background with centered layout", () => {
+  it("renders on a black background with centered layout (default settings)", () => {
     const { container } = render(<AnnouncementRenderer text="Aviso" />);
     const wrapper = container.firstChild as HTMLElement;
-    expect(wrapper.className).toContain("bg-black");
-    expect(wrapper.className).toContain("flex");
-    expect(wrapper.className).toContain("items-center");
-    expect(wrapper.className).toContain("justify-center");
+    // Default announcement preset is preto-branco → black background.
+    expect(wrapper.style.backgroundColor).toBe("rgb(0, 0, 0)");
+    const inner = wrapper.firstChild as HTMLElement;
+    expect(inner.className).toContain("flex");
+    expect(inner.className).toContain("items-center");
+    expect(inner.className).toContain("justify-center");
   });
 
-  it("renders white text on the paragraph element", () => {
+  it("renders white text on the paragraph element (default settings)", () => {
     render(<AnnouncementRenderer text="Test message" />);
     const p = screen.getByText("Test message");
-    expect(p.className).toContain("text-white");
+    expect(p.style.color).toBe("rgb(255, 255, 255)");
   });
 });

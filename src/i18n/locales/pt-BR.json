@@ -184,7 +184,8 @@
       "live": "Ao vivo"
     },
     "action": {
-      "present": "Apresentar"
+      "present": "Apresentar",
+      "stop": "Parar"
     },
     "mode": {
       "idle": "Inativo",
@@ -486,11 +487,40 @@
         "sm": "Pequeno",
         "md": "Médio",
         "lg": "Grande",
-        "xl": "Enorme"
+        "xl": "Enorme",
+        "xxl": "Gigante"
       },
       "monitorLabel": "Monitor da apresentação",
       "monitorHelp": "Em qual tela abrir a apresentação. Automático escolhe o monitor estendido.",
       "monitorOption": "Monitor {{index}}"
+    },
+    "appearance": {
+      "title": "Aparência das músicas",
+      "fontFamily": "Fonte",
+      "fontFamilies": {
+        "sans": "Padrão",
+        "serif": "Serifada",
+        "mono": "Monoespaçada"
+      },
+      "theme": "Tema (fundo padrão)",
+      "themes": {
+        "dark": "Fundo preto",
+        "light": "Fundo branco"
+      },
+      "position": "Posição na tela",
+      "margin": "Margem",
+      "margins": {
+        "none": "Nenhuma",
+        "sm": "Pequena",
+        "md": "Média",
+        "lg": "Grande",
+        "xl": "Máxima"
+      },
+      "titleSlide": "Slide de título (título + autor)",
+      "authorParens": "Autor entre parênteses"
+    },
+    "announcement": {
+      "title": "Aviso"
     }
   },
   "reports": {
@@ -607,7 +637,8 @@
       "cameraNoUrl": "URL da câmera não configurada. Configure em Configurações.",
       "goToSettings": "Ir para Configurações",
       "cameraUse": "Usar",
-      "selectMedia": "Selecionar imagem para oferta"
+      "selectMedia": "Selecionar imagem para oferta",
+      "blackout": "Tela preta"
     },
     "sidebar": {
       "title": "Músicas",
@@ -631,5 +662,9 @@
     "checkManual": "Verificar atualizações",
     "upToDate": "Você já está na versão mais recente.",
     "checkFailed": "Não foi possível verificar atualizações."
+  },
+  "common": {
+    "on": "Ligado",
+    "off": "Desligado"
   }
 }

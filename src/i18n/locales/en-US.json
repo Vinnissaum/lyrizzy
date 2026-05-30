@@ -184,7 +184,8 @@
       "live": "Live"
     },
     "action": {
-      "present": "Present"
+      "present": "Present",
+      "stop": "Stop"
     },
     "mode": {
       "idle": "Idle",
@@ -486,11 +487,40 @@
         "sm": "Small",
         "md": "Medium",
         "lg": "Large",
-        "xl": "Huge"
+        "xl": "Huge",
+        "xxl": "Giant"
       },
       "monitorLabel": "Presentation monitor",
       "monitorHelp": "Which screen to open the presentation on. Auto picks the extended monitor.",
       "monitorOption": "Monitor {{index}}"
+    },
+    "appearance": {
+      "title": "Song appearance",
+      "fontFamily": "Font",
+      "fontFamilies": {
+        "sans": "Default",
+        "serif": "Serif",
+        "mono": "Monospace"
+      },
+      "theme": "Theme (default background)",
+      "themes": {
+        "dark": "Black background",
+        "light": "White background"
+      },
+      "position": "Screen position",
+      "margin": "Margin",
+      "margins": {
+        "none": "None",
+        "sm": "Small",
+        "md": "Medium",
+        "lg": "Large",
+        "xl": "Max"
+      },
+      "titleSlide": "Title slide (title + author)",
+      "authorParens": "Author in parentheses"
+    },
+    "announcement": {
+      "title": "Announcement"
     }
   },
   "reports": {
@@ -607,7 +637,8 @@
       "cameraNoUrl": "Camera URL not configured. Set it in Settings.",
       "goToSettings": "Go to Settings",
       "cameraUse": "Use",
-      "selectMedia": "Select image for offering"
+      "selectMedia": "Select image for offering",
+      "blackout": "Blackout"
     },
     "sidebar": {
       "title": "Songs",
@@ -631,5 +662,9 @@
     "checkManual": "Check for updates",
     "upToDate": "You are already on the latest version.",
     "checkFailed": "Could not check for updates."
+  },
+  "common": {
+    "on": "On",
+    "off": "Off"
   }
 }

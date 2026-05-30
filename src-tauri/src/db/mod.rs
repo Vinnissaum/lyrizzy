@@ -12,6 +12,7 @@ use tauri::Manager;
 /// - Windows: `%APPDATA%\TrinityLyrics\`
 /// - Linux:   `$XDG_DATA_HOME/TrinityLyrics/` (default `~/.local/share/TrinityLyrics/`)
 /// - macOS:   `~/Library/Application Support/TrinityLyrics/`
+///
 /// It is created if missing; the database file is `database.db` inside it.
 pub async fn init_db(app: &AppHandle) -> Result<SqlitePool, sqlx::Error> {
     let data_dir = app

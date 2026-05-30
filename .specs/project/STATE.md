@@ -1,8 +1,8 @@
 # Trinity Lyrics v2 — State
 
-**Last updated:** 2026-05-23
-**Current phase:** Phase 8 complete (2026-05-23). All 8 P8-01..P8-08 requirements delivered.
-**Previous phase:** Phase 7 complete (2026-05-23). All 8 P7-01..P7-08 requirements done.
+**Last updated:** 2026-05-30
+**Current phase:** Phase 9 IMPLEMENTED (2026-05-30) — `.specs/features/phase9-fidelity-ux/`. T1–T14 done via parallel sub-agents; central gate green (tsc clean, 233 Vitest, Rust + clippy clean). Uncommitted. Orphan: `AnnouncementRenderer.tsx` now unused (superseded by `WarningBody`) — optional cleanup.
+**Previous phase:** Phase 8 complete (2026-05-23). All 8 P8-01..P8-08 requirements delivered.
 
 ---
 
@@ -45,6 +45,10 @@
 | D-33 | Single-monitor path uses `always_on_top(true)` + `fullscreen(true)` (PowerPoint browse-mode parity). Multi-monitor branch (D-20) keeps `always_on_top` off to avoid stealing focus from operator on primary. | Previous P6-04 single-monitor fullscreen alone was invisible on user's machine (z-order issue); always-on-top resolves it | 2026-05-23 |
 | D-34 | LivePreview hybrid strategy: full render for text/image/countdown items; placeholder cards for video/iframe items (avoids double-mounting media in the same WebView). | Double-mounting `<video>` or `<iframe>` elements inside the preview pane caused audio bleed and janky seek; placeholder cards convey enough context without media side-effects | 2026-05-23 |
 | D-35 | `OverlayDialogs` stay inline in `OperatorPresentationLayout`; only the toolbar action row is extracted as `<OverlayActionBar />` for reuse between `HomeSetBuilder` and the presentation layout. | Full dialog extraction would have required prop-drilling all overlay commands; toolbar-row extraction alone gives P4H HomeSetBuilder reuse without complexity overhead | 2026-05-23 |
+| D-36 | Phase 9 unifies projection + all previews behind one shared `SlideStage` (fixed 1280×720 virtual stage, `transform: scale(min(cw/1280,ch/720))`, letterbox) + `SlideContent` switch. Promotes existing `SlideChip` logic; `PresentationApp`, `LivePreview`, `StrophesGrid`, song-editor preview all route through it. | Three divergent renderers (projection / `LivePreview.SongSlidePreview` / `SlideChip`) caused previews to ignore position/margin/size. Single source guarantees preview == projection up to scale. | 2026-05-30 |
+| D-37 | Phase 9 language-picker bug root cause: `main.tsx` changes `i18next` from DB `app.locale` but never syncs `useSettingsStore.locale` (frozen at `pt-BR` default) which `LanguagePicker` binds to. Fix = add `loadLocale()` to settings store, call at operator+presentation boot. | Keeps store as single source of truth (consistent with `onLocaleChanged`); rejected binding picker to `i18n.language`. | 2026-05-30 |
+| D-38 | Phase 9 blackout-after-song: append a sentinel `Slide{ section_label:"__blackout__", lines:[] }` after each Song item's slides in `load_set_for_presentation`, gated by `presentation.blackout_after_song` setting (default ON). Frontend renders the sentinel as solid black. | No `Slide`/enum change, index-based navigation untouched, serde-safe; user chose per-song placement + settings toggle. | 2026-05-30 |
+| D-39 | Phase 9 adds settings `announcement.margin` (default `lg`) + `presentation.blackout_after_song` (default `true`) as key/value rows — no migration. Warning overlay re-rendered through `SlideContent` to fill the whole stage (fixes gray edges) honoring announcement position + new margin. Title-slide author size dropped to `stepSize(fontSize,-1)`. Nav tabs `disabled` (not hidden) while presenting. Set items gain dnd-kit drag reorder (keep arrows) via existing `reorder_set_items`. | Batch of UX fixes riding on the shared renderer; settings are key/value so zero schema risk. | 2026-05-30 |
 
 ---
 

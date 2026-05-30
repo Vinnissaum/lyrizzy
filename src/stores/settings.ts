@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getSetting, setSetting } from "../api/commands";
+import i18next from "../i18n";
 import type {
   BackgroundPreset,
   FontFamily,
@@ -21,6 +22,8 @@ export const ANNOUNCEMENT_FONT_FAMILY_KEY = "announcement.font_family";
 export const ANNOUNCEMENT_FONT_SIZE_KEY = "announcement.font_size";
 export const ANNOUNCEMENT_PRESET_KEY = "announcement.preset";
 export const ANNOUNCEMENT_POSITION_KEY = "announcement.position";
+export const ANNOUNCEMENT_MARGIN_KEY = "announcement.margin";
+export const BLACKOUT_AFTER_SONG_KEY = "presentation.blackout_after_song";
 
 // Every settings key the presentation window must reload when it changes live.
 export const PRESENTATION_SETTING_KEYS = [
@@ -33,6 +36,7 @@ export const PRESENTATION_SETTING_KEYS = [
   ANNOUNCEMENT_FONT_SIZE_KEY,
   ANNOUNCEMENT_PRESET_KEY,
   ANNOUNCEMENT_POSITION_KEY,
+  ANNOUNCEMENT_MARGIN_KEY,
 ];
 
 const FONT_SIZE_VALUES: FontSize[] = ["sm", "md", "lg", "xl", "xxl"];
@@ -53,6 +57,7 @@ const DEFAULT_POSITION: ScreenPosition = "center";
 const DEFAULT_MARGIN: Margin = "lg";
 const DEFAULT_REPEAT_MODE: RepeatMode = "duplicate";
 const DEFAULT_ANNOUNCEMENT_FONT_SIZE: FontSize = "lg";
+export const DEFAULT_ANNOUNCEMENT_MARGIN: Margin = "lg";
 
 function parseEnum<T extends string>(value: string | null | undefined, valid: T[], fallback: T): T {
   return valid.includes(value as T) ? (value as T) : fallback;
@@ -78,8 +83,11 @@ interface SettingsStore {
   announcementFontSize: FontSize;
   announcementPreset: BackgroundPreset;
   announcementPosition: ScreenPosition;
+  announcementMargin: Margin;
+  blackoutAfterSong: boolean;
 
   setLocale: (locale: string) => void;
+  loadLocale: () => Promise<void>;
   setNotesPanelCollapsed: (collapsed: boolean) => void;
   loadNotesPanelCollapsed: () => Promise<void>;
   setCameraUrl: (url: string) => void;
@@ -97,6 +105,8 @@ interface SettingsStore {
   setAnnouncementFontSize: (size: FontSize) => void;
   setAnnouncementPreset: (preset: BackgroundPreset) => void;
   setAnnouncementPosition: (position: ScreenPosition) => void;
+  setAnnouncementMargin: (margin: Margin) => void;
+  setBlackoutAfterSong: (value: boolean) => void;
 
   /** Loads every persisted presentation/announcement appearance setting. */
   loadPresentationSettings: () => Promise<void>;
@@ -137,8 +147,21 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   announcementFontSize: DEFAULT_ANNOUNCEMENT_FONT_SIZE,
   announcementPreset: DEFAULT_PRESET,
   announcementPosition: DEFAULT_POSITION,
+  announcementMargin: DEFAULT_ANNOUNCEMENT_MARGIN,
+  blackoutAfterSong: true,
 
   setLocale: (locale) => set({ locale }),
+  loadLocale: async () => {
+    try {
+      const value = await getSetting("app.locale");
+      if (value) {
+        set({ locale: value });
+        await i18next.changeLanguage(value);
+      }
+    } catch {
+      // setting not found — use default "pt-BR"
+    }
+  },
   setNotesPanelCollapsed: (collapsed) => {
     set({ notesPanelCollapsed: collapsed });
     setSetting("ui.notes_panel_collapsed", String(collapsed)).catch(() => {});
@@ -212,12 +235,21 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ announcementPosition: position });
     setSetting(ANNOUNCEMENT_POSITION_KEY, position).catch(() => {});
   },
+  setAnnouncementMargin: (margin) => {
+    set({ announcementMargin: margin });
+    setSetting(ANNOUNCEMENT_MARGIN_KEY, margin).catch(() => {});
+  },
+  setBlackoutAfterSong: (value) => {
+    set({ blackoutAfterSong: value });
+    setSetting(BLACKOUT_AFTER_SONG_KEY, String(value)).catch(() => {});
+  },
 
   loadPresentationSettings: async () => {
     const [
       fontSize, fontFamily, preset, position, margin, repeatMode,
       showTitle, authorParens,
-      annFamily, annSize, annPreset, annPosition,
+      annFamily, annSize, annPreset, annPosition, annMargin,
+      blackoutAfterSong,
     ] = await Promise.all([
       readSetting(PRESENTATION_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_FONT_SIZE),
       readSetting(PRESENTATION_FONT_FAMILY_KEY, FONT_FAMILY_VALUES, DEFAULT_FONT_FAMILY),
@@ -231,6 +263,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readSetting(ANNOUNCEMENT_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_ANNOUNCEMENT_FONT_SIZE),
       readSetting(ANNOUNCEMENT_PRESET_KEY, PRESET_VALUES, DEFAULT_PRESET),
       readSetting(ANNOUNCEMENT_POSITION_KEY, POSITION_VALUES, DEFAULT_POSITION),
+      readSetting(ANNOUNCEMENT_MARGIN_KEY, MARGIN_VALUES, DEFAULT_ANNOUNCEMENT_MARGIN),
+      readBool(BLACKOUT_AFTER_SONG_KEY, true),
     ]);
     set({
       presentationFontSize: fontSize,
@@ -245,6 +279,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       announcementFontSize: annSize,
       announcementPreset: annPreset,
       announcementPosition: annPosition,
+      announcementMargin: annMargin,
+      blackoutAfterSong,
     });
   },
 }));

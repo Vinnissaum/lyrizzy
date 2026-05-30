@@ -171,7 +171,7 @@ fn fullscreen_on_monitor_linux<R: Runtime>(
             let dx = (geo.x() - lx) as i64;
             let dy = (geo.y() - ly) as i64;
             let dist = dx * dx + dy * dy;
-            if best.map_or(true, |(_, b)| dist < b) {
+            if best.is_none_or(|(_, b)| dist < b) {
                 best = Some((i, dist));
             }
         }

@@ -231,6 +231,11 @@ export const SettingsScreen: React.FC = () => {
             value={s.authorInParens}
             onChange={s.setAuthorInParens}
           />
+          <BoolToggle
+            label={t("settings.blackoutAfterSong")}
+            value={s.blackoutAfterSong}
+            onChange={s.setBlackoutAfterSong}
+          />
         </div>
 
         <div className="bg-surface-2 rounded-xl p-4 space-y-4">
@@ -262,6 +267,13 @@ export const SettingsScreen: React.FC = () => {
             label={t("settings.appearance.position")}
             value={s.announcementPosition}
             onChange={s.setAnnouncementPosition}
+          />
+          <ButtonGroup
+            label={t("settings.announcementMargin")}
+            value={s.announcementMargin}
+            options={MARGIN_OPTIONS}
+            optionLabel={marginLabel}
+            onChange={s.setAnnouncementMargin}
           />
         </div>
 

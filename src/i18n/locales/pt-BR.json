@@ -6,7 +6,8 @@
     "countdown": "Cronômetro",
     "media": "Mídia",
     "backup": "Backup",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "lockedWhilePresenting": "Indisponível durante a apresentação"
   },
   "loading": "Carregando…",
   "saving": "Salvando…",
@@ -199,6 +200,7 @@
       "blank": "Tela Preta",
       "frozen": "Congelado"
     },
+    "blackoutSlide": "Tela preta",
     "currentSlide": "Slide atual",
     "blankSlide": "Tela em branco",
     "prev": "← Anterior",
@@ -532,7 +534,10 @@
     },
     "announcement": {
       "title": "Aviso"
-    }
+    },
+    "announcementMargin": "Margem do aviso",
+    "blackoutAfterSong": "Tela preta após cada música",
+    "blackoutAfterSongDescription": "Inserir automaticamente uma tela preta após o último slide de cada música"
   },
   "reports": {
     "ccli": {

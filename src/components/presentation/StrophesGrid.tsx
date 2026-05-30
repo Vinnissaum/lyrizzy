@@ -3,14 +3,21 @@ import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { useSettingsStore } from "../../stores/settings";
 import { goToItem } from "../../api/commands";
 import { ItemTypeIcon, itemLabel } from "./itemMeta";
+import { SlideStage } from "./SlideStage";
+import { SlideContent } from "./SlideContent";
+import { PRESET_COLORS } from "./layout";
+import type { ChipAppearance } from "./SlideContent";
 import type { Slide, SetItem } from "../../types";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const BLACKOUT_SENTINEL = "__blackout__";
+
 function getSectionLabel(slide: Slide, slideIdx: number, itemType: string): string {
-  if (slide.sectionLabel) {
+  if (slide.sectionLabel && slide.sectionLabel !== BLACKOUT_SENTINEL) {
     return slide.sectionLabel;
   }
   if (itemType === "slide_show") {
@@ -30,6 +37,8 @@ interface SlideCardProps {
   slideIdx: number;
   isActive: boolean;
   itemType: string;
+  activeItem: SetItem;
+  appearance: ChipAppearance;
   onClick: () => void;
   activeRef?: React.RefCallback<HTMLButtonElement>;
 }
@@ -39,28 +48,57 @@ const SlideCard: React.FC<SlideCardProps> = ({
   slideIdx,
   isActive,
   itemType,
+  activeItem,
+  appearance,
   onClick,
   activeRef,
 }) => {
-  const sectionLabel = getSectionLabel(slide, slideIdx, itemType);
+  const { t } = useTranslation();
+
+  const isBlackout = slide.sectionLabel === BLACKOUT_SENTINEL;
+  const badgeLabel = isBlackout
+    ? t("presentation.blackoutSlide")
+    : getSectionLabel(slide, slideIdx, itemType);
+
+  const bgColor = PRESET_COLORS[appearance.preset].bg;
+
+  const slideContentItemType =
+    itemType === "slide_show" ? ("slide_show" as const) : ("song" as const);
+
+  const slideshowMediaId =
+    itemType === "slide_show" && "mediaId" in activeItem
+      ? (activeItem.mediaId as string | undefined)
+      : undefined;
 
   return (
     <button
       ref={isActive ? activeRef : undefined}
       onClick={onClick}
       aria-current={isActive ? "true" : undefined}
-      className={`aspect-video border rounded-md bg-surface p-1.5 flex flex-col gap-1 text-left w-full transition-colors ${
+      className={`flex flex-col w-full text-left transition-colors rounded-md overflow-hidden border ${
         isActive
           ? "ring-2 ring-primary bg-primary/10 border-primary"
           : "border-border hover:bg-surface-2"
       }`}
     >
-      <span className="text-[10px] font-bold text-primary uppercase truncate">
-        {sectionLabel}
-      </span>
-      <p className="line-clamp-4 leading-snug whitespace-pre-wrap text-xs text-fg">
-        {slide.lines?.join("\n") ?? ""}
-      </p>
+      {/* Faithful 16:9 thumbnail */}
+      <div className="aspect-video w-full overflow-hidden rounded relative">
+        <SlideStage backgroundColor={bgColor}>
+          <SlideContent
+            itemType={slideContentItemType}
+            appearance={appearance}
+            previewMode
+            slideLines={slide.lines ?? []}
+            sectionLabel={slide.sectionLabel}
+            slideshowMediaId={slideshowMediaId}
+            slideshowIndex={itemType === "slide_show" ? slideIdx : undefined}
+          />
+        </SlideStage>
+        {/* Section-label badge overlay */}
+        <span className="absolute top-1 left-1 text-[10px] font-bold uppercase bg-black/70 text-white px-1 rounded z-10">
+          {badgeLabel}
+        </span>
+      </div>
     </button>
   );
 };
@@ -72,6 +110,21 @@ export const StrophesGrid: React.FC = () => {
   const { state } = usePresentationStore();
   const { songs } = useLibraryStore();
   const { media } = useMediaStore();
+
+  // Build appearance from settings store once; passed down to each SlideCard.
+  const presentationFontFamily = useSettingsStore((s) => s.presentationFontFamily);
+  const presentationFontSize = useSettingsStore((s) => s.presentationFontSize);
+  const presentationPreset = useSettingsStore((s) => s.presentationPreset);
+  const presentationPosition = useSettingsStore((s) => s.presentationPosition);
+  const presentationMargin = useSettingsStore((s) => s.presentationMargin);
+
+  const appearance: ChipAppearance = {
+    fontFamily: presentationFontFamily,
+    fontSize: presentationFontSize,
+    preset: presentationPreset,
+    position: presentationPosition,
+    margin: presentationMargin,
+  };
 
   const activeCardRef = useRef<HTMLButtonElement | null>(null);
 
@@ -120,7 +173,7 @@ export const StrophesGrid: React.FC = () => {
   return (
     <div
       data-testid="strophes-grid"
-      className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2 p-2 overflow-y-auto h-full"
+      className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2 p-2 overflow-y-auto h-full"
     >
       {slides.map((slide, slideIdx) => (
         <SlideCard
@@ -129,6 +182,8 @@ export const StrophesGrid: React.FC = () => {
           slideIdx={slideIdx}
           isActive={slideIdx === currentSlideIndex}
           itemType={activeItem.itemType}
+          activeItem={activeItem}
+          appearance={appearance}
           activeRef={slideIdx === currentSlideIndex ? setRef : undefined}
           onClick={() => {
             const live = usePresentationStore.getState().state;

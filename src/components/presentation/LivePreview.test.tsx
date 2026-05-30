@@ -1,5 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+// jsdom does not implement ResizeObserver — provide a minimal stub so
+// SlideStage (used inside LivePreview) can mount without throwing.
+class ResizeObserverStub {
+  observe() {}
+  disconnect() {}
+}
+
+beforeAll(() => {
+  if (typeof window.ResizeObserver === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).ResizeObserver = ResizeObserverStub;
+  }
+});
+
+afterAll(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (window as any).ResizeObserver;
+});
 
 // ── Store mocks ──────────────────────────────────────────────────────────────
 vi.mock("../../stores/presentation", () => ({
@@ -8,6 +27,10 @@ vi.mock("../../stores/presentation", () => ({
 
 vi.mock("../../stores/media", () => ({
   useMediaStore: vi.fn(),
+}));
+
+vi.mock("../../stores/settings", () => ({
+  useSettingsStore: vi.fn(),
 }));
 
 // Mock react-i18next
@@ -27,14 +50,38 @@ vi.mock("../../runtime/useCountdownDigits", () => ({
   }),
 }));
 
+// SongBackground uses asset:// URLs; stub it for unit tests.
+vi.mock("./SongBackground", () => ({
+  SongBackground: () => <div data-testid="song-background-stub" />,
+}));
+
 import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
+import { useSettingsStore } from "../../stores/settings";
 import { LivePreview } from "./LivePreview";
 import type { PresentationState, ServiceSet, Media } from "../../types";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const defaultSettings = {
+  presentationFontFamily: "sans" as const,
+  presentationFontSize: "lg" as const,
+  presentationPreset: "preto-branco" as const,
+  presentationPosition: "center" as const,
+  presentationMargin: "lg" as const,
+  announcementPreset: "preto-branco" as const,
+};
+
+function setupSettingsStore() {
+  vi.mocked(useSettingsStore).mockImplementation((selector: unknown) => {
+    if (typeof selector === "function") {
+      return (selector as (s: typeof defaultSettings) => unknown)(defaultSettings);
+    }
+    return defaultSettings;
+  });
+}
 
 const mockSet: ServiceSet = {
   id: "set-1",
@@ -106,6 +153,7 @@ function mockStores(
 describe("LivePreview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setupSettingsStore();
   });
 
   it("renders the 16:9 container (aspect-video) when state is provided", () => {
@@ -135,6 +183,16 @@ describe("LivePreview", () => {
     });
     render(<LivePreview />);
     expect(screen.getByText("Bem-vindos ao culto!")).toBeInTheDocument();
+  });
+
+  it("renders song lines through the stage for active song item", () => {
+    mockStores({
+      ...baseState(),
+      currentSlide: { lines: ["Aleluia", "Glória"], sectionLabel: "Verse", sectionId: "s1" },
+    });
+    render(<LivePreview />);
+    expect(screen.getByText("Aleluia")).toBeInTheDocument();
+    expect(screen.getByText("Glória")).toBeInTheDocument();
   });
 
   it("renders a placeholder card (no <video> element) when active item is a video media", () => {

@@ -1,5 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+// jsdom does not implement ResizeObserver — provide a minimal stub so SlideStage
+// can mount without throwing in the test environment.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+beforeEach(() => {
+  if (typeof window.ResizeObserver === "undefined") {
+    (window as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver =
+      ResizeObserverStub;
+  }
+});
+afterEach(() => {
+  delete (window as unknown as { ResizeObserver?: typeof ResizeObserverStub }).ResizeObserver;
+});
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({
@@ -49,6 +66,7 @@ vi.mock("../../stores/settings", () => ({
     transitionMs: 0,
     reduceMotion: true,
     setLocale: vi.fn(),
+    loadLocale: vi.fn(),
     presentationFontSize: "lg",
     presentationFontFamily: "sans",
     presentationPreset: "preto-branco",

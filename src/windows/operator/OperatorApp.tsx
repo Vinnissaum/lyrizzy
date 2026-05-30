@@ -47,7 +47,7 @@ export const OperatorApp: React.FC = () => {
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const { subscribe: subscribeCountdown } = useCountdownStore();
-  const { setLocale, loadPresentationSettings } = useSettingsStore();
+  const { setLocale, loadLocale, loadPresentationSettings } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
   const [restoreInProgress, setRestoreInProgress] = useState(false);
@@ -81,6 +81,7 @@ export const OperatorApp: React.FC = () => {
     });
     loadBindings();
     loadPresentationSettings();
+    loadLocale();
     const unsubBindings = subscribeBindings();
 
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
@@ -221,7 +222,9 @@ export const OperatorApp: React.FC = () => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setView("home")}
-            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+            disabled={isPresenting}
+            title={isPresenting ? t("nav.lockedWhilePresenting") : undefined}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
               isHomeSection
                 ? "bg-surface-2"
                 : "text-muted hover:text-inherit hover:bg-surface-2"
@@ -231,7 +234,9 @@ export const OperatorApp: React.FC = () => {
           </button>
           <button
             onClick={() => setView("library")}
-            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+            disabled={isPresenting}
+            title={isPresenting ? t("nav.lockedWhilePresenting") : undefined}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
               isLibrarySection
                 ? "bg-surface-2"
                 : "text-muted hover:text-inherit hover:bg-surface-2"
@@ -241,7 +246,9 @@ export const OperatorApp: React.FC = () => {
           </button>
           <button
             onClick={() => setView("media")}
-            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+            disabled={isPresenting}
+            title={isPresenting ? t("nav.lockedWhilePresenting") : undefined}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
               isMediaSection
                 ? "bg-surface-2"
                 : "text-muted hover:text-inherit hover:bg-surface-2"
@@ -251,7 +258,9 @@ export const OperatorApp: React.FC = () => {
           </button>
           <button
             onClick={() => setView("backup")}
-            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+            disabled={isPresenting}
+            title={isPresenting ? t("nav.lockedWhilePresenting") : undefined}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
               isBackupSection
                 ? "bg-surface-2"
                 : "text-muted hover:text-inherit hover:bg-surface-2"
@@ -261,7 +270,9 @@ export const OperatorApp: React.FC = () => {
           </button>
           <button
             onClick={() => setView("settings")}
-            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+            disabled={isPresenting}
+            title={isPresenting ? t("nav.lockedWhilePresenting") : undefined}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
               isSettingsSection
                 ? "bg-surface-2"
                 : "text-muted hover:text-inherit hover:bg-surface-2"

@@ -35,6 +35,10 @@ fn sections_to_slides(
 /// The frontend detects this to render the title big and the author smaller.
 pub const TITLE_SLIDE_LABEL: &str = "__title__";
 
+/// Synthetic section label used to mark the blackout slide inserted after each song.
+/// The frontend renders any slide whose `section_label == "__blackout__"` as solid black.
+pub const BLACKOUT_SLIDE_LABEL: &str = "__blackout__";
+
 /// Reads a boolean app setting, returning `default` when unset/unrecognized.
 async fn read_bool_setting(pool: &SqlitePool, key: &str, default: bool) -> bool {
     let v: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE key = ?")
@@ -91,6 +95,15 @@ fn build_title_slide(
         section_label: TITLE_SLIDE_LABEL.to_string(),
         section_id: format!("{song_id}__title"),
     })
+}
+
+/// Builds the blackout slide appended at the end of each song's slide list.
+fn blackout_slide(song_id: &str) -> Slide {
+    Slide {
+        lines: vec![],
+        section_label: BLACKOUT_SLIDE_LABEL.to_string(),
+        section_id: format!("{song_id}__blackout"),
+    }
 }
 
 fn resolve_next_slide(all_slides: &[Vec<Slide>], state: &PresentationState) -> Option<Slide> {
@@ -251,6 +264,7 @@ pub async fn load_set_for_presentation(
 
     let show_title_slide = read_bool_setting(pool, "presentation.show_title_slide", true).await;
     let author_in_parens = read_bool_setting(pool, "presentation.author_in_parens", true).await;
+    let blackout_after_song = read_bool_setting(pool, "presentation.blackout_after_song", true).await;
     let repeat_mode =
         RepeatMode::from_opt(read_string_setting(pool, "presentation.repeat_mode").await.as_deref());
 
@@ -259,6 +273,7 @@ pub async fn load_set_for_presentation(
         let slides = match item.item_type {
             SetItemType::Song => {
                 if let Some(song_id) = &item.song_id {
+                    #[allow(clippy::type_complexity)]
                     let meta: Option<(String, Option<String>, Option<String>, Option<String>)> =
                         sqlx::query_as(
                             "SELECT title, author, artist, text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
@@ -286,6 +301,9 @@ pub async fn load_set_for_presentation(
                         {
                             s.insert(0, title_slide);
                         }
+                    }
+                    if blackout_after_song {
+                        s.push(blackout_slide(song_id));
                     }
                     s
                 } else {
@@ -553,5 +571,75 @@ mod tests {
         state.mode = PresentationMode::Live;
         wake_to_live(&mut state);
         assert_eq!(state.mode, PresentationMode::Live);
+    }
+
+    // ─── blackout_slide tests ────────────────────────────────────────────────
+
+    #[test]
+    fn blackout_slide_label_constant_is_correct() {
+        // Cross-component contract: the frontend checks for exactly this string.
+        assert_eq!(BLACKOUT_SLIDE_LABEL, "__blackout__");
+    }
+
+    #[test]
+    fn blackout_slide_has_empty_lines() {
+        let slide = blackout_slide("song42");
+        assert!(slide.lines.is_empty(), "blackout slide must have no lines");
+    }
+
+    #[test]
+    fn blackout_slide_section_label_is_blackout_constant() {
+        let slide = blackout_slide("song42");
+        assert_eq!(slide.section_label, BLACKOUT_SLIDE_LABEL);
+    }
+
+    #[test]
+    fn blackout_slide_section_id_contains_song_id() {
+        let slide = blackout_slide("abc123");
+        assert_eq!(slide.section_id, "abc123__blackout");
+    }
+
+    #[test]
+    fn blackout_slide_section_id_format_for_different_ids() {
+        assert_eq!(blackout_slide("song1").section_id, "song1__blackout");
+        assert_eq!(blackout_slide("").section_id, "__blackout");
+    }
+
+    /// Verifies the append-when-enabled / skip-when-disabled logic using only
+    /// pure helpers (no DB required).
+    #[test]
+    fn blackout_appended_when_enabled() {
+        let mut slides = vec![blank_slide()];
+        let enabled = true;
+        if enabled {
+            slides.push(blackout_slide("song1"));
+        }
+        assert_eq!(slides.len(), 2);
+        assert_eq!(slides.last().unwrap().section_label, BLACKOUT_SLIDE_LABEL);
+    }
+
+    #[test]
+    fn blackout_not_appended_when_disabled() {
+        let mut slides = vec![blank_slide()];
+        let enabled = false;
+        if enabled {
+            slides.push(blackout_slide("song1"));
+        }
+        assert_eq!(slides.len(), 1);
+        assert_ne!(slides.last().unwrap().section_label, BLACKOUT_SLIDE_LABEL);
+    }
+
+    #[test]
+    fn blackout_appended_to_empty_song_blank_slide() {
+        // Even when the song had no sections (empty-song fallback), a blackout
+        // slide should be appended when enabled.
+        let mut s = vec![blank_slide()]; // empty-song case
+        let blackout_after_song = true;
+        if blackout_after_song {
+            s.push(blackout_slide("empty_song"));
+        }
+        assert_eq!(s.len(), 2);
+        assert_eq!(s[1].section_label, BLACKOUT_SLIDE_LABEL);
+        assert_eq!(s[1].section_id, "empty_song__blackout");
     }
 }

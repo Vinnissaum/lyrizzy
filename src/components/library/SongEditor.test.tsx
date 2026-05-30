@@ -13,6 +13,15 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 
+// jsdom lacks ResizeObserver; SlideStage uses it internally.
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  window.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 const mockSong: Song = {
   id: "song-1",
   title: "Graça de Deus",
@@ -139,6 +148,21 @@ describe("SongEditor", () => {
         "delete_song",
         expect.objectContaining({ id: "song-1" })
       )
+    );
+  });
+
+  it("preview pane renders and shows title slide text when title is filled", async () => {
+    openEditorWith(undefined);
+    render(<SongEditor />);
+
+    fireEvent.change(screen.getByPlaceholderText("Título da música *"), {
+      target: { value: "Aleluia" },
+    });
+
+    // The preview pane renders SongPreviewPane; with showTitleSlide=true (store
+    // default) the title text should appear inside the slide thumbnails.
+    await waitFor(() =>
+      expect(screen.getAllByText("Aleluia").length).toBeGreaterThan(0)
     );
   });
 

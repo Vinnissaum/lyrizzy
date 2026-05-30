@@ -1,16 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Film, Image as ImageIcon, Timer, Globe, Square, Tv } from "lucide-react";
+import { Tv } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { mediaUrl } from "../../api/assets";
-import { AnnouncementRenderer } from "./AnnouncementRenderer";
-import { CountdownRenderer } from "./CountdownRenderer";
-import { SlideshowRenderer } from "./SlideshowRenderer";
-import { FONT_CLASS, PRESET_COLORS } from "./layout";
-import { TITLE_SLIDE_LABEL } from "./slideMeta";
-import type { BackgroundInfo, BackgroundPreset, FontFamily, PresentationState, SetItem } from "../../types";
+import { PRESET_COLORS } from "./layout";
+import { SlideStage } from "./SlideStage";
+import { SlideContent } from "./SlideContent";
+import type { ChipAppearance } from "./bodies";
+import type { SetItem } from "../../types";
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -33,217 +32,29 @@ const FrameTag: React.FC<{ label: string }> = ({ label }) => (
 );
 
 // ---------------------------------------------------------------------------
-// Song slide preview (text-only, scale-friendly)
-// ---------------------------------------------------------------------------
-
-function SongSlidePreview({
-  lines,
-  sectionLabel,
-  background,
-  preset,
-  fontFamily,
-}: {
-  lines: string[];
-  sectionLabel?: string;
-  background?: BackgroundInfo;
-  preset: BackgroundPreset;
-  fontFamily: FontFamily;
-}) {
-  const hasMedia = !!background?.assetUrl;
-  const isTitle = sectionLabel === TITLE_SLIDE_LABEL;
-  const fontClass = FONT_CLASS[fontFamily];
-  const { bg, fg } = PRESET_COLORS[preset];
-
-  const bgStyle: React.CSSProperties = hasMedia
-    ? background!.mediaKind === "image"
-      ? {
-          backgroundImage: `url(${background!.assetUrl})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }
-      : { backgroundColor: "#000" }
-    : { backgroundColor: bg };
-
-  const textColor = hasMedia ? "#FFFFFF" : fg;
-
-  const body = isTitle ? (
-    <div className="relative z-10 w-full px-2 text-center space-y-0.5">
-      <p className={`text-sm font-bold leading-tight line-clamp-3 ${fontClass}`} style={{ color: textColor }}>
-        {lines[0] ?? ""}
-      </p>
-      {lines[1] && (
-        <p className={`text-[10px] opacity-80 leading-snug line-clamp-2 ${fontClass}`} style={{ color: textColor }}>
-          {lines[1]}
-        </p>
-      )}
-    </div>
-  ) : (
-    <div className="relative z-10 w-full px-2">
-      <p
-        className={`text-center text-xs leading-snug whitespace-pre-wrap line-clamp-6 ${fontClass}`}
-        style={{ color: textColor }}
-      >
-        {lines.join("\n")}
-      </p>
-    </div>
-  );
-
-  return (
-    <div className="w-full h-full relative flex items-center justify-center" style={bgStyle}>
-      {hasMedia && (
-        <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${background!.scrimOpacity / 100})` }} />
-      )}
-      {body}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Active item content (no overlay)
-// ---------------------------------------------------------------------------
-
-function ActiveItemContent({
-  state,
-}: {
-  state: PresentationState;
-}) {
-  const { t } = useTranslation();
-  const { media } = useMediaStore();
-  const presentationPreset = useSettingsStore((s) => s.presentationPreset);
-  const presentationFontFamily = useSettingsStore((s) => s.presentationFontFamily);
-
-  const items = state.set?.items ?? [];
-  const currentItem: SetItem | undefined = items[state.currentItemIndex];
-  const itemType = currentItem?.itemType ?? "blank";
-
-  if (itemType === "song" || itemType === "blank") {
-    const slide = state.currentSlide;
-    return (
-      <SongSlidePreview
-        lines={slide?.lines ?? []}
-        sectionLabel={slide?.sectionLabel}
-        background={state.background}
-        preset={presentationPreset}
-        fontFamily={presentationFontFamily}
-      />
-    );
-  }
-
-  if (itemType === "media") {
-    const mediaRecord = currentItem?.mediaId
-      ? media.find((m) => m.id === currentItem.mediaId)
-      : undefined;
-
-    if (mediaRecord?.kind === "video") {
-      return <PlaceholderCard icon={<Film size={28} />} label={mediaRecord.displayName} />;
-    }
-    if (mediaRecord?.kind === "image") {
-      const assetUrl = mediaUrl(mediaRecord.fileName);
-      return (
-        <img
-          src={assetUrl}
-          alt=""
-          className="w-full h-full object-contain"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-      );
-    }
-    return <PlaceholderCard icon={<ImageIcon size={28} />} label={t("media.picker.noMedia")} />;
-  }
-
-  if (itemType === "countdown") {
-    const cdConfig = currentItem?.countdownConfig;
-    let cdBackground: BackgroundInfo | undefined = undefined;
-    if (cdConfig?.backgroundMediaId) {
-      const bgMedia = media.find((m) => m.id === cdConfig.backgroundMediaId);
-      if (bgMedia) {
-        cdBackground = {
-          mediaKind: bgMedia.kind,
-          assetUrl: mediaUrl(bgMedia.fileName),
-          scrimOpacity: 35,
-          restartOnSectionBoundary: false,
-        };
-      }
-    }
-    return cdConfig ? (
-      <CountdownRenderer config={cdConfig} background={cdBackground} />
-    ) : (
-      <PlaceholderCard icon={<Timer size={28} />} label={t("builder.add.countdown")} />
-    );
-  }
-
-  if (itemType === "web_view") {
-    const url = currentItem?.webviewConfig?.url ?? "";
-    return <PlaceholderCard icon={<Globe size={28} />} label={url || t("builder.noUrl")} />;
-  }
-
-  if (itemType === "slide_show") {
-    const mediaId = currentItem?.mediaId ?? "";
-    const slide = state.currentSlide;
-    const slideIndex = slide?.sectionId ? parseInt(slide.sectionId, 10) : 0;
-    return (
-      <SlideshowRenderer
-        mediaId={mediaId}
-        slideIndex={isNaN(slideIndex) ? 0 : slideIndex}
-      />
-    );
-  }
-
-  return <PlaceholderCard icon={<Square size={28} />} label={t("builder.blank")} />;
-}
-
-// ---------------------------------------------------------------------------
-// Overlay content
-// ---------------------------------------------------------------------------
-
-function OverlayContent({ state }: { state: PresentationState }) {
-  const { t } = useTranslation();
-  const { media } = useMediaStore();
-  const overlay = state.overlay;
-
-  if (!overlay) return null;
-
-  if (overlay.type === "announcement") {
-    return <AnnouncementRenderer text={overlay.text} />;
-  }
-
-  if (overlay.type === "media") {
-    const mediaRecord = media.find((m) => m.id === overlay.mediaId);
-    if (mediaRecord?.kind === "video") {
-      return <PlaceholderCard icon={<Film size={28} />} label={mediaRecord.displayName} />;
-    }
-    if (mediaRecord?.kind === "image") {
-      const assetUrl = mediaUrl(mediaRecord.fileName);
-      return (
-        <img
-          src={assetUrl}
-          alt=""
-          className="w-full h-full object-contain"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-      );
-    }
-    return <PlaceholderCard icon={<ImageIcon size={28} />} label={t("media.picker.noMedia")} />;
-  }
-
-  if (overlay.type === "webView") {
-    return <PlaceholderCard icon={<Globe size={28} />} label={overlay.url} />;
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // LivePreview (exported)
 // ---------------------------------------------------------------------------
 
 export const LivePreview: React.FC = () => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
+  const { media } = useMediaStore();
+
+  // Build ChipAppearance from global presentation settings.
+  const presentationFontFamily = useSettingsStore((s) => s.presentationFontFamily);
+  const presentationFontSize = useSettingsStore((s) => s.presentationFontSize);
+  const presentationPreset = useSettingsStore((s) => s.presentationPreset);
+  const presentationPosition = useSettingsStore((s) => s.presentationPosition);
+  const presentationMargin = useSettingsStore((s) => s.presentationMargin);
+  const announcementPreset = useSettingsStore((s) => s.announcementPreset);
+
+  const appearance: ChipAppearance = {
+    fontFamily: presentationFontFamily,
+    fontSize: presentationFontSize,
+    preset: presentationPreset,
+    position: presentationPosition,
+    margin: presentationMargin,
+  };
 
   if (!state?.set) {
     return (
@@ -258,23 +69,194 @@ export const LivePreview: React.FC = () => {
 
   const mode = state.mode;
 
+  // ── Blackout ──────────────────────────────────────────────────────────────
+  if (mode === "blank") {
+    return (
+      <div
+        data-testid="live-preview"
+        className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+      >
+        <FrameTag label="BLACKOUT" />
+      </div>
+    );
+  }
+
+  // ── Overlay ───────────────────────────────────────────────────────────────
+  if (state.overlay) {
+    const overlay = state.overlay;
+
+    if (overlay.type === "announcement") {
+      return (
+        <div
+          data-testid="live-preview"
+          className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+        >
+          <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
+            <SlideContent
+              itemType="blank"
+              appearance={appearance}
+              warningText={overlay.text}
+            />
+          </SlideStage>
+        </div>
+      );
+    }
+
+    if (overlay.type === "media") {
+      const mediaRecord = media.find((m) => m.id === overlay.mediaId);
+      if (mediaRecord?.kind === "image") {
+        const assetUrl = mediaUrl(mediaRecord.fileName);
+        return (
+          <div
+            data-testid="live-preview"
+            className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+          >
+            <SlideStage>
+              <SlideContent
+                itemType="media"
+                appearance={appearance}
+                mediaKind="image"
+                mediaAssetUrl={assetUrl}
+                previewMode
+              />
+            </SlideStage>
+          </div>
+        );
+      }
+      if (mediaRecord?.kind === "video") {
+        return (
+          <div
+            data-testid="live-preview"
+            className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+          >
+            <SlideStage>
+              <SlideContent
+                itemType="media"
+                appearance={appearance}
+                mediaKind="video"
+                mediaLabel={mediaRecord.displayName}
+                previewMode
+              />
+            </SlideStage>
+          </div>
+        );
+      }
+      // No matching media record.
+      return (
+        <div
+          data-testid="live-preview"
+          className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+        >
+          <SlideStage>
+            <SlideContent
+              itemType="media"
+              appearance={appearance}
+              previewMode
+            />
+          </SlideStage>
+        </div>
+      );
+    }
+
+    if (overlay.type === "webView") {
+      return (
+        <div
+          data-testid="live-preview"
+          className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+        >
+          <SlideStage>
+            <SlideContent
+              itemType="web_view"
+              appearance={appearance}
+              webviewUrl={overlay.url}
+              previewMode
+            />
+          </SlideStage>
+        </div>
+      );
+    }
+
+    // Unknown overlay type — fall through to active item.
+  }
+
+  // ── Active item ───────────────────────────────────────────────────────────
+  const items = state.set?.items ?? [];
+  const currentItem: SetItem | undefined = items[state.currentItemIndex];
+  const itemType = currentItem?.itemType ?? "blank";
+
+  // Resolve the media record for media items once (avoids repeated find calls).
+  const activeMediaRecord =
+    itemType === "media" && currentItem?.mediaId
+      ? media.find((m) => m.id === currentItem.mediaId)
+      : undefined;
+
+  // Narrow MediaKind → "image" | "video" for SlideContent (which doesn't handle "presentation").
+  const activeMediaKind: "image" | "video" | undefined =
+    activeMediaRecord?.kind === "image" || activeMediaRecord?.kind === "video"
+      ? activeMediaRecord.kind
+      : undefined;
+
+  // Countdown background resolution.
+  let cdBackground = undefined;
+  if (itemType === "countdown" && currentItem?.countdownConfig?.backgroundMediaId) {
+    const bgMedia = media.find((m) => m.id === currentItem.countdownConfig!.backgroundMediaId);
+    if (bgMedia) {
+      cdBackground = {
+        mediaKind: bgMedia.kind,
+        assetUrl: mediaUrl(bgMedia.fileName),
+        scrimOpacity: 35,
+        restartOnSectionBoundary: false,
+      };
+    }
+  }
+
+  const presetBg = state.background?.assetUrl
+    ? "#000000"
+    : PRESET_COLORS[appearance.preset].bg;
+
+  // Slideshow index from sectionId.
+  const rawSlideIndex = state.currentSlide?.sectionId
+    ? parseInt(state.currentSlide.sectionId, 10)
+    : 0;
+  const slideshowIndex = isNaN(rawSlideIndex) ? 0 : rawSlideIndex;
+
   return (
     <div
       data-testid="live-preview"
       className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
     >
-      {mode === "blank" ? (
-        <>
-          <FrameTag label="BLACKOUT" />
-        </>
-      ) : state.overlay ? (
-        <OverlayContent state={state} />
-      ) : (
-        <>
-          <ActiveItemContent state={state} />
-          {mode === "frozen" && <FrameTag label="CONGELADO" />}
-        </>
-      )}
+      <SlideStage backgroundColor={presetBg}>
+        <SlideContent
+          itemType={itemType}
+          appearance={appearance}
+          previewMode
+          frozen={mode === "frozen"}
+          slideLines={state.currentSlide?.lines}
+          sectionLabel={state.currentSlide?.sectionLabel}
+          background={state.background}
+          mediaAssetUrl={
+            activeMediaRecord ? mediaUrl(activeMediaRecord.fileName) : undefined
+          }
+          mediaKind={activeMediaKind}
+          mediaLabel={activeMediaRecord?.displayName}
+          countdownConfig={
+            itemType === "countdown" ? currentItem?.countdownConfig : undefined
+          }
+          countdownBackground={
+            itemType === "countdown" ? cdBackground : undefined
+          }
+          slideshowMediaId={
+            itemType === "slide_show" ? (currentItem?.mediaId ?? "") : undefined
+          }
+          slideshowIndex={itemType === "slide_show" ? slideshowIndex : undefined}
+          webviewUrl={
+            itemType === "web_view"
+              ? (currentItem?.webviewConfig?.url ?? "")
+              : undefined
+          }
+        />
+      </SlideStage>
+      {mode === "frozen" && <FrameTag label="CONGELADO" />}
     </div>
   );
 };

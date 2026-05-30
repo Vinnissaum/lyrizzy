@@ -7,24 +7,16 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
-import {
-  FONT_CLASS,
-  SIZE_STYLE,
-  POSITION_CLASS,
-  MARGIN_CLASS,
-  PRESET_COLORS,
-  stepSize,
-} from "../../components/presentation/layout";
-import { TITLE_SLIDE_LABEL } from "../../components/presentation/slideMeta";
-import { SongBackground } from "../../components/presentation/SongBackground";
+import { PRESET_COLORS } from "../../components/presentation/layout";
 import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRenderer";
 import { CountdownRenderer } from "../../components/presentation/CountdownRenderer";
 import { WebViewRenderer } from "../../components/presentation/WebViewRenderer";
 import { TransitionStage } from "../../components/presentation/TransitionStage";
-import { AnnouncementRenderer } from "../../components/presentation/AnnouncementRenderer";
 import { QuickMediaRenderer } from "../../components/presentation/QuickMediaRenderer";
 import { QuickWebViewRenderer } from "../../components/presentation/QuickWebViewRenderer";
 import { SlideshowRenderer } from "../../components/presentation/SlideshowRenderer";
+import { SlideStage } from "../../components/presentation/SlideStage";
+import { SlideContent } from "../../components/presentation/SlideContent";
 import type {
   BackgroundInfo,
   BackgroundPreset,
@@ -49,87 +41,6 @@ function formatMs(ms: number): string {
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-function SongSlide({
-  slideLines,
-  sectionLabel,
-  background,
-  frozen,
-  mode,
-  appearance,
-}: {
-  slideLines: string[];
-  sectionLabel?: string;
-  background?: BackgroundInfo;
-  frozen?: boolean;
-  mode: string;
-  appearance: Appearance;
-}) {
-  // Appearance is global: per-song media background still applies, but the
-  // solid color preset, fonts, position and margin all come from settings.
-  const hasMedia = !!background?.assetUrl;
-  const presetColors = PRESET_COLORS[appearance.preset];
-  const fg = hasMedia ? "#FFFFFF" : presetColors.fg;
-  const fontClass = FONT_CLASS[appearance.fontFamily];
-  const sizeStyle = SIZE_STYLE[appearance.fontSize];
-  const isTitle = sectionLabel === TITLE_SLIDE_LABEL;
-  // Title/author intro slide follows the configured font size and position:
-  // the title sits one notch above the configured size for emphasis (clamped
-  // at xxl) and the author renders at the configured size beneath it.
-  const titleSize = SIZE_STYLE[stepSize(appearance.fontSize, 1)];
-  const authorSize = sizeStyle;
-
-  return (
-    <div
-      className="relative h-full overflow-hidden select-none"
-      style={{ backgroundColor: hasMedia ? "#000000" : presetColors.bg }}
-    >
-      {hasMedia && <SongBackground background={background!} frozen={frozen} />}
-      <div
-        className={`relative z-10 h-full flex flex-col ${MARGIN_CLASS[appearance.margin]} ${
-          POSITION_CLASS[appearance.position]
-        }`}
-      >
-        {mode === "frozen" && (
-          <div className="absolute top-3 right-4 text-xs text-blue-400/60 font-medium uppercase tracking-wider">
-            Congelado
-          </div>
-        )}
-        {isTitle ? (
-          <div className="w-full space-y-3">
-            <p
-              className={`font-bold leading-tight drop-shadow-lg ${fontClass}`}
-              style={{ color: fg, ...titleSize }}
-            >
-              {slideLines[0] ?? ""}
-            </p>
-            {slideLines[1] && (
-              <p
-                className={`font-medium leading-relaxed opacity-80 drop-shadow-lg ${fontClass}`}
-                style={{ color: fg, ...authorSize }}
-              >
-                {slideLines[1]}
-              </p>
-            )}
-          </div>
-        ) : slideLines.length > 0 ? (
-          <div className="w-full space-y-2">
-            {slideLines.map((line, i) => (
-              <p
-                key={i}
-                className={`font-medium leading-relaxed drop-shadow-lg ${fontClass}`}
-                style={{ color: fg, ...sizeStyle }}
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <div className="h-screen bg-transparent" />
-        )}
-      </div>
-    </div>
-  );
-}
 
 export const PresentationApp: React.FC = () => {
   const { i18n, t } = useTranslation();
@@ -141,6 +52,7 @@ export const PresentationApp: React.FC = () => {
     transitionMs,
     reduceMotion,
     setLocale,
+    loadLocale,
     presentationFontFamily,
     presentationFontSize,
     presentationPreset,
@@ -172,6 +84,7 @@ export const PresentationApp: React.FC = () => {
       }
     });
     loadPresentationSettings();
+    loadLocale();
     refreshMedia();
 
     const keydownHandler = (e: KeyboardEvent) => {
@@ -249,7 +162,14 @@ export const PresentationApp: React.FC = () => {
   const overlay = state?.overlay;
   if (overlay) {
     if (overlay.type === "announcement") {
-      return <AnnouncementRenderer text={overlay.text} />;
+      const { announcementPreset } = useSettingsStore.getState();
+      return (
+        <div className="h-screen w-screen overflow-hidden">
+          <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
+            <SlideContent itemType="blank" appearance={appearance} warningText={overlay.text} />
+          </SlideStage>
+        </div>
+      );
     }
     if (overlay.type === "media") {
       return <QuickMediaRenderer mediaId={overlay.mediaId} />;
@@ -334,15 +254,19 @@ export const PresentationApp: React.FC = () => {
     );
   } else {
     // Song or Blank
+    const presetBg = background?.assetUrl ? "#000000" : PRESET_COLORS[appearance.preset].bg;
     content = (
-      <SongSlide
-        slideLines={slide?.lines ?? []}
-        sectionLabel={slide?.sectionLabel}
-        background={background}
-        frozen={frozen}
-        mode={mode}
-        appearance={appearance}
-      />
+      <SlideStage backgroundColor={presetBg}>
+        <SlideContent
+          itemType={itemType === "blank" ? "blank" : "song"}
+          appearance={appearance}
+          previewMode={false}
+          frozen={frozen}
+          slideLines={slide?.lines ?? []}
+          sectionLabel={slide?.sectionLabel}
+          background={background}
+        />
+      </SlideStage>
     );
   }
 

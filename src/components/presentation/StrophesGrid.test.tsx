@@ -1,10 +1,29 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+
+// jsdom does not implement ResizeObserver — provide a minimal stub so SlideStage
+// can mount without throwing (mirrors the approach in SlideStage.test.tsx).
+class ResizeObserverStub {
+  observe() {}
+  disconnect() {}
+}
+
+beforeAll(() => {
+  if (typeof window.ResizeObserver === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).ResizeObserver = ResizeObserverStub;
+  }
+});
+
+afterAll(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (window as any).ResizeObserver;
+});
 
 // jsdom does not implement scrollIntoView
 Element.prototype.scrollIntoView = vi.fn();
 
-import { StrophesGrid } from "./StrophesGrid";
+// ─── Module mocks ─────────────────────────────────────────────────────────────
 
 vi.mock("../../stores/presentation", () => ({
   usePresentationStore: vi.fn(),
@@ -18,6 +37,10 @@ vi.mock("../../stores/media", () => ({
   useMediaStore: vi.fn(),
 }));
 
+vi.mock("../../stores/settings", () => ({
+  useSettingsStore: vi.fn(),
+}));
+
 vi.mock("../../api/commands", () => ({
   goToItem: vi.fn().mockResolvedValue({}),
 }));
@@ -29,13 +52,47 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+// SongBackground uses asset:// URLs — stub it.
+vi.mock("./SongBackground", () => ({
+  SongBackground: () => <div data-testid="song-background-stub" />,
+}));
+
+// SlideshowRenderer may fetch slide images — stub it.
+vi.mock("./SlideshowRenderer", () => ({
+  SlideshowRenderer: ({
+    mediaId,
+    slideIndex,
+  }: {
+    mediaId: string;
+    slideIndex: number;
+  }) => (
+    <div
+      data-testid="slideshow-renderer-stub"
+      data-media-id={mediaId}
+      data-slide-index={slideIndex}
+    />
+  ),
+}));
+
+// ─── Imports after mocks ──────────────────────────────────────────────────────
+
+import { StrophesGrid } from "./StrophesGrid";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { useSettingsStore } from "../../stores/settings";
 import { goToItem } from "../../api/commands";
 import type { PresentationState, ServiceSet } from "../../types";
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
+
+const defaultAppearance = {
+  presentationFontFamily: "sans" as const,
+  presentationFontSize: "lg" as const,
+  presentationPreset: "preto-branco" as const,
+  presentationPosition: "center" as const,
+  presentationMargin: "lg" as const,
+};
 
 const makeSongSlides = (n: number) =>
   Array.from({ length: n }, (_, i) => ({
@@ -77,6 +134,15 @@ const makeState = (
 describe("StrophesGrid", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Mock settings store: selector-based access
+    vi.mocked(useSettingsStore).mockImplementation((selector: unknown) => {
+      if (typeof selector === "function") {
+        return (selector as (s: typeof defaultAppearance) => unknown)(defaultAppearance);
+      }
+      return defaultAppearance;
+    });
+
     // Provide a default getState so tests that don't override it don't crash on click
     Object.assign(vi.mocked(usePresentationStore), {
       getState: vi.fn().mockReturnValue({ state: makeState() }),
@@ -125,6 +191,7 @@ describe("StrophesGrid", () => {
 
     const active = document.querySelectorAll('[aria-current="true"]');
     expect(active).toHaveLength(1);
+    // Slide index 2 → "Line 3" in the thumbnail content
     expect(active[0].textContent).toContain("Line 3");
   });
 
@@ -243,5 +310,25 @@ describe("StrophesGrid", () => {
     expect(screen.getByText("Slide 1")).toBeInTheDocument();
     expect(screen.getByText("Slide 2")).toBeInTheDocument();
     expect(screen.getByText("Slide 3")).toBeInTheDocument();
+  });
+
+  // ── Test 7: __blackout__ slide shows the blackout label ─────────────────
+
+  it("shows the blackout label for slides with __blackout__ sectionLabel", () => {
+    const slidesWithBlackout = [
+      { lines: ["Amazing Grace"], sectionLabel: "Verse 1", sectionId: "s1" },
+      { lines: [], sectionLabel: "__blackout__", sectionId: "s-blackout" },
+    ];
+
+    vi.mocked(usePresentationStore).mockReturnValue({
+      state: makeState({}, makeSet("song", { songId: "song-1" }), [slidesWithBlackout]),
+    } as ReturnType<typeof usePresentationStore>);
+
+    render(<StrophesGrid />);
+
+    // The badge for the blackout slide shows the i18n key (mocked as key passthrough)
+    expect(screen.getByText("presentation.blackoutSlide")).toBeInTheDocument();
+    // The normal slide badge still shows the section label
+    expect(screen.getByText("Verse 1")).toBeInTheDocument();
   });
 });

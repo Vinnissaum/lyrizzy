@@ -6,7 +6,8 @@
     "countdown": "Countdown",
     "media": "Media",
     "backup": "Backup",
-    "settings": "Settings"
+    "settings": "Settings",
+    "lockedWhilePresenting": "Unavailable while presenting"
   },
   "loading": "Loading…",
   "saving": "Saving…",
@@ -199,6 +200,7 @@
       "blank": "Black Screen",
       "frozen": "Frozen"
     },
+    "blackoutSlide": "Blackout",
     "currentSlide": "Current slide",
     "blankSlide": "Blank slide",
     "prev": "← Previous",
@@ -532,7 +534,10 @@
     },
     "announcement": {
       "title": "Announcement"
-    }
+    },
+    "announcementMargin": "Warning margin",
+    "blackoutAfterSong": "Black slide after each song",
+    "blackoutAfterSongDescription": "Automatically insert a black slide after the last slide of every song"
   },
   "reports": {
     "ccli": {

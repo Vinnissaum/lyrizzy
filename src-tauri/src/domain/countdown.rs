@@ -29,24 +29,19 @@ pub enum CountdownTarget {
 }
 
 /// Where the countdown digits are anchored on the presentation screen.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum CountdownPosition {
     TopLeft,
     TopCenter,
     TopRight,
     CenterLeft,
+    #[default]
     Center,
     CenterRight,
     BottomLeft,
     BottomCenter,
     BottomRight,
-}
-
-impl Default for CountdownPosition {
-    fn default() -> Self {
-        CountdownPosition::Center
-    }
 }
 
 /// Configuration for a countdown set item.

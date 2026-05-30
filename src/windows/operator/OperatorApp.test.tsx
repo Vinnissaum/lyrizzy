@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { OperatorApp } from "./OperatorApp";
+import i18n from "../../i18n/index";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -12,7 +13,8 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Song, ServiceSet } from "../../types";
+import type { Song, ServiceSet, PresentationState } from "../../types";
+import { usePresentationStore } from "../../stores/presentation";
 
 const mockSong = (id: string, title: string, artist?: string): Song => ({
   id,
@@ -44,6 +46,8 @@ describe("OperatorApp", () => {
       if (cmd === "check_for_updates") return Promise.resolve(null);
       return Promise.resolve([]);
     });
+    // Reset to pt-BR so locale-changing tests don't pollute subsequent tests
+    i18n.changeLanguage("pt-BR");
   });
 
   it("renders the Biblioteca nav button", () => {
@@ -93,5 +97,77 @@ describe("OperatorApp", () => {
         expect.any(Function)
       )
     );
+  });
+
+  it("calls loadLocale at mount — invokes get_setting for app.locale", async () => {
+    vi.mocked(invoke).mockImplementation((cmd, args) => {
+      if (cmd === "get_setting") {
+        const key = (args as { key: string })?.key;
+        if (key === "app.locale") return Promise.resolve("en-US");
+        return Promise.reject({ code: "settings.not_found", params: {} });
+      }
+      if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
+      if (cmd === "get_set") return Promise.resolve(defaultSet);
+      if (cmd === "check_for_updates") return Promise.resolve(null);
+      return Promise.resolve([]);
+    });
+    render(<OperatorApp />);
+    await waitFor(() =>
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith("get_setting", { key: "app.locale" })
+    );
+    // The settings store locale should reflect the DB value after load
+    const { useSettingsStore } = await import("../../stores/settings");
+    await waitFor(() =>
+      expect(useSettingsStore.getState().locale).toBe("en-US")
+    );
+  });
+
+  it("nav buttons are disabled while presenting (mode=live) and enabled when idle", async () => {
+    const liveState: PresentationState = {
+      mode: "live",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+    };
+
+    // Start with idle state (state=null → isPresenting=false)
+    act(() => { usePresentationStore.setState({ state: null }); });
+    render(<OperatorApp />);
+
+    const navLabels = [
+      i18n.t("nav.home"),
+      i18n.t("nav.library"),
+      i18n.t("nav.media"),
+      i18n.t("nav.backup"),
+      i18n.t("nav.settings"),
+    ];
+
+    // All buttons must be enabled when idle
+    for (const label of navLabels) {
+      expect(screen.getByRole("button", { name: label })).not.toBeDisabled();
+    }
+
+    // Simulate presentation going live
+    act(() => { usePresentationStore.setState({ state: liveState }); });
+
+    await waitFor(() => {
+      for (const label of navLabels) {
+        expect(screen.getByRole("button", { name: label })).toBeDisabled();
+      }
+    });
+
+    // Simulate presentation ending (back to idle)
+    act(() => { usePresentationStore.setState({ state: null }); });
+
+    await waitFor(() => {
+      for (const label of navLabels) {
+        expect(screen.getByRole("button", { name: label })).not.toBeDisabled();
+      }
+    });
+  });
+
+  afterEach(() => {
+    // Reset presentation store state after each test
+    act(() => { usePresentationStore.setState({ state: null }); });
   });
 });

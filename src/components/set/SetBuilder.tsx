@@ -8,6 +8,7 @@ import {
   ChevronUp,
   ChevronDown,
   Copy,
+  GripVertical,
   Pencil,
   X,
   Music,
@@ -17,6 +18,23 @@ import {
   Square,
   FileText,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ItemTypeIcon } from "../presentation/itemMeta";
 import {
@@ -48,6 +66,48 @@ interface Props {
   hidePresentButton?: boolean;
 }
 
+/**
+ * Pure helper: given an ordered list of items, returns a new array
+ * with the item identified by `activeId` moved to the position of `overId`.
+ * Exported for unit testing without DOM/dnd-kit machinery.
+ */
+export function reorderIds<T extends { id: string }>(
+  items: T[],
+  activeId: string,
+  overId: string
+): T[] {
+  const oldIndex = items.findIndex((i) => i.id === activeId);
+  const newIndex = items.findIndex((i) => i.id === overId);
+  if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return items;
+  return arrayMove(items, oldIndex, newIndex);
+}
+
+interface SortableSetItemRowProps {
+  itemId: string;
+  children: (
+    ref: (node: HTMLElement | null) => void,
+    style: React.CSSProperties,
+    attributes: ReturnType<typeof useSortable>["attributes"],
+    listeners: ReturnType<typeof useSortable>["listeners"]
+  ) => React.ReactNode;
+}
+
+const SortableSetItemRow: React.FC<SortableSetItemRowProps> = ({
+  itemId,
+  children,
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: itemId });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return <>{children(setNodeRef, style, attributes, listeners)}</>;
+};
+
 
 function isExpandable(item: SetItem): boolean {
   return (
@@ -77,6 +137,13 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const loadSet = async () => {
     if (!setId) return;
@@ -252,6 +319,14 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
     } catch (err) {
       console.error("reorder failed:", err);
     }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!serviceSet || !over || active.id === over.id) return;
+    const next = reorderIds(serviceSet.items, String(active.id), String(over.id));
+    setServiceSet({ ...serviceSet, items: next });
+    reorderSetItems(serviceSet.id, next.map((i) => i.id)).catch(console.error);
   };
 
   const handleLoadForPresentation = async () => {
@@ -434,100 +509,127 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
             {t("builder.empty")}
           </p>
         ) : (
-          serviceSet.items.map((item, idx) => {
-            const expanded = expandedItemId === item.id;
-            const canExpand = isExpandable(item);
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={serviceSet.items.map((i) => i.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {serviceSet.items.map((item, idx) => {
+                const expanded = expandedItemId === item.id;
+                const canExpand = isExpandable(item);
 
-            return (
-              <div key={item.id} className="rounded-lg bg-surface overflow-hidden">
-                <div className="flex items-center gap-2 px-3 py-2 group">
-                  <span className="text-xs text-muted w-5 text-right shrink-0">
-                    {idx + 1}
-                  </span>
-                  <ItemTypeIcon item={item} size={16} className="shrink-0 text-muted" />
-
-                  <div
-                    className={`flex-1 min-w-0 ${canExpand ? "cursor-pointer" : ""}`}
-                    onClick={() =>
-                      canExpand && setExpandedItemId(expanded ? null : item.id)
-                    }
-                  >
-                    {itemSummary(item)}
-                  </div>
-                  {canExpand && (
-                    <button
-                      onClick={() => setExpandedItemId(expanded ? null : item.id)}
-                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 transition-all"
-                      title={t("builder.actions.edit")}
-                    >
-                      {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                  )}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    {item.itemType === "song" && item.songId && (
-                      <button
-                        onClick={() => openEditor(item.songId)}
-                        className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"
-                        title={t("builder.actions.editSong")}
+                return (
+                  <SortableSetItemRow key={item.id} itemId={item.id}>
+                    {(setNodeRef, style, attributes, listeners) => (
+                      <div
+                        ref={setNodeRef}
+                        style={style}
+                        className="rounded-lg bg-surface overflow-hidden"
                       >
-                        <Pencil size={14} />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDuplicate(item)}
-                      className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"
-                      title={t("builder.actions.duplicate")}
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleMove(idx, "up")}
-                      disabled={idx === 0}
-                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
-                      title={t("builder.actions.moveUp")}
-                    >
-                      <ArrowUp size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleMove(idx, "down")}
-                      disabled={idx === serviceSet.items.length - 1}
-                      className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
-                      title={t("builder.actions.moveDown")}
-                    >
-                      <ArrowDown size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleRemoveItem(item)}
-                      className="p-1 rounded text-muted hover:text-danger hover:bg-surface-2 transition-all"
-                      title={t("builder.actions.remove")}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
+                        <div className="flex items-center gap-2 px-3 py-2 group">
+                          <button
+                            {...attributes}
+                            {...listeners}
+                            aria-label={t("builder.actions.drag")}
+                            className="cursor-grab text-muted hover:text-inherit shrink-0 p-0.5"
+                          >
+                            <GripVertical size={14} />
+                          </button>
+                          <span className="text-xs text-muted w-5 text-right shrink-0">
+                            {idx + 1}
+                          </span>
+                          <ItemTypeIcon item={item} size={16} className="shrink-0 text-muted" />
 
-                {expanded && (
-                  <div className="border-t border-border">
-                    {item.itemType === "countdown" && (
-                      <CountdownSetItemEditor item={item} />
+                          <div
+                            className={`flex-1 min-w-0 ${canExpand ? "cursor-pointer" : ""}`}
+                            onClick={() =>
+                              canExpand && setExpandedItemId(expanded ? null : item.id)
+                            }
+                          >
+                            {itemSummary(item)}
+                          </div>
+                          {canExpand && (
+                            <button
+                              onClick={() => setExpandedItemId(expanded ? null : item.id)}
+                              className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 transition-all"
+                              title={t("builder.actions.edit")}
+                            >
+                              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </button>
+                          )}
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            {item.itemType === "song" && item.songId && (
+                              <button
+                                onClick={() => openEditor(item.songId)}
+                                className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"
+                                title={t("builder.actions.editSong")}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDuplicate(item)}
+                              className="p-1 rounded text-muted hover:text-primary hover:bg-surface-2 transition-all"
+                              title={t("builder.actions.duplicate")}
+                            >
+                              <Copy size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleMove(idx, "up")}
+                              disabled={idx === 0}
+                              className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
+                              title={t("builder.actions.moveUp")}
+                            >
+                              <ArrowUp size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleMove(idx, "down")}
+                              disabled={idx === serviceSet.items.length - 1}
+                              className="p-1 rounded text-muted hover:text-inherit hover:bg-surface-2 disabled:opacity-20 transition-all"
+                              title={t("builder.actions.moveDown")}
+                            >
+                              <ArrowDown size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveItem(item)}
+                              className="p-1 rounded text-muted hover:text-danger hover:bg-surface-2 transition-all"
+                              title={t("builder.actions.remove")}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {expanded && (
+                          <div className="border-t border-border">
+                            {item.itemType === "countdown" && (
+                              <CountdownSetItemEditor item={item} />
+                            )}
+                            {item.itemType === "web_view" && (
+                              <WebViewSetItemEditor item={item} />
+                            )}
+                            {item.itemType === "media" && (
+                              <MediaSetItemEditor item={item} />
+                            )}
+                            {item.itemType === "blank" && (
+                              <BlankItemNotesEditor item={item} />
+                            )}
+                            {item.itemType === "slide_show" && (
+                              <SlideshowSetItemEditor item={item} />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
-                    {item.itemType === "web_view" && (
-                      <WebViewSetItemEditor item={item} />
-                    )}
-                    {item.itemType === "media" && (
-                      <MediaSetItemEditor item={item} />
-                    )}
-                    {item.itemType === "blank" && (
-                      <BlankItemNotesEditor item={item} />
-                    )}
-                    {item.itemType === "slide_show" && (
-                      <SlideshowSetItemEditor item={item} />
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
+                  </SortableSetItemRow>
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 

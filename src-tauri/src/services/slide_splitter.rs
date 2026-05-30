@@ -1,16 +1,21 @@
-use crate::domain::slide::{Slide, SlideConfig};
+use crate::domain::slide::{RepeatMode, Slide, SlideConfig};
 use crate::domain::song::{SongSection, TextCasing};
 
 /// Split a section into slides without any casing transform.
 pub fn split(section: &SongSection, config: &SlideConfig) -> Vec<Slide> {
-    split_with_casing(section, config, TextCasing::Normal)
+    split_with_casing(section, config, TextCasing::Normal, RepeatMode::Duplicate)
 }
 
 /// Split a section into slides, applying `casing` to every display line.
+///
+/// Lines are kept verbatim (one written line = one display line) so the slide
+/// mirrors the strophe edit box; the renderer wraps only at the screen margins.
+/// Slides break on blank lines and when `config.max_lines` is reached.
 pub fn split_with_casing(
     section: &SongSection,
     config: &SlideConfig,
     casing: TextCasing,
+    repeat_mode: RepeatMode,
 ) -> Vec<Slide> {
     if section.body.trim().is_empty() {
         return vec![];
@@ -30,16 +35,14 @@ pub fn split_with_casing(
                 });
             }
         } else {
-            for display_line in wrap_line(raw_line, config.max_chars_per_line) {
-                if current_lines.len() >= config.max_lines {
-                    slides.push(Slide {
-                        lines: std::mem::take(&mut current_lines),
-                        section_label: section.label.clone(),
-                        section_id: section.id.clone(),
-                    });
-                }
-                current_lines.push(casing.apply(&display_line));
+            if current_lines.len() >= config.max_lines {
+                slides.push(Slide {
+                    lines: std::mem::take(&mut current_lines),
+                    section_label: section.label.clone(),
+                    section_id: section.id.clone(),
+                });
             }
+            current_lines.push(casing.apply(raw_line));
         }
     }
 
@@ -53,48 +56,23 @@ pub fn split_with_casing(
 
     let repeat = section.repeat_count.max(1) as usize;
     if repeat > 1 && !slides.is_empty() {
-        let base = slides.clone();
-        for _ in 1..repeat {
-            slides.extend_from_slice(&base);
+        match repeat_mode {
+            RepeatMode::Duplicate => {
+                let base = slides.clone();
+                for _ in 1..repeat {
+                    slides.extend_from_slice(&base);
+                }
+            }
+            RepeatMode::Annotate => {
+                // Render once and mark the section's last slide with `(Nx)`.
+                if let Some(last) = slides.last_mut() {
+                    last.lines.push(format!("({repeat}x)"));
+                }
+            }
         }
     }
 
     slides
-}
-
-/// Wraps a single line into one or more display lines of at most `max_chars` characters.
-/// Breaks on the nearest preceding whitespace; hard-breaks at the limit if no whitespace exists.
-fn wrap_line(line: &str, max_chars: usize) -> Vec<String> {
-    let chars: Vec<char> = line.chars().collect();
-    if chars.len() <= max_chars {
-        return vec![line.to_string()];
-    }
-
-    let mut result = Vec::new();
-    let mut pos = 0;
-
-    while pos < chars.len() {
-        let end = (pos + max_chars).min(chars.len());
-
-        if end == chars.len() {
-            let s: String = chars[pos..end].iter().collect();
-            result.push(s);
-            break;
-        }
-
-        // Look for the last whitespace in chars[pos..end].
-        let segment = &chars[pos..end];
-        if let Some(ws_offset) = segment.iter().rposition(|c| c.is_whitespace()) {
-            result.push(segment[..ws_offset].iter().collect());
-            pos += ws_offset + 1; // skip the whitespace character
-        } else {
-            // Hard break — no whitespace in this window.
-            result.push(segment.iter().collect());
-            pos = end;
-        }
-    }
-
-    result
 }
 
 #[cfg(test)]
@@ -141,32 +119,18 @@ mod tests {
     }
 
     #[test]
-    fn line_wraps_at_whitespace() {
-        // "hello world more text" = 21 chars; max_chars=10 → wrap at space before "world"
-        let section = make_section("hello world more text", 1);
+    fn long_line_is_kept_verbatim_as_single_display_line() {
+        // A long line is no longer force-broken — it stays one display line so
+        // the slide mirrors the strophe edit box (the renderer wraps at margins).
+        let long = "uma frase bem comprida que antes seria quebrada em sessenta caracteres";
+        let section = make_section(long, 1);
         let config = SlideConfig {
             max_lines: 10,
             max_chars_per_line: 10,
         };
         let slides = split(&section, &config);
         assert_eq!(slides.len(), 1);
-        // "hello" (5) then "world more" (10) then "text" (4)
-        assert!(slides[0].lines[0].len() <= 10, "first wrapped line too long");
-        assert!(slides[0].lines.len() >= 2, "expected wrapping to produce multiple lines");
-    }
-
-    #[test]
-    fn line_hard_breaks_when_no_whitespace() {
-        // "ABCDEFGHIJKLMNOPQRST" = 20 chars; max_chars=10 → hard break at 10
-        let section = make_section("ABCDEFGHIJKLMNOPQRST", 1);
-        let config = SlideConfig {
-            max_lines: 10,
-            max_chars_per_line: 10,
-        };
-        let slides = split(&section, &config);
-        assert_eq!(slides.len(), 1);
-        assert_eq!(slides[0].lines[0], "ABCDEFGHIJ");
-        assert_eq!(slides[0].lines[1], "KLMNOPQRST");
+        assert_eq!(slides[0].lines, vec![long]);
     }
 
     #[test]
@@ -188,6 +152,39 @@ mod tests {
     }
 
     #[test]
+    fn annotate_mode_marks_last_slide_instead_of_duplicating() {
+        let section = make_section("Line A\nLine B", 2);
+        let config = SlideConfig::default();
+        let slides =
+            split_with_casing(&section, &config, TextCasing::Normal, RepeatMode::Annotate);
+        assert_eq!(slides.len(), 1, "annotate mode must not duplicate slides");
+        assert_eq!(slides[0].lines, vec!["Line A", "Line B", "(2x)"]);
+    }
+
+    #[test]
+    fn annotate_mode_marks_only_section_last_slide() {
+        // 6 lines, max_lines=4 → two slides; the marker lands on the last.
+        let body = "L1\nL2\nL3\nL4\nL5\nL6";
+        let section = make_section(body, 3);
+        let config = SlideConfig::default();
+        let slides =
+            split_with_casing(&section, &config, TextCasing::Normal, RepeatMode::Annotate);
+        assert_eq!(slides.len(), 2);
+        assert!(!slides[0].lines.contains(&"(3x)".to_string()));
+        assert_eq!(*slides[1].lines.last().unwrap(), "(3x)");
+    }
+
+    #[test]
+    fn annotate_mode_no_marker_when_repeat_one() {
+        let section = make_section("Line A\nLine B", 1);
+        let config = SlideConfig::default();
+        let slides =
+            split_with_casing(&section, &config, TextCasing::Normal, RepeatMode::Annotate);
+        assert_eq!(slides.len(), 1);
+        assert_eq!(slides[0].lines, vec!["Line A", "Line B"]);
+    }
+
+    #[test]
     fn blank_lines_force_slide_boundary() {
         // Body has two paragraphs separated by a blank line.
         let body = "Verse line one\nVerse line two\n\nChorus line one\nChorus line two";
@@ -203,7 +200,7 @@ mod tests {
     fn casing_is_applied_to_display_lines() {
         let section = make_section("graça divina\nque me salvou", 1);
         let config = SlideConfig::default();
-        let slides = split_with_casing(&section, &config, TextCasing::Upper);
+        let slides = split_with_casing(&section, &config, TextCasing::Upper, RepeatMode::Duplicate);
         assert_eq!(slides.len(), 1);
         assert_eq!(slides[0].lines, vec!["GRAÇA DIVINA", "QUE ME SALVOU"]);
     }

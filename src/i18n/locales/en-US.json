@@ -166,7 +166,8 @@
       "moveUp": "Move up",
       "moveDown": "Move down",
       "remove": "Remove",
-      "edit": "Edit"
+      "edit": "Edit",
+      "editSong": "Edit song"
     },
     "itemNotes": {
       "label": "Notes",
@@ -517,7 +518,12 @@
         "xl": "Max"
       },
       "titleSlide": "Title slide (title + author)",
-      "authorParens": "Author in parentheses"
+      "authorParens": "Author in parentheses",
+      "repeatMode": "Repetitions",
+      "repeatModes": {
+        "duplicate": "Repeat slides",
+        "annotate": "Show (Nx)"
+      }
     },
     "announcement": {
       "title": "Announcement"

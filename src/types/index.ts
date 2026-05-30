@@ -165,6 +165,12 @@ export type ScreenPosition =
 /** Edge padding stage applied around presentation content. */
 export type Margin = 'none' | 'sm' | 'md' | 'lg' | 'xl';
 
+/**
+ * How a section's repeat count is reflected on stage.
+ * `duplicate` repeats the slides; `annotate` shows an `(Nx)` marker instead.
+ */
+export type RepeatMode = 'duplicate' | 'annotate';
+
 export interface Typography {
   fontFamily: FontFamily;
   fontSize: FontSize;

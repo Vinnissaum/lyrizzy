@@ -93,7 +93,7 @@ function SongSlide({
           </div>
         )}
         {isTitle ? (
-          <div className="w-full max-w-5xl space-y-3">
+          <div className="w-full space-y-3">
             <p
               className={`font-bold leading-tight drop-shadow-lg ${fontClass}`}
               style={{ color: fg, ...TITLE_SIZE }}
@@ -110,7 +110,7 @@ function SongSlide({
             )}
           </div>
         ) : slideLines.length > 0 ? (
-          <div className="w-full max-w-4xl space-y-2">
+          <div className="w-full space-y-2">
             {slideLines.map((line, i) => (
               <p
                 key={i}

@@ -166,7 +166,8 @@
       "moveUp": "Mover para cima",
       "moveDown": "Mover para baixo",
       "remove": "Remover",
-      "edit": "Editar"
+      "edit": "Editar",
+      "editSong": "Editar música"
     },
     "itemNotes": {
       "label": "Notas",
@@ -517,7 +518,12 @@
         "xl": "Máxima"
       },
       "titleSlide": "Slide de título (título + autor)",
-      "authorParens": "Autor entre parênteses"
+      "authorParens": "Autor entre parênteses",
+      "repeatMode": "Repetições",
+      "repeatModes": {
+        "duplicate": "Repetir slides",
+        "annotate": "Mostrar (Nx)"
+      }
     },
     "announcement": {
       "title": "Aviso"

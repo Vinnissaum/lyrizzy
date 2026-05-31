@@ -5,6 +5,7 @@ import type {
   CountdownEndBehavior,
   CountdownState,
   CountdownTarget,
+  CountdownTriggeredPayload,
   ErrorPayload,
   KeyBindings,
   Media,
@@ -14,6 +15,7 @@ import type {
   MonitorInfo,
   PresentationMode,
   PresentationState,
+  ScheduledStart,
   ServiceSet,
   SetItem,
   Song,
@@ -341,6 +343,19 @@ export interface StartCountdownParams {
 export const startCountdown = (params?: StartCountdownParams) =>
   invoke<CountdownState>("start_countdown", params ?? {});
 
+export interface ArmCountdownParams {
+  scheduledStart: ScheduledStart;
+  durationMs: number;
+  message?: string;
+  endBehavior?: CountdownEndBehavior;
+  setId?: string;
+  itemIndex?: number;
+  [key: string]: unknown;
+}
+
+export const armCountdown = (params: ArmCountdownParams) =>
+  invoke<CountdownState>("arm_countdown", params);
+
 export const pauseCountdown = () =>
   invoke<CountdownState>("pause_countdown");
 
@@ -443,6 +458,9 @@ export const onStateChanged = (cb: (state: PresentationState) => void) =>
 
 export const onCountdownTick = (cb: (state: CountdownState) => void) =>
   listen<CountdownState>("countdown_tick", (e) => cb(e.payload));
+
+export const onCountdownTriggered = (cb: (payload: CountdownTriggeredPayload) => void) =>
+  listen<CountdownTriggeredPayload>("countdown_triggered", (e) => cb(e.payload));
 
 // ─── CCLI reports ────────────────────────────────────────────────────────────
 

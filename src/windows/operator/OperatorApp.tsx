@@ -4,7 +4,9 @@ import {
   checkForUpdates,
   checkRestoreInProgress,
   clearOverlay,
+  enterPresentation,
   exitPresentation,
+  onCountdownTriggered,
   onLocaleChanged,
   onPresentationLifecycle,
   onSettingChanged,
@@ -73,6 +75,18 @@ export const OperatorApp: React.FC = () => {
         useLibraryStore.getState().setView("home");
       }
     });
+    // When a scheduled countdown reaches its start time, make sure the
+    // presentation window is open and the configured item is in focus.
+    const unlistenCdTrigger = onCountdownTriggered(async (payload) => {
+      try {
+        await enterPresentation();
+        if (typeof payload.itemIndex === "number") {
+          await usePresentationStore.getState().jumpToItem(payload.itemIndex);
+        }
+      } catch (err) {
+        console.error("countdown_triggered handler failed:", err);
+      }
+    });
     // Keep the operator's live preview in sync with global appearance changes.
     const unlistenSetting = onSettingChanged((key) => {
       if (key.startsWith("presentation.") || key.startsWith("announcement.")) {
@@ -99,6 +113,7 @@ export const OperatorApp: React.FC = () => {
       unsubCountdown.then((u) => u());
       unlistenLocale.then((u) => u());
       unlistenLifecycle.then((u) => u());
+      unlistenCdTrigger.then((u) => u());
       unlistenSetting.then((u) => u());
       unsubBindings.then((u) => u());
     };

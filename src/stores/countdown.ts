@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import {
+  armCountdown,
   getCountdownState,
   onCountdownTick,
   pauseCountdown,
   resetCountdown,
   setCountdownDuration,
   startCountdown,
+  type ArmCountdownParams,
   type StartCountdownParams,
 } from "../api/commands";
 import type { CountdownState } from "../types";
@@ -16,6 +18,7 @@ interface CountdownStore {
   subscribe: () => Promise<() => void>;
   setDuration: (durationMs: number) => Promise<void>;
   start: (params?: StartCountdownParams) => Promise<void>;
+  arm: (params: ArmCountdownParams) => Promise<void>;
   pause: () => Promise<void>;
   reset: () => Promise<void>;
 }
@@ -66,6 +69,15 @@ export const useCountdownStore = create<CountdownStore>((set) => ({
       set({ state: newState });
     } catch (err) {
       console.error("Falha ao iniciar cronômetro:", err);
+    }
+  },
+
+  arm: async (params) => {
+    try {
+      const newState = await armCountdown(params);
+      set({ state: newState });
+    } catch (err) {
+      console.error("Falha ao agendar cronômetro:", err);
     }
   },
 

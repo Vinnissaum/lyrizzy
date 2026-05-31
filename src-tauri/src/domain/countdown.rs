@@ -4,9 +4,21 @@ use serde::{Deserialize, Deserializer, Serialize};
 #[serde(rename_all = "camelCase")]
 pub enum CountdownMode {
     Idle,
+    /// Armed and waiting for a wall-clock start time. While in this mode
+    /// `scheduled_start_epoch_ms` is set and `remaining_ms` ticks down toward 0.
+    /// On reaching 0 the ticker auto-transitions to `Running`.
+    Scheduled,
     Running,
     Paused,
     Finished,
+}
+
+/// Wall-clock HH:MM used as a scheduled-start trigger.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduledStart {
+    pub hour: u8,
+    pub minute: u8,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -60,6 +72,9 @@ pub struct CountdownConfig {
     /// saved before this field existed.
     #[serde(default)]
     pub position: CountdownPosition,
+    /// If set, the operator arming this item enters Scheduled mode until the
+    /// wall-clock hits HH:MM, then auto-starts the countdown.
+    pub scheduled_start: Option<ScheduledStart>,
 }
 
 impl<'de> Deserialize<'de> for CountdownConfig {
@@ -87,6 +102,16 @@ impl<'de> Deserialize<'de> for CountdownConfig {
             .and_then(|v| serde_json::from_value(v.clone()).ok())
             .unwrap_or_default();
 
+        let scheduled_start: Option<ScheduledStart> = value
+            .get("scheduledStart")
+            .and_then(|v| {
+                if v.is_null() {
+                    None
+                } else {
+                    serde_json::from_value::<ScheduledStart>(v.clone()).ok()
+                }
+            });
+
         // New format: has a "target" field.
         let target = if let Some(target_val) = value.get("target") {
             serde_json::from_value(target_val.clone())
@@ -104,6 +129,7 @@ impl<'de> Deserialize<'de> for CountdownConfig {
             end_behavior,
             background_media_id,
             position,
+            scheduled_start,
         })
     }
 }
@@ -116,6 +142,9 @@ pub struct CountdownState {
     pub remaining_ms: u64,
     /// Wall-clock target (epoch ms). Set when mode = Running; None otherwise.
     pub target_epoch_ms: Option<u64>,
+    /// Wall-clock start time (epoch ms). Set when mode = Scheduled; None otherwise.
+    /// The frontend uses this to show "Começa em mm:ss" before auto-start.
+    pub scheduled_start_epoch_ms: Option<u64>,
     pub message: Option<String>,
     pub end_behavior: CountdownEndBehavior,
 }
@@ -127,6 +156,7 @@ impl Default for CountdownState {
             duration_ms: 0,
             remaining_ms: 0,
             target_epoch_ms: None,
+            scheduled_start_epoch_ms: None,
             message: None,
             end_behavior: CountdownEndBehavior::HoldZero,
         }
@@ -163,6 +193,7 @@ mod tests {
             end_behavior: CountdownEndBehavior::AdvanceSet,
             background_media_id: Some("media-uuid-123".into()),
             position: CountdownPosition::BottomRight,
+            scheduled_start: None,
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"position\":\"bottom-right\""), "{json}");
@@ -181,6 +212,7 @@ mod tests {
             end_behavior: CountdownEndBehavior::HoldZero,
             background_media_id: None,
             position: CountdownPosition::Center,
+            scheduled_start: None,
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"kind\":\"fixedTime\""), "{json}");
@@ -224,5 +256,36 @@ mod tests {
             serde_json::to_string(&CountdownMode::Finished).unwrap(),
             "\"finished\""
         );
+        assert_eq!(
+            serde_json::to_string(&CountdownMode::Scheduled).unwrap(),
+            "\"scheduled\""
+        );
+    }
+
+    #[test]
+    fn countdown_config_scheduled_start_round_trips() {
+        let json = r#"{"target":{"kind":"duration","durationMs":600000},"message":null,"endBehavior":"holdZero","backgroundMediaId":null,"position":"center","scheduledStart":{"hour":9,"minute":30}}"#;
+        let config: CountdownConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            config.scheduled_start,
+            Some(ScheduledStart { hour: 9, minute: 30 })
+        );
+        let back = serde_json::to_string(&config).unwrap();
+        assert!(back.contains("\"scheduledStart\":{\"hour\":9,\"minute\":30}"), "{back}");
+    }
+
+    #[test]
+    fn countdown_config_missing_scheduled_start_is_none() {
+        let legacy = r#"{"target":{"kind":"duration","durationMs":1000},"message":null,"endBehavior":"holdZero","backgroundMediaId":null,"position":"center"}"#;
+        let config: CountdownConfig = serde_json::from_str(legacy).unwrap();
+        assert_eq!(config.scheduled_start, None);
+    }
+
+    #[test]
+    fn countdown_state_default_has_no_scheduled_start() {
+        let state = CountdownState::default();
+        assert_eq!(state.scheduled_start_epoch_ms, None);
+        let json = serde_json::to_string(&state).unwrap();
+        assert!(json.contains("\"scheduledStartEpochMs\":null"), "{json}");
     }
 }

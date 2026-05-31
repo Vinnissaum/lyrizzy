@@ -19,14 +19,14 @@ export const EmptyState: React.FC<Props> = ({
       </div>
       <div className="flex flex-col sm:flex-row gap-3">
         <button
-          data-testid="cta-import-holyrics"
+          data-testid="empty-cta-import-holyrics"
           onClick={onImportHolyrics}
           className="px-5 py-2.5 bg-success hover:bg-success rounded-lg font-medium transition-colors"
         >
           {t("library.empty.importHolyrics")}
         </button>
         <button
-          data-testid="cta-create-song"
+          data-testid="empty-cta-create-song"
           onClick={onCreateSong}
           className="px-5 py-2.5 bg-primary hover:bg-primary-hover rounded-lg font-medium transition-colors"
         >

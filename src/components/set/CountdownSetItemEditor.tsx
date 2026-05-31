@@ -67,6 +67,12 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     config?.backgroundMediaId
   );
   const [position, setPosition] = useState<CountdownPosition>(config?.position ?? "center");
+  const [scheduledEnabled, setScheduledEnabled] = useState<boolean>(!!config?.scheduledStart);
+  const [scheduledTime, setScheduledTime] = useState<string>(
+    config?.scheduledStart
+      ? `${String(config.scheduledStart.hour).padStart(2, "0")}:${String(config.scheduledStart.minute).padStart(2, "0")}`
+      : "09:00",
+  );
   const [durationError, setDurationError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState(item.notes ?? "");
@@ -87,6 +93,12 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     setEndBehavior(cfg?.endBehavior ?? "holdZero");
     setBackgroundMediaId(cfg?.backgroundMediaId);
     setPosition(cfg?.position ?? "center");
+    setScheduledEnabled(!!cfg?.scheduledStart);
+    setScheduledTime(
+      cfg?.scheduledStart
+        ? `${String(cfg.scheduledStart.hour).padStart(2, "0")}:${String(cfg.scheduledStart.minute).padStart(2, "0")}`
+        : "09:00",
+    );
     setDurationError(null);
     setNotes(item.notes ?? "");
   }, [item.id]);
@@ -108,12 +120,21 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
     } else {
       target = { kind: "fixedTime", hour: fixedTime.hour, minute: fixedTime.minute };
     }
+    let scheduledStart: CountdownConfig["scheduledStart"] | undefined;
+    if (scheduledEnabled) {
+      const [h, m] = scheduledTime.split(":").map((x) => parseInt(x, 10));
+      if (!isNaN(h) && !isNaN(m) && h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+        scheduledStart = { hour: h, minute: m };
+      }
+    }
+
     return {
       target,
       message: message.trim() || undefined,
       endBehavior,
       backgroundMediaId,
       position,
+      scheduledStart,
       ...overrides,
     };
   };
@@ -280,6 +301,40 @@ export const CountdownSetItemEditor: React.FC<Props> = ({ item }) => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Scheduled start (auto-arm at HH:MM) */}
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer mb-1">
+          <input
+            type="checkbox"
+            checked={scheduledEnabled}
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              setScheduledEnabled(enabled);
+              const [h, m] = scheduledTime.split(":").map((x) => parseInt(x, 10));
+              const scheduledStart =
+                enabled && !isNaN(h) && !isNaN(m) ? { hour: h, minute: m } : undefined;
+              persist({ scheduledStart });
+            }}
+            className="accent-primary"
+          />
+          <span className="text-sm">{t("countdown.editor.scheduledStart")}</span>
+        </label>
+        {scheduledEnabled && (
+          <>
+            <input
+              type="time"
+              value={scheduledTime}
+              onChange={(e) => setScheduledTime(e.target.value)}
+              onBlur={handleSave}
+              className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
+            />
+            <p className="text-xs text-muted mt-1">
+              {t("countdown.editor.scheduledStartHint")}
+            </p>
+          </>
+        )}
       </div>
 
       {saving && <p className="text-xs text-muted">{t("countdown.editor.saving")}</p>}

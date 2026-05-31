@@ -45,8 +45,12 @@ function formatMs(ms: number): string {
 export const PresentationApp: React.FC = () => {
   const { i18n, t } = useTranslation();
   const { state, subscribe: subscribePresentation, next } = usePresentationStore();
-  const { state: countdown, subscribe: subscribeCountdown, start: startCountdown } =
-    useCountdownStore();
+  const {
+    state: countdown,
+    subscribe: subscribeCountdown,
+    start: startCountdown,
+    arm: armCountdown,
+  } = useCountdownStore();
   const { refresh: refreshMedia, media } = useMediaStore();
   const {
     transitionMs,
@@ -118,10 +122,26 @@ export const PresentationApp: React.FC = () => {
     };
   }, []);
 
-  // Auto-start countdown when the runtime lands on a countdown set item.
+  // Auto-start (or auto-arm) countdown when the runtime lands on a countdown
+  // set item. `scheduledStart` arms the timer and waits until HH:MM.
   useEffect(() => {
     if (currentItem?.itemType === "countdown" && currentItem.countdownConfig) {
-      const { target, message, endBehavior } = currentItem.countdownConfig;
+      const { target, message, endBehavior, scheduledStart } = currentItem.countdownConfig;
+      if (scheduledStart) {
+        const durationMs =
+          target.kind === "duration" ? target.durationMs : 0;
+        if (durationMs > 0) {
+          armCountdown({
+            scheduledStart,
+            durationMs,
+            message,
+            endBehavior,
+            setId: state?.set?.id,
+            itemIndex: state?.currentItemIndex,
+          });
+          return;
+        }
+      }
       startCountdown({ target, message, endBehavior });
     }
   }, [currentItem?.id]);

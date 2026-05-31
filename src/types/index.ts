@@ -219,7 +219,7 @@ export interface SlideConfig {
 
 // ── Countdown ────────────────────────────────────────────────────────────────
 
-export type CountdownMode = 'idle' | 'running' | 'paused' | 'finished';
+export type CountdownMode = 'idle' | 'scheduled' | 'running' | 'paused' | 'finished';
 export type CountdownEndBehavior = 'holdZero' | 'blackout' | 'advanceSet';
 
 export type CountdownTarget =
@@ -228,12 +228,20 @@ export type CountdownTarget =
 
 export type CountdownPosition = ScreenPosition;
 
+/** Wall-clock HH:MM used as a scheduled-start trigger. */
+export interface ScheduledStart {
+  hour: number;
+  minute: number;
+}
+
 export interface CountdownConfig {
   target: CountdownTarget;
   message?: string;
   endBehavior: CountdownEndBehavior;
   backgroundMediaId?: string;
   position?: CountdownPosition;
+  /** When set, the countdown is armed: waits until HH:MM then auto-starts. */
+  scheduledStart?: ScheduledStart;
 }
 
 export interface CountdownState {
@@ -241,8 +249,16 @@ export interface CountdownState {
   durationMs: number;
   remainingMs: number;
   targetEpochMs?: number;
+  /** When in `scheduled` mode, the wall-clock epoch-ms the timer auto-starts at. */
+  scheduledStartEpochMs?: number;
   message?: string;
   endBehavior: CountdownEndBehavior;
+}
+
+/** Emitted when a scheduled countdown reaches its wall-clock start time. */
+export interface CountdownTriggeredPayload {
+  setId?: string;
+  itemIndex?: number;
 }
 
 // ── Window / monitor ─────────────────────────────────────────────────────────

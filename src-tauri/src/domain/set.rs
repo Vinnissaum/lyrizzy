@@ -139,6 +139,7 @@ mod tests {
                 end_behavior: CountdownEndBehavior::HoldZero,
                 background_media_id: None,
                 position: Default::default(),
+                scheduled_start: None,
             }),
             webview_config: None,
             sort_order: 0,

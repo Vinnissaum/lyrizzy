@@ -237,7 +237,20 @@
       "durationError": "Invalid format. Use mm:ss or hh:mm:ss",
       "defaultMessage": "Service starts in…",
       "bgLabel": "Select background video…",
-      "position": "Screen position"
+      "position": "Screen position",
+      "scheduledStart": "Auto-start at a wall-clock time",
+      "scheduledStartHint": "When this item is presented, the countdown waits until HH:MM before starting."
+    },
+    "schedule": {
+      "heading": "Schedule start",
+      "startAt": "Start at",
+      "armButton": "Schedule",
+      "hint": "Set the duration above and the start time on the side. The countdown only begins ticking once the start time hits."
+    },
+    "scheduled": {
+      "label": "Waiting",
+      "waiting": "Waiting for scheduled start…",
+      "rendererLabel": "Starts in"
     },
     "position": {
       "top-left": "Top left",

@@ -237,7 +237,20 @@
       "durationError": "Formato inválido. Use mm:ss ou hh:mm:ss",
       "defaultMessage": "O culto começa em…",
       "bgLabel": "Selecionar vídeo de fundo…",
-      "position": "Posição na tela"
+      "position": "Posição na tela",
+      "scheduledStart": "Iniciar automaticamente em um horário",
+      "scheduledStartHint": "Quando entrar neste item, o cronômetro aguarda até a hora marcada antes de começar."
+    },
+    "schedule": {
+      "heading": "Agendar início",
+      "startAt": "Começar às",
+      "armButton": "Agendar",
+      "hint": "Defina a duração acima e o horário ao lado. O cronômetro só começa a contar a duração ao bater o horário."
+    },
+    "scheduled": {
+      "label": "Aguardando",
+      "waiting": "Aguardando horário agendado…",
+      "rendererLabel": "Começa em"
     },
     "position": {
       "top-left": "Superior esquerdo",

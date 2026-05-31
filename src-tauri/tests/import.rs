@@ -181,7 +181,7 @@ async fn import_batch_skips_duplicate_and_imports_unique() {
 
 #[tokio::test]
 async fn import_fixture_sample_parses_and_imports() {
-    let pool = open_test_db().await;
+    let _pool = open_test_db().await;
 
     let fixture = include_str!("../../.specs/features/phase1-mvp/fixtures/holyrics_sample.json");
     let parsed = tauri_app_lib::services::holyrics_parser::parse(fixture).unwrap();

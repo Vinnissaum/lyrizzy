@@ -1,4 +1,4 @@
-use sqlx::{sqlite::SqliteConnectOptions, Row, SqlitePool};
+use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;
 use tempfile::tempdir;
 

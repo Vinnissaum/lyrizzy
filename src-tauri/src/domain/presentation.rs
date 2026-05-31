@@ -133,11 +133,13 @@ mod tests {
 
     #[test]
     fn all_slides_per_item_serde_round_trip() {
-        let mut state = PresentationState::default();
-        state.all_slides_per_item = vec![
-            vec![Slide { lines: vec!["line".into()], section_label: "Verse".into(), section_id: "s1".into() }],
-            vec![Slide { lines: vec![], section_label: String::new(), section_id: "countdown".into() }],
-        ];
+        let state = PresentationState {
+            all_slides_per_item: vec![
+                vec![Slide { lines: vec!["line".into()], section_label: "Verse".into(), section_id: "s1".into() }],
+                vec![Slide { lines: vec![], section_label: String::new(), section_id: "countdown".into() }],
+            ],
+            ..Default::default()
+        };
         let json = serde_json::to_string(&state).unwrap();
         assert!(json.contains("allSlidesPerItem"), "camelCase field missing: {json}");
         let back: PresentationState = serde_json::from_str(&json).unwrap();
@@ -155,9 +157,11 @@ mod tests {
 
     #[test]
     fn exit_clears_overlay() {
-        let mut state = PresentationState::default();
-        state.mode = PresentationMode::Live;
-        state.overlay = Some(OverlayState::Announcement { text: "Oferta".into() });
+        let mut state = PresentationState {
+            mode: PresentationMode::Live,
+            overlay: Some(OverlayState::Announcement { text: "Oferta".into() }),
+            ..Default::default()
+        };
         // Simulate what exit_presentation does to state.
         state.mode = PresentationMode::Idle;
         state.frozen_at = None;
@@ -169,7 +173,13 @@ mod tests {
 
     #[test]
     fn exit_when_already_idle_is_noop() {
-        let mut state = PresentationState::default(); // already Idle, no overlay
+        // Start already idle (the default), then apply the reset again.
+        let mut state = PresentationState {
+            mode: PresentationMode::Idle,
+            frozen_at: None,
+            overlay: None,
+            ..Default::default()
+        };
         // Applying the same reset again must not panic and keep state consistent.
         state.mode = PresentationMode::Idle;
         state.frozen_at = None;

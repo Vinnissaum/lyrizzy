@@ -371,17 +371,18 @@ mod tests {
     use crate::domain::set::ServiceSet;
 
     fn make_state_with_empty_set() -> PresentationState {
-        let mut s = PresentationState::default();
-        s.set = Some(ServiceSet {
-            id: "s1".into(),
-            name: "Test".into(),
-            service_date: None,
-            notes: None,
-            created_at: 0,
-            updated_at: 0,
-            items: vec![],
-        });
-        s
+        PresentationState {
+            set: Some(ServiceSet {
+                id: "s1".into(),
+                name: "Test".into(),
+                service_date: None,
+                notes: None,
+                created_at: 0,
+                updated_at: 0,
+                items: vec![],
+            }),
+            ..Default::default()
+        }
     }
 
     #[test]

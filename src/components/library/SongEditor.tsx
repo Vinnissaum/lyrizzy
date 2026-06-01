@@ -202,6 +202,8 @@ export const SongEditor: React.FC = () => {
     presentationPreset,
     presentationPosition,
     presentationMargin,
+    presentationLineSpacing,
+    presentationBoldLevel,
     presentationRepeatMode,
     showTitleSlide,
     authorInParens,
@@ -412,6 +414,8 @@ export const SongEditor: React.FC = () => {
     preset: presentationPreset,
     position: presentationPosition,
     margin: presentationMargin,
+    lineSpacing: presentationLineSpacing,
+    boldLevel: presentationBoldLevel,
   };
 
   // Per-song media background mirrored into the section previews.

@@ -489,6 +489,14 @@
   },
   "settings": {
     "title": "Configurações",
+    "tabs": {
+      "general": "Geral",
+      "projection": "Projeção",
+      "announcement": "Aviso",
+      "keybindings": "Atalhos",
+      "reports": "Relatórios",
+      "about": "Sobre"
+    },
     "general": "Geral",
     "language": "Idioma",
     "languageOptions": {
@@ -543,6 +551,20 @@
       "repeatModes": {
         "duplicate": "Repetir slides",
         "annotate": "Mostrar (Nx)"
+      },
+      "lineSpacing": "Espaçamento entre linhas",
+      "lineSpacings": {
+        "tight": "Estreito",
+        "normal": "Normal",
+        "relaxed": "Relaxado",
+        "loose": "Amplo"
+      },
+      "boldLevel": "Nível de negrito",
+      "boldLevels": {
+        "normal": "Normal",
+        "medium": "Médio",
+        "semibold": "Semi",
+        "bold": "Forte"
       }
     },
     "announcement": {

@@ -117,6 +117,8 @@ export const StrophesGrid: React.FC = () => {
   const presentationPreset = useSettingsStore((s) => s.presentationPreset);
   const presentationPosition = useSettingsStore((s) => s.presentationPosition);
   const presentationMargin = useSettingsStore((s) => s.presentationMargin);
+  const presentationLineSpacing = useSettingsStore((s) => s.presentationLineSpacing);
+  const presentationBoldLevel = useSettingsStore((s) => s.presentationBoldLevel);
 
   const appearance: ChipAppearance = {
     fontFamily: presentationFontFamily,
@@ -124,6 +126,8 @@ export const StrophesGrid: React.FC = () => {
     preset: presentationPreset,
     position: presentationPosition,
     margin: presentationMargin,
+    lineSpacing: presentationLineSpacing,
+    boldLevel: presentationBoldLevel,
   };
 
   const activeCardRef = useRef<HTMLButtonElement | null>(null);

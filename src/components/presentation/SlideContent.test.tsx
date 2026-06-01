@@ -60,6 +60,8 @@ const defaultAppearance: SlideContentProps["appearance"] = {
   preset: "preto-branco",
   position: "center",
   margin: "lg",
+  lineSpacing: "normal",
+  boldLevel: "medium",
 };
 
 function setupSettingsStore(
@@ -78,6 +80,8 @@ function setupSettingsStore(
       | "bottom-center"
       | "bottom-right";
     announcementMargin: "none" | "sm" | "md" | "lg" | "xl";
+    announcementLineSpacing: "tight" | "normal" | "relaxed" | "loose";
+    announcementBoldLevel: "normal" | "medium" | "semibold" | "bold";
   }> = {}
 ) {
   vi.mocked(useSettingsStore).mockImplementation((selector: unknown) => {
@@ -87,6 +91,8 @@ function setupSettingsStore(
       announcementPreset: "preto-branco" as const,
       announcementPosition: "center" as const,
       announcementMargin: "lg" as const,
+      announcementLineSpacing: "normal" as const,
+      announcementBoldLevel: "medium" as const,
       ...overrides,
     };
     if (typeof selector === "function") {

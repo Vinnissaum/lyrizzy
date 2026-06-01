@@ -3,8 +3,10 @@ import { getSetting, setSetting } from "../api/commands";
 import i18next from "../i18n";
 import type {
   BackgroundPreset,
+  BoldLevel,
   FontFamily,
   FontSize,
+  LineSpacing,
   Margin,
   RepeatMode,
   ScreenPosition,
@@ -15,6 +17,8 @@ export const PRESENTATION_FONT_FAMILY_KEY = "presentation.font_family";
 export const PRESENTATION_PRESET_KEY = "presentation.preset";
 export const PRESENTATION_POSITION_KEY = "presentation.position";
 export const PRESENTATION_MARGIN_KEY = "presentation.margin";
+export const PRESENTATION_LINE_SPACING_KEY = "presentation.line_spacing";
+export const PRESENTATION_BOLD_LEVEL_KEY = "presentation.bold_level";
 export const SHOW_TITLE_SLIDE_KEY = "presentation.show_title_slide";
 export const AUTHOR_IN_PARENS_KEY = "presentation.author_in_parens";
 export const PRESENTATION_REPEAT_MODE_KEY = "presentation.repeat_mode";
@@ -23,6 +27,8 @@ export const ANNOUNCEMENT_FONT_SIZE_KEY = "announcement.font_size";
 export const ANNOUNCEMENT_PRESET_KEY = "announcement.preset";
 export const ANNOUNCEMENT_POSITION_KEY = "announcement.position";
 export const ANNOUNCEMENT_MARGIN_KEY = "announcement.margin";
+export const ANNOUNCEMENT_LINE_SPACING_KEY = "announcement.line_spacing";
+export const ANNOUNCEMENT_BOLD_LEVEL_KEY = "announcement.bold_level";
 export const BLACKOUT_AFTER_SONG_KEY = "presentation.blackout_after_song";
 
 // Every settings key the presentation window must reload when it changes live.
@@ -32,11 +38,15 @@ export const PRESENTATION_SETTING_KEYS = [
   PRESENTATION_PRESET_KEY,
   PRESENTATION_POSITION_KEY,
   PRESENTATION_MARGIN_KEY,
+  PRESENTATION_LINE_SPACING_KEY,
+  PRESENTATION_BOLD_LEVEL_KEY,
   ANNOUNCEMENT_FONT_FAMILY_KEY,
   ANNOUNCEMENT_FONT_SIZE_KEY,
   ANNOUNCEMENT_PRESET_KEY,
   ANNOUNCEMENT_POSITION_KEY,
   ANNOUNCEMENT_MARGIN_KEY,
+  ANNOUNCEMENT_LINE_SPACING_KEY,
+  ANNOUNCEMENT_BOLD_LEVEL_KEY,
 ];
 
 const FONT_SIZE_VALUES: FontSize[] = ["sm", "md", "lg", "xl", "xxl"];
@@ -49,6 +59,8 @@ const POSITION_VALUES: ScreenPosition[] = [
 ];
 const MARGIN_VALUES: Margin[] = ["none", "sm", "md", "lg", "xl"];
 const REPEAT_MODE_VALUES: RepeatMode[] = ["duplicate", "annotate"];
+const LINE_SPACING_VALUES: LineSpacing[] = ["tight", "normal", "relaxed", "loose"];
+const BOLD_LEVEL_VALUES: BoldLevel[] = ["normal", "medium", "semibold", "bold"];
 
 const DEFAULT_FONT_SIZE: FontSize = "lg";
 const DEFAULT_FONT_FAMILY: FontFamily = "sans";
@@ -56,6 +68,8 @@ const DEFAULT_PRESET: BackgroundPreset = "preto-branco";
 const DEFAULT_POSITION: ScreenPosition = "center";
 const DEFAULT_MARGIN: Margin = "lg";
 const DEFAULT_REPEAT_MODE: RepeatMode = "duplicate";
+const DEFAULT_LINE_SPACING: LineSpacing = "normal";
+const DEFAULT_BOLD_LEVEL: BoldLevel = "medium";
 const DEFAULT_ANNOUNCEMENT_FONT_SIZE: FontSize = "lg";
 export const DEFAULT_ANNOUNCEMENT_MARGIN: Margin = "lg";
 
@@ -75,6 +89,8 @@ interface SettingsStore {
   presentationPreset: BackgroundPreset;
   presentationPosition: ScreenPosition;
   presentationMargin: Margin;
+  presentationLineSpacing: LineSpacing;
+  presentationBoldLevel: BoldLevel;
   presentationRepeatMode: RepeatMode;
   showTitleSlide: boolean;
   authorInParens: boolean;
@@ -84,6 +100,8 @@ interface SettingsStore {
   announcementPreset: BackgroundPreset;
   announcementPosition: ScreenPosition;
   announcementMargin: Margin;
+  announcementLineSpacing: LineSpacing;
+  announcementBoldLevel: BoldLevel;
   blackoutAfterSong: boolean;
 
   setLocale: (locale: string) => void;
@@ -98,6 +116,8 @@ interface SettingsStore {
   setPresentationPreset: (preset: BackgroundPreset) => void;
   setPresentationPosition: (position: ScreenPosition) => void;
   setPresentationMargin: (margin: Margin) => void;
+  setPresentationLineSpacing: (spacing: LineSpacing) => void;
+  setPresentationBoldLevel: (level: BoldLevel) => void;
   setPresentationRepeatMode: (mode: RepeatMode) => void;
   setShowTitleSlide: (value: boolean) => void;
   setAuthorInParens: (value: boolean) => void;
@@ -106,6 +126,8 @@ interface SettingsStore {
   setAnnouncementPreset: (preset: BackgroundPreset) => void;
   setAnnouncementPosition: (position: ScreenPosition) => void;
   setAnnouncementMargin: (margin: Margin) => void;
+  setAnnouncementLineSpacing: (spacing: LineSpacing) => void;
+  setAnnouncementBoldLevel: (level: BoldLevel) => void;
   setBlackoutAfterSong: (value: boolean) => void;
 
   /** Loads every persisted presentation/announcement appearance setting. */
@@ -140,6 +162,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   presentationPreset: DEFAULT_PRESET,
   presentationPosition: DEFAULT_POSITION,
   presentationMargin: DEFAULT_MARGIN,
+  presentationLineSpacing: DEFAULT_LINE_SPACING,
+  presentationBoldLevel: DEFAULT_BOLD_LEVEL,
   presentationRepeatMode: DEFAULT_REPEAT_MODE,
   showTitleSlide: true,
   authorInParens: true,
@@ -148,6 +172,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   announcementPreset: DEFAULT_PRESET,
   announcementPosition: DEFAULT_POSITION,
   announcementMargin: DEFAULT_ANNOUNCEMENT_MARGIN,
+  announcementLineSpacing: DEFAULT_LINE_SPACING,
+  announcementBoldLevel: DEFAULT_BOLD_LEVEL,
   blackoutAfterSong: true,
 
   setLocale: (locale) => set({ locale }),
@@ -207,6 +233,14 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ presentationMargin: margin });
     setSetting(PRESENTATION_MARGIN_KEY, margin).catch(() => {});
   },
+  setPresentationLineSpacing: (spacing) => {
+    set({ presentationLineSpacing: spacing });
+    setSetting(PRESENTATION_LINE_SPACING_KEY, spacing).catch(() => {});
+  },
+  setPresentationBoldLevel: (level) => {
+    set({ presentationBoldLevel: level });
+    setSetting(PRESENTATION_BOLD_LEVEL_KEY, level).catch(() => {});
+  },
   setPresentationRepeatMode: (mode) => {
     set({ presentationRepeatMode: mode });
     setSetting(PRESENTATION_REPEAT_MODE_KEY, mode).catch(() => {});
@@ -239,6 +273,14 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ announcementMargin: margin });
     setSetting(ANNOUNCEMENT_MARGIN_KEY, margin).catch(() => {});
   },
+  setAnnouncementLineSpacing: (spacing) => {
+    set({ announcementLineSpacing: spacing });
+    setSetting(ANNOUNCEMENT_LINE_SPACING_KEY, spacing).catch(() => {});
+  },
+  setAnnouncementBoldLevel: (level) => {
+    set({ announcementBoldLevel: level });
+    setSetting(ANNOUNCEMENT_BOLD_LEVEL_KEY, level).catch(() => {});
+  },
   setBlackoutAfterSong: (value) => {
     set({ blackoutAfterSong: value });
     setSetting(BLACKOUT_AFTER_SONG_KEY, String(value)).catch(() => {});
@@ -246,9 +288,9 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
 
   loadPresentationSettings: async () => {
     const [
-      fontSize, fontFamily, preset, position, margin, repeatMode,
+      fontSize, fontFamily, preset, position, margin, lineSpacing, boldLevel, repeatMode,
       showTitle, authorParens,
-      annFamily, annSize, annPreset, annPosition, annMargin,
+      annFamily, annSize, annPreset, annPosition, annMargin, annLineSpacing, annBoldLevel,
       blackoutAfterSong,
     ] = await Promise.all([
       readSetting(PRESENTATION_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_FONT_SIZE),
@@ -256,6 +298,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readSetting(PRESENTATION_PRESET_KEY, PRESET_VALUES, DEFAULT_PRESET),
       readSetting(PRESENTATION_POSITION_KEY, POSITION_VALUES, DEFAULT_POSITION),
       readSetting(PRESENTATION_MARGIN_KEY, MARGIN_VALUES, DEFAULT_MARGIN),
+      readSetting(PRESENTATION_LINE_SPACING_KEY, LINE_SPACING_VALUES, DEFAULT_LINE_SPACING),
+      readSetting(PRESENTATION_BOLD_LEVEL_KEY, BOLD_LEVEL_VALUES, DEFAULT_BOLD_LEVEL),
       readSetting(PRESENTATION_REPEAT_MODE_KEY, REPEAT_MODE_VALUES, DEFAULT_REPEAT_MODE),
       readBool(SHOW_TITLE_SLIDE_KEY, true),
       readBool(AUTHOR_IN_PARENS_KEY, true),
@@ -264,6 +308,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readSetting(ANNOUNCEMENT_PRESET_KEY, PRESET_VALUES, DEFAULT_PRESET),
       readSetting(ANNOUNCEMENT_POSITION_KEY, POSITION_VALUES, DEFAULT_POSITION),
       readSetting(ANNOUNCEMENT_MARGIN_KEY, MARGIN_VALUES, DEFAULT_ANNOUNCEMENT_MARGIN),
+      readSetting(ANNOUNCEMENT_LINE_SPACING_KEY, LINE_SPACING_VALUES, DEFAULT_LINE_SPACING),
+      readSetting(ANNOUNCEMENT_BOLD_LEVEL_KEY, BOLD_LEVEL_VALUES, DEFAULT_BOLD_LEVEL),
       readBool(BLACKOUT_AFTER_SONG_KEY, true),
     ]);
     set({
@@ -272,6 +318,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       presentationPreset: preset,
       presentationPosition: position,
       presentationMargin: margin,
+      presentationLineSpacing: lineSpacing,
+      presentationBoldLevel: boldLevel,
       presentationRepeatMode: repeatMode,
       showTitleSlide: showTitle,
       authorInParens: authorParens,
@@ -280,6 +328,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       announcementPreset: annPreset,
       announcementPosition: annPosition,
       announcementMargin: annMargin,
+      announcementLineSpacing: annLineSpacing,
+      announcementBoldLevel: annBoldLevel,
       blackoutAfterSong,
     });
   },

@@ -24,6 +24,8 @@ import type {
   FontSize,
   Margin,
   ScreenPosition,
+  BoldLevel,
+  LineSpacing,
 } from "../../types";
 
 interface Appearance {
@@ -32,6 +34,8 @@ interface Appearance {
   preset: BackgroundPreset;
   position: ScreenPosition;
   margin: Margin;
+  lineSpacing: LineSpacing;
+  boldLevel: BoldLevel;
 }
 
 function formatMs(ms: number): string {
@@ -62,6 +66,8 @@ export const PresentationApp: React.FC = () => {
     presentationPreset,
     presentationPosition,
     presentationMargin,
+    presentationLineSpacing,
+    presentationBoldLevel,
     loadPresentationSettings,
   } = useSettingsStore();
 
@@ -71,6 +77,8 @@ export const PresentationApp: React.FC = () => {
     preset: presentationPreset,
     position: presentationPosition,
     margin: presentationMargin,
+    lineSpacing: presentationLineSpacing,
+    boldLevel: presentationBoldLevel,
   };
 
   const currentItem = state?.set?.items[state?.currentItemIndex ?? 0];

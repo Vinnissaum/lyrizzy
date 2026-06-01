@@ -165,6 +165,12 @@ export type ScreenPosition =
 /** Edge padding stage applied around presentation content. */
 export type Margin = 'none' | 'sm' | 'md' | 'lg' | 'xl';
 
+/** Vertical spacing between lyric/announcement lines. */
+export type LineSpacing = 'tight' | 'normal' | 'relaxed' | 'loose';
+
+/** Font weight of lyric/announcement text (never the title — see titleWeight). */
+export type BoldLevel = 'normal' | 'medium' | 'semibold' | 'bold';
+
 /**
  * How a section's repeat count is reflected on stage.
  * `duplicate` repeats the slides; `annotate` shows an `(Nx)` marker instead.

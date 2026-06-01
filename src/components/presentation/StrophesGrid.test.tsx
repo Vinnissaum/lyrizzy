@@ -92,6 +92,8 @@ const defaultAppearance = {
   presentationPreset: "preto-branco" as const,
   presentationPosition: "center" as const,
   presentationMargin: "lg" as const,
+  presentationLineSpacing: "normal" as const,
+  presentationBoldLevel: "medium" as const,
 };
 
 const makeSongSlides = (n: number) =>

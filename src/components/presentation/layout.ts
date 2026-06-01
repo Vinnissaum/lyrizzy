@@ -4,8 +4,10 @@
 import type React from "react";
 import type {
   BackgroundPreset,
+  BoldLevel,
   FontFamily,
   FontSize,
+  LineSpacing,
   Margin,
   ScreenPosition,
 } from "../../types";
@@ -37,9 +39,33 @@ export const PREVIEW_SIZE_PX: Record<FontSize, number> = {
   xxl: 88, // 5.5rem
 };
 
+// Vertical line spacing presets. `gapEm` is the gap between separate lines
+// (em-relative so it scales with font size); `lineHeight` is the line-height
+// within a wrapped line. `normal` is tuned to approximate the historical
+// `leading-relaxed` + `space-y-2` look so existing slides barely shift.
+export const LINE_SPACING: Record<LineSpacing, { lineHeight: number; gapEm: number }> = {
+  tight: { lineHeight: 1.15, gapEm: 0.2 },
+  normal: { lineHeight: 1.4, gapEm: 0.45 },
+  relaxed: { lineHeight: 1.6, gapEm: 0.75 },
+  loose: { lineHeight: 1.85, gapEm: 1.1 },
+};
+
+// Lyric/announcement font weight presets. `medium` (500) matches the historical
+// `font-medium` default.
+export const BOLD_WEIGHT: Record<BoldLevel, number> = {
+  normal: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+};
+
+// The title slide is always rendered one step bolder than the configured lyric
+// bold level, so it reads as "slightly bolder" regardless of that setting.
+export const titleWeight = (b: BoldLevel): number => Math.min(BOLD_WEIGHT[b] + 100, 800);
+
 // Ordered smallest→largest so callers can step a size up or down a notch
-// (e.g. the title/author intro slide renders the title one notch above the
-// configured size and the author at the configured size).
+// (e.g. the title/author intro slide renders the author one notch below the
+// configured size; the title now matches the configured lyric size).
 export const FONT_SIZE_ORDER: FontSize[] = ["sm", "md", "lg", "xl", "xxl"];
 
 export const stepSize = (s: FontSize, by: number): FontSize => {

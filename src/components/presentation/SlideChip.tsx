@@ -1,17 +1,22 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import {
+  BOLD_WEIGHT,
   FONT_CLASS,
+  LINE_SPACING,
   PREVIEW_SIZE_PX,
   POSITION_CLASS,
   MARGIN_CLASS,
   PRESET_COLORS,
   stepSize,
+  titleWeight,
 } from "./layout";
 import type {
   BackgroundInfo,
   BackgroundPreset,
+  BoldLevel,
   FontFamily,
   FontSize,
+  LineSpacing,
   Margin,
   ScreenPosition,
 } from "../../types";
@@ -27,6 +32,8 @@ export interface ChipAppearance {
   preset: BackgroundPreset;
   position: ScreenPosition;
   margin: Margin;
+  lineSpacing: LineSpacing;
+  boldLevel: BoldLevel;
 }
 
 interface Props {
@@ -70,7 +77,11 @@ export const SlideChip: React.FC<Props> = ({
   const fg = hasMedia ? "#FFFFFF" : presetColors.fg;
   const fontClass = FONT_CLASS[appearance.fontFamily];
   const lyricSize = PREVIEW_SIZE_PX[appearance.fontSize];
-  const titleSize = PREVIEW_SIZE_PX[stepSize(appearance.fontSize, 1)];
+  // Title matches the lyric size; the author stays one notch below.
+  const titleSize = lyricSize;
+  const authorSize = PREVIEW_SIZE_PX[stepSize(appearance.fontSize, -1)];
+  const { lineHeight, gapEm } = LINE_SPACING[appearance.lineSpacing];
+  const lyricWeight = BOLD_WEIGHT[appearance.boldLevel];
 
   const mediaStyle: React.CSSProperties =
     hasMedia && background!.mediaKind === "image"
@@ -109,27 +120,27 @@ export const SlideChip: React.FC<Props> = ({
           {variant === "title" ? (
             <div className="w-full space-y-3">
               <p
-                className={`font-bold leading-tight ${fontClass}`}
-                style={{ color: fg, fontSize: titleSize }}
+                className={`leading-tight ${fontClass}`}
+                style={{ color: fg, fontSize: titleSize, fontWeight: titleWeight(appearance.boldLevel) }}
               >
                 {lines[0] ?? ""}
               </p>
               {authorLine && (
                 <p
                   className={`font-medium leading-relaxed opacity-80 ${fontClass}`}
-                  style={{ color: fg, fontSize: lyricSize }}
+                  style={{ color: fg, fontSize: authorSize }}
                 >
                   {authorLine}
                 </p>
               )}
             </div>
           ) : (
-            <div className="w-full space-y-2">
+            <div className="w-full flex flex-col" style={{ gap: `${gapEm}em` }}>
               {lines.map((line, i) => (
                 <p
                   key={i}
-                  className={`font-medium leading-relaxed ${fontClass}`}
-                  style={{ color: fg, fontSize: lyricSize }}
+                  className={fontClass}
+                  style={{ color: fg, fontSize: lyricSize, fontWeight: lyricWeight, lineHeight }}
                 >
                   {line}
                 </p>

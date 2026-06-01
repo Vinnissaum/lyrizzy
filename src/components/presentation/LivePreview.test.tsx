@@ -71,7 +71,11 @@ const defaultSettings = {
   presentationPreset: "preto-branco" as const,
   presentationPosition: "center" as const,
   presentationMargin: "lg" as const,
+  presentationLineSpacing: "normal" as const,
+  presentationBoldLevel: "medium" as const,
   announcementPreset: "preto-branco" as const,
+  announcementLineSpacing: "normal" as const,
+  announcementBoldLevel: "medium" as const,
 };
 
 function setupSettingsStore() {

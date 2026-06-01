@@ -28,6 +28,8 @@ const defaultAppearance: ChipAppearance = {
   preset: "preto-branco",
   position: "center",
   margin: "lg",
+  lineSpacing: "normal",
+  boldLevel: "medium",
 };
 
 function setupSettingsStore(overrides: Partial<ReturnType<typeof useSettingsStore>> = {}) {
@@ -38,6 +40,8 @@ function setupSettingsStore(overrides: Partial<ReturnType<typeof useSettingsStor
       announcementPreset: "preto-branco" as const,
       announcementPosition: "center" as const,
       announcementMargin: "lg" as const,
+      announcementLineSpacing: "normal" as const,
+      announcementBoldLevel: "medium" as const,
       ...overrides,
     };
     if (typeof selector === "function") {
@@ -71,8 +75,8 @@ describe("SongSlideBody — title slide", () => {
 
     expect(authorPx).toBeLessThan(titlePx);
 
-    // Verify exact px values match the stepSize spec (+1 / -1 from "lg").
-    expect(titlePx).toBe(PREVIEW_SIZE_PX[stepSize("lg", +1)]); // xl → 64
+    // Title matches the configured lyric size; author stays one notch below.
+    expect(titlePx).toBe(PREVIEW_SIZE_PX["lg"]); // lg → 48
     expect(authorPx).toBe(PREVIEW_SIZE_PX[stepSize("lg", -1)]); // md → 40
   });
 

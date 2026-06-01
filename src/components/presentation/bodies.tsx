@@ -1,11 +1,14 @@
 import React from "react";
 import {
+  BOLD_WEIGHT,
   FONT_CLASS,
+  LINE_SPACING,
   PREVIEW_SIZE_PX,
   POSITION_CLASS,
   MARGIN_CLASS,
   PRESET_COLORS,
   stepSize,
+  titleWeight,
 } from "./layout";
 import { SongBackground } from "./SongBackground";
 import { useSettingsStore } from "../../stores/settings";
@@ -104,11 +107,13 @@ export const SongSlideBody: React.FC<SongSlideBodyProps> = ({
   // 3. Foreground text.
   const isTitle = sectionLabel === TITLE_LABEL;
 
-  // Title variant: title one notch ABOVE configured size, author one notch BELOW.
-  // Lyric variant: configured size.
-  const titlePx = PREVIEW_SIZE_PX[stepSize(appearance.fontSize, +1)];
+  // Title variant: title matches the configured lyric size (slightly bolder),
+  // author one notch BELOW. Lyric variant: configured size + line spacing/bold.
+  const titlePx = PREVIEW_SIZE_PX[appearance.fontSize];
   const authorPx = PREVIEW_SIZE_PX[stepSize(appearance.fontSize, -1)];
   const lyricPx = PREVIEW_SIZE_PX[appearance.fontSize];
+  const { lineHeight, gapEm } = LINE_SPACING[appearance.lineSpacing];
+  const lyricWeight = BOLD_WEIGHT[appearance.boldLevel];
 
   let textContent: React.ReactNode = null;
 
@@ -116,8 +121,8 @@ export const SongSlideBody: React.FC<SongSlideBodyProps> = ({
     textContent = (
       <div className="w-full space-y-3">
         <p
-          className={`font-bold leading-tight drop-shadow-lg ${FONT_CLASS[ff]}`}
-          style={{ color: fg, fontSize: titlePx }}
+          className={`leading-tight drop-shadow-lg ${FONT_CLASS[ff]}`}
+          style={{ color: fg, fontSize: titlePx, fontWeight: titleWeight(appearance.boldLevel) }}
         >
           {slideLines[0] ?? ""}
         </p>
@@ -133,12 +138,12 @@ export const SongSlideBody: React.FC<SongSlideBodyProps> = ({
     );
   } else if (slideLines.length > 0) {
     textContent = (
-      <div className="w-full space-y-2">
+      <div className="w-full flex flex-col" style={{ gap: `${gapEm}em` }}>
         {slideLines.map((line, i) => (
           <p
             key={i}
-            className={`font-medium leading-relaxed drop-shadow-lg ${FONT_CLASS[ff]}`}
-            style={{ color: fg, fontSize: lyricPx }}
+            className={`drop-shadow-lg ${FONT_CLASS[ff]}`}
+            style={{ color: fg, fontSize: lyricPx, fontWeight: lyricWeight, lineHeight }}
           >
             {line}
           </p>
@@ -176,8 +181,11 @@ export const WarningBody: React.FC<WarningBodyProps> = ({ text }) => {
   const announcementPreset = useSettingsStore((s) => s.announcementPreset);
   const announcementPosition = useSettingsStore((s) => s.announcementPosition);
   const announcementMargin = useSettingsStore((s) => s.announcementMargin);
+  const announcementLineSpacing = useSettingsStore((s) => s.announcementLineSpacing);
+  const announcementBoldLevel = useSettingsStore((s) => s.announcementBoldLevel);
 
   const { bg, fg } = PRESET_COLORS[announcementPreset];
+  const { lineHeight } = LINE_SPACING[announcementLineSpacing];
 
   return (
     <div
@@ -188,8 +196,13 @@ export const WarningBody: React.FC<WarningBodyProps> = ({ text }) => {
         className={`h-full w-full flex flex-col ${MARGIN_CLASS[announcementMargin]} ${POSITION_CLASS[announcementPosition]}`}
       >
         <p
-          className={`font-medium leading-relaxed whitespace-pre-wrap ${FONT_CLASS[announcementFontFamily]}`}
-          style={{ color: fg, fontSize: PREVIEW_SIZE_PX[announcementFontSize] }}
+          className={`whitespace-pre-wrap ${FONT_CLASS[announcementFontFamily]}`}
+          style={{
+            color: fg,
+            fontSize: PREVIEW_SIZE_PX[announcementFontSize],
+            fontWeight: BOLD_WEIGHT[announcementBoldLevel],
+            lineHeight,
+          }}
         >
           {text}
         </p>

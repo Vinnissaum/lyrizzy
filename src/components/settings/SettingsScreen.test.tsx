@@ -70,6 +70,11 @@ const makeStore = (overrides: Partial<ReturnType<typeof useSettingsStore>> = {})
     ...overrides,
   } as ReturnType<typeof useSettingsStore>);
 
+// Controls are split across tabs; activate the tab that hosts the control first.
+function gotoTab(tab: "general" | "projection" | "announcement") {
+  fireEvent.click(screen.getByRole("tab", { name: `settings.tabs.${tab}` }));
+}
+
 describe("SettingsScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -81,15 +86,25 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("settings.title")).toBeInTheDocument();
   });
 
+  it("switches tabs to reveal each section", () => {
+    render(<SettingsScreen />);
+    // General tab is active by default; projection controls are hidden.
+    expect(screen.queryByText("settings.blackoutAfterSong")).toBeNull();
+    gotoTab("projection");
+    expect(screen.getByText("settings.blackoutAfterSong")).toBeInTheDocument();
+  });
+
   describe("blackoutAfterSong toggle", () => {
     it("renders the blackoutAfterSong label", () => {
       render(<SettingsScreen />);
+      gotoTab("projection");
       expect(screen.getByText("settings.blackoutAfterSong")).toBeInTheDocument();
     });
 
     it("shows On button as pressed when blackoutAfterSong is true", () => {
       vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: true }));
       render(<SettingsScreen />);
+      gotoTab("projection");
 
       // The label for this toggle
       const label = screen.getByText("settings.blackoutAfterSong");
@@ -104,6 +119,7 @@ describe("SettingsScreen", () => {
     it("shows Off button as pressed when blackoutAfterSong is false", () => {
       vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: false }));
       render(<SettingsScreen />);
+      gotoTab("projection");
 
       const label = screen.getByText("settings.blackoutAfterSong");
       const row = label.closest("div.flex");
@@ -117,6 +133,7 @@ describe("SettingsScreen", () => {
       const setBlackoutAfterSong = vi.fn();
       vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: true, setBlackoutAfterSong }));
       render(<SettingsScreen />);
+      gotoTab("projection");
 
       const label = screen.getByText("settings.blackoutAfterSong");
       const row = label.closest("div.flex");
@@ -133,6 +150,7 @@ describe("SettingsScreen", () => {
       const setBlackoutAfterSong = vi.fn();
       vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: false, setBlackoutAfterSong }));
       render(<SettingsScreen />);
+      gotoTab("projection");
 
       const label = screen.getByText("settings.blackoutAfterSong");
       const row = label.closest("div.flex");
@@ -149,12 +167,14 @@ describe("SettingsScreen", () => {
   describe("announcementMargin ButtonGroup", () => {
     it("renders the announcementMargin label", () => {
       render(<SettingsScreen />);
+      gotoTab("announcement");
       expect(screen.getByText("settings.announcementMargin")).toBeInTheDocument();
     });
 
     it("shows the current announcementMargin value as pressed", () => {
       vi.mocked(useSettingsStore).mockReturnValue(makeStore({ announcementMargin: "sm" }));
       render(<SettingsScreen />);
+      gotoTab("announcement");
 
       const label = screen.getByText("settings.announcementMargin");
       const group = label.closest("div.space-y-1");
@@ -170,6 +190,7 @@ describe("SettingsScreen", () => {
         makeStore({ announcementMargin: "lg", setAnnouncementMargin })
       );
       render(<SettingsScreen />);
+      gotoTab("announcement");
 
       const label = screen.getByText("settings.announcementMargin");
       const group = label.closest("div.space-y-1");
@@ -184,6 +205,7 @@ describe("SettingsScreen", () => {
 
     it("renders all 5 margin options in the announcement margin group", () => {
       render(<SettingsScreen />);
+      gotoTab("announcement");
       const label = screen.getByText("settings.announcementMargin");
       const group = label.closest("div.space-y-1");
       expect(group).not.toBeNull();

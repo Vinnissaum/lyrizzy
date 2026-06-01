@@ -72,6 +72,8 @@ vi.mock("../../stores/settings", () => ({
     presentationPreset: "preto-branco",
     presentationPosition: "center",
     presentationMargin: "lg",
+    presentationLineSpacing: "normal",
+    presentationBoldLevel: "medium",
     loadPresentationSettings: vi.fn(),
   }),
 }));

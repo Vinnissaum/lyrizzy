@@ -110,8 +110,9 @@ describe("OperatorApp — smoke navigation", () => {
   it("navigates to the settings section", async () => {
     render(<OperatorApp />);
     fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
+    // "Geral" appears both as the active tab and the section header.
     await waitFor(() =>
-      expect(screen.getByText("Geral")).toBeInTheDocument()
+      expect(screen.getAllByText("Geral").length).toBeGreaterThan(0)
     );
     expect(screen.getByText("Idioma")).toBeInTheDocument();
     expect(screen.getByText("Janelas")).toBeInTheDocument();

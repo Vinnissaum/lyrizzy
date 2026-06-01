@@ -478,7 +478,7 @@
     "restore": {
       "title": "Restore interrupted",
       "subtitle": "A previous restore did not complete",
-      "body1": "Trinity Lyrics detected that a previous restore was interrupted before completing. The library may be in an incomplete state.",
+      "body1": "Lyrizzy detected that a previous restore was interrupted before completing. The library may be in an incomplete state.",
       "body2": "Click \"Cancel restore\" to clear the partial state and return to a clean install state. You will be able to restore again from the backup file.",
       "cancelButton": "Cancel restore",
       "irreversibleWarning": "⚠ This will erase all current library data. This action is irreversible.",

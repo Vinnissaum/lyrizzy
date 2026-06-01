@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Trinity Lyrics — single fixed dark theme (indigo accent).
+ * Lyrizzy — single fixed dark theme (indigo accent).
  * There is no light mode and no theme toggle: the operator UI is dark, the
  * presentation output is its own pure black. All colours are semantic tokens so
  * components never hardcode hex/palette values.

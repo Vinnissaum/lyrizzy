@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Trinity Lyrics",
+  "productName": "Lyrizzy",
   "version": "0.1.0",
   "identifier": "com.igreja-trindade.trinity-lyrics",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "operator",
-        "title": "Trinity Lyrics",
+        "title": "Lyrizzy",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

@@ -478,7 +478,7 @@
     "restore": {
       "title": "Restauração interrompida",
       "subtitle": "Uma restauração anterior não foi concluída",
-      "body1": "O Trinity Lyrics detectou que uma restauração anterior foi interrompida antes de concluir. A biblioteca pode estar em um estado incompleto.",
+      "body1": "O Lyrizzy detectou que uma restauração anterior foi interrompida antes de concluir. A biblioteca pode estar em um estado incompleto.",
       "body2": "Clique em \"Cancelar restauração\" para limpar o estado parcial e voltar ao estado de instalação limpa. Você poderá restaurar novamente a partir do arquivo de backup.",
       "cancelButton": "Cancelar restauração",
       "irreversibleWarning": "⚠ Isso apagará todos os dados da biblioteca atual. Esta ação é irreversível.",

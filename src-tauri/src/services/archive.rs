@@ -45,7 +45,7 @@ impl std::fmt::Display for ArchiveError {
             Self::Db(e) => write!(f, "Erro de banco de dados: {e}"),
             Self::SchemaTooNew { archive_version } => write!(
                 f,
-                "O arquivo requer esquema v{archive_version}; atualize o Trinity Lyrics para restaurar."
+                "O arquivo requer esquema v{archive_version}; atualize o Lyrizzy para restaurar."
             ),
             Self::InvalidArchive(msg) => write!(f, "Arquivo inválido: {msg}"),
             Self::JoinError(msg) => write!(f, "Erro interno: {msg}"),

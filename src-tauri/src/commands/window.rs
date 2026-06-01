@@ -252,7 +252,7 @@ pub async fn enter_presentation(
         "presentation",
         WebviewUrl::App("presentation.html".into()),
     )
-    .title("Trinity Lyrics — Presentation")
+    .title("Lyrizzy — Presentation")
     .inner_size(1280.0, 720.0);
 
     let builder = apply_monitor(base, &monitors, target_idx);

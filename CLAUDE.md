@@ -1,4 +1,4 @@
-# Trinity Lyrics v2
+# Lyrizzy (formerly Trinity Lyrics v2)
 
 ## Stack (v2)
 - Backend: Rust 1.82+, Tauri 2.x, sqlx 0.8.x, Tokio 1.x, serde 1.x

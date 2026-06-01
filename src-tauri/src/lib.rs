@@ -176,7 +176,7 @@ fn fail_fast(handle: &tauri::AppHandle, title: &str, detail: &str) -> ! {
     handle
         .dialog()
         .message(&message)
-        .title("Trinity Lyrics — Startup Error")
+        .title("Lyrizzy — Startup Error")
         .kind(MessageDialogKind::Error)
         .blocking_show();
     std::process::exit(1);

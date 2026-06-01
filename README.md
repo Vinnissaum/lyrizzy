@@ -1,6 +1,7 @@
-# Tauri + React + Typescript
+# Lyrizzy
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Church lyrics presentation app — manage a song library, build service sets, and
+drive a second-monitor projection. Built with Tauri, React, and TypeScript.
 
 ## Recommended IDE Setup
 

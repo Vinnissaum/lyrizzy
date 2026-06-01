@@ -30,7 +30,7 @@ const ExportCard: React.FC = () => {
     setSummary(null);
 
     const outPath = await save({
-      filters: [{ name: "Trinity Lyrics Backup", extensions: ["tlz"] }],
+      filters: [{ name: "Lyrizzy Backup", extensions: ["tlz"] }],
       defaultPath: `backup-${new Date().toISOString().slice(0, 10)}.tlz`,
     });
     if (!outPath) return;
@@ -130,7 +130,7 @@ const ImportCard: React.FC = () => {
   const handleSelectFile = async () => {
     setError(null);
     const filePath = await open({
-      filters: [{ name: "Trinity Lyrics Backup", extensions: ["tlz"] }],
+      filters: [{ name: "Lyrizzy Backup", extensions: ["tlz"] }],
       multiple: false,
     });
     if (!filePath) return;

@@ -5,6 +5,7 @@ import { SlideStage } from "./SlideStage";
 import { SlideContent } from "./SlideContent";
 import { PRESET_COLORS } from "./layout";
 import { splitSectionBody } from "../../utils/slidePreview";
+import { creditLine } from "./credit";
 
 export interface SongPreviewPaneProps {
   title: string;
@@ -43,14 +44,9 @@ export const SongPreviewPane: React.FC<SongPreviewPaneProps> = ({
 
     // 1. Title slide
     if (showTitleSlide && title.trim()) {
-      const creditLine =
-        credit
-          ? authorInParens
-            ? `(${credit})`
-            : credit
-          : undefined;
+      const credLine = creditLine(credit ?? "", authorInParens);
       result.push({
-        lines: [title.trim(), ...(creditLine ? [creditLine] : [])],
+        lines: [title.trim(), ...(credLine ? [credLine] : [])],
         sectionLabel: "__title__",
       });
     }

@@ -1,5 +1,19 @@
-import type { ActionId, KeyBindings, Shortcut } from "../types";
+import type { ActionId, KeyBindings, Shortcut, PresentationState } from "../types";
 import { emitForwardKeydown, onForwardKeydown } from "../api/commands";
+
+/**
+ * "Active presentation surface" predicate (P10-02). True whenever the
+ * presentation window has a live surface that Esc/F10 should act on: a
+ * presenting mode (live/blank/frozen) OR an active overlay. Unlike the old
+ * `getIsPresenting` (mode ∈ {live,blank,frozen}), this includes idle-with-overlay
+ * so Esc can dismiss an overlay triggered while idle, and idle (with a window
+ * open) so Esc can always close the presentation window.
+ */
+export function isPresentationActive(state: PresentationState | null | undefined): boolean {
+  if (state == null) return false;
+  const m = state.mode;
+  return m === "live" || m === "blank" || m === "frozen" || state.overlay != null;
+}
 
 export function eventSignature(e: KeyboardEvent): string {
   const parts: string[] = [];

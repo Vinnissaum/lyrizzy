@@ -30,13 +30,34 @@ use commands::key_bindings::{get_key_bindings, set_key_bindings, reset_key_bindi
 use commands::reports::{export_ccli_csv, preview_ccli_export};
 use commands::settings::{get_setting, set_setting};
 use commands::updates::{apply_update_and_restart, check_for_updates};
-use commands::window::{enter_presentation, exit_presentation, list_monitors};
+use commands::window::{
+    enter_presentation, exit_presentation, list_monitors, should_close_presentation_on_destroy,
+};
 use state::AppState;
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // P10-05: install a panic hook BEFORE building the app so a process-wide
+    // crash (panic → all windows gone) is logged distinctly from a single-window
+    // close. Chain the default hook so existing backtrace behavior is preserved.
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let payload = info
+            .payload()
+            .downcast_ref::<&str>()
+            .map(|s| s.to_string())
+            .or_else(|| info.payload().downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "<non-string panic payload>".to_string());
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_else(|| "<unknown location>".to_string());
+        tracing::error!(panic.payload = %payload, panic.location = %location, "process panic");
+        default_hook(info);
+    }));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -44,6 +65,51 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
         .register_uri_scheme_protocol("asset", protocol::asset::build_handler())
+        .on_window_event(|window, event| {
+            // P10-05: structured window-lifecycle observability. The tracing
+            // subscriber timestamps each line, so we log the label + event kind
+            // (and, where the event carries it, whether the close was honored).
+            let label = window.label().to_string();
+            match event {
+                WindowEvent::CloseRequested { .. } => {
+                    // A CloseRequested we do not prevent: the OS/user (or our own
+                    // exit path) asked to close this window. We let it proceed
+                    // (default behavior) and rely on Destroyed for the lifecycle
+                    // side-effects. Tauri does not expose user-vs-programmatic
+                    // origin here, so we log the request and the focus context.
+                    tracing::warn!(
+                        window.label = %label,
+                        event = "close_requested",
+                        "window event"
+                    );
+                }
+                WindowEvent::Destroyed => {
+                    tracing::warn!(window.label = %label, event = "destroyed", "window event");
+
+                    // P10-06: when the operator window is destroyed, also close
+                    // the presentation window so we never leave an orphaned
+                    // always-on-top fullscreen window the user cannot reach. The
+                    // app then exits naturally once all windows are gone.
+                    if should_close_presentation_on_destroy(&label) {
+                        if let Some(pres) = window.app_handle().get_webview_window("presentation") {
+                            if let Err(e) = pres.close() {
+                                // Already gone / tearing down — not fatal.
+                                tracing::warn!(
+                                    error = %e,
+                                    "failed to close presentation window after operator destroyed (ignored)"
+                                );
+                            } else {
+                                tracing::info!("closed presentation window after operator destroyed");
+                            }
+                        }
+                    }
+                }
+                WindowEvent::Focused(false) => {
+                    tracing::info!(window.label = %label, event = "focus_lost", "window event");
+                }
+                _ => {}
+            }
+        })
         .setup(|app| {
             // Initialize tracing for structured log output (dev builds).
             #[cfg(debug_assertions)]

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { installKeyboardDispatcher } from "./keyboard";
+import { installKeyboardDispatcher, isPresentationActive } from "./keyboard";
+import type { PresentationState } from "../types";
 
 // Capture the forwarded-keydown callback so tests can simulate a key forwarded
 // from the presentation window.
@@ -123,6 +124,31 @@ describe("keyboard dispatcher — hardcoded ESC/F10", () => {
     expect(onEscape).not.toHaveBeenCalled();
   });
 
+  it("forwarded ESC honored when an overlay is active (idle+overlay)", () => {
+    // The operator gate is `isPresentationActive`; idle+overlay must honor Esc.
+    const overlayIdle: PresentationState = {
+      mode: "idle",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+      overlay: { type: "media", mediaId: "m1" },
+    };
+    const onEscape = vi.fn();
+    uninstall = installKeyboardDispatcher(
+      () => null,
+      {},
+      {
+        getIsPresenting: () => isPresentationActive(overlayIdle),
+        onEscape,
+        onF10: vi.fn(),
+      }
+    );
+
+    forwardedCb?.("escape");
+
+    expect(onEscape).toHaveBeenCalledOnce();
+  });
+
   it("dispatcher without hardcoded config behaves as before", () => {
     const advanceSlide = vi.fn();
     uninstall = installKeyboardDispatcher(
@@ -133,5 +159,38 @@ describe("keyboard dispatcher — hardcoded ESC/F10", () => {
     fireKey("ArrowRight");
 
     expect(advanceSlide).toHaveBeenCalledOnce();
+  });
+});
+
+describe("isPresentationActive (P10-02)", () => {
+  const base = {
+    currentItemIndex: 0,
+    currentSlideIndex: 0,
+    itemSlideCounts: [] as number[],
+  };
+
+  it("is false when state is null/undefined", () => {
+    expect(isPresentationActive(null)).toBe(false);
+    expect(isPresentationActive(undefined)).toBe(false);
+  });
+
+  it("is true for live/blank/frozen modes", () => {
+    for (const mode of ["live", "blank", "frozen"] as const) {
+      expect(isPresentationActive({ ...base, mode } as PresentationState)).toBe(true);
+    }
+  });
+
+  it("is false for idle with no overlay", () => {
+    expect(isPresentationActive({ ...base, mode: "idle" } as PresentationState)).toBe(false);
+  });
+
+  it("is true for idle WITH an overlay", () => {
+    expect(
+      isPresentationActive({
+        ...base,
+        mode: "idle",
+        overlay: { type: "media", mediaId: "m1" },
+      } as PresentationState)
+    ).toBe(true);
   });
 });

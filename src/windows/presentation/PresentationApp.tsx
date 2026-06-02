@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import { onLocaleChanged, onSettingChanged } from "../../api/commands";
 import { mediaUrl } from "../../api/assets";
@@ -99,20 +100,43 @@ export const PresentationApp: React.FC = () => {
     loadLocale();
     refreshMedia();
 
+    // P10-02: Esc local-fallback timer. Cleared on unmount to avoid leaks.
+    let escFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
     const keydownHandler = (e: KeyboardEvent) => {
       const s = usePresentationStore.getState();
       const mode = s.state?.mode;
-      const isPresenting = mode === "live" || mode === "blank" || mode === "frozen";
-      if (isPresenting) {
-        if (e.key === "Escape") {
-          // Single-owner exit: forward Esc to the operator window, which owns
-          // the one `exitPresentation()` call. Calling it here too caused a
-          // cross-window double-dispatch race that froze the close.
-          e.preventDefault();
-          forwardKeydown(e);
-          return;
+
+      if (e.key === "Escape") {
+        // Esc ALWAYS escapes the presentation window, from any mode (P10-02).
+        e.preventDefault();
+        // 1. Clean single-owner exit: forward to the operator window, which owns
+        //    the one `exitPresentation()` / `clearOverlay()` call. Calling those
+        //    here too caused a cross-window double-dispatch race that froze the
+        //    close.
+        forwardKeydown(e);
+        // 2. Local fallback: if the operator round-trip stalls or the operator
+        //    window is gone, close this window directly. Idempotent — no-op if
+        //    the window is already closing/gone (errors swallowed).
+        if (escFallbackTimer === undefined) {
+          escFallbackTimer = setTimeout(() => {
+            escFallbackTimer = undefined;
+            try {
+              // close() may return a promise; swallow sync throws AND async
+              // rejections ("window not found") so a double-Esc never throws.
+              Promise.resolve(getCurrentWindow().close()).catch(() => {});
+            } catch {
+              // Window already closing/gone — ignore.
+            }
+          }, 400);
         }
-        if (e.key === "F10") {
+        return;
+      }
+
+      if (e.key === "F10") {
+        const isPresenting =
+          mode === "live" || mode === "blank" || mode === "frozen";
+        if (isPresenting) {
           e.preventDefault();
           s.setMode(mode === "blank" ? "live" : "blank");
           return;
@@ -127,6 +151,7 @@ export const PresentationApp: React.FC = () => {
       unsubLocale.then((u) => u());
       unsubSetting.then((u) => u());
       window.removeEventListener("keydown", keydownHandler);
+      if (escFallbackTimer !== undefined) clearTimeout(escFallbackTimer);
     };
   }, []);
 
@@ -159,7 +184,37 @@ export const PresentationApp: React.FC = () => {
   const background = state?.background;
   const frozen = mode === "frozen";
 
-  // Idle: show countdown when active
+  // Render precedence (P10-01):
+  //   1. blank  → solid black (intentional F10 blackout beats everything)
+  //   2. overlay → render the overlay (now reachable from idle too)
+  //   3. idle   → countdown if armed, else "Aguardando apresentação…"
+  //   4. live/frozen → set content (below)
+  if (mode === "blank") {
+    return <div className="h-screen bg-black" />;
+  }
+
+  // Overlay takes precedence over idle and normal set content (but not over blank)
+  const overlay = state?.overlay;
+  if (overlay) {
+    if (overlay.type === "announcement") {
+      const { announcementPreset } = useSettingsStore.getState();
+      return (
+        <div className="h-screen w-screen overflow-hidden">
+          <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
+            <SlideContent itemType="blank" appearance={appearance} warningText={overlay.text} />
+          </SlideStage>
+        </div>
+      );
+    }
+    if (overlay.type === "media") {
+      return <QuickMediaRenderer mediaId={overlay.mediaId} />;
+    }
+    if (overlay.type === "webView") {
+      return <QuickWebViewRenderer url={overlay.url} />;
+    }
+  }
+
+  // Idle: show countdown when active, else the waiting screen
   if (mode === "idle") {
     if (countdown.durationMs > 0 && countdown.mode !== "idle") {
       return (
@@ -180,31 +235,6 @@ export const PresentationApp: React.FC = () => {
         <p className="text-gray-700 text-sm select-none">Aguardando apresentação…</p>
       </div>
     );
-  }
-
-  if (mode === "blank") {
-    return <div className="h-screen bg-black" />;
-  }
-
-  // Overlay takes precedence over normal set content (but not over blank)
-  const overlay = state?.overlay;
-  if (overlay) {
-    if (overlay.type === "announcement") {
-      const { announcementPreset } = useSettingsStore.getState();
-      return (
-        <div className="h-screen w-screen overflow-hidden">
-          <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
-            <SlideContent itemType="blank" appearance={appearance} warningText={overlay.text} />
-          </SlideStage>
-        </div>
-      );
-    }
-    if (overlay.type === "media") {
-      return <QuickMediaRenderer mediaId={overlay.mediaId} />;
-    }
-    if (overlay.type === "webView") {
-      return <QuickWebViewRenderer url={overlay.url} />;
-    }
   }
 
   const itemType = currentItem?.itemType ?? "blank";

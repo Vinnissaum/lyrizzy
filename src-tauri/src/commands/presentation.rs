@@ -72,6 +72,58 @@ fn resolve_title_credit<'a>(author: Option<&'a str>, artist: Option<&'a str>) ->
         .or(artist)
 }
 
+/// Returns true when `t` is a single balanced outer-parenthesized group:
+/// it starts with `(`, ends with `)`, and the opening paren closes only at
+/// the very end (so `John (PD)` and `(A) and (B)` are rejected).
+fn is_balanced_wrapped(t: &str) -> bool {
+    let chars: Vec<char> = t.chars().collect();
+    if chars.first() != Some(&'(') || chars.last() != Some(&')') {
+        return false;
+    }
+    let mut depth = 0i32;
+    let last = chars.len() - 1;
+    for (i, c) in chars.iter().enumerate() {
+        if *c == '(' {
+            depth += 1;
+        }
+        if *c == ')' {
+            depth -= 1;
+        }
+        if depth == 0 && i != last {
+            // closed early -> not an outer wrap
+            return false;
+        }
+    }
+    depth == 0
+}
+
+/// Idempotently normalizes a credit line. Strips an existing balanced outer
+/// paren pair first, then re-wraps when `in_parens` is set. Returns `None`
+/// when the credit is empty/blank (including a bare `()`), so the caller can
+/// omit the line entirely.
+fn credit_line(raw: &str, in_parens: bool) -> Option<String> {
+    let t = raw.trim();
+    if t.is_empty() {
+        return None;
+    }
+    // `(` and `)` are ASCII (1 byte) and confirmed at the boundaries by
+    // `is_balanced_wrapped`, so byte-slicing `t[1..t.len()-1]` is safe.
+    let stripped = if is_balanced_wrapped(t) {
+        t[1..t.len() - 1].trim()
+    } else {
+        t
+    };
+    if stripped.is_empty() {
+        // credit was just "()"
+        return None;
+    }
+    Some(if in_parens {
+        format!("({stripped})")
+    } else {
+        stripped.to_string()
+    })
+}
+
 /// Builds the optional title/author intro slide for a song.
 fn build_title_slide(
     song_id: &str,
@@ -83,12 +135,8 @@ fn build_title_slide(
         return None;
     }
     let mut lines = vec![title.trim().to_string()];
-    if let Some(a) = author.map(str::trim).filter(|a| !a.is_empty()) {
-        lines.push(if author_in_parens {
-            format!("({a})")
-        } else {
-            a.to_string()
-        });
+    if let Some(credit) = author.and_then(|a| credit_line(a, author_in_parens)) {
+        lines.push(credit);
     }
     Some(Slide {
         lines,
@@ -556,6 +604,80 @@ mod tests {
     #[test]
     fn title_slide_skipped_when_title_empty() {
         assert!(build_title_slide("song1", "   ", Some("John Newton"), true).is_none());
+    }
+
+    // ─── smart author parentheses (P10-03) ──────────────────────────────────
+
+    #[test]
+    fn credit_flag_on_not_wrapped_wraps() {
+        assert_eq!(credit_line("John Newton", true), Some("(John Newton)".to_string()));
+    }
+
+    #[test]
+    fn credit_flag_on_already_wrapped_unchanged() {
+        // No double-wrap.
+        assert_eq!(credit_line("(John Newton)", true), Some("(John Newton)".to_string()));
+    }
+
+    #[test]
+    fn credit_flag_off_wrapped_strips() {
+        assert_eq!(credit_line("(John Newton)", false), Some("John Newton".to_string()));
+    }
+
+    #[test]
+    fn credit_flag_off_not_wrapped_unchanged() {
+        assert_eq!(credit_line("John Newton", false), Some("John Newton".to_string()));
+    }
+
+    #[test]
+    fn credit_empty_and_bare_parens_omitted() {
+        assert_eq!(credit_line("", true), None);
+        assert_eq!(credit_line("   ", true), None);
+        assert_eq!(credit_line("()", true), None);
+        assert_eq!(credit_line("(   )", false), None);
+    }
+
+    #[test]
+    fn credit_trailing_paren_only_not_wrapped() {
+        // `John (PD)` has only a trailing paren group -> not an outer wrap.
+        assert_eq!(credit_line("John (PD)", true), Some("(John (PD))".to_string()));
+        assert_eq!(credit_line("John (PD)", false), Some("John (PD)".to_string()));
+    }
+
+    #[test]
+    fn credit_two_groups_not_wrapped() {
+        // `(A) and (B)` -> first paren closes early -> not an outer wrap.
+        assert!(!is_balanced_wrapped("(A) and (B)"));
+        assert_eq!(credit_line("(A) and (B)", true), Some("((A) and (B))".to_string()));
+        assert_eq!(credit_line("(A) and (B)", false), Some("(A) and (B)".to_string()));
+    }
+
+    #[test]
+    fn is_balanced_wrapped_recognizes_outer_pair() {
+        assert!(is_balanced_wrapped("(John Newton)"));
+        assert!(is_balanced_wrapped("((nested))"));
+        assert!(!is_balanced_wrapped("John (PD)"));
+        assert!(!is_balanced_wrapped("(A) and (B)"));
+        assert!(!is_balanced_wrapped("John Newton"));
+    }
+
+    #[test]
+    fn title_slide_no_double_wrap_when_already_parenthesized() {
+        let s = build_title_slide("song1", "Amazing Grace", Some("(Public Domain)"), true).unwrap();
+        assert_eq!(s.lines, vec!["Amazing Grace", "(Public Domain)"]);
+    }
+
+    #[test]
+    fn title_slide_strips_parens_when_flag_off() {
+        let s =
+            build_title_slide("song1", "Amazing Grace", Some("(Public Domain)"), false).unwrap();
+        assert_eq!(s.lines, vec!["Amazing Grace", "Public Domain"]);
+    }
+
+    #[test]
+    fn title_slide_omits_bare_parens_author() {
+        let s = build_title_slide("song1", "Amazing Grace", Some("()"), true).unwrap();
+        assert_eq!(s.lines, vec!["Amazing Grace"]);
     }
 
     #[test]

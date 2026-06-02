@@ -34,7 +34,7 @@ import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
 import { useKeyBindingsStore } from "../../stores/keyBindings";
-import { installKeyboardDispatcher } from "../../runtime/keyboard";
+import { installKeyboardDispatcher, isPresentationActive } from "../../runtime/keyboard";
 import type { Song, UpdateInfo } from "../../types";
 
 export const OperatorApp: React.FC = () => {
@@ -123,6 +123,19 @@ export const OperatorApp: React.FC = () => {
     const pres = usePresentationStore.getState;
     const cd = useCountdownStore.getState;
 
+    // Unified exit handler (P10-02): clear the overlay if one is active,
+    // otherwise run the `exitPresentation()` command (which closes the
+    // presentation window and resets state to idle). Both the hardcoded Esc
+    // and the user-rebindable `exitPresentation` action go through this, so
+    // they behave identically — no more "rebindable exit leaves window open".
+    const handleExit = () => {
+      if (usePresentationStore.getState().state?.overlay) {
+        clearOverlay().catch(console.error);
+      } else {
+        exitPresentation().catch(console.error);
+      }
+    };
+
     const uninstall = installKeyboardDispatcher(
       () => useKeyBindingsStore.getState().bindings,
       {
@@ -136,13 +149,7 @@ export const OperatorApp: React.FC = () => {
           const mode = pres().state?.mode;
           pres().setMode(mode === "frozen" ? "live" : "frozen");
         },
-        exitPresentation: () => {
-          if (usePresentationStore.getState().state?.overlay) {
-            clearOverlay().catch(console.error);
-          } else {
-            pres().setMode("idle");
-          }
-        },
+        exitPresentation: () => handleExit(),
         jumpToItem1: () => pres().jumpToItem(0),
         jumpToItem2: () => pres().jumpToItem(1),
         jumpToItem3: () => pres().jumpToItem(2),
@@ -165,11 +172,9 @@ export const OperatorApp: React.FC = () => {
           window.dispatchEvent(new CustomEvent("app:focus-search")),
       },
       {
-        getIsPresenting: () => {
-          const mode = usePresentationStore.getState().state?.mode;
-          return mode === "live" || mode === "blank" || mode === "frozen";
-        },
-        onEscape: () => exitPresentation().catch(console.error),
+        getIsPresenting: () =>
+          isPresentationActive(usePresentationStore.getState().state),
+        onEscape: () => handleExit(),
         onF10: () => {
           const s = usePresentationStore.getState();
           s.setMode(s.state?.mode === "blank" ? "live" : "blank");

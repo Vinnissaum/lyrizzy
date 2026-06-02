@@ -221,3 +221,22 @@
 | P8-08 | Apresentar button consolidation (`hidePresentButton` prop, unified handler, `set-player` removed) | Done |
 
 **Deliverable:** All critical presentation-flow bugs fixed; background presets let operators choose black/white palette + font for any song or section without importing media.
+
+---
+
+## Phase 10: Stability Fixes — DONE
+
+**Goal:** Fix three field-reported defects that undermine trust in the presentation flow: overlay-on-idle freeze with dead Esc, naïve author-parentheses double-wrapping, and the operator window vanishing mid-service. Plus window-lifecycle hardening + observability.
+**Completed:** 2026-06-02.
+**Spec:** `.specs/features/phase10-stability-fixes/spec.md` (6 requirements P10-01..P10-06).
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P10-01 | Overlay renders over idle (render-branch precedence: blank → overlay → idle → live) | Done |
+| P10-02 | Esc always escapes from any mode + ~400ms local self-close fallback | Done |
+| P10-03 | Smart author parentheses — backend `credit_line`/`is_balanced_wrapped` (idempotent) | Done |
+| P10-04 | Smart author parentheses — frontend `creditLine` mirror + Vitest 1:1 | Done |
+| P10-05 | Operator observability — panic hook + `on_window_event` logging | Done |
+| P10-06 | Operator close → presentation close (no orphan); presentation-alone close leaves operator | Done |
+
+**Deliverable:** No path leaves the projector frozen on "Aguardando" while an overlay is set; Esc reliably escapes from idle/live/blank/frozen/overlay; zero `((...))` or unstripped parens on title slides; window-close/panic events logged; operator close never orphans the presentation window.

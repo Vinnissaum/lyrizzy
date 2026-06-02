@@ -1,8 +1,8 @@
 # Trinity Lyrics v2 — State
 
-**Last updated:** 2026-05-30
-**Current phase:** Phase 9 IMPLEMENTED (2026-05-30) — `.specs/features/phase9-fidelity-ux/`. T1–T14 done via parallel sub-agents; central gate green (tsc clean, 233 Vitest, Rust + clippy clean). Uncommitted. Orphan: `AnnouncementRenderer.tsx` now unused (superseded by `WarningBody`) — optional cleanup.
-**Previous phase:** Phase 8 complete (2026-05-23). All 8 P8-01..P8-08 requirements delivered.
+**Last updated:** 2026-06-02
+**Current phase:** Phase 10 IMPLEMENTED (2026-06-02) — `.specs/features/phase10-stability-fixes/`. T1–T7 done via parallel sub-agents; central gate green (tsc clean, 254 Vitest, Rust tests + clippy clean). Uncommitted.
+**Previous phase:** Phase 9 IMPLEMENTED (2026-05-30) — `.specs/features/phase9-fidelity-ux/`. T1–T14 done via parallel sub-agents; central gate green (tsc clean, 233 Vitest, Rust + clippy clean). Orphan: `AnnouncementRenderer.tsx` now unused (superseded by `WarningBody`) — optional cleanup.
 
 ---
 
@@ -49,6 +49,11 @@
 | D-37 | Phase 9 language-picker bug root cause: `main.tsx` changes `i18next` from DB `app.locale` but never syncs `useSettingsStore.locale` (frozen at `pt-BR` default) which `LanguagePicker` binds to. Fix = add `loadLocale()` to settings store, call at operator+presentation boot. | Keeps store as single source of truth (consistent with `onLocaleChanged`); rejected binding picker to `i18n.language`. | 2026-05-30 |
 | D-38 | Phase 9 blackout-after-song: append a sentinel `Slide{ section_label:"__blackout__", lines:[] }` after each Song item's slides in `load_set_for_presentation`, gated by `presentation.blackout_after_song` setting (default ON). Frontend renders the sentinel as solid black. | No `Slide`/enum change, index-based navigation untouched, serde-safe; user chose per-song placement + settings toggle. | 2026-05-30 |
 | D-39 | Phase 9 adds settings `announcement.margin` (default `lg`) + `presentation.blackout_after_song` (default `true`) as key/value rows — no migration. Warning overlay re-rendered through `SlideContent` to fill the whole stage (fixes gray edges) honoring announcement position + new margin. Title-slide author size dropped to `stepSize(fontSize,-1)`. Nav tabs `disabled` (not hidden) while presenting. Set items gain dnd-kit drag reorder (keep arrows) via existing `reorder_set_items`. | Batch of UX fixes riding on the shared renderer; settings are key/value so zero schema risk. | 2026-05-30 |
+| D-40 | Phase 10 render-order precedence in `PresentationApp.tsx`: `blank` → `overlay` → `idle` (countdown/waiting) → `live/frozen`. Overlay now reachable from idle (root cause of the "Aguardando" freeze). Fix is render-only — overlays stay mode-independent transient layers (D-22 preserved); backend `overlay.rs` does NOT flip `mode` (would corrupt set position on clear). | Idle branch returned before overlay, so an overlay set while idle never rendered → frozen projector. Render layer is the correct place to fix precedence. | 2026-06-02 |
+| D-41 | Phase 10 `isPresentationActive(state)` = `state != null && (mode ∈ {live,blank,frozen} \|\| overlay != null)` replaces the `getIsPresenting` mode-gate for Esc handling in `runtime/keyboard.ts` + `OperatorApp.tsx`. Predicate co-located in `keyboard.ts` (no shared selectors module exists yet — candidate to move if one is introduced). Operator Esc + the rebindable `exitPresentation` action unified behind one handler ("clear overlay if present, else `exitPresentation()` command") — fixes the prior split where the rebindable action only did `setMode("idle")` and left the window open. | Idle was excluded from `getIsPresenting`, so Esc was dead in idle/overlay states. | 2026-06-02 |
+| D-42 | Phase 10 presentation-window Esc always `preventDefault()` + `forwardKeydown(e)` AND arms a ~400ms local fallback `getCurrentWindow().close()` (try/catch swallow, single-arm gate so double-Esc closes once, timer cleared on cleanup). Guarantees escape even when the operator window is gone or the round-trip stalls. `getCurrentWindow` was NOT previously imported in `PresentationApp.tsx` (spec assumption was wrong — it's used in `main.tsx`); added the import. | The clean operator round-trip can't be relied on when the operator window itself is the thing that vanished (issue #3). | 2026-06-02 |
+| D-43 | Phase 10 author-credit normalizer (idempotent) replicated in Rust (`commands/presentation.rs` `credit_line`/`is_balanced_wrapped`) and TS (`src/components/presentation/credit.ts` `creditLine`/`isBalancedWrapped`) with mirrored unit tests. "Already wrapped" = trimmed string starts `(` ends `)` AND the first `(` closes only at the very end (depth-scan). Strips-then-rewraps when ON (no `((...))`); strips when OFF; `()`/empty → omit line. `John (PD)` and `(A) and (B)` are NOT wrapped. Backend is source of truth for the projected slide; frontend helper drives editor preview only — kept identical to prevent drift. | Naïve `format!("({a})")` produced `((John Newton))` and never stripped when the flag was off. | 2026-06-02 |
+| D-44 | Phase 10 observability + lifecycle in `lib.rs`: `std::panic::set_hook` (logs payload + `file:line:col` via `tracing::error!`, chains the default hook) installed before the builder, and an `.on_window_event` handler logging `CloseRequested`/`Destroyed`/`Focused(false)` with window label. On **operator** `Destroyed`, close the presentation window (via `get_webview_window("presentation")`, ignore-if-gone) to prevent an orphaned always-on-top fullscreen window; presentation-alone close does nothing to the operator. Decision extracted as pure testable `should_close_presentation_on_destroy(label) -> bool` in `commands/window.rs`. Tauri's `CloseRequested` exposes no user-vs-programmatic origin — `Focused(false)` logging provides the focus context to disambiguate the spontaneous-close hypotheses on next field repro. | No `on_window_event`/panic hook existed; issue #3 (operator vanishes on app-switch) can't be root-caused without instrumentation. Panic hook distinguishes whole-process crash from a single-window close. | 2026-06-02 |
 
 ---
 
@@ -92,6 +97,26 @@
 - **L-4:** When testing canonical path containment, use two independent temp dirs. A file in the *parent* of `media/` could accidentally start_with `media/` if using the same `TempDir`.
 - **L-5:** `http` crate must be added explicitly to `Cargo.toml` for the protocol handler; it is not re-exported from `tauri` in a usable way for custom handlers.
 - **L-6:** Tauri 2 built-in `asset://` protocol requires `protocol-asset` feature. To use a custom media directory without that feature, register your own `asset` scheme via `register_uri_scheme_protocol`.
+
+## Phase 10 Completion Summary (2026-06-02)
+
+All 6 P10-01..P10-06 requirements delivered (T1–T7 via parallel sub-agents, 4 file-independent chains):
+
+| Area | Tasks | Delivered |
+|---|---|---|
+| Smart parens — backend | T1 (P10-03) | `credit_line`/`is_balanced_wrapped` in `commands/presentation.rs`; `build_title_slide` uses `author.and_then(|a| credit_line(a, in_parens))`; +10 unit cases (4 flag×wrap combos, `()`, `John (PD)`, `(A) and (B)`) |
+| Smart parens — frontend | T2 (P10-04) | new `src/components/presentation/credit.ts` (`creditLine`/`isBalancedWrapped`), consumed in `SongPreviewPane.tsx`; `credit.test.ts` 10 cases 1:1 with Rust |
+| Overlay over idle | T3 (P10-01) | `PresentationApp.tsx` render-branch reorder → blank → overlay → idle → live/frozen (D-40); +2 test cases (overlay-over-idle, blank-beats-overlay) |
+| Esc always escapes | T4 (P10-02) | `isPresentationActive` predicate in `keyboard.ts` (D-41); presentation-window Esc always forwards + ~400ms local self-close fallback (D-42); operator Esc + rebindable exit unified; fake-timer Vitest cases |
+| Observability | T5 (P10-05) | panic hook + `on_window_event` logging in `lib.rs` (D-44) |
+| Lifecycle hardening | T6 (P10-06) | operator `Destroyed` → close presentation window; `should_close_presentation_on_destroy(label)` pure helper + 3 unit tests in `commands/window.rs` |
+| Wrap-up | T7 | ROADMAP Phase 10 row, STATE D-40..D-44, this summary; full gate green |
+
+**Test results at completion:** Rust tests green, `cargo clippy -D warnings` clean, `tsc --noEmit` clean, 254 Vitest tests (38 files) — all passing.
+
+**Open verification note (carried from tasks.md):** P10-05/06 instrument and contain issue #3 (spontaneous operator close) but do not yet prove its root cause — needs a field repro. The new `on_window_event` + panic-hook logging is designed to disambiguate the leading hypotheses (WebView2/GPU process crash on focus loss, async-command panic, OS/WM always-on-top focus interaction) on the next field occurrence. Regardless of cause, the P10-02 local Esc fallback + P10-06 orphan prevention ensure the user is never left stuck.
+
+---
 
 ## Phase 8 Completion Summary (2026-05-23)
 

@@ -191,6 +191,16 @@ pub(crate) fn should_pin_on_top(monitor_count: usize) -> bool {
     monitor_count == 1
 }
 
+/// Returns true if destroying the window with the given `label` should also
+/// close the presentation window.
+///
+/// Closing the operator window must tear down the presentation window too, so we
+/// never leave an orphaned always-on-top fullscreen window the user cannot reach
+/// (P10-06). Destroying the presentation window alone has no such side-effect.
+pub(crate) fn should_close_presentation_on_destroy(label: &str) -> bool {
+    label == "operator"
+}
+
 /// Returns true when no set is loaded or the loaded set has no items.
 fn presentation_set_is_empty(state: &PresentationState) -> bool {
     state.set.as_ref().map(|s| s.items.is_empty()).unwrap_or(true)
@@ -418,6 +428,21 @@ mod tests {
     #[test]
     fn should_pin_on_top_three_monitors() {
         assert!(!should_pin_on_top(3));
+    }
+
+    #[test]
+    fn close_presentation_on_operator_destroy() {
+        assert!(should_close_presentation_on_destroy("operator"));
+    }
+
+    #[test]
+    fn no_close_presentation_on_presentation_destroy() {
+        assert!(!should_close_presentation_on_destroy("presentation"));
+    }
+
+    #[test]
+    fn no_close_presentation_on_unknown_label() {
+        assert!(!should_close_presentation_on_destroy("something-else"));
     }
 
     #[test]

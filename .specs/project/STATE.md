@@ -1,8 +1,8 @@
 # Trinity Lyrics v2 — State
 
 **Last updated:** 2026-06-02
-**Current phase:** Phase 10 IMPLEMENTED (2026-06-02) — `.specs/features/phase10-stability-fixes/`. T1–T7 done via parallel sub-agents; central gate green (tsc clean, 254 Vitest, Rust tests + clippy clean). Uncommitted.
-**Previous phase:** Phase 9 IMPLEMENTED (2026-05-30) — `.specs/features/phase9-fidelity-ux/`. T1–T14 done via parallel sub-agents; central gate green (tsc clean, 233 Vitest, Rust + clippy clean). Orphan: `AnnouncementRenderer.tsx` now unused (superseded by `WarningBody`) — optional cleanup.
+**Current phase:** Phase 11 IMPLEMENTED (2026-06-02) — `.specs/features/phase11-operator-polish/` (5 reqs P11-01..P11-05): announcement-over-blackout (announcement only), optimistic operator selection feedback, strophe-card 16:9 cropping. T1–T6 done via parallel sub-agents; gate green (tsc clean, 268 Vitest, Rust tests pass). See `SUMMARY.md`.
+**Previous phase:** Phase 10 IMPLEMENTED (2026-06-02) — `.specs/features/phase10-stability-fixes/`. T1–T7 done via parallel sub-agents; central gate green (tsc clean, 254 Vitest, Rust tests + clippy clean). Committed (1603c10).
 
 ---
 
@@ -53,6 +53,8 @@
 | D-41 | Phase 10 `isPresentationActive(state)` = `state != null && (mode ∈ {live,blank,frozen} \|\| overlay != null)` replaces the `getIsPresenting` mode-gate for Esc handling in `runtime/keyboard.ts` + `OperatorApp.tsx`. Predicate co-located in `keyboard.ts` (no shared selectors module exists yet — candidate to move if one is introduced). Operator Esc + the rebindable `exitPresentation` action unified behind one handler ("clear overlay if present, else `exitPresentation()` command") — fixes the prior split where the rebindable action only did `setMode("idle")` and left the window open. | Idle was excluded from `getIsPresenting`, so Esc was dead in idle/overlay states. | 2026-06-02 |
 | D-42 | Phase 10 presentation-window Esc always `preventDefault()` + `forwardKeydown(e)` AND arms a ~400ms local fallback `getCurrentWindow().close()` (try/catch swallow, single-arm gate so double-Esc closes once, timer cleared on cleanup). Guarantees escape even when the operator window is gone or the round-trip stalls. `getCurrentWindow` was NOT previously imported in `PresentationApp.tsx` (spec assumption was wrong — it's used in `main.tsx`); added the import. | The clean operator round-trip can't be relied on when the operator window itself is the thing that vanished (issue #3). | 2026-06-02 |
 | D-43 | Phase 10 author-credit normalizer (idempotent) replicated in Rust (`commands/presentation.rs` `credit_line`/`is_balanced_wrapped`) and TS (`src/components/presentation/credit.ts` `creditLine`/`isBalancedWrapped`) with mirrored unit tests. "Already wrapped" = trimmed string starts `(` ends `)` AND the first `(` closes only at the very end (depth-scan). Strips-then-rewraps when ON (no `((...))`); strips when OFF; `()`/empty → omit line. `John (PD)` and `(A) and (B)` are NOT wrapped. Backend is source of truth for the projected slide; frontend helper drives editor preview only — kept identical to prevent drift. | Naïve `format!("({a})")` produced `((John Newton))` and never stripped when the flag was off. | 2026-06-02 |
+| D-45 | Phase 11 announcement-over-blackout is **announcement-scoped** and **render-only**: new presentation precedence `announcement-overlay → blank → other-overlay → idle → live/frozen` (partially reverses D-40's "blank beats everything"). Oferta/Câmera overlays still lose to blackout. Backend `overlay.rs` still does NOT flip `mode`, so clearing the announcement restores blackout automatically. | User wants Aviso to overlap a blacked-out projector without manual toggling; chose announcement-only scope. D-40 invariant (overlays mode-independent) preserved. | 2026-06-02 |
+| D-46 | Phase 11 operator selection feedback is **optimistic**: strophe/set-item click updates a local highlight immediately, reconciles to backend `state_changed` (backend stays source of truth). Pair with memoized `SlideCard` so the full strophe grid does not re-render per state change. | Operator-side highlight lagged the backend round-trip; projection itself was fine. | 2026-06-02 |
 | D-44 | Phase 10 observability + lifecycle in `lib.rs`: `std::panic::set_hook` (logs payload + `file:line:col` via `tracing::error!`, chains the default hook) installed before the builder, and an `.on_window_event` handler logging `CloseRequested`/`Destroyed`/`Focused(false)` with window label. On **operator** `Destroyed`, close the presentation window (via `get_webview_window("presentation")`, ignore-if-gone) to prevent an orphaned always-on-top fullscreen window; presentation-alone close does nothing to the operator. Decision extracted as pure testable `should_close_presentation_on_destroy(label) -> bool` in `commands/window.rs`. Tauri's `CloseRequested` exposes no user-vs-programmatic origin — `Focused(false)` logging provides the focus context to disambiguate the spontaneous-close hypotheses on next field repro. | No `on_window_event`/panic hook existed; issue #3 (operator vanishes on app-switch) can't be root-caused without instrumentation. Panic hook distinguishes whole-process crash from a single-window close. | 2026-06-02 |
 
 ---
@@ -97,6 +99,25 @@
 - **L-4:** When testing canonical path containment, use two independent temp dirs. A file in the *parent* of `media/` could accidentally start_with `media/` if using the same `TempDir`.
 - **L-5:** `http` crate must be added explicitly to `Cargo.toml` for the protocol handler; it is not re-exported from `tauri` in a usable way for custom handlers.
 - **L-6:** Tauri 2 built-in `asset://` protocol requires `protocol-asset` feature. To use a custom media directory without that feature, register your own `asset` scheme via `register_uri_scheme_protocol`.
+
+## Phase 11 Completion Summary (2026-06-02)
+
+All 5 P11-01..P11-05 requirements delivered (T1–T6 via parallel sub-agents; frontend-only, no Rust/schema/IPC change):
+
+| Area | Tasks | Delivered |
+|---|---|---|
+| Announcement over blackout — projection | T1 (P11-01) | `PresentationApp.tsx` precedence → announcement-overlay → blank → other-overlay → idle → live/frozen (D-45); +3 tests |
+| Announcement over blackout — LIVE preview | T2 (P11-02) | `LivePreview.tsx` announcement card before BLACKOUT card; media/webView stay below blank; +2 tests |
+| Optimistic selection — store | T3 (P11-03 core) | `usePresentationStore` `pendingSelection` + `selectSlide`; `onStateChanged` clears pending (D-46); new `presentation.test.ts` +4 tests |
+| Optimistic + memo + 16:9 crop | T4 (P11-03/04/05) | `StrophesGrid` `effectiveSlideIdx`; `React.memo`(`SlideCard`)+`useMemo`+`useCallback`; `aspect-video` on outer button + grid `items-start`; +3 tests |
+| Optimistic selection — set items | T5 (P11-03) | `SetItemList` active from `pendingSelection?.itemIndex ?? currentItemIndex`; click → `selectSlide`; +2 tests |
+| Wrap-up | T6 | ROADMAP Phase 11 row, STATE current-phase + this summary, spec traceability → Verified, `SUMMARY.md` |
+
+**Test results at completion:** Rust tests green (unchanged), `tsc --noEmit` clean, **268 Vitest tests** (39 files) — all passing (baseline 254; +14 new, no pre-existing test removed).
+
+**Open verification note:** P11-05 "zero empty space" and P11-03 "perceptually instant highlight" are covered by structural proxies in tests (`items-start`, `aspect-video`, `aria-current` from `pendingSelection`); recommend a manual two-monitor pass (F10→Aviso-over-black→clear→F10; rapid strophe/item clicking; tight 16:9 cards).
+
+---
 
 ## Phase 10 Completion Summary (2026-06-02)
 

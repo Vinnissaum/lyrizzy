@@ -184,28 +184,34 @@ export const PresentationApp: React.FC = () => {
   const background = state?.background;
   const frozen = mode === "frozen";
 
-  // Render precedence (P10-01):
-  //   1. blank  → solid black (intentional F10 blackout beats everything)
-  //   2. overlay → render the overlay (now reachable from idle too)
-  //   3. idle   → countdown if armed, else "Aguardando apresentação…"
-  //   4. live/frozen → set content (below)
+  // Render precedence (D-45):
+  //   1. announcement-overlay → draws OVER blackout (operator must reach the
+  //      congregation even while blanked; D-45 / OD-1)
+  //   2. blank  → solid black (intentional F10 blackout beats media/webView)
+  //   3. other-overlay (media/webView) → render the overlay (loses to blank)
+  //   4. idle   → countdown if armed, else "Aguardando apresentação…"
+  //   5. live/frozen → set content (below)
+  const overlay = state?.overlay;
+
+  // Announcement overlay wins over blackout — lift it above the blank return.
+  if (overlay?.type === "announcement") {
+    const { announcementPreset } = useSettingsStore.getState();
+    return (
+      <div className="h-screen w-screen overflow-hidden">
+        <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
+          <SlideContent itemType="blank" appearance={appearance} warningText={overlay.text} />
+        </SlideStage>
+      </div>
+    );
+  }
+
   if (mode === "blank") {
     return <div className="h-screen bg-black" />;
   }
 
-  // Overlay takes precedence over idle and normal set content (but not over blank)
-  const overlay = state?.overlay;
+  // Media/webView overlays take precedence over idle and normal set content,
+  // but stay BELOW blank (blackout still wins for them).
   if (overlay) {
-    if (overlay.type === "announcement") {
-      const { announcementPreset } = useSettingsStore.getState();
-      return (
-        <div className="h-screen w-screen overflow-hidden">
-          <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
-            <SlideContent itemType="blank" appearance={appearance} warningText={overlay.text} />
-          </SlideStage>
-        </div>
-      );
-    }
     if (overlay.type === "media") {
       return <QuickMediaRenderer mediaId={overlay.mediaId} />;
     }

@@ -1,10 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
-import { goToItem } from "../../api/commands";
 import { ItemTypeIcon, itemLabel } from "./itemMeta";
 import { SlideStage } from "./SlideStage";
 import { SlideContent } from "./SlideContent";
@@ -39,20 +38,20 @@ interface SlideCardProps {
   itemType: string;
   activeItem: SetItem;
   appearance: ChipAppearance;
-  onClick: () => void;
+  onSelect: (slideIdx: number) => void;
   activeRef?: React.RefCallback<HTMLButtonElement>;
 }
 
-const SlideCard: React.FC<SlideCardProps> = ({
+const SlideCard = React.memo<SlideCardProps>(function SlideCard({
   slide,
   slideIdx,
   isActive,
   itemType,
   activeItem,
   appearance,
-  onClick,
+  onSelect,
   activeRef,
-}) => {
+}) {
   const { t } = useTranslation();
 
   const isBlackout = slide.sectionLabel === BLACKOUT_SENTINEL;
@@ -73,16 +72,16 @@ const SlideCard: React.FC<SlideCardProps> = ({
   return (
     <button
       ref={isActive ? activeRef : undefined}
-      onClick={onClick}
+      onClick={() => onSelect(slideIdx)}
       aria-current={isActive ? "true" : undefined}
-      className={`flex flex-col w-full text-left transition-colors rounded-md overflow-hidden border ${
+      className={`aspect-video w-full text-left transition-colors rounded-md overflow-hidden border relative ${
         isActive
           ? "ring-2 ring-primary bg-primary/10 border-primary"
           : "border-border hover:bg-surface-2"
       }`}
     >
-      {/* Faithful 16:9 thumbnail */}
-      <div className="aspect-video w-full overflow-hidden rounded relative">
+      {/* Faithful 16:9 thumbnail — the button itself is the 16:9 box */}
+      <div className="w-full h-full overflow-hidden rounded relative">
         <SlideStage backgroundColor={bgColor}>
           <SlideContent
             itemType={slideContentItemType}
@@ -101,13 +100,15 @@ const SlideCard: React.FC<SlideCardProps> = ({
       </div>
     </button>
   );
-};
+});
 
 // ─── StrophesGrid ─────────────────────────────────────────────────────────────
 
 export const StrophesGrid: React.FC = () => {
   const { t } = useTranslation();
   const { state } = usePresentationStore();
+  const pendingSelection = usePresentationStore((s) => s.pendingSelection);
+  const selectSlide = usePresentationStore((s) => s.selectSlide);
   const { songs } = useLibraryStore();
   const { media } = useMediaStore();
 
@@ -120,15 +121,26 @@ export const StrophesGrid: React.FC = () => {
   const presentationLineSpacing = useSettingsStore((s) => s.presentationLineSpacing);
   const presentationBoldLevel = useSettingsStore((s) => s.presentationBoldLevel);
 
-  const appearance: ChipAppearance = {
-    fontFamily: presentationFontFamily,
-    fontSize: presentationFontSize,
-    preset: presentationPreset,
-    position: presentationPosition,
-    margin: presentationMargin,
-    lineSpacing: presentationLineSpacing,
-    boldLevel: presentationBoldLevel,
-  };
+  const appearance: ChipAppearance = useMemo(
+    () => ({
+      fontFamily: presentationFontFamily,
+      fontSize: presentationFontSize,
+      preset: presentationPreset,
+      position: presentationPosition,
+      margin: presentationMargin,
+      lineSpacing: presentationLineSpacing,
+      boldLevel: presentationBoldLevel,
+    }),
+    [
+      presentationFontFamily,
+      presentationFontSize,
+      presentationPreset,
+      presentationPosition,
+      presentationMargin,
+      presentationLineSpacing,
+      presentationBoldLevel,
+    ],
+  );
 
   const activeCardRef = useRef<HTMLButtonElement | null>(null);
 
@@ -137,9 +149,26 @@ export const StrophesGrid: React.FC = () => {
   const allSlidesPerItem = state?.allSlidesPerItem;
   const items = state?.set?.items ?? [];
 
+  // Optimistic highlight: prefer the pending selection (when it targets the
+  // current item) so the operator sees the click land instantly, before the
+  // authoritative state round-trips back.
+  const effectiveSlideIdx =
+    pendingSelection && pendingSelection.itemIndex === currentItemIndex
+      ? pendingSelection.slideIndex
+      : currentSlideIndex;
+
+  // ONE stable handler shared by every card so React.memo isn't defeated.
+  const handleSelect = useCallback(
+    (slideIdx: number) => {
+      const idx = usePresentationStore.getState().state?.currentItemIndex ?? 0;
+      selectSlide(idx, slideIdx);
+    },
+    [selectSlide],
+  );
+
   useEffect(() => {
     activeCardRef.current?.scrollIntoView({ block: "nearest" });
-  }, [currentSlideIndex]);
+  }, [effectiveSlideIdx]);
 
   const activeItem = items[currentItemIndex];
   const slides = allSlidesPerItem?.[currentItemIndex] ?? [];
@@ -177,23 +206,19 @@ export const StrophesGrid: React.FC = () => {
   return (
     <div
       data-testid="strophes-grid"
-      className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2 p-2 overflow-y-auto h-full"
+      className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] items-start gap-2 p-2 overflow-y-auto h-full"
     >
       {slides.map((slide, slideIdx) => (
         <SlideCard
           key={slideIdx}
           slide={slide}
           slideIdx={slideIdx}
-          isActive={slideIdx === currentSlideIndex}
+          isActive={slideIdx === effectiveSlideIdx}
           itemType={activeItem.itemType}
           activeItem={activeItem}
           appearance={appearance}
-          activeRef={slideIdx === currentSlideIndex ? setRef : undefined}
-          onClick={() => {
-            const live = usePresentationStore.getState().state;
-            const idx = live?.currentItemIndex ?? 0;
-            goToItem(idx, slideIdx).catch(console.error);
-          }}
+          activeRef={slideIdx === effectiveSlideIdx ? setRef : undefined}
+          onSelect={handleSelect}
         />
       ))}
     </div>

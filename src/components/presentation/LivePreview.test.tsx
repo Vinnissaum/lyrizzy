@@ -189,6 +189,30 @@ describe("LivePreview", () => {
     expect(screen.getByText("Bem-vindos ao culto!")).toBeInTheDocument();
   });
 
+  it("shows announcement overlay over blackout when mode === 'blank'", () => {
+    mockStores({
+      ...baseState(),
+      mode: "blank",
+      overlay: { type: "announcement", text: "Anúncio importante" },
+    });
+    render(<LivePreview />);
+    expect(screen.getByText("Anúncio importante")).toBeInTheDocument();
+  });
+
+  it("shows BLACKOUT (not media) when mode === 'blank' with a media overlay", () => {
+    mockStores(
+      {
+        ...baseState(),
+        mode: "blank",
+        overlay: { type: "media", mediaId: "img-1" },
+      },
+      [mockImageMedia]
+    );
+    const { container } = render(<LivePreview />);
+    expect(screen.getByText("BLACKOUT")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
   it("renders song lines through the stage for active song item", () => {
     mockStores({
       ...baseState(),

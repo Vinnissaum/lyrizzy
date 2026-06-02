@@ -83,26 +83,40 @@ vi.mock("../../stores/media", () => ({
   ),
 }));
 
-vi.mock("../../stores/settings", () => ({
-  PRESENTATION_FONT_SIZE_KEY: "presentation.font_size",
-  useSettingsStore: Object.assign(
-    () => ({
-      transitionMs: 0,
-      reduceMotion: true,
-      setLocale: vi.fn(),
-      loadLocale: vi.fn(),
-      presentationFontSize: "lg",
-      presentationFontFamily: "sans",
-      presentationPreset: "preto-branco",
-      presentationPosition: "center",
-      presentationMargin: "lg",
-      presentationLineSpacing: "normal",
-      presentationBoldLevel: "medium",
-      loadPresentationSettings: vi.fn(),
-    }),
-    { getState: () => ({ announcementPreset: "preto-branco" }) }
-  ),
-}));
+vi.mock("../../stores/settings", () => {
+  const settingsState = {
+    transitionMs: 0,
+    reduceMotion: true,
+    setLocale: vi.fn(),
+    loadLocale: vi.fn(),
+    presentationFontSize: "lg",
+    presentationFontFamily: "sans",
+    presentationPreset: "preto-branco",
+    presentationPosition: "center",
+    presentationMargin: "lg",
+    presentationLineSpacing: "normal",
+    presentationBoldLevel: "medium",
+    // Announcement appearance — consumed by WarningBody via selector calls.
+    announcementFontFamily: "sans",
+    announcementFontSize: "lg",
+    announcementPreset: "preto-branco",
+    announcementPosition: "center",
+    announcementMargin: "lg",
+    announcementLineSpacing: "normal",
+    announcementBoldLevel: "medium",
+    loadPresentationSettings: vi.fn(),
+  };
+  return {
+    PRESENTATION_FONT_SIZE_KEY: "presentation.font_size",
+    useSettingsStore: Object.assign(
+      // Honor selector calls (WarningBody uses `useSettingsStore(s => s.x)`)
+      // while still supporting bare-object destructuring in PresentationApp.
+      (selector?: (s: typeof settingsState) => unknown) =>
+        selector ? selector(settingsState) : settingsState,
+      { getState: () => settingsState }
+    ),
+  };
+});
 
 vi.mock("../../api/commands", () => ({
   onLocaleChanged: vi.fn(() => Promise.resolve(() => {})),
@@ -166,7 +180,7 @@ describe("PresentationApp — overlay render precedence (P10-01)", () => {
     expect(container.querySelector("img")).not.toBeNull();
   });
 
-  it("blank beats overlay — stays solid black even with an overlay set", () => {
+  it("blank beats media overlay — stays solid black even with an overlay set", () => {
     mediaMock = [mediaItem("m1")];
     presStateMock = {
       mode: "blank",
@@ -184,6 +198,65 @@ describe("PresentationApp — overlay render precedence (P10-01)", () => {
     // Solid-black blank div.
     const black = container.querySelector("div.h-screen.bg-black");
     expect(black).not.toBeNull();
+  });
+});
+
+describe("PresentationApp — announcement-over-blackout precedence (D-45 / P11-01)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    presStateMock = liveState;
+    mediaMock = [];
+  });
+
+  it("announcement overlay renders OVER blank — text shown, not bare blackout", () => {
+    presStateMock = {
+      mode: "blank",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+      overlay: { type: "announcement", text: "Culto de oração às 19h" },
+    };
+
+    render(<PresentationApp />);
+
+    // The announcement text is rendered even though the mode is blank.
+    expect(screen.getByText("Culto de oração às 19h")).toBeInTheDocument();
+  });
+
+  it("blank beats media overlay — announcement scope only, no announcement text", () => {
+    mediaMock = [mediaItem("m1")];
+    presStateMock = {
+      mode: "blank",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+      overlay: { type: "media", mediaId: "m1" },
+    };
+
+    const { container } = render(<PresentationApp />);
+
+    // Media overlay loses to blackout: no media element, no announcement text.
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.queryByText("Culto de oração às 19h")).toBeNull();
+    // Solid-black blank div remains.
+    const black = container.querySelector("div.h-screen.bg-black");
+    expect(black).not.toBeNull();
+  });
+
+  it("blank with no overlay stays solid black (no regression)", () => {
+    presStateMock = {
+      mode: "blank",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+    };
+
+    const { container } = render(<PresentationApp />);
+
+    const black = container.querySelector("div.h-screen.bg-black");
+    expect(black).not.toBeNull();
+    // Nothing else rendered — no overlay, no waiting text.
+    expect(screen.queryByText("Aguardando apresentação…")).toBeNull();
   });
 });
 

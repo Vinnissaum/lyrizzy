@@ -45,6 +45,26 @@ vi.mock("../../api/commands", () => ({
   goToItem: vi.fn().mockResolvedValue({}),
 }));
 
+// ─── Store mock helper ─────────────────────────────────────────────────────────
+//
+// The component accesses the presentation store in two ways:
+//   1. Destructured:   const { state } = usePresentationStore();
+//   2. Selector-based: usePresentationStore((s) => s.pendingSelection / s.selectSlide)
+// `setStore` wires a single mock implementation that satisfies both: called with
+// no/ignored arg it returns the full store object; called with a selector it
+// applies the selector to that object.
+const setStore = (store: Record<string, unknown>) => {
+  vi.mocked(usePresentationStore).mockImplementation((selector?: unknown) => {
+    if (typeof selector === "function") {
+      return (selector as (s: Record<string, unknown>) => unknown)(store);
+    }
+    return store;
+  });
+  Object.assign(vi.mocked(usePresentationStore), {
+    getState: vi.fn().mockReturnValue(store),
+  });
+};
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -81,7 +101,6 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
-import { goToItem } from "../../api/commands";
 import type { PresentationState, ServiceSet } from "../../types";
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
@@ -145,10 +164,8 @@ describe("StrophesGrid", () => {
       return defaultAppearance;
     });
 
-    // Provide a default getState so tests that don't override it don't crash on click
-    Object.assign(vi.mocked(usePresentationStore), {
-      getState: vi.fn().mockReturnValue({ state: makeState() }),
-    });
+    // Provide a sensible default store (overridden per-test via setStore).
+    setStore({ state: makeState(), pendingSelection: null, selectSlide: vi.fn() });
     vi.mocked(useLibraryStore).mockReturnValue({
       songs: [
         {
@@ -171,9 +188,7 @@ describe("StrophesGrid", () => {
   // ── Test 1: Song with 6 slides renders 6 cards ───────────────────────────
 
   it("renders 6 cards for a song with 6 slides", () => {
-    vi.mocked(usePresentationStore).mockReturnValue({
-      state: makeState(),
-    } as ReturnType<typeof usePresentationStore>);
+    setStore({ state: makeState(), pendingSelection: null, selectSlide: vi.fn() });
 
     render(<StrophesGrid />);
 
@@ -185,9 +200,11 @@ describe("StrophesGrid", () => {
   // ── Test 2: Active slide has aria-current="true" ─────────────────────────
 
   it("sets aria-current on the active slide card", () => {
-    vi.mocked(usePresentationStore).mockReturnValue({
+    setStore({
       state: makeState({ currentSlideIndex: 2 }),
-    } as ReturnType<typeof usePresentationStore>);
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
 
     render(<StrophesGrid />);
 
@@ -197,16 +214,12 @@ describe("StrophesGrid", () => {
     expect(active[0].textContent).toContain("Line 3");
   });
 
-  // ── Test 3: Clicking card N calls goToItem(currentItemIndex, N) ──────────
+  // ── Test 3: Clicking card N calls selectSlide(currentItemIndex, N) ───────
 
-  it("calls goToItem with (currentItemIndex, slideIndex) when a card is clicked", () => {
+  it("calls selectSlide with (currentItemIndex, slideIndex) when a card is clicked", () => {
+    const selectSlide = vi.fn();
     const liveState = makeState({ currentItemIndex: 0 });
-    vi.mocked(usePresentationStore).mockReturnValue({
-      state: liveState,
-    } as ReturnType<typeof usePresentationStore>);
-    Object.assign(vi.mocked(usePresentationStore), {
-      getState: vi.fn().mockReturnValue({ state: liveState }),
-    });
+    setStore({ state: liveState, pendingSelection: null, selectSlide });
 
     render(<StrophesGrid />);
 
@@ -214,18 +227,26 @@ describe("StrophesGrid", () => {
     const buttons = grid.querySelectorAll("button");
     fireEvent.click(buttons[3]);
 
-    expect(goToItem).toHaveBeenCalledWith(0, 3);
+    expect(selectSlide).toHaveBeenCalledWith(0, 3);
   });
 
   // ── Test 3b: Closure-staleness — getState() is read at click time ────────
 
   it("uses getState() currentItemIndex at click time, not the render-time closure", () => {
-    // Render with currentItemIndex=0
-    vi.mocked(usePresentationStore).mockReturnValue({
-      state: makeState({ currentItemIndex: 0 }),
-    } as ReturnType<typeof usePresentationStore>);
-    // Store updates to currentItemIndex=2 before the click fires
+    const selectSlide = vi.fn();
+    // Render with currentItemIndex=0, but the live store has advanced to 2.
     const liveState = makeState({ currentItemIndex: 2 });
+    vi.mocked(usePresentationStore).mockImplementation((selector?: unknown) => {
+      const renderStore = {
+        state: makeState({ currentItemIndex: 0 }),
+        pendingSelection: null,
+        selectSlide,
+      };
+      if (typeof selector === "function") {
+        return (selector as (s: Record<string, unknown>) => unknown)(renderStore);
+      }
+      return renderStore;
+    });
     Object.assign(vi.mocked(usePresentationStore), {
       getState: vi.fn().mockReturnValue({ state: liveState }),
     });
@@ -237,8 +258,8 @@ describe("StrophesGrid", () => {
     fireEvent.click(buttons[3]);
 
     // Must use the live index (2), not the stale render-time index (0)
-    expect(goToItem).toHaveBeenCalledWith(2, 3);
-    expect(goToItem).not.toHaveBeenCalledWith(0, 3);
+    expect(selectSlide).toHaveBeenCalledWith(2, 3);
+    expect(selectSlide).not.toHaveBeenCalledWith(0, 3);
   });
 
   // ── Test 4: Countdown item renders a single info card ───────────────────
@@ -251,13 +272,15 @@ describe("StrophesGrid", () => {
       },
     });
 
-    vi.mocked(usePresentationStore).mockReturnValue({
+    setStore({
       state: makeState(
         {},
         countdownSet,
         [[{ lines: [], sectionLabel: "", sectionId: "" }]],
       ),
-    } as ReturnType<typeof usePresentationStore>);
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
 
     render(<StrophesGrid />);
 
@@ -268,9 +291,11 @@ describe("StrophesGrid", () => {
   // ── Test 5: Empty slides array → empty-state text ───────────────────────
 
   it("shows empty-state text when slides array is empty", () => {
-    vi.mocked(usePresentationStore).mockReturnValue({
+    setStore({
       state: makeState({}, makeSet("song", { songId: "song-1" }), [[]]),
-    } as ReturnType<typeof usePresentationStore>);
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
 
     render(<StrophesGrid />);
 
@@ -288,9 +313,11 @@ describe("StrophesGrid", () => {
       { lines: [], sectionLabel: "", sectionId: "" },
     ];
 
-    vi.mocked(usePresentationStore).mockReturnValue({
+    setStore({
       state: makeState({}, slideshowSet, [slideshowSlides]),
-    } as ReturnType<typeof usePresentationStore>);
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
 
     vi.mocked(useMediaStore).mockReturnValue({
       media: [
@@ -322,9 +349,11 @@ describe("StrophesGrid", () => {
       { lines: [], sectionLabel: "__blackout__", sectionId: "s-blackout" },
     ];
 
-    vi.mocked(usePresentationStore).mockReturnValue({
+    setStore({
       state: makeState({}, makeSet("song", { songId: "song-1" }), [slidesWithBlackout]),
-    } as ReturnType<typeof usePresentationStore>);
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
 
     render(<StrophesGrid />);
 
@@ -332,5 +361,57 @@ describe("StrophesGrid", () => {
     expect(screen.getByText("presentation.blackoutSlide")).toBeInTheDocument();
     // The normal slide badge still shows the section label
     expect(screen.getByText("Verse 1")).toBeInTheDocument();
+  });
+
+  // ── Test 8 (P11-03): pendingSelection drives the optimistic highlight ────
+
+  it("highlights the pendingSelection slide even when state.currentSlideIndex differs", () => {
+    setStore({
+      // Authoritative state still points at slide 0…
+      state: makeState({ currentItemIndex: 0, currentSlideIndex: 0 }),
+      // …but an optimistic selection targets slide 4 of the current item.
+      pendingSelection: { itemIndex: 0, slideIndex: 4 },
+      selectSlide: vi.fn(),
+    });
+
+    render(<StrophesGrid />);
+
+    const active = document.querySelectorAll('[aria-current="true"]');
+    expect(active).toHaveLength(1);
+    // Slide index 4 → "Line 5" in the thumbnail content
+    expect(active[0].textContent).toContain("Line 5");
+  });
+
+  // ── Test 9 (P11-03): clicking a card calls selectSlide(itemIndex, slideIdx) ──
+
+  it("clicking a card calls selectSlide with the live item index and slide index", () => {
+    const selectSlide = vi.fn();
+    setStore({
+      state: makeState({ currentItemIndex: 0 }),
+      pendingSelection: null,
+      selectSlide,
+    });
+
+    render(<StrophesGrid />);
+
+    const grid = screen.getByTestId("strophes-grid");
+    const buttons = grid.querySelectorAll("button");
+    fireEvent.click(buttons[2]);
+
+    expect(selectSlide).toHaveBeenCalledWith(0, 2);
+  });
+
+  // ── Test 10 (P11-05): grid crops cards to 16:9 with no bottom gap ───────
+
+  it("renders a tight 16:9 grid (items-start container, aspect-video cards)", () => {
+    setStore({ state: makeState(), pendingSelection: null, selectSlide: vi.fn() });
+
+    render(<StrophesGrid />);
+
+    const grid = screen.getByTestId("strophes-grid");
+    expect(grid.className).toContain("items-start");
+
+    const firstCard = grid.querySelector("button");
+    expect(firstCard?.className).toContain("aspect-video");
   });
 });

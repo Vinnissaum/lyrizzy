@@ -73,6 +73,24 @@ export const LivePreview: React.FC = () => {
 
   const mode = state.mode;
 
+  // ── Announcement overlay (takes precedence over blackout) ──────────────────
+  if (state.overlay?.type === "announcement") {
+    return (
+      <div
+        data-testid="live-preview"
+        className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+      >
+        <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
+          <SlideContent
+            itemType="blank"
+            appearance={appearance}
+            warningText={state.overlay.text}
+          />
+        </SlideStage>
+      </div>
+    );
+  }
+
   // ── Blackout ──────────────────────────────────────────────────────────────
   if (mode === "blank") {
     return (
@@ -88,23 +106,6 @@ export const LivePreview: React.FC = () => {
   // ── Overlay ───────────────────────────────────────────────────────────────
   if (state.overlay) {
     const overlay = state.overlay;
-
-    if (overlay.type === "announcement") {
-      return (
-        <div
-          data-testid="live-preview"
-          className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
-        >
-          <SlideStage backgroundColor={PRESET_COLORS[announcementPreset].bg}>
-            <SlideContent
-              itemType="blank"
-              appearance={appearance}
-              warningText={overlay.text}
-            />
-          </SlideStage>
-        </div>
-      );
-    }
 
     if (overlay.type === "media") {
       const mediaRecord = media.find((m) => m.id === overlay.mediaId);

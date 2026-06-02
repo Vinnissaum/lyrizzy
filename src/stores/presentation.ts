@@ -11,17 +11,27 @@ import type { PresentationMode, PresentationState } from "../types";
 
 interface PresentationStore {
   state: PresentationState | null;
+  /**
+   * Optimistic selection target. Set synchronously by `selectSlide` so the UI
+   * can highlight instantly, then cleared on the next authoritative update
+   * (goToItem resolve/reject OR any `state_changed` event). Kept SEPARATE from
+   * `state` so the LIVE preview/projection always read the truthful projector
+   * state, never the optimistic guess.
+   */
+  pendingSelection: { itemIndex: number; slideIndex: number } | null;
   isSubscribed: boolean;
   subscribe: () => Promise<() => void>;
   syncState: () => Promise<void>;
   next: () => Promise<void>;
   prev: () => Promise<void>;
   jumpToItem: (itemIndex: number) => Promise<void>;
+  selectSlide: (itemIndex: number, slideIndex: number) => Promise<void>;
   setMode: (mode: PresentationMode) => Promise<void>;
 }
 
 export const usePresentationStore = create<PresentationStore>((set) => ({
   state: null,
+  pendingSelection: null,
   isSubscribed: false,
 
   subscribe: async () => {
@@ -42,7 +52,9 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
     } catch (_) {}
 
     const unlistenPromise = onStateChanged((newState) => {
-      set({ state: newState });
+      // Any authoritative update (including nav from the other window) clears
+      // a standing optimistic selection.
+      set({ state: newState, pendingSelection: null });
     });
 
     return async () => {
@@ -83,6 +95,18 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
       set({ state: newState });
     } catch (err) {
       console.error("Falha ao ir para item:", err);
+    }
+  },
+
+  selectSlide: async (itemIndex: number, slideIndex: number) => {
+    // Optimistic: highlight the target immediately, before the round-trip.
+    set({ pendingSelection: { itemIndex, slideIndex } });
+    try {
+      const newState = await goToItem(itemIndex, slideIndex);
+      set({ state: newState, pendingSelection: null });
+    } catch (err) {
+      set({ pendingSelection: null });
+      console.error("Falha ao selecionar slide:", err);
     }
   },
 

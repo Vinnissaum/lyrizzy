@@ -240,3 +240,21 @@
 | P10-06 | Operator close → presentation close (no orphan); presentation-alone close leaves operator | Done |
 
 **Deliverable:** No path leaves the projector frozen on "Aguardando" while an overlay is set; Esc reliably escapes from idle/live/blank/frozen/overlay; zero `((...))` or unstripped parens on title slides; window-close/panic events logged; operator close never orphans the presentation window.
+
+---
+
+## Phase 11: Operator Polish — DONE
+
+**Goal:** Fix three field-reported operator-experience defects: announcement (Aviso) invisible over a blacked-out projector, sluggish operator-side selection highlight, and loose strophe preview cards with empty space below the 16:9 slide.
+**Completed:** 2026-06-02.
+**Spec:** `.specs/features/phase11-operator-polish/spec.md` (5 requirements P11-01..P11-05). Frontend-only — no Rust/schema/IPC change.
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P11-01 | Announcement overlay renders over blackout in the projection window (render precedence: announcement → blank → other-overlay → idle → live) | Done |
+| P11-02 | LIVE preview mirrors announcement-over-blackout; Oferta/Câmera still lose to blackout | Done |
+| P11-03 | Optimistic operator selection — instant strophe/set-item highlight, reconciled to backend `state_changed` | Done |
+| P11-04 | Memoized `SlideCard` (stable `appearance`/`onSelect`) so the full strophe grid does not re-render per state change | Done |
+| P11-05 | Strophe preview cards crop tightly to 16:9 (aspect-ratio on outer button + grid `items-start`), no empty space below | Done |
+
+**Deliverable:** Operator shows/hides an Aviso over a blacked-out projector without ever toggling blackout (clearing restores black); strophe/set-item highlight moves the instant you click; strophe cards are tight 16:9 rectangles, pixel-faithful to projection.

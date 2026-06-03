@@ -1,0 +1,30 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Lyrizzy app icon. Matches the launch splash: deep-charcoal rounded square
+    with a soft violet glow and the Space Grotesk "L" in the indigo→violet brand
+    gradient (#6366F1 → #A78BFA). The "L" is the real Space Grotesk Bold glyph
+    outline (baked to a vector path), so this re-rasterizes with no font needed.
+  -->
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.34" cy="0.26" r="0.85">
+      <stop offset="0" stop-color="#8B8CF7" stop-opacity="0.40"/>
+      <stop offset="0.55" stop-color="#7C7BF5" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#7C7BF5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#16181F"/>
+      <stop offset="1" stop-color="#0B0C10"/>
+    </linearGradient>
+    <clipPath id="rr"><rect x="0" y="0" width="1024" height="1024" rx="224" ry="224"/></clipPath>
+  </defs>
+  <g clip-path="url(#rr)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+    <path d="M350.57 762 L350.57 262 L444.86 262 L444.86 676.29 L673.43 676.29 L673.43 762 Z"
+          fill="url(#brand)"/>
+  </g>
+</svg>

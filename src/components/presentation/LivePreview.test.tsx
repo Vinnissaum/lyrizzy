@@ -223,6 +223,60 @@ describe("LivePreview", () => {
     expect(screen.getByText("Glória")).toBeInTheDocument();
   });
 
+  // ── Optimistic preview (P11-04) ────────────────────────────────────────────
+  // A standing pendingSelection should drive the preview instantly, before the
+  // goToItem round-trip updates the authoritative currentSlide.
+  function mockStoresWithPending(
+    state: PresentationState,
+    pendingSelection: { itemIndex: number; slideIndex: number } | null,
+    mediaList: Media[] = []
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(usePresentationStore).mockImplementation((selector?: (s: any) => unknown) => {
+      const store = { state, pendingSelection };
+      if (typeof selector === "function") return selector(store) as ReturnType<typeof usePresentationStore>;
+      return store as ReturnType<typeof usePresentationStore>;
+    });
+    vi.mocked(useMediaStore).mockReturnValue({
+      media: mediaList,
+      refresh: vi.fn(),
+    } as ReturnType<typeof useMediaStore>);
+  }
+
+  it("optimistically renders the pending slide before the authoritative state catches up", () => {
+    const state: PresentationState = {
+      ...baseState(),
+      // Authoritative state still sits on the first slide…
+      currentSlideIndex: 0,
+      currentSlide: { lines: ["Old slide"], sectionLabel: "Verse", sectionId: "s1" },
+      allSlidesPerItem: [
+        [
+          { lines: ["Old slide"], sectionLabel: "Verse", sectionId: "s1" },
+          { lines: ["Pending slide"], sectionLabel: "Chorus", sectionId: "s2" },
+        ],
+      ],
+    };
+    // …but the operator just clicked slide 1.
+    mockStoresWithPending(state, { itemIndex: 0, slideIndex: 1 });
+    render(<LivePreview />);
+    expect(screen.getByText("Pending slide")).toBeInTheDocument();
+    expect(screen.queryByText("Old slide")).not.toBeInTheDocument();
+  });
+
+  it("ignores the optimistic slide while an overlay is active (overlay keeps the projector)", () => {
+    const state: PresentationState = {
+      ...baseState(),
+      overlay: { type: "announcement", text: "Anúncio" },
+      allSlidesPerItem: [
+        [{ lines: ["Pending slide"], sectionLabel: "Verse", sectionId: "s1" }],
+      ],
+    };
+    mockStoresWithPending(state, { itemIndex: 0, slideIndex: 0 });
+    render(<LivePreview />);
+    expect(screen.getByText("Anúncio")).toBeInTheDocument();
+    expect(screen.queryByText("Pending slide")).not.toBeInTheDocument();
+  });
+
   it("renders a placeholder card (no <video> element) when active item is a video media", () => {
     const state: PresentationState = {
       ...baseState(),

@@ -9,6 +9,28 @@ import {
 } from "../api/commands";
 import type { PresentationMode, PresentationState } from "../types";
 
+/**
+ * Reconcile an incoming state payload with the slides we already hold.
+ *
+ * To keep the IPC round-trip small, the backend ships `allSlidesPerItem` (every
+ * slide body of every item) ONLY on set (re)load and on hydration. Navigation
+ * and overlay events arrive with it empty. The slide bodies never change between
+ * loads, so when an incoming patch omits them we keep the last-known set — as
+ * long as we're still on the same set. A different/cleared set takes the
+ * incoming value verbatim, so stale slides can never leak across loads.
+ */
+function reconcileSlides(
+  prev: PresentationState | null,
+  next: PresentationState,
+): PresentationState {
+  if (next.allSlidesPerItem && next.allSlidesPerItem.length > 0) return next;
+  const sameSet = !!prev?.set?.id && prev.set.id === next.set?.id;
+  if (sameSet && prev?.allSlidesPerItem?.length) {
+    return { ...next, allSlidesPerItem: prev.allSlidesPerItem };
+  }
+  return next;
+}
+
 interface PresentationStore {
   state: PresentationState | null;
   /**
@@ -48,13 +70,13 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
     // Hydrate immediately
     try {
       const current = await getPresentationState();
-      set({ state: current });
+      set((s) => ({ state: reconcileSlides(s.state, current) }));
     } catch (_) {}
 
     const unlistenPromise = onStateChanged((newState) => {
       // Any authoritative update (including nav from the other window) clears
       // a standing optimistic selection.
-      set({ state: newState, pendingSelection: null });
+      set((s) => ({ state: reconcileSlides(s.state, newState), pendingSelection: null }));
     });
 
     return async () => {
@@ -65,7 +87,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
   syncState: async () => {
     try {
       const current = await getPresentationState();
-      set({ state: current });
+      set((s) => ({ state: reconcileSlides(s.state, current) }));
     } catch (err) {
       console.error("Falha ao sincronizar estado de apresentação:", err);
     }
@@ -74,7 +96,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
   next: async () => {
     try {
       const newState = await nextSlide();
-      set({ state: newState });
+      set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao avançar slide:", err);
     }
@@ -83,7 +105,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
   prev: async () => {
     try {
       const newState = await prevSlide();
-      set({ state: newState });
+      set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao voltar slide:", err);
     }
@@ -92,7 +114,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
   jumpToItem: async (itemIndex: number) => {
     try {
       const newState = await goToItem(itemIndex, 0);
-      set({ state: newState });
+      set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao ir para item:", err);
     }
@@ -103,7 +125,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
     set({ pendingSelection: { itemIndex, slideIndex } });
     try {
       const newState = await goToItem(itemIndex, slideIndex);
-      set({ state: newState, pendingSelection: null });
+      set((s) => ({ state: reconcileSlides(s.state, newState), pendingSelection: null }));
     } catch (err) {
       set({ pendingSelection: null });
       console.error("Falha ao selecionar slide:", err);
@@ -113,7 +135,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
   setMode: async (mode: PresentationMode) => {
     try {
       const newState = await setPresentationMode(mode);
-      set({ state: newState });
+      set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao alterar modo:", err);
     }

@@ -38,6 +38,7 @@ const FrameTag: React.FC<{ label: string }> = ({ label }) => (
 export const LivePreview: React.FC = () => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
+  const pendingSelection = usePresentationStore((s) => s.pendingSelection);
   const { media } = useMediaStore();
 
   // Build ChipAppearance from global presentation settings.
@@ -72,6 +73,70 @@ export const LivePreview: React.FC = () => {
   }
 
   const mode = state.mode;
+
+  // ── Optimistic preview ─────────────────────────────────────────────────────
+  // Mirror StrophesGrid's optimistic highlight: when the operator clicks a
+  // slide, show it here immediately instead of waiting for the goToItem
+  // round-trip (which re-serializes the whole PresentationState). This is the
+  // operator's preview only — the projector renders from the authoritative
+  // `state.currentSlide` on its own window, so it stays truthful.
+  //
+  // Guarded to the cases goToItem makes faithful on resolve: song/slideshow
+  // slides that actually exist, and never while an overlay is active (overlays
+  // survive navigation and keep owning the projector). goToItem also wakes a
+  // blanked screen to live, so we deliberately bypass the blank branch below.
+  if (pendingSelection && !state.overlay) {
+    const pItem = state.set.items[pendingSelection.itemIndex];
+    const pSlide =
+      state.allSlidesPerItem?.[pendingSelection.itemIndex]?.[
+        pendingSelection.slideIndex
+      ];
+    if (pItem && pSlide && pItem.itemType === "slide_show") {
+      return (
+        <div
+          data-testid="live-preview"
+          className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+        >
+          <SlideStage>
+            <SlideContent
+              itemType="slide_show"
+              appearance={appearance}
+              previewMode
+              slideshowMediaId={pItem.mediaId ?? ""}
+              slideshowIndex={pendingSelection.slideIndex}
+            />
+          </SlideStage>
+        </div>
+      );
+    }
+    if (pItem && pSlide && pItem.itemType === "song") {
+      // Background belongs to the current item; only trust it when the pending
+      // selection stays within that item (the common strophe→strophe case).
+      // A cross-item jump falls back to the preset until the round-trip lands.
+      const sameItem = pendingSelection.itemIndex === state.currentItemIndex;
+      const pBackground = sameItem ? state.background : undefined;
+      const pPresetBg = pBackground?.assetUrl
+        ? "#000000"
+        : PRESET_COLORS[appearance.preset].bg;
+      return (
+        <div
+          data-testid="live-preview"
+          className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+        >
+          <SlideStage backgroundColor={pPresetBg}>
+            <SlideContent
+              itemType="song"
+              appearance={appearance}
+              previewMode
+              slideLines={pSlide.lines}
+              sectionLabel={pSlide.sectionLabel}
+              background={pBackground}
+            />
+          </SlideStage>
+        </div>
+      );
+    }
+  }
 
   // ── Announcement overlay (takes precedence over blackout) ──────────────────
   if (state.overlay?.type === "announcement") {

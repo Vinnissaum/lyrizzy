@@ -93,3 +93,46 @@ describe("usePresentationStore — optimistic selectSlide", () => {
     expect(usePresentationStore.getState().state).toEqual(authoritative);
   });
 });
+
+describe("usePresentationStore — slide preservation across slim payloads", () => {
+  const slides = [[{ lines: ["A"], sectionLabel: "Verse", sectionId: "s1" }]];
+  const withSet = (
+    setId: string,
+    allSlidesPerItem?: PresentationState["allSlidesPerItem"],
+  ): PresentationState => ({
+    ...makeState(0, 0),
+    set: { id: setId, name: "Culto", createdAt: 0, updatedAt: 0, items: [] },
+    allSlidesPerItem,
+  });
+
+  let captured: (s: PresentationState) => void;
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    usePresentationStore.setState({ state: null, pendingSelection: null, isSubscribed: false });
+    vi.mocked(onStateChanged).mockImplementation((cb) => {
+      captured = cb;
+      return Promise.resolve(() => {});
+    });
+    // Hydrate with a loaded set that carries the full slides.
+    vi.mocked(getPresentationState).mockResolvedValue(withSet("set-1", slides));
+    await usePresentationStore.getState().subscribe();
+  });
+
+  it("keeps the last-known slides when a same-set navigation patch omits them", () => {
+    // Navigation event for the SAME set, slim (no slides).
+    captured(withSet("set-1", []));
+    expect(usePresentationStore.getState().state?.allSlidesPerItem).toBe(slides);
+  });
+
+  it("replaces slides when a payload actually carries them (set reload)", () => {
+    const newSlides = [[{ lines: ["B"], sectionLabel: "Chorus", sectionId: "s2" }]];
+    captured(withSet("set-2", newSlides));
+    expect(usePresentationStore.getState().state?.allSlidesPerItem).toBe(newSlides);
+  });
+
+  it("does not leak stale slides onto a different set", () => {
+    // A slim patch for a DIFFERENT set must not inherit the old slides.
+    captured(withSet("set-2", []));
+    expect(usePresentationStore.getState().state?.allSlidesPerItem).toEqual([]);
+  });
+});

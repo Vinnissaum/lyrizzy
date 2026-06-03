@@ -418,8 +418,15 @@ pub async fn load_set_for_presentation(
         *slides = computed_slides;
     }
     {
+        // The in-memory state is the single source of truth for NAVIGATION, which
+        // never touches the slide bodies — those live in `presentation_slides`.
+        // Keep `all_slides_per_item` OUT of it so every later navigation clone +
+        // `state_changed` emit stays small. The full slides ride along only on the
+        // load payload below (and on hydration via `get_presentation_state`).
+        let mut slim = new_state.clone();
+        slim.all_slides_per_item = Vec::new();
         let mut pres = state.presentation.write().await;
-        *pres = new_state.clone();
+        *pres = slim;
     }
 
     // Record a play row for every song in this set (idempotent per day).
@@ -561,7 +568,17 @@ pub async fn set_presentation_mode(
 pub async fn get_presentation_state(
     state: State<'_, AppState>,
 ) -> Result<PresentationState, ErrorPayload> {
-    Ok(state.presentation.read().await.clone())
+    // Hydration must carry the full slide bodies so a freshly-mounted window
+    // (e.g. the operator after a reload) can render the strophes grid. The
+    // in-memory state keeps them empty for cheap navigation, so re-attach from
+    // `presentation_slides` here. Lock order (slides → presentation) matches the
+    // navigation commands to stay deadlock-free.
+    let slides = state.presentation_slides.read().await;
+    let mut snapshot = state.presentation.read().await.clone();
+    if snapshot.all_slides_per_item.is_empty() {
+        snapshot.all_slides_per_item = slides.clone();
+    }
+    Ok(snapshot)
 }
 
 #[cfg(test)]

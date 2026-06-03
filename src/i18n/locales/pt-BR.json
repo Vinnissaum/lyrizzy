@@ -503,6 +503,11 @@
       "ptBR": "Português (Brasil)",
       "enUS": "English"
     },
+    "themeMode": {
+      "label": "Tema",
+      "light": "Claro",
+      "dark": "Escuro"
+    },
     "about": "Sobre",
     "windows": {
       "title": "Janelas",

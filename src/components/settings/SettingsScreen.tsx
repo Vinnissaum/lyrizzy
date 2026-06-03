@@ -24,6 +24,7 @@ const MARGIN_OPTIONS: Margin[] = ["none", "sm", "md", "lg", "xl"];
 const REPEAT_MODE_OPTIONS: RepeatMode[] = ["duplicate", "annotate"];
 const LINE_SPACING_OPTIONS: LineSpacing[] = ["tight", "normal", "relaxed", "loose"];
 const BOLD_LEVEL_OPTIONS: BoldLevel[] = ["normal", "medium", "semibold", "bold"];
+const THEME_OPTIONS: ("light" | "dark")[] = ["light", "dark"];
 
 const TAB_IDS = [
   "general",
@@ -198,6 +199,13 @@ export const SettingsScreen: React.FC = () => {
                   {t("settings.general")}
                 </h3>
                 <LanguagePicker />
+                <ButtonGroup
+                  label={t("settings.themeMode.label")}
+                  value={s.theme}
+                  options={THEME_OPTIONS}
+                  optionLabel={(v) => t(`settings.themeMode.${v}`)}
+                  onChange={s.setTheme}
+                />
               </div>
 
               <div className="bg-surface-2 rounded-xl p-4 space-y-4">

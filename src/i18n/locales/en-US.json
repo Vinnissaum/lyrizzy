@@ -503,6 +503,11 @@
       "ptBR": "Português (Brasil)",
       "enUS": "English"
     },
+    "themeMode": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark"
+    },
     "about": "About",
     "windows": {
       "title": "Windows",

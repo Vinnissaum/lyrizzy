@@ -6,8 +6,9 @@ import "./i18n/index";
 import i18next from "./i18n/index";
 import { invoke } from "@tauri-apps/api/core";
 
-// The app is dark-only — no theme toggle, no bootstrap. Colours come entirely
-// from the semantic tokens in index.css (@theme).
+// Operator UI supports a light/dark theme via data-theme on <html>; the
+// presentation window is always dark. The theme is applied before first render
+// (below) so there's no flash of the wrong palette.
 
 async function init() {
   // Load persisted locale before first render to avoid a flash of wrong language.
@@ -24,9 +25,18 @@ async function init() {
   let App: React.FC;
 
   if (label === "presentation") {
+    // Presentation output is always dark, independent of the operator's theme.
+    document.documentElement.dataset.theme = "dark";
     const { PresentationApp } = await import("./windows/presentation/PresentationApp");
     App = PresentationApp;
   } else {
+    // Apply the persisted operator theme before render to avoid a flash.
+    try {
+      const theme = await invoke<string>("get_setting", { key: "ui.theme" });
+      document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+    } catch {
+      document.documentElement.dataset.theme = "dark"; // setting missing → default
+    }
     const { OperatorApp } = await import("./windows/operator/OperatorApp");
     App = OperatorApp;
   }

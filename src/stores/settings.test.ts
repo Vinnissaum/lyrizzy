@@ -12,7 +12,7 @@ vi.mock("../api/commands", () => ({
   setSetting: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { getSetting } from "../api/commands";
+import { getSetting, setSetting } from "../api/commands";
 import i18next from "../i18n";
 import {
   useSettingsStore,
@@ -20,9 +20,11 @@ import {
   BLACKOUT_AFTER_SONG_KEY,
   DEFAULT_ANNOUNCEMENT_MARGIN,
   PRESENTATION_SETTING_KEYS,
+  UI_THEME_KEY,
 } from "./settings";
 
 const mockGetSetting = vi.mocked(getSetting);
+const mockSetSetting = vi.mocked(setSetting);
 const mockChangeLanguage = vi.mocked(i18next.changeLanguage);
 
 describe("useSettingsStore — loadLocale", () => {
@@ -153,6 +155,49 @@ describe("useSettingsStore — loadPresentationSettings (announcementMargin + bl
     await useSettingsStore.getState().loadPresentationSettings();
 
     expect(useSettingsStore.getState().blackoutAfterSong).toBe(true);
+  });
+});
+
+describe("useSettingsStore — theme", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useSettingsStore.setState({ theme: "dark" });
+    delete document.documentElement.dataset.theme;
+  });
+
+  it("loadTheme applies the persisted light value to <html> and store", async () => {
+    mockGetSetting.mockResolvedValue("light");
+
+    await useSettingsStore.getState().loadTheme();
+
+    expect(useSettingsStore.getState().theme).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
+
+  it("loadTheme falls back to dark for an invalid persisted value", async () => {
+    mockGetSetting.mockResolvedValue("solarized");
+
+    await useSettingsStore.getState().loadTheme();
+
+    expect(useSettingsStore.getState().theme).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("loadTheme falls back to dark when getSetting rejects", async () => {
+    mockGetSetting.mockRejectedValue(new Error("not found"));
+
+    await useSettingsStore.getState().loadTheme();
+
+    expect(useSettingsStore.getState().theme).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("setTheme updates store, applies to <html>, and persists", () => {
+    useSettingsStore.getState().setTheme("light");
+
+    expect(useSettingsStore.getState().theme).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(mockSetSetting).toHaveBeenCalledWith(UI_THEME_KEY, "light");
   });
 });
 

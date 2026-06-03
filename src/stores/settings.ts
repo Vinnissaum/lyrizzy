@@ -30,6 +30,7 @@ export const ANNOUNCEMENT_MARGIN_KEY = "announcement.margin";
 export const ANNOUNCEMENT_LINE_SPACING_KEY = "announcement.line_spacing";
 export const ANNOUNCEMENT_BOLD_LEVEL_KEY = "announcement.bold_level";
 export const BLACKOUT_AFTER_SONG_KEY = "presentation.blackout_after_song";
+export const UI_THEME_KEY = "ui.theme";
 
 // Every settings key the presentation window must reload when it changes live.
 export const PRESENTATION_SETTING_KEYS = [
@@ -59,6 +60,14 @@ const POSITION_VALUES: ScreenPosition[] = [
 ];
 const MARGIN_VALUES: Margin[] = ["none", "sm", "md", "lg", "xl"];
 const REPEAT_MODE_VALUES: RepeatMode[] = ["duplicate", "annotate"];
+type Theme = "light" | "dark";
+const THEME_VALUES: Theme[] = ["light", "dark"];
+const DEFAULT_THEME: Theme = "dark";
+
+/** Applies the operator theme to the document root. No-op for unknown values. */
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+}
 const LINE_SPACING_VALUES: LineSpacing[] = ["tight", "normal", "relaxed", "loose"];
 const BOLD_LEVEL_VALUES: BoldLevel[] = ["normal", "medium", "semibold", "bold"];
 
@@ -83,6 +92,7 @@ interface SettingsStore {
   locale: string;
   notesPanelCollapsed: boolean;
   cameraUrl: string;
+  theme: Theme;
   // Global presentation appearance
   presentationFontSize: FontSize;
   presentationFontFamily: FontFamily;
@@ -110,6 +120,8 @@ interface SettingsStore {
   loadNotesPanelCollapsed: () => Promise<void>;
   setCameraUrl: (url: string) => void;
   loadCameraUrl: () => Promise<void>;
+  setTheme: (theme: Theme) => void;
+  loadTheme: () => Promise<void>;
 
   setPresentationFontSize: (size: FontSize) => void;
   setPresentationFontFamily: (family: FontFamily) => void;
@@ -157,6 +169,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   locale: "pt-BR",
   notesPanelCollapsed: false,
   cameraUrl: "",
+  theme: DEFAULT_THEME,
   presentationFontSize: DEFAULT_FONT_SIZE,
   presentationFontFamily: DEFAULT_FONT_FAMILY,
   presentationPreset: DEFAULT_PRESET,
@@ -211,6 +224,16 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     } catch {
       // setting not found — use default ""
     }
+  },
+  setTheme: (theme) => {
+    set({ theme });
+    applyTheme(theme);
+    setSetting(UI_THEME_KEY, theme).catch(() => {});
+  },
+  loadTheme: async () => {
+    const theme = await readSetting(UI_THEME_KEY, THEME_VALUES, DEFAULT_THEME);
+    set({ theme });
+    applyTheme(theme);
   },
 
   setPresentationFontSize: (size) => {

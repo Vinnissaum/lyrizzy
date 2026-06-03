@@ -2,67 +2,91 @@
 
 /*
  * Lyrizzy — semantic theme tokens (indigo accent).
- * The dark palette below is the default. The operator UI can switch to a light
- * palette by setting data-theme="light" on <html> (see main.tsx / settings
- * store). The presentation window never sets data-theme, so it always renders on
- * the dark default — its output colours come from projection presets, not this
- * theme. All colours are semantic tokens so components never hardcode hex values.
+ *
+ * The @theme tokens below don't hold colour values directly: each points at a
+ * role variable (--app-*). That indirection is deliberate — Tailwind v4 resolves
+ * literal @theme values at build time and prunes any conditional redefinition of
+ * a token name, so overriding --color-* in a :root[data-theme] rule silently does
+ * nothing. Role variables are plain custom properties Tailwind doesn't manage, so
+ * swapping them at runtime (light theme below) works.
+ *
+ * The dark palette is the default. The operator UI switches to light by setting
+ * data-theme="light" on <html> (see main.tsx / settings store). The presentation
+ * window never sets data-theme, so it always renders dark — its output colours
+ * come from projection presets, not this theme. Components never hardcode hex.
  */
 @theme {
-  /* Surfaces — deep slate / charcoal */
-  --color-bg:             #0F1115;
-  --color-surface:        #171A21;
-  --color-surface-2:      #1F232C;
-  --color-border:         #2A2F3A;
-  --color-muted:          #8A91A0;
-  --color-fg:             #ECEEF2;
+  --color-bg:             var(--app-bg);
+  --color-surface:        var(--app-surface);
+  --color-surface-2:      var(--app-surface-2);
+  --color-border:         var(--app-border);
+  --color-muted:          var(--app-muted);
+  --color-fg:             var(--app-fg);
 
-  /* Accent — indigo / violet */
-  --color-primary:        #6366F1;
-  --color-primary-hover:  #4F46E5;
-  --color-fg-on-primary:  #FFFFFF;
+  --color-primary:        var(--app-primary);
+  --color-primary-hover:  var(--app-primary-hover);
+  --color-fg-on-primary:  var(--app-fg-on-primary);
 
-  /* Status — used for errors / warnings / success / info. Mid-tones chosen so
-     each works both as text/icon/border on dark AND as a solid button fill with
-     white/black text. The `*-bg` variants are muted translucent-style fills. */
-  --color-danger:         #E5484D;
-  --color-danger-bg:      #2A1416;
-  --color-warning:        #F5A524;
-  --color-warning-bg:     #2A2210;
-  --color-success:        #30A46C;
-  --color-success-bg:     #0F2A20;
-  --color-info:           #3B82F6;
-  --color-info-bg:        #122036;
+  --color-danger:         var(--app-danger);
+  --color-danger-bg:      var(--app-danger-bg);
+  --color-warning:        var(--app-warning);
+  --color-warning-bg:     var(--app-warning-bg);
+  --color-success:        var(--app-success);
+  --color-success-bg:     var(--app-success-bg);
+  --color-info:           var(--app-info);
+  --color-info-bg:        var(--app-info-bg);
 }
 
-/* The dark palette above is the default, so native controls (time/number/date,
-   scrollbars, selects) render dark to match. */
+/* Dark — the default palette. color-scheme keeps native controls (time/number/
+   date, scrollbars, selects) matching. */
 :root {
   color-scheme: dark;
+
+  /* Surfaces — deep slate / charcoal */
+  --app-bg:             #0F1115;
+  --app-surface:        #171A21;
+  --app-surface-2:      #1F232C;
+  --app-border:         #2A2F3A;
+  --app-muted:          #8A91A0;
+  --app-fg:             #ECEEF2;
+
+  /* Accent — indigo / violet */
+  --app-primary:        #6366F1;
+  --app-primary-hover:  #4F46E5;
+  --app-fg-on-primary:  #FFFFFF;
+
+  /* Status — mid-tones that work as text/icon/border on dark AND as solid button
+     fills. The *-bg variants are muted translucent-style fills. */
+  --app-danger:         #E5484D;
+  --app-danger-bg:      #2A1416;
+  --app-warning:        #F5A524;
+  --app-warning-bg:     #2A2210;
+  --app-success:        #30A46C;
+  --app-success-bg:     #0F2A20;
+  --app-info:           #3B82F6;
+  --app-info-bg:        #122036;
 }
 
-/* Light theme — operator UI only. Overrides (not redefines) the token values, so
-   every bg-*/text-*/border-* utility re-resolves automatically. The attribute
-   selector outranks the bare :root that Tailwind emits the @theme tokens on. */
+/* Light — operator UI only. Overrides only the role variables that differ; the
+   status text tones (--app-danger etc.) cascade through from :root unchanged. */
 :root[data-theme="light"] {
-  /* Surfaces — soft off-white / paper */
-  --color-bg:             #F7F8FA;
-  --color-surface:        #FFFFFF;
-  --color-surface-2:      #F0F2F5;
-  --color-border:         #D7DBE2;
-  --color-muted:          #5B6472;
-  --color-fg:             #1A1D23;
-
-  /* Accent — indigo (slightly deeper so it holds contrast on light) */
-  --color-primary:        #5457EC;
-  --color-primary-hover:  #4338CA;
-  --color-fg-on-primary:  #FFFFFF;
-
-  /* Status — text/icon tones stay; the *-bg fills become light tints. */
-  --color-danger-bg:      #FCE9EA;
-  --color-warning-bg:     #FBF1DC;
-  --color-success-bg:     #E4F4EC;
-  --color-info-bg:        #E4EEFD;
-
   color-scheme: light;
+
+  /* Surfaces — soft off-white / paper */
+  --app-bg:             #F7F8FA;
+  --app-surface:        #FFFFFF;
+  --app-surface-2:      #F0F2F5;
+  --app-border:         #D7DBE2;
+  --app-muted:          #5B6472;
+  --app-fg:             #1A1D23;
+
+  /* Accent — indigo, slightly deeper so it holds contrast on light */
+  --app-primary:        #5457EC;
+  --app-primary-hover:  #4338CA;
+
+  /* Status — *-bg fills become light tints */
+  --app-danger-bg:      #FCE9EA;
+  --app-warning-bg:     #FBF1DC;
+  --app-success-bg:     #E4F4EC;
+  --app-info-bg:        #E4EEFD;
 }

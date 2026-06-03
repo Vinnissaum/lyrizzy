@@ -1,4 +1,7 @@
 {
+  "splash": {
+    "tagline": "Lyrics for worship"
+  },
   "nav": {
     "home": "Home",
     "library": "Library",
@@ -251,6 +254,12 @@
       "label": "Waiting",
       "waiting": "Waiting for scheduled start…",
       "rendererLabel": "Starts in"
+    },
+    "arm": {
+      "button": "Arm takeover",
+      "cancel": "Cancel scheduled countdown",
+      "badge": "Countdown {{time}}",
+      "toast": "Countdown scheduled for {{time}} — it will take over the screen"
     },
     "position": {
       "top-left": "Top left",

@@ -21,6 +21,7 @@ import { SlideContent } from "../../components/presentation/SlideContent";
 import type {
   BackgroundInfo,
   BackgroundPreset,
+  CountdownConfig,
   FontFamily,
   FontSize,
   Margin,
@@ -192,6 +193,26 @@ export const PresentationApp: React.FC = () => {
   //   4. idle   → countdown if armed, else "Aguardando apresentação…"
   //   5. live/frozen → set content (below)
   const overlay = state?.overlay;
+
+  // Countdown takeover — highest precedence. A countdown armed/started as a
+  // "takeover" overlays EVERYTHING (live song, blackout, aviso, media/webView)
+  // until it finishes (auto-clears, restoring the underlying screen) or is reset.
+  // The digits/scheduled label come from the live countdown store via
+  // CountdownRenderer → useCountdownDigits; we only need a minimal synthetic
+  // config for position + message.
+  if (countdown.takeover && countdown.mode !== "idle") {
+    const takeoverConfig: CountdownConfig = {
+      target: { kind: "duration", durationMs: countdown.durationMs },
+      message: countdown.message,
+      endBehavior: countdown.endBehavior,
+      position: "center",
+    };
+    return (
+      <div className="h-screen w-screen overflow-hidden">
+        <CountdownRenderer config={takeoverConfig} />
+      </div>
+    );
+  }
 
   // Announcement overlay wins over blackout — lift it above the blank return.
   if (overlay?.type === "announcement") {

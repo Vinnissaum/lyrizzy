@@ -1,0 +1,9 @@
+Space Grotesk (Bold, Latin subset) — bundled for the app launch splash wordmark.
+
+Copyright (c) Florian Karsten, with Reserved Font Name "Space Grotesk".
+Licensed under the SIL Open Font License, Version 1.1.
+License: https://openfontlicense.org
+Source: https://fonts.google.com/specimen/Space+Grotesk
+
+This is the Latin subset only (`SpaceGrotesk-Bold.woff2`), retrieved from Google
+Fonts. Redistribution permitted under the OFL.

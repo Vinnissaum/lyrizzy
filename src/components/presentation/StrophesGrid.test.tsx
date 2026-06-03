@@ -403,7 +403,7 @@ describe("StrophesGrid", () => {
 
   // ── Test 10 (P11-05): grid crops cards to 16:9 with no bottom gap ───────
 
-  it("renders a tight 16:9 grid (items-start container, aspect-video cards)", () => {
+  it("renders a tight 16:9 grid (items-start container, padding-ratio cards)", () => {
     setStore({ state: makeState(), pendingSelection: null, selectSlide: vi.fn() });
 
     render(<StrophesGrid />);
@@ -411,7 +411,11 @@ describe("StrophesGrid", () => {
     const grid = screen.getByTestId("strophes-grid");
     expect(grid.className).toContain("items-start");
 
+    // Cards use a bulletproof padding-ratio box (not `aspect-video`) so they
+    // don't overlap on non-16:9 panels — a 56.25% spacer sets the height.
     const firstCard = grid.querySelector("button");
-    expect(firstCard?.className).toContain("aspect-video");
+    expect(firstCard?.className).not.toContain("aspect-video");
+    const spacer = firstCard?.querySelector("[aria-hidden]") as HTMLElement;
+    expect(spacer?.style.paddingTop).toBe("56.25%");
   });
 });

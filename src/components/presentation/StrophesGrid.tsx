@@ -74,14 +74,17 @@ const SlideCard = React.memo<SlideCardProps>(function SlideCard({
       ref={isActive ? activeRef : undefined}
       onClick={() => onSelect(slideIdx)}
       aria-current={isActive ? "true" : undefined}
-      className={`aspect-video w-full text-left transition-colors rounded-md overflow-hidden border relative ${
+      className={`relative w-full text-left transition-colors rounded-md overflow-hidden border ${
         isActive
           ? "ring-2 ring-primary bg-primary/10 border-primary"
           : "border-border hover:bg-surface-2"
       }`}
     >
-      {/* Faithful 16:9 thumbnail — the button itself is the 16:9 box */}
-      <div className="w-full h-full overflow-hidden rounded relative">
+      {/* Bulletproof 16:9 box: padding-ratio spacer + absolute content layer, so
+          the card height never depends on CSS-grid row resolution / DPI rounding
+          (fixes the 16:10 vertical overlap). */}
+      <div style={{ paddingTop: "56.25%" }} aria-hidden />
+      <div className="absolute inset-0 overflow-hidden rounded">
         <SlideStage backgroundColor={bgColor}>
           <SlideContent
             itemType={slideContentItemType}

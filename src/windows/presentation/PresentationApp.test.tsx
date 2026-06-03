@@ -64,9 +64,17 @@ vi.mock("../../stores/presentation", () => ({
   ),
 }));
 
+let cdStateMock = {
+  mode: "idle",
+  durationMs: 0,
+  remainingMs: 0,
+  endBehavior: "holdZero",
+  takeover: false,
+} as Record<string, unknown>;
+
 vi.mock("../../stores/countdown", () => ({
   useCountdownStore: () => ({
-    state: { mode: "idle", durationMs: 0, remainingMs: 0, endBehavior: "holdZero" },
+    state: cdStateMock,
     subscribe: vi.fn(() => Promise.resolve(() => {})),
     start: vi.fn(),
     arm: vi.fn(),
@@ -142,6 +150,13 @@ describe("PresentationApp — SongSlide", () => {
     vi.clearAllMocks();
     presStateMock = liveState;
     mediaMock = [];
+    cdStateMock = {
+      mode: "idle",
+      durationMs: 0,
+      remainingMs: 0,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
   });
 
   it("does not render the section label (strophe header) in song slide", () => {
@@ -155,11 +170,59 @@ describe("PresentationApp — SongSlide", () => {
   });
 });
 
+describe("PresentationApp — countdown takeover precedence", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    presStateMock = liveState;
+    mediaMock = [];
+    cdStateMock = {
+      mode: "idle",
+      durationMs: 0,
+      remainingMs: 0,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
+  });
+
+  it("overlays a running takeover countdown above the live song", () => {
+    cdStateMock = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: true,
+    };
+    render(<PresentationApp />);
+    expect(screen.getByText("05:00")).toBeInTheDocument();
+    expect(screen.queryByText("Blessed be your name")).toBeNull();
+  });
+
+  it("does not overlay when takeover is false (normal precedence)", () => {
+    cdStateMock = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
+    render(<PresentationApp />);
+    expect(screen.getByText("Blessed be your name")).toBeInTheDocument();
+    expect(screen.queryByText("05:00")).toBeNull();
+  });
+});
+
 describe("PresentationApp — overlay render precedence (P10-01)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     presStateMock = liveState;
     mediaMock = [];
+    cdStateMock = {
+      mode: "idle",
+      durationMs: 0,
+      remainingMs: 0,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
   });
 
   it("renders a media overlay over the idle waiting screen", () => {
@@ -206,6 +269,13 @@ describe("PresentationApp — announcement-over-blackout precedence (D-45 / P11-
     vi.clearAllMocks();
     presStateMock = liveState;
     mediaMock = [];
+    cdStateMock = {
+      mode: "idle",
+      durationMs: 0,
+      remainingMs: 0,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
   });
 
   it("announcement overlay renders OVER blank — text shown, not bare blackout", () => {
@@ -265,6 +335,13 @@ describe("PresentationApp — Esc always escapes + local fallback (P10-02)", () 
     vi.clearAllMocks();
     presStateMock = liveState;
     mediaMock = [];
+    cdStateMock = {
+      mode: "idle",
+      durationMs: 0,
+      remainingMs: 0,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
   });
   afterEach(() => {
     vi.useRealTimers();

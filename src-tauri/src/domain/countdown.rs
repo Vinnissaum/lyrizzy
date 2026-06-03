@@ -147,6 +147,12 @@ pub struct CountdownState {
     pub scheduled_start_epoch_ms: Option<u64>,
     pub message: Option<String>,
     pub end_behavior: CountdownEndBehavior,
+    /// When true, the countdown overlays the presentation regardless of mode
+    /// (live / blank / overlay) — a "takeover". Set by armed/started countdowns
+    /// that should pre-empt whatever is on screen; cleared automatically when the
+    /// countdown finishes so the underlying content returns.
+    #[serde(default)]
+    pub takeover: bool,
 }
 
 impl Default for CountdownState {
@@ -159,6 +165,7 @@ impl Default for CountdownState {
             scheduled_start_epoch_ms: None,
             message: None,
             end_behavior: CountdownEndBehavior::HoldZero,
+            takeover: false,
         }
     }
 }
@@ -179,8 +186,10 @@ mod tests {
             json.contains("\"endBehavior\":\"holdZero\""),
             "expected camelCase: {json}"
         );
+        assert!(json.contains("\"takeover\":false"), "expected takeover: {json}");
         let back: CountdownState = serde_json::from_str(&json).unwrap();
         assert_eq!(back.mode, CountdownMode::Idle);
+        assert!(!back.takeover);
         assert_eq!(back.duration_ms, 0);
         assert_eq!(back.remaining_ms, 0);
     }

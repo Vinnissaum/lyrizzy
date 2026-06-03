@@ -28,6 +28,7 @@ import { SettingsScreen } from "../../components/settings/SettingsScreen";
 import { RestoreInProgressDialog } from "../../components/backup/RestoreInProgressDialog";
 import { UpdateBanner } from "../../components/system/UpdateBanner";
 import { UpdateDialog } from "../../components/system/UpdateDialog";
+import { SplashScreen } from "../../components/system/SplashScreen";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
@@ -52,6 +53,7 @@ export const OperatorApp: React.FC = () => {
   const { setLocale, loadLocale, loadPresentationSettings, loadTheme } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
+  const [showSplash, setShowSplash] = useState(true);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
@@ -80,7 +82,12 @@ export const OperatorApp: React.FC = () => {
     const unlistenCdTrigger = onCountdownTriggered(async (payload) => {
       try {
         await enterPresentation();
-        if (typeof payload.itemIndex === "number") {
+        // A takeover countdown overlays whatever is on screen — don't jump the
+        // underlying set position (it stays put under the overlay and resumes
+        // when the countdown auto-clears). Only the legacy park-on-item path
+        // navigates to the configured item.
+        const isTakeover = useCountdownStore.getState().state.takeover;
+        if (!isTakeover && typeof payload.itemIndex === "number") {
           await usePresentationStore.getState().jumpToItem(payload.itemIndex);
         }
       } catch (err) {
@@ -219,6 +226,8 @@ export const OperatorApp: React.FC = () => {
 
   return (
     <div className="h-screen bg-bg text-inherit flex flex-col">
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+
       {restoreInProgress && (
         <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />
       )}

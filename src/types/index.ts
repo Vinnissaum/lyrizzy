@@ -259,6 +259,8 @@ export interface CountdownState {
   scheduledStartEpochMs?: number;
   message?: string;
   endBehavior: CountdownEndBehavior;
+  /** When true, the countdown overlays the presentation regardless of mode. */
+  takeover?: boolean;
 }
 
 /** Emitted when a scheduled countdown reaches its wall-clock start time. */

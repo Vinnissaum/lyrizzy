@@ -3,6 +3,7 @@ import type { BackgroundInfo, RepeatMode, TextCasing } from "../../types";
 import type { ChipAppearance } from "./bodies";
 import { SlideStage } from "./SlideStage";
 import { SlideContent } from "./SlideContent";
+import { RatioBox } from "./RatioBox";
 import { PRESET_COLORS } from "./layout";
 import { splitSectionBody } from "../../utils/slidePreview";
 import { creditLine } from "./credit";
@@ -97,7 +98,7 @@ export const SongPreviewPane: React.FC<SongPreviewPaneProps> = ({
     <div className="space-y-3">
       {slides.map((s, i) => (
         <div key={i} className="space-y-1">
-          <div className="aspect-video w-full overflow-hidden rounded border border-border">
+          <RatioBox className="rounded border border-border" contentClassName="overflow-hidden rounded">
             <SlideStage backgroundColor={bgColor}>
               <SlideContent
                 itemType="song"
@@ -108,7 +109,7 @@ export const SongPreviewPane: React.FC<SongPreviewPaneProps> = ({
                 background={background}
               />
             </SlideStage>
-          </div>
+          </RatioBox>
           <p className="text-[10px] text-center text-muted">
             {i + 1}/{slides.length}
           </p>

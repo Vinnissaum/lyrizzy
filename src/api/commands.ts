@@ -337,6 +337,8 @@ export interface StartCountdownParams {
   durationMs?: number;
   message?: string;
   endBehavior?: CountdownEndBehavior;
+  /** When true, the running countdown overlays the presentation regardless of mode. */
+  takeover?: boolean;
   [key: string]: unknown;
 }
 
@@ -350,6 +352,8 @@ export interface ArmCountdownParams {
   endBehavior?: CountdownEndBehavior;
   setId?: string;
   itemIndex?: number;
+  /** When true, the scheduled→running countdown overlays the presentation. */
+  takeover?: boolean;
   [key: string]: unknown;
 }
 

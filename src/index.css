@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Brand display face for the launch splash wordmark. Self-hosted (Latin subset)
+ * so it works offline — see src/assets/fonts/SpaceGrotesk-LICENSE.txt (SIL OFL). */
+@font-face {
+  font-family: "Brand";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("./assets/fonts/SpaceGrotesk-Bold.woff2") format("woff2");
+}
+
 /*
  * Lyrizzy — semantic theme tokens (indigo accent).
  *
@@ -89,4 +99,41 @@
   --app-warning-bg:     #FBF1DC;
   --app-success-bg:     #E4F4EC;
   --app-info-bg:        #E4EEFD;
+}
+
+/* ── Launch splash ──────────────────────────────────────────────────────────
+ * The animated wordmark shown briefly on operator startup (SplashScreen.tsx).
+ * Animations are skipped when the user prefers reduced motion (also gated in JS). */
+.font-brand {
+  font-family: "Brand", ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes splash-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(8px);
+    letter-spacing: 0.4em;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+    letter-spacing: 0.06em;
+  }
+}
+
+@keyframes splash-out {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .splash-wordmark-in {
+    animation: splash-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+.splash-fade-out {
+  animation: splash-out 350ms ease forwards;
 }

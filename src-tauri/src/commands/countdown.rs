@@ -124,6 +124,9 @@ async fn tick_countdown(
             s.remaining_ms = remaining;
             if remaining == 0 {
                 s.mode = CountdownMode::Finished;
+                // Auto-clear the takeover so the underlying presentation returns
+                // (and so a Blackout/AdvanceSet end-behavior becomes visible).
+                s.takeover = false;
             }
             (remaining, s.end_behavior.clone())
         };
@@ -253,6 +256,7 @@ pub async fn set_countdown_duration(
         s.remaining_ms = duration_ms;
         s.mode = CountdownMode::Idle;
         s.target_epoch_ms = None;
+        s.takeover = false;
         s.clone()
     };
     let _ = app.emit("countdown_tick", &snapshot);
@@ -272,6 +276,7 @@ pub async fn start_countdown(
     duration_ms: Option<u64>,
     message: Option<String>,
     end_behavior: Option<CountdownEndBehavior>,
+    takeover: Option<bool>,
 ) -> Result<CountdownState, ErrorPayload> {
     // Abort any running ticker first.
     {
@@ -314,6 +319,9 @@ pub async fn start_countdown(
         s.scheduled_start_epoch_ms = None;
         s.remaining_ms = target_epoch.saturating_sub(now);
         s.mode = CountdownMode::Running;
+        if let Some(t) = takeover {
+            s.takeover = t;
+        }
         s.clone()
     };
 
@@ -383,6 +391,7 @@ pub async fn reset_countdown(
         s.mode = CountdownMode::Idle;
         s.target_epoch_ms = None;
         s.scheduled_start_epoch_ms = None;
+        s.takeover = false;
         s.clone()
     };
     let _ = app.emit("countdown_tick", &snapshot);
@@ -404,6 +413,7 @@ pub async fn arm_countdown(
     end_behavior: Option<CountdownEndBehavior>,
     set_id: Option<String>,
     item_index: Option<usize>,
+    takeover: Option<bool>,
 ) -> Result<CountdownState, ErrorPayload> {
     if duration_ms == 0 {
         return Err(ErrorPayload::new("countdown.duration_not_set"));
@@ -432,6 +442,9 @@ pub async fn arm_countdown(
         }
         if let Some(eb) = end_behavior {
             s.end_behavior = eb;
+        }
+        if let Some(t) = takeover {
+            s.takeover = t;
         }
         s.clone()
     };

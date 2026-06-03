@@ -1,4 +1,7 @@
 {
+  "splash": {
+    "tagline": "Letras para o louvor"
+  },
   "nav": {
     "home": "Início",
     "library": "Biblioteca",
@@ -251,6 +254,12 @@
       "label": "Aguardando",
       "waiting": "Aguardando horário agendado…",
       "rendererLabel": "Começa em"
+    },
+    "arm": {
+      "button": "Armar contagem",
+      "cancel": "Cancelar contagem agendada",
+      "badge": "Contagem {{time}}",
+      "toast": "Contagem agendada para {{time}} — vai assumir a tela"
     },
     "position": {
       "top-left": "Superior esquerdo",

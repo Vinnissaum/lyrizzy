@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Play, X, Image as ImageIcon, Camera, Megaphone, FileText, MonitorOff, Square } from "lucide-react";
+import { Play, X, Image as ImageIcon, Camera, Megaphone, FileText, MonitorOff, Square, AlarmClock } from "lucide-react";
 
 interface Props {
   showApresentarButton: boolean;
@@ -15,6 +15,12 @@ interface Props {
   isBlackoutActive?: boolean;
   isOverlayActive: boolean;
   isImportingPresentation: boolean;
+  /** Shown when the active item is a scheduled countdown that can be armed as a takeover. */
+  showArmCountdown?: boolean;
+  onArmCountdown?: () => void;
+  /** When set, a takeover countdown is armed — render a persistent badge with this label. */
+  armedCountdownLabel?: string | null;
+  onCancelArmedCountdown?: () => void;
 }
 
 export const OverlayActionBar: React.FC<Props> = ({
@@ -30,11 +36,35 @@ export const OverlayActionBar: React.FC<Props> = ({
   isBlackoutActive,
   isOverlayActive,
   isImportingPresentation,
+  showArmCountdown,
+  onArmCountdown,
+  armedCountdownLabel,
+  onCancelArmedCountdown,
 }) => {
   const { t } = useTranslation();
 
   return (
     <div className="px-3 py-2 border-b border-border flex items-center gap-2 flex-wrap shrink-0">
+      {armedCountdownLabel ? (
+        <button
+          onClick={onCancelArmedCountdown}
+          data-testid="countdown-armed-badge"
+          title={t("countdown.arm.cancel")}
+          className="px-3 py-1 text-xs bg-warning-bg text-warning border border-warning rounded-lg font-semibold transition-colors inline-flex items-center gap-1"
+        >
+          <AlarmClock size={12} /> {armedCountdownLabel} <X size={12} />
+        </button>
+      ) : (
+        showArmCountdown && (
+          <button
+            onClick={onArmCountdown}
+            data-testid="arm-countdown-button"
+            className="px-3 py-1 text-xs bg-warning text-fg-on-primary hover:opacity-90 rounded-lg font-medium transition-colors inline-flex items-center gap-1"
+          >
+            <AlarmClock size={12} /> {t("countdown.arm.button")}
+          </button>
+        )
+      )}
       {showApresentarButton && (
         <button
           onClick={onApresentar}

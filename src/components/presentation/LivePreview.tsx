@@ -2,14 +2,16 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Tv } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
+import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { mediaUrl } from "../../api/assets";
 import { PRESET_COLORS } from "./layout";
 import { SlideStage } from "./SlideStage";
 import { SlideContent } from "./SlideContent";
+import { CountdownRenderer } from "./CountdownRenderer";
 import type { ChipAppearance } from "./bodies";
-import type { SetItem } from "../../types";
+import type { CountdownConfig, SetItem } from "../../types";
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -39,6 +41,7 @@ export const LivePreview: React.FC = () => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
   const pendingSelection = usePresentationStore((s) => s.pendingSelection);
+  const countdown = useCountdownStore((s) => s.state);
   const { media } = useMediaStore();
 
   // Build ChipAppearance from global presentation settings.
@@ -60,6 +63,24 @@ export const LivePreview: React.FC = () => {
     lineSpacing: presentationLineSpacing,
     boldLevel: presentationBoldLevel,
   };
+
+  // ── Countdown takeover (highest precedence, mirrors PresentationApp) ────────
+  if (countdown.takeover && countdown.mode !== "idle") {
+    const cfg: CountdownConfig = {
+      target: { kind: "duration", durationMs: countdown.durationMs },
+      message: countdown.message,
+      endBehavior: countdown.endBehavior,
+      position: "center",
+    };
+    return (
+      <div
+        data-testid="live-preview"
+        className="aspect-video w-full bg-black rounded border border-border overflow-hidden relative"
+      >
+        <CountdownRenderer config={cfg} />
+      </div>
+    );
+  }
 
   if (!state?.set) {
     return (

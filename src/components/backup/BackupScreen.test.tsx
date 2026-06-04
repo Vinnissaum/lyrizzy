@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ArtifactImportCard } from "./BackupScreen";
-import type { ImportPlan } from "../../api/commands";
+import { ImportCard } from "./BackupScreen";
+import type { ImportPlan, ArchiveInspection } from "../../api/commands";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -31,39 +31,53 @@ const libraryPlan: ImportPlan = {
   items: [],
 };
 
+const libraryInspection: ArchiveInspection = {
+  schemaVersion: 2,
+  exportedAt: 0,
+  appVersion: "1.0.0",
+  counts: { songs: 5, sections: 0, sets: 0, setItems: 0, media: 0, settings: 0 },
+};
+
 const planArtifactImport = vi.fn();
+const inspectArchive = vi.fn();
 vi.mock("../../api/commands", () => ({
   planArtifactImport: (...args: unknown[]) => planArtifactImport(...args),
+  inspectArchive: (...args: unknown[]) => inspectArchive(...args),
   importArtifact: vi.fn().mockResolvedValue({}),
+  restoreLibrary: vi.fn().mockResolvedValue({}),
   onBackupProgress: vi.fn().mockResolvedValue(() => {}),
-  // unused-by-this-test exports referenced by the module:
   exportLibrary: vi.fn(),
-  inspectArchive: vi.fn(),
-  restoreLibrary: vi.fn(),
 }));
 
-describe("ArtifactImportCard", () => {
+describe("ImportCard (unified)", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("opens the review modal for a selective (non-library) plan", async () => {
+  it("opens the conflict-review modal for a selective (non-library) plan", async () => {
     planArtifactImport.mockResolvedValueOnce(selectivePlan);
-    render(<ArtifactImportCard onLibraryFile={vi.fn()} />);
+    render(<ImportCard />);
 
-    fireEvent.click(screen.getByTestId("cta-import-artifact"));
+    fireEvent.click(screen.getByTestId("cta-import"));
 
     await waitFor(() =>
       expect(screen.getByTestId("artifact-import-confirm")).toBeInTheDocument()
     );
+    // Never falls through to the destructive restore UI for a selective file.
+    expect(screen.queryByText("backup.import.restoreButton")).not.toBeInTheDocument();
+    expect(inspectArchive).not.toHaveBeenCalled();
   });
 
-  it("routes a library plan to the restore flow instead of the modal", async () => {
+  it("shows the Replace/Merge restore UI for a full-library plan", async () => {
     planArtifactImport.mockResolvedValueOnce(libraryPlan);
-    const onLibraryFile = vi.fn();
-    render(<ArtifactImportCard onLibraryFile={onLibraryFile} />);
+    inspectArchive.mockResolvedValueOnce(libraryInspection);
+    render(<ImportCard />);
 
-    fireEvent.click(screen.getByTestId("cta-import-artifact"));
+    fireEvent.click(screen.getByTestId("cta-import"));
 
-    await waitFor(() => expect(onLibraryFile).toHaveBeenCalledWith("/tmp/in.tlz"));
+    await waitFor(() =>
+      expect(screen.getByText("backup.import.restoreButton")).toBeInTheDocument()
+    );
+    // The selective conflict-review modal must NOT be shown for a library file.
     expect(screen.queryByTestId("artifact-import-confirm")).not.toBeInTheDocument();
+    expect(inspectArchive).toHaveBeenCalledWith("/tmp/in.tlz");
   });
 });

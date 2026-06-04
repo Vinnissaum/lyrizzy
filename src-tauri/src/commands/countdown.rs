@@ -207,6 +207,11 @@ async fn tick_scheduled(
                 s.target_epoch_ms = Some(target_epoch);
                 s.remaining_ms = duration_for_start;
                 s.mode = CountdownMode::Running;
+                // Takeover engages ONLY now, at the wall-clock fire — never while
+                // merely Scheduled. This lets a countdown be armed hours ahead
+                // without seizing the projector during the wait; it overlays the
+                // screen the instant it starts running, then auto-clears at 00:00.
+                s.takeover = true;
                 s.clone()
             };
 
@@ -443,9 +448,10 @@ pub async fn arm_countdown(
         if let Some(eb) = end_behavior {
             s.end_behavior = eb;
         }
-        if let Some(t) = takeover {
-            s.takeover = t;
-        }
+        // Arming never takes over the screen — takeover engages at fire time
+        // (see tick_scheduled). The param is retained for IPC compat only.
+        let _ = takeover;
+        s.takeover = false;
         s.clone()
     };
 
@@ -550,6 +556,24 @@ mod tests {
         let now_ms = (now_local.timestamp_millis() as u64) + 60_000_000; // way in future
         let resolved = resolve_scheduled_start_epoch_ms(&s, now_ms).unwrap();
         assert!(resolved > now_ms, "scheduled should roll to tomorrow when past");
+    }
+
+    #[test]
+    fn takeover_engages_at_fire_not_at_arm() {
+        // Arming lands in Scheduled with NO takeover — the projector stays put
+        // during the wait (mirrors arm_countdown's state write).
+        let mut s = CountdownState {
+            mode: CountdownMode::Scheduled,
+            takeover: false,
+            ..CountdownState::default()
+        };
+        assert!(!s.takeover, "arming must not take over the screen");
+
+        // The Scheduled→Running fire transition flips both (mirrors tick_scheduled).
+        s.mode = CountdownMode::Running;
+        s.takeover = true;
+        assert_eq!(s.mode, CountdownMode::Running);
+        assert!(s.takeover, "takeover must engage the instant the countdown fires");
     }
 
     #[test]

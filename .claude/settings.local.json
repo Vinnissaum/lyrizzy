@@ -43,7 +43,8 @@
       "Bash(git --no-pager diff --stat)",
       "Bash(git status *)",
       "Bash(git ls-files *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(git push *)"
     ]
   }
 }

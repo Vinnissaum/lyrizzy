@@ -240,26 +240,28 @@
       "durationError": "Formato inválido. Use mm:ss ou hh:mm:ss",
       "defaultMessage": "O culto começa em…",
       "bgLabel": "Selecionar vídeo de fundo…",
-      "position": "Posição na tela",
-      "scheduledStart": "Iniciar automaticamente em um horário",
-      "scheduledStartHint": "Quando entrar neste item, o cronômetro aguarda até a hora marcada antes de começar."
+      "position": "Posição na tela"
     },
     "schedule": {
-      "badge": "Cronômetro em {{remaining}}"
+      "button": "Configurar / Agendar",
+      "toggle": "Agendar este cronômetro",
+      "triggerLabel": "Disparar às",
+      "pastTimeError": "Este horário já passou hoje."
+    },
+    "modal": {
+      "title": "Configurar cronômetro",
+      "save": "Salvar",
+      "cancel": "Cancelar"
+    },
+    "widget": {
+      "remaining": "em {{remaining}}",
+      "edit": "Editar",
+      "cancel": "Cancelar"
     },
     "scheduled": {
       "label": "Aguardando",
       "waiting": "Aguardando horário agendado…",
       "rendererLabel": "Começa em"
-    },
-    "arm": {
-      "cancel": "Cancelar contagem agendada"
-    },
-    "launch": {
-      "title": "Cronômetro agendado",
-      "body": "Um cronômetro está agendado para {{time}} (em {{remaining}}). Ele vai assumir a tela automaticamente. Manter ativo ou desativar?",
-      "keep": "Manter ativo",
-      "disable": "Desativar"
     },
     "position": {
       "top-left": "Superior esquerdo",

@@ -13,8 +13,9 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Song, ServiceSet, PresentationState } from "../../types";
+import type { Song, ServiceSet, PresentationState, SetItem } from "../../types";
 import { usePresentationStore } from "../../stores/presentation";
+import { useCountdownStore } from "../../stores/countdown";
 
 const mockSong = (id: string, title: string, artist?: string): Song => ({
   id,
@@ -34,6 +35,27 @@ const defaultSet: ServiceSet = {
   updatedAt: 0,
   items: [],
 };
+
+const scheduledCountdownItem = (
+  hour: number,
+  minute: number,
+): SetItem => ({
+  id: "cd-item",
+  setId: "set-1",
+  itemType: "countdown",
+  sortOrder: 0,
+  countdownConfig: {
+    target: { kind: "duration", durationMs: 600_000 },
+    endBehavior: "holdZero",
+    message: "Começando em breve",
+    scheduledStart: { hour, minute },
+  },
+});
+
+const setWithSchedule = (item: SetItem): ServiceSet => ({
+  ...defaultSet,
+  items: [item],
+});
 
 describe("OperatorApp", () => {
   beforeEach(() => {
@@ -166,8 +188,175 @@ describe("OperatorApp", () => {
     });
   });
 
+  describe("silent re-arm at launch", () => {
+    it("arms a later-today scheduled countdown silently (no prompt)", async () => {
+      // Pick a trigger time ~2h in the future so it's 'later today' and not
+      // close to midnight rollover.
+      const future = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const hour = future.getHours();
+      const minute = future.getMinutes();
+      const item = scheduledCountdownItem(hour, minute);
+      const set = setWithSchedule(item);
+
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+        if (cmd === "get_or_create_default_set") return Promise.resolve(set);
+        if (cmd === "get_set") return Promise.resolve(set);
+        if (cmd === "check_for_updates") return Promise.resolve(null);
+        if (cmd === "arm_countdown") {
+          return Promise.resolve({
+            mode: "scheduled",
+            durationMs: 600_000,
+            remainingMs: 600_000,
+            endBehavior: "holdZero",
+            takeover: false,
+          });
+        }
+        return Promise.resolve([]);
+      });
+
+      const armSpy = vi.spyOn(useCountdownStore.getState(), "arm");
+
+      render(<OperatorApp />);
+
+      await waitFor(() => expect(armSpy).toHaveBeenCalledTimes(1));
+      expect(armSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scheduledStart: { hour, minute },
+          durationMs: 600_000,
+          setId: "set-1",
+          itemIndex: 0,
+        }),
+      );
+      // No launch-prompt component rendered.
+      expect(screen.queryByTestId("countdown-launch-prompt")).toBeNull();
+
+      armSpy.mockRestore();
+    });
+
+    it("does not arm when the schedule is in the past today", async () => {
+      const past = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const item = scheduledCountdownItem(past.getHours(), past.getMinutes());
+      const set = setWithSchedule(item);
+
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+        if (cmd === "get_or_create_default_set") return Promise.resolve(set);
+        if (cmd === "get_set") return Promise.resolve(set);
+        if (cmd === "check_for_updates") return Promise.resolve(null);
+        return Promise.resolve([]);
+      });
+
+      const armSpy = vi.spyOn(useCountdownStore.getState(), "arm");
+      render(<OperatorApp />);
+
+      // Give async mount effects a chance to run.
+      await waitFor(() =>
+        expect(vi.mocked(invoke)).toHaveBeenCalledWith("get_or_create_default_set"),
+      );
+      await act(async () => { await Promise.resolve(); });
+      expect(armSpy).not.toHaveBeenCalled();
+
+      armSpy.mockRestore();
+    });
+
+    it("does not arm when there is no scheduled countdown", async () => {
+      // defaultSet (empty items) is used by the default beforeEach mock.
+      const armSpy = vi.spyOn(useCountdownStore.getState(), "arm");
+      render(<OperatorApp />);
+
+      await waitFor(() =>
+        expect(vi.mocked(invoke)).toHaveBeenCalledWith("get_or_create_default_set"),
+      );
+      await act(async () => { await Promise.resolve(); });
+      expect(armSpy).not.toHaveBeenCalled();
+
+      armSpy.mockRestore();
+    });
+  });
+
+  describe("countdown trigger handler", () => {
+    it("when not presenting, enters presentation and jumps to the armed item", async () => {
+      // Capture the countdown_triggered listener callback.
+      let triggerCb: ((e: { payload: unknown }) => void) | null = null;
+      vi.mocked(listen).mockImplementation((event: string, cb: any) => {
+        if (event === "countdown_triggered") triggerCb = cb;
+        return Promise.resolve(() => {});
+      });
+
+      const enterSpy = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+        if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
+        if (cmd === "get_set") return Promise.resolve(defaultSet);
+        if (cmd === "check_for_updates") return Promise.resolve(null);
+        if (cmd === "enter_presentation") { enterSpy(); return Promise.resolve(); }
+        return Promise.resolve([]);
+      });
+
+      // Not presenting.
+      act(() => { usePresentationStore.setState({ state: null }); });
+      // Armed item carries the index to jump to.
+      act(() => {
+        useCountdownStore.setState({ armedItem: { setId: "set-1", itemIndex: 2 } });
+      });
+
+      const jumpSpy = vi
+        .spyOn(usePresentationStore.getState(), "jumpToItem")
+        .mockResolvedValue(undefined);
+
+      render(<OperatorApp />);
+      await waitFor(() => expect(triggerCb).not.toBeNull());
+
+      await act(async () => {
+        triggerCb!({ payload: { setId: "set-1", itemIndex: 2 } });
+        await Promise.resolve();
+      });
+
+      await waitFor(() => expect(enterSpy).toHaveBeenCalled());
+      await waitFor(() => expect(jumpSpy).toHaveBeenCalledWith(2));
+
+      jumpSpy.mockRestore();
+    });
+
+    it("when already presenting, does not jump (soft takeover)", async () => {
+      let triggerCb: ((e: { payload: unknown }) => void) | null = null;
+      vi.mocked(listen).mockImplementation((event: string, cb: any) => {
+        if (event === "countdown_triggered") triggerCb = cb;
+        return Promise.resolve(() => {});
+      });
+
+      const liveState: PresentationState = {
+        mode: "live",
+        currentItemIndex: 0,
+        currentSlideIndex: 0,
+        itemSlideCounts: [],
+      };
+      act(() => { usePresentationStore.setState({ state: liveState }); });
+
+      const jumpSpy = vi
+        .spyOn(usePresentationStore.getState(), "jumpToItem")
+        .mockResolvedValue(undefined);
+
+      render(<OperatorApp />);
+      await waitFor(() => expect(triggerCb).not.toBeNull());
+
+      // Ensure the live state is in place at trigger time.
+      act(() => { usePresentationStore.setState({ state: liveState }); });
+
+      await act(async () => {
+        triggerCb!({ payload: { setId: "set-1", itemIndex: 2 } });
+        await Promise.resolve();
+      });
+
+      expect(jumpSpy).not.toHaveBeenCalled();
+      jumpSpy.mockRestore();
+    });
+  });
+
   afterEach(() => {
     // Reset presentation store state after each test
     act(() => { usePresentationStore.setState({ state: null }); });
+    act(() => { useCountdownStore.setState({ armedItem: null }); });
   });
 });

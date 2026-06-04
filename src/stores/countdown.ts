@@ -14,6 +14,8 @@ import type { CountdownState } from "../types";
 
 interface CountdownStore {
   state: CountdownState;
+  /** Which set item is currently armed (frontend-only; null when none). */
+  armedItem: { setId: string; itemIndex: number } | null;
   isSubscribed: boolean;
   subscribe: () => Promise<() => void>;
   setDuration: (durationMs: number) => Promise<void>;
@@ -32,6 +34,7 @@ const DEFAULT_STATE: CountdownState = {
 
 export const useCountdownStore = create<CountdownStore>((set) => ({
   state: DEFAULT_STATE,
+  armedItem: null,
   isSubscribed: false,
 
   subscribe: async () => {
@@ -75,7 +78,11 @@ export const useCountdownStore = create<CountdownStore>((set) => ({
   arm: async (params) => {
     try {
       const newState = await armCountdown(params);
-      set({ state: newState });
+      const armedItem =
+        typeof params.setId === "string" && typeof params.itemIndex === "number"
+          ? { setId: params.setId, itemIndex: params.itemIndex }
+          : null;
+      set({ state: newState, armedItem });
     } catch (err) {
       console.error("Falha ao agendar cronômetro:", err);
     }
@@ -93,7 +100,7 @@ export const useCountdownStore = create<CountdownStore>((set) => ({
   reset: async () => {
     try {
       const newState = await resetCountdown();
-      set({ state: newState });
+      set({ state: newState, armedItem: null });
     } catch (err) {
       console.error("Falha ao resetar cronômetro:", err);
     }

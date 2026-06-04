@@ -240,26 +240,28 @@
       "durationError": "Invalid format. Use mm:ss or hh:mm:ss",
       "defaultMessage": "Service starts in…",
       "bgLabel": "Select background video…",
-      "position": "Screen position",
-      "scheduledStart": "Auto-start at a wall-clock time",
-      "scheduledStartHint": "When this item is presented, the countdown waits until HH:MM before starting."
+      "position": "Screen position"
     },
     "schedule": {
-      "badge": "Countdown in {{remaining}}"
+      "button": "Configure / Schedule",
+      "toggle": "Schedule this countdown",
+      "triggerLabel": "Trigger at",
+      "pastTimeError": "This time has already passed today."
+    },
+    "modal": {
+      "title": "Configure countdown",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "widget": {
+      "remaining": "in {{remaining}}",
+      "edit": "Edit",
+      "cancel": "Cancel"
     },
     "scheduled": {
       "label": "Waiting",
       "waiting": "Waiting for scheduled start…",
       "rendererLabel": "Starts in"
-    },
-    "arm": {
-      "cancel": "Cancel scheduled countdown"
-    },
-    "launch": {
-      "title": "Scheduled countdown",
-      "body": "A countdown is scheduled for {{time}} (in {{remaining}}). It will take over the screen automatically. Keep it on, or switch it off?",
-      "keep": "Keep on",
-      "disable": "Switch off"
     },
     "position": {
       "top-left": "Top left",

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 
 vi.mock("../../stores/library", () => ({
   useLibraryStore: vi.fn(),
@@ -40,7 +40,7 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 
-vi.mock("./CountdownSetItemEditor", () => ({ CountdownSetItemEditor: () => null }));
+vi.mock("./CountdownScheduleModal", () => ({ CountdownScheduleModal: () => null }));
 vi.mock("./WebViewSetItemEditor", () => ({ WebViewSetItemEditor: () => null }));
 vi.mock("./MediaSetItemEditor", () => ({ MediaSetItemEditor: () => null }));
 vi.mock("./BlankItemNotesEditor", () => ({ BlankItemNotesEditor: () => null }));
@@ -83,6 +83,52 @@ describe("SetBuilder — hidePresentButton prop", () => {
       expect(screen.getByText("Culto")).toBeInTheDocument()
     );
     expect(screen.queryByText("builder.present")).toBeNull();
+  });
+});
+
+// ── Countdown row: schedule button + chip ────────────────────────────────────
+
+const countdownSet: ServiceSet = {
+  id: "set-cd",
+  name: "Cd",
+  createdAt: 0,
+  updatedAt: 0,
+  items: [
+    {
+      id: "cd-1",
+      setId: "set-cd",
+      itemType: "countdown",
+      sortOrder: 0,
+      countdownConfig: {
+        target: { kind: "duration", durationMs: 600_000 },
+        endBehavior: "holdZero",
+        scheduledStart: { hour: 19, minute: 30 },
+      },
+    },
+  ],
+};
+
+describe("SetBuilder — countdown row", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useLibraryStore).mockReturnValue({ setView: vi.fn() } as ReturnType<typeof useLibraryStore>);
+    vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
+    vi.mocked(usePresentationStore).mockReturnValue({ getState: vi.fn() } as unknown as ReturnType<typeof usePresentationStore>);
+    vi.mocked(getSet).mockResolvedValue(countdownSet);
+  });
+
+  it("shows the schedule button and ⏰ chip when expanded with a scheduled countdown", async () => {
+    render(<SetBuilder setId="set-cd" />);
+    await waitFor(() => expect(screen.getByText("Cd")).toBeInTheDocument());
+
+    // Expand the countdown row (chevron toggle).
+    const editButtons = screen.getAllByTitle("builder.actions.edit");
+    fireEvent.click(editButtons[0]);
+
+    await waitFor(() =>
+      expect(screen.getByText("countdown.schedule.button")).toBeInTheDocument()
+    );
+    expect(screen.getByText(/19:30/)).toBeInTheDocument();
   });
 });
 

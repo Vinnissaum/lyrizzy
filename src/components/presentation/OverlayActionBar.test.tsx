@@ -102,27 +102,14 @@ describe("OverlayActionBar", () => {
   });
 
   it("never renders a manual Arm button (removed)", () => {
-    render(<OverlayActionBar {...defaultProps} armedCountdownLabel={null} />);
+    render(<OverlayActionBar {...defaultProps} />);
     expect(screen.queryByTestId("arm-countdown-button")).not.toBeInTheDocument();
   });
 
-  it("renders the scheduled-countdown badge with its label and cancels on click", () => {
-    const onCancelArmedCountdown = vi.fn();
-    render(
-      <OverlayActionBar
-        {...defaultProps}
-        armedCountdownLabel="countdown.schedule.badge"
-        onCancelArmedCountdown={onCancelArmedCountdown}
-      />,
-    );
-    const badge = screen.getByTestId("countdown-armed-badge");
-    expect(badge).toBeInTheDocument();
-    fireEvent.click(badge);
-    expect(onCancelArmedCountdown).toHaveBeenCalledTimes(1);
-  });
-
-  it("does NOT render the badge when armedCountdownLabel is null", () => {
-    render(<OverlayActionBar {...defaultProps} armedCountdownLabel={null} />);
-    expect(screen.queryByTestId("countdown-armed-badge")).not.toBeInTheDocument();
+  it("never renders the scheduled-countdown badge (removed)", () => {
+    render(<OverlayActionBar {...defaultProps} />);
+    expect(
+      screen.queryByText("countdown.schedule.badge", { exact: false }),
+    ).not.toBeInTheDocument();
   });
 });

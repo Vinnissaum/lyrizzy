@@ -14,6 +14,7 @@ import {
   onSetChanged,
   onSongsChanged,
   openPresentationWindow,
+  updateSetItem,
 } from "../../api/commands";
 import { SongList } from "../../components/library/SongList";
 import { SongEditor } from "../../components/library/SongEditor";
@@ -30,11 +31,11 @@ import { RestoreInProgressDialog } from "../../components/backup/RestoreInProgre
 import { UpdateBanner } from "../../components/system/UpdateBanner";
 import { UpdateDialog } from "../../components/system/UpdateDialog";
 import { SplashScreen } from "../../components/system/SplashScreen";
-import { CountdownLaunchPrompt } from "../../components/system/CountdownLaunchPrompt";
 import {
-  findUpcomingScheduledCountdown,
-  type UpcomingScheduledCountdown,
-} from "../../runtime/scheduledCountdown";
+  ScheduledCountdownWidget,
+  type ArmedItemRef,
+} from "../../components/system/ScheduledCountdownWidget";
+import { CountdownScheduleModal } from "../../components/set/CountdownScheduleModal";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
@@ -42,7 +43,8 @@ import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
 import { useKeyBindingsStore } from "../../stores/keyBindings";
 import { installKeyboardDispatcher, isPresentationActive } from "../../runtime/keyboard";
-import type { Song, UpdateInfo } from "../../types";
+import { findUpcomingScheduledCountdown } from "../../runtime/scheduledCountdown";
+import type { SetItem, Song, UpdateInfo } from "../../types";
 
 export const OperatorApp: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -60,13 +62,15 @@ export const OperatorApp: React.FC = () => {
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
   const [showSplash, setShowSplash] = useState(true);
-  const [launchPrompt, setLaunchPrompt] = useState<
-    (UpcomingScheduledCountdown & { setId: string }) | null
-  >(null);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [editingScheduleItem, setEditingScheduleItem] = useState<{
+    item: SetItem;
+    setId: string;
+    itemIndex: number;
+  } | null>(null);
 
   useEffect(() => {
     const unlistenSongs = onSongsChanged(() => {
@@ -90,14 +94,23 @@ export const OperatorApp: React.FC = () => {
     // presentation window is open and the configured item is in focus.
     const unlistenCdTrigger = onCountdownTriggered(async (payload) => {
       try {
+        const presenting = isPresentationActive(
+          usePresentationStore.getState().state,
+        );
+        if (presenting) {
+          // Soft takeover (T7): the countdown overlays filler states (blank /
+          // media overlay / aviso) but yields to a clean live song. Don't jump
+          // the underlying set position — leave the live content alone.
+          return;
+        }
+        // Not presenting: open the projector and make the countdown item live so
+        // it renders via the normal `itemType === "countdown"` branch.
         await enterPresentation();
-        // A takeover countdown overlays whatever is on screen — don't jump the
-        // underlying set position (it stays put under the overlay and resumes
-        // when the countdown auto-clears). Only the legacy park-on-item path
-        // navigates to the configured item.
-        const isTakeover = useCountdownStore.getState().state.takeover;
-        if (!isTakeover && typeof payload.itemIndex === "number") {
-          await usePresentationStore.getState().jumpToItem(payload.itemIndex);
+        const itemIndex =
+          useCountdownStore.getState().armedItem?.itemIndex ??
+          payload.itemIndex;
+        if (typeof itemIndex === "number") {
+          await usePresentationStore.getState().jumpToItem(itemIndex);
         }
       } catch (err) {
         console.error("countdown_triggered handler failed:", err);
@@ -123,17 +136,21 @@ export const OperatorApp: React.FC = () => {
 
     loadFixedSet();
 
-    // Launch-time scheduled-countdown scan: if the fixed set has a countdown
-    // scheduled for later today, warn the operator with a modal and let them keep
-    // it armed or switch it off for this session. Arming is owned here — there is
-    // no manual "arm" button anymore. (Cold launch is never presenting; the guard
-    // covers a re-launch into an active presentation, where the header badge takes
-    // over the "still pending" job instead.)
+    // Silent re-arm at launch: if the fixed set has a countdown scheduled for
+    // later today, arm it directly (no prompt). Arming makes the floating widget
+    // appear; it doesn't take over until the wall-clock fire time.
     getOrCreateDefaultSet()
       .then((set) => {
-        if (isPresentationActive(usePresentationStore.getState().state)) return;
         const hit = findUpcomingScheduledCountdown(set.items ?? [], Date.now());
-        if (hit) setLaunchPrompt({ ...hit, setId: set.id });
+        if (!hit) return;
+        useCountdownStore.getState().arm({
+          scheduledStart: hit.scheduledStart,
+          durationMs: hit.durationMs,
+          message: hit.message,
+          endBehavior: hit.endBehavior,
+          setId: set.id,
+          itemIndex: hit.itemIndex,
+        });
       })
       .catch(() => {});
 
@@ -227,23 +244,32 @@ export const OperatorApp: React.FC = () => {
     }
   };
 
-  // Launch modal — "Keep on": arm the scheduled countdown (Scheduled mode, NO
-  // takeover; it overlays the screen only when it fires — see commands/countdown.rs).
-  const handleKeepCountdown = () => {
-    const p = launchPrompt;
-    setLaunchPrompt(null);
-    if (!p) return;
-    useCountdownStore
-      .getState()
-      .arm({
-        scheduledStart: p.scheduledStart,
-        durationMs: p.durationMs,
-        message: p.message,
-        endBehavior: p.endBehavior,
-        setId: p.setId,
-        itemIndex: p.itemIndex,
-      })
-      .catch(console.error);
+  // Widget "Editar": resolve the SetItem from the fixed set and host the modal.
+  const handleEditSchedule = async (armed: ArmedItemRef) => {
+    try {
+      const set = await getOrCreateDefaultSet();
+      const item = (set.items ?? [])[armed.itemIndex];
+      if (!item) return;
+      setEditingScheduleItem({ item, setId: set.id, itemIndex: armed.itemIndex });
+    } catch (err) {
+      console.error("open schedule editor failed:", err);
+    }
+  };
+
+  // Widget "Cancelar": the widget already calls reset(); here we only clear the
+  // persisted schedule so a relaunch won't silently re-arm it.
+  const handleCancelSchedule = async (armed: ArmedItemRef) => {
+    try {
+      const set = await getOrCreateDefaultSet();
+      const item = (set.items ?? [])[armed.itemIndex];
+      if (!item || !item.countdownConfig) return;
+      await updateSetItem({
+        id: item.id,
+        countdownConfig: { ...item.countdownConfig, scheduledStart: undefined },
+      });
+    } catch (err) {
+      console.error("clear persisted schedule failed:", err);
+    }
   };
 
   const isLibrarySection =
@@ -270,15 +296,6 @@ export const OperatorApp: React.FC = () => {
     <div className="h-screen bg-bg text-inherit flex flex-col">
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
 
-      {launchPrompt && (
-        <CountdownLaunchPrompt
-          scheduledHHMM={launchPrompt.hhmm}
-          remainingMs={launchPrompt.remainingMs}
-          onKeep={handleKeepCountdown}
-          onDisable={() => setLaunchPrompt(null)}
-        />
-      )}
-
       {restoreInProgress && (
         <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />
       )}
@@ -295,6 +312,22 @@ export const OperatorApp: React.FC = () => {
         <UpdateDialog
           update={pendingUpdate}
           onClose={() => setShowUpdateDialog(false)}
+        />
+      )}
+
+      {/* Global floating widget — shows in every view AND over the presentation
+          layout while a countdown is armed (scheduled / running-takeover). */}
+      <ScheduledCountdownWidget
+        onEdit={handleEditSchedule}
+        onCancel={handleCancelSchedule}
+      />
+
+      {editingScheduleItem && (
+        <CountdownScheduleModal
+          item={editingScheduleItem.item}
+          setId={editingScheduleItem.setId}
+          itemIndex={editingScheduleItem.itemIndex}
+          onClose={() => setEditingScheduleItem(null)}
         />
       )}
 

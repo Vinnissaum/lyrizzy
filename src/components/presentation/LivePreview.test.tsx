@@ -33,6 +33,24 @@ vi.mock("../../stores/settings", () => ({
   useSettingsStore: vi.fn(),
 }));
 
+// Countdown store — mocked so individual tests can drive the takeover branch.
+let cdStateMock = {
+  mode: "idle",
+  durationMs: 0,
+  remainingMs: 0,
+  endBehavior: "holdZero",
+  takeover: false,
+} as Record<string, unknown>;
+
+vi.mock("../../stores/countdown", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useCountdownStore: (selector?: (s: any) => unknown) => {
+    const store = { state: cdStateMock };
+    if (typeof selector === "function") return selector(store);
+    return store;
+  },
+}));
+
 // Mock react-i18next
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -158,6 +176,13 @@ describe("LivePreview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupSettingsStore();
+    cdStateMock = {
+      mode: "idle",
+      durationMs: 0,
+      remainingMs: 0,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
   });
 
   it("renders the 16:9 container (aspect-video) when state is provided", () => {
@@ -349,5 +374,73 @@ describe("LivePreview", () => {
     const img = container.querySelector("img");
     expect(img).toBeTruthy();
     expect(img?.src).toContain("offer.jpg");
+  });
+
+  // ── Soft takeover precedence (T7) ──────────────────────────────────────────
+  describe("countdown soft takeover", () => {
+    const runningTakeover = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: true,
+    };
+
+    it("YIELDS to a clean live song — takeover does NOT cover lyrics", () => {
+      cdStateMock = runningTakeover;
+      mockStores({
+        ...baseState(),
+        currentSlide: { lines: ["Aleluia"], sectionLabel: "Verse", sectionId: "s1" },
+      });
+      render(<LivePreview />);
+      expect(screen.getByText("Aleluia")).toBeInTheDocument();
+      expect(screen.queryByText("10:00")).toBeNull();
+    });
+
+    it("YIELDS to a clean frozen song too (mode frozen, no overlay)", () => {
+      cdStateMock = runningTakeover;
+      mockStores({ ...baseState(), mode: "frozen" });
+      render(<LivePreview />);
+      expect(screen.getByText("Aleluia")).toBeInTheDocument();
+      expect(screen.queryByText("10:00")).toBeNull();
+    });
+
+    it("overlays the countdown over a blackout (mode blank)", () => {
+      cdStateMock = runningTakeover;
+      mockStores({ ...baseState(), mode: "blank" });
+      render(<LivePreview />);
+      expect(screen.getByText("10:00")).toBeInTheDocument();
+      expect(screen.queryByText("BLACKOUT")).toBeNull();
+    });
+
+    it("overlays the countdown over an announcement overlay", () => {
+      cdStateMock = runningTakeover;
+      mockStores({
+        ...baseState(),
+        overlay: { type: "announcement", text: "Culto às 19h" },
+      });
+      render(<LivePreview />);
+      expect(screen.getByText("10:00")).toBeInTheDocument();
+      expect(screen.queryByText("Culto às 19h")).toBeNull();
+    });
+
+    it("overlays the countdown over a media overlay", () => {
+      cdStateMock = runningTakeover;
+      mockStores(
+        { ...baseState(), overlay: { type: "media", mediaId: "img-1" } },
+        [mockImageMedia]
+      );
+      const { container } = render(<LivePreview />);
+      expect(screen.getByText("10:00")).toBeInTheDocument();
+      expect(container.querySelector("img")).toBeNull();
+    });
+
+    it("does not overlay when takeover is false (normal precedence)", () => {
+      cdStateMock = { ...runningTakeover, takeover: false };
+      mockStores(baseState());
+      render(<LivePreview />);
+      expect(screen.getByText("Aleluia")).toBeInTheDocument();
+      expect(screen.queryByText("10:00")).toBeNull();
+    });
   });
 });

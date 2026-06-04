@@ -13,7 +13,6 @@ import {
   addSetItem,
 } from "../../api/commands";
 import { usePresentationStore } from "../../stores/presentation";
-import { useCountdownStore } from "../../stores/countdown";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
@@ -24,19 +23,9 @@ import { SetItemList } from "./SetItemList";
 import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
 
-function msToClock(ms: number): string {
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-}
-
 export const OperatorPresentationLayout: React.FC = () => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
-  const countdown = useCountdownStore((s) => s.state);
   const { songs } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
   const { cameraUrl, loadCameraUrl } = useSettingsStore();
@@ -72,23 +61,6 @@ export const OperatorPresentationLayout: React.FC = () => {
     } catch (err) {
       console.error("open presentation window failed:", err);
     }
-  };
-
-  // ── Scheduled-countdown header badge ───────────────────────────────────────
-  // While a countdown is pending (Scheduled) the badge shows the time remaining
-  // until it fires; the projector is untouched until then (takeover engages at
-  // fire — see commands/countdown.rs). Once running as a takeover, the badge keeps
-  // showing the live remaining. Clicking it cancels the schedule.
-  const isCountdownPending = countdown.mode === "scheduled";
-  const isCountdownLiveTakeover =
-    countdown.mode === "running" && !!countdown.takeover;
-  const armedCountdownLabel =
-    isCountdownPending || isCountdownLiveTakeover
-      ? t("countdown.schedule.badge", { remaining: msToClock(countdown.remainingMs) })
-      : null;
-
-  const handleCancelArmedCountdown = () => {
-    useCountdownStore.getState().reset().catch(console.error);
   };
 
   const handleOferta = () => {
@@ -222,8 +194,6 @@ export const OperatorPresentationLayout: React.FC = () => {
         isBlackoutActive={state?.mode === "blank"}
         isOverlayActive={!!state?.overlay}
         isImportingPresentation={isImportingPresentation}
-        armedCountdownLabel={armedCountdownLabel}
-        onCancelArmedCountdown={handleCancelArmedCountdown}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-[1fr] md:grid-cols-[240px_1fr] lg:grid-cols-[240px_1fr_320px] gap-2 flex-1 overflow-hidden">

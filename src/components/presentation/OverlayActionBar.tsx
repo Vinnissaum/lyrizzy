@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Play, X, Image as ImageIcon, Camera, Megaphone, FileText, MonitorOff, Square, AlarmClock } from "lucide-react";
+import { Play, X, Image as ImageIcon, Camera, Megaphone, FileText, MonitorOff, Square } from "lucide-react";
 
 interface Props {
   showApresentarButton: boolean;
@@ -15,12 +15,6 @@ interface Props {
   isBlackoutActive?: boolean;
   isOverlayActive: boolean;
   isImportingPresentation: boolean;
-  /**
-   * When set, a scheduled countdown is pending (or running as a takeover) — render
-   * a persistent header badge with this label (e.g. time remaining until it fires).
-   */
-  armedCountdownLabel?: string | null;
-  onCancelArmedCountdown?: () => void;
 }
 
 export const OverlayActionBar: React.FC<Props> = ({
@@ -36,23 +30,11 @@ export const OverlayActionBar: React.FC<Props> = ({
   isBlackoutActive,
   isOverlayActive,
   isImportingPresentation,
-  armedCountdownLabel,
-  onCancelArmedCountdown,
 }) => {
   const { t } = useTranslation();
 
   return (
     <div className="px-3 py-2 border-b border-border flex items-center gap-2 flex-wrap shrink-0">
-      {armedCountdownLabel && (
-        <button
-          onClick={onCancelArmedCountdown}
-          data-testid="countdown-armed-badge"
-          title={t("countdown.arm.cancel")}
-          className="px-3 py-1 text-xs bg-warning-bg text-warning border border-warning rounded-lg font-semibold transition-colors inline-flex items-center gap-1"
-        >
-          <AlarmClock size={12} /> {armedCountdownLabel} <X size={12} />
-        </button>
-      )}
       {showApresentarButton && (
         <button
           onClick={onApresentar}

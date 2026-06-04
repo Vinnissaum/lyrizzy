@@ -56,7 +56,7 @@ import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { listSongs } from "../../api/commands";
-import { CountdownSetItemEditor } from "./CountdownSetItemEditor";
+import { CountdownScheduleModal } from "./CountdownScheduleModal";
 import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
 import { MediaSetItemEditor } from "./MediaSetItemEditor";
 import { BlankItemNotesEditor } from "./BlankItemNotesEditor";
@@ -137,6 +137,9 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [countdownModal, setCountdownModal] = useState<{ item: SetItem; itemIndex: number } | null>(
+    null
+  );
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
   const [isExportingSet, setIsExportingSet] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -646,7 +649,21 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                         {expanded && (
                           <div className="border-t border-border">
                             {item.itemType === "countdown" && (
-                              <CountdownSetItemEditor item={item} />
+                              <div className="p-3 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setCountdownModal({ item, itemIndex: idx })}
+                                  className="px-3 py-1.5 text-sm rounded-lg bg-surface-2 border border-border hover:border-primary transition-colors inline-flex items-center gap-1.5"
+                                >
+                                  <Timer size={14} />
+                                  {t("countdown.schedule.button")}
+                                </button>
+                                {item.countdownConfig?.scheduledStart && (
+                                  <span className="inline-flex items-center gap-1 text-xs text-muted">
+                                    {`⏰ ${String(item.countdownConfig.scheduledStart.hour).padStart(2, "0")}:${String(item.countdownConfig.scheduledStart.minute).padStart(2, "0")}`}
+                                  </span>
+                                )}
+                              </div>
                             )}
                             {item.itemType === "web_view" && (
                               <WebViewSetItemEditor item={item} />
@@ -671,6 +688,16 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
           </DndContext>
         )}
       </div>
+
+      {/* Countdown config + schedule modal */}
+      {countdownModal && serviceSet && (
+        <CountdownScheduleModal
+          item={countdownModal.item}
+          setId={serviceSet.id}
+          itemIndex={countdownModal.itemIndex}
+          onClose={() => setCountdownModal(null)}
+        />
+      )}
 
       {/* Song picker panel */}
       {showSongPicker && (

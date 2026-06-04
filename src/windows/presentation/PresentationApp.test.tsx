@@ -189,7 +189,41 @@ describe("PresentationApp — countdown takeover precedence", () => {
     };
   });
 
-  it("overlays a running takeover countdown above the live song", () => {
+  it("YIELDS to a clean live song — takeover does NOT cover lyrics on the wall", () => {
+    // Soft takeover (T7): a clean live song (mode live, no overlay) wins.
+    cdStateMock = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: true,
+    };
+    render(<PresentationApp />);
+    expect(screen.getByText("Blessed be your name")).toBeInTheDocument();
+    expect(screen.queryByText("05:00")).toBeNull();
+  });
+
+  it("YIELDS to a clean frozen song too (mode frozen, no overlay)", () => {
+    presStateMock = { ...liveState, mode: "frozen" };
+    cdStateMock = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: true,
+    };
+    render(<PresentationApp />);
+    expect(screen.getByText("Blessed be your name")).toBeInTheDocument();
+    expect(screen.queryByText("05:00")).toBeNull();
+  });
+
+  it("overlays a running takeover countdown over a blackout (mode blank)", () => {
+    presStateMock = {
+      mode: "blank",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+    };
     cdStateMock = {
       mode: "running",
       durationMs: 600000,
@@ -199,7 +233,66 @@ describe("PresentationApp — countdown takeover precedence", () => {
     };
     render(<PresentationApp />);
     expect(screen.getByText("05:00")).toBeInTheDocument();
-    expect(screen.queryByText("Blessed be your name")).toBeNull();
+  });
+
+  it("overlays a running takeover countdown over an announcement overlay", () => {
+    presStateMock = {
+      mode: "blank",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+      overlay: { type: "announcement", text: "Culto às 19h" },
+    };
+    cdStateMock = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: true,
+    };
+    render(<PresentationApp />);
+    expect(screen.getByText("05:00")).toBeInTheDocument();
+    expect(screen.queryByText("Culto às 19h")).toBeNull();
+  });
+
+  it("overlays a running takeover countdown over a media overlay", () => {
+    mediaMock = [mediaItem("m1")];
+    presStateMock = {
+      mode: "live",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+      overlay: { type: "media", mediaId: "m1" },
+    };
+    cdStateMock = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: true,
+    };
+    const { container } = render(<PresentationApp />);
+    expect(screen.getByText("05:00")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("overlays a running takeover countdown while idle", () => {
+    presStateMock = {
+      mode: "idle",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [],
+    };
+    cdStateMock = {
+      mode: "running",
+      durationMs: 600000,
+      remainingMs: 300000,
+      endBehavior: "holdZero",
+      takeover: true,
+    };
+    render(<PresentationApp />);
+    expect(screen.getByText("05:00")).toBeInTheDocument();
+    expect(screen.queryByText("Aguardando apresentação…")).toBeNull();
   });
 
   it("does not overlay when takeover is false (normal precedence)", () => {

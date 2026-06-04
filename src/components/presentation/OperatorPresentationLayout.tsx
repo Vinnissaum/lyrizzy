@@ -24,15 +24,13 @@ import { SetItemList } from "./SetItemList";
 import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
 
-function epochToHHMM(ms?: number): string {
-  if (!ms) return "";
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
 function msToClock(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(totalSec / 60)).padStart(2, "0")}:${String(totalSec % 60).padStart(2, "0")}`;
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
 
 export const OperatorPresentationLayout: React.FC = () => {
@@ -43,17 +41,6 @@ export const OperatorPresentationLayout: React.FC = () => {
   const { media, refresh: refreshMedia } = useMediaStore();
   const { cameraUrl, loadCameraUrl } = useSettingsStore();
   const { fixedSetId, setView } = useLibraryStore();
-
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = (msg: string) => {
-    setToast(msg);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
-  };
-  useEffect(() => () => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-  }, []);
 
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
@@ -87,49 +74,18 @@ export const OperatorPresentationLayout: React.FC = () => {
     }
   };
 
-  // ── Scheduled-countdown takeover ───────────────────────────────────────────
-  const activeCountdownConfig =
-    activeItem?.itemType === "countdown" ? activeItem.countdownConfig : undefined;
-  const scheduledDurationMs =
-    activeCountdownConfig?.target.kind === "duration"
-      ? activeCountdownConfig.target.durationMs
-      : 0;
-  const canArmCountdown =
-    !!activeCountdownConfig?.scheduledStart && scheduledDurationMs > 0;
-
-  const isCountdownArmed =
-    !!countdown.takeover &&
-    (countdown.mode === "scheduled" || countdown.mode === "running");
-  const armedCountdownLabel = isCountdownArmed
-    ? t("countdown.arm.badge", {
-        time:
-          countdown.mode === "scheduled"
-            ? epochToHHMM(countdown.scheduledStartEpochMs)
-            : msToClock(countdown.remainingMs),
-      })
-    : null;
-
-  const handleArmCountdown = async () => {
-    const cfg = activeCountdownConfig;
-    if (!cfg?.scheduledStart || scheduledDurationMs <= 0) return;
-    await ensurePresentation();
-    try {
-      await useCountdownStore.getState().arm({
-        scheduledStart: cfg.scheduledStart,
-        durationMs: scheduledDurationMs,
-        message: cfg.message,
-        endBehavior: cfg.endBehavior,
-        setId: state?.set?.id,
-        itemIndex: currentItemIndex,
-        takeover: true,
-      });
-      const hh = String(cfg.scheduledStart.hour).padStart(2, "0");
-      const mm = String(cfg.scheduledStart.minute).padStart(2, "0");
-      showToast(t("countdown.arm.toast", { time: `${hh}:${mm}` }));
-    } catch (err) {
-      console.error("arm countdown failed:", err);
-    }
-  };
+  // ── Scheduled-countdown header badge ───────────────────────────────────────
+  // While a countdown is pending (Scheduled) the badge shows the time remaining
+  // until it fires; the projector is untouched until then (takeover engages at
+  // fire — see commands/countdown.rs). Once running as a takeover, the badge keeps
+  // showing the live remaining. Clicking it cancels the schedule.
+  const isCountdownPending = countdown.mode === "scheduled";
+  const isCountdownLiveTakeover =
+    countdown.mode === "running" && !!countdown.takeover;
+  const armedCountdownLabel =
+    isCountdownPending || isCountdownLiveTakeover
+      ? t("countdown.schedule.badge", { remaining: msToClock(countdown.remainingMs) })
+      : null;
 
   const handleCancelArmedCountdown = () => {
     useCountdownStore.getState().reset().catch(console.error);
@@ -266,22 +222,9 @@ export const OperatorPresentationLayout: React.FC = () => {
         isBlackoutActive={state?.mode === "blank"}
         isOverlayActive={!!state?.overlay}
         isImportingPresentation={isImportingPresentation}
-        showArmCountdown={canArmCountdown && !isCountdownArmed}
-        onArmCountdown={handleArmCountdown}
         armedCountdownLabel={armedCountdownLabel}
         onCancelArmedCountdown={handleCancelArmedCountdown}
       />
-
-      {toast && (
-        <div
-          data-testid="operator-toast"
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-surface-2 border border-border text-sm shadow-2xl"
-        >
-          {toast}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-[1fr] md:grid-cols-[240px_1fr] lg:grid-cols-[240px_1fr_320px] gap-2 flex-1 overflow-hidden">
         {/* Set pane */}

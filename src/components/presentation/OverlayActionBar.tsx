@@ -15,10 +15,10 @@ interface Props {
   isBlackoutActive?: boolean;
   isOverlayActive: boolean;
   isImportingPresentation: boolean;
-  /** Shown when the active item is a scheduled countdown that can be armed as a takeover. */
-  showArmCountdown?: boolean;
-  onArmCountdown?: () => void;
-  /** When set, a takeover countdown is armed — render a persistent badge with this label. */
+  /**
+   * When set, a scheduled countdown is pending (or running as a takeover) — render
+   * a persistent header badge with this label (e.g. time remaining until it fires).
+   */
   armedCountdownLabel?: string | null;
   onCancelArmedCountdown?: () => void;
 }
@@ -36,8 +36,6 @@ export const OverlayActionBar: React.FC<Props> = ({
   isBlackoutActive,
   isOverlayActive,
   isImportingPresentation,
-  showArmCountdown,
-  onArmCountdown,
   armedCountdownLabel,
   onCancelArmedCountdown,
 }) => {
@@ -45,7 +43,7 @@ export const OverlayActionBar: React.FC<Props> = ({
 
   return (
     <div className="px-3 py-2 border-b border-border flex items-center gap-2 flex-wrap shrink-0">
-      {armedCountdownLabel ? (
+      {armedCountdownLabel && (
         <button
           onClick={onCancelArmedCountdown}
           data-testid="countdown-armed-badge"
@@ -54,16 +52,6 @@ export const OverlayActionBar: React.FC<Props> = ({
         >
           <AlarmClock size={12} /> {armedCountdownLabel} <X size={12} />
         </button>
-      ) : (
-        showArmCountdown && (
-          <button
-            onClick={onArmCountdown}
-            data-testid="arm-countdown-button"
-            className="px-3 py-1 text-xs bg-warning text-fg-on-primary hover:opacity-90 rounded-lg font-medium transition-colors inline-flex items-center gap-1"
-          >
-            <AlarmClock size={12} /> {t("countdown.arm.button")}
-          </button>
-        )
       )}
       {showApresentarButton && (
         <button

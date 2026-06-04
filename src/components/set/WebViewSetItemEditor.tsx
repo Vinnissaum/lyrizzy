@@ -55,8 +55,10 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     return {
       mode,
       url: trimmed,
-      basicAuthUser: mode === "mjpeg" && authUser ? authUser : undefined,
-      basicAuthPass: mode === "mjpeg" && authPass ? authPass : undefined,
+      // Credentials apply to both modes: iframe (Basic-Auth-gated pages) and
+      // MJPEG (raw streams). Only persist a pair when both are filled.
+      basicAuthUser: authUser && authPass ? authUser : undefined,
+      basicAuthPass: authUser && authPass ? authPass : undefined,
     };
   };
 
@@ -140,30 +142,28 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
         )}
       </div>
 
-      {/* Basic auth — MJPEG only */}
-      {mode === "mjpeg" && (
-        <div className="space-y-2">
-          <label className="text-xs text-muted block">
-            {t("webview.editor.auth")}
-          </label>
-          <input
-            type="text"
-            value={authUser}
-            onChange={(e) => setAuthUser(e.target.value)}
-            onBlur={handleSave}
-            placeholder={t("webview.editor.user")}
-            className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
-          />
-          <input
-            type="password"
-            value={authPass}
-            onChange={(e) => setAuthPass(e.target.value)}
-            onBlur={handleSave}
-            placeholder={t("webview.editor.pass")}
-            className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
-          />
-        </div>
-      )}
+      {/* Basic auth — both modes (iframe: login-gated pages; MJPEG: streams) */}
+      <div className="space-y-2">
+        <label className="text-xs text-muted block">
+          {t("webview.editor.auth")}
+        </label>
+        <input
+          type="text"
+          value={authUser}
+          onChange={(e) => setAuthUser(e.target.value)}
+          onBlur={handleSave}
+          placeholder={t("webview.editor.user")}
+          className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
+        />
+        <input
+          type="password"
+          value={authPass}
+          onChange={(e) => setAuthPass(e.target.value)}
+          onBlur={handleSave}
+          placeholder={t("webview.editor.pass")}
+          className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
+        />
+      </div>
 
       {saving && <p className="text-xs text-muted">{t("webview.editor.saving")}</p>}
 

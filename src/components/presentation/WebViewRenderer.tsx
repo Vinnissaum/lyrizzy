@@ -6,6 +6,24 @@ interface Props {
   config: WebViewConfig;
 }
 
+/**
+ * Embed HTTP Basic Auth credentials in a URL as `user:pass@host`. Used by both
+ * webview modes so credentials can be supplied without the page prompting:
+ * iframe mode (login-gated camera pages) and MJPEG mode (raw streams). Returns
+ * the original URL unchanged when credentials are absent or the URL is invalid.
+ */
+function withBasicAuth(url: string, user?: string, pass?: string): string {
+  if (!user || !pass) return url;
+  try {
+    const parsed = new URL(url);
+    parsed.username = user;
+    parsed.password = pass;
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   const { mode, url, basicAuthUser, basicAuthPass } = config;
   const [error, setError] = useState<string | null>(null);
@@ -59,11 +77,15 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   }
 
   if (mode === "iframe") {
+    // Inject credentials so a Basic-Auth-gated page authenticates on the first
+    // navigation instead of popping a dialog (or rendering blank when the auth
+    // prompt is suppressed inside the sandbox).
+    const iframeUrl = withBasicAuth(url, basicAuthUser, basicAuthPass);
     return (
       <div className="h-screen bg-black">
         <iframe
-          key={url}
-          src={url}
+          key={iframeUrl}
+          src={iframeUrl}
           // Login-gated pages (e.g. IP cameras) need more than scripts: a JS
           // login dialog uses window.prompt/alert/confirm (allow-modals), a
           // form login needs to POST (allow-forms), and some panels open the
@@ -81,17 +103,7 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   }
 
   // MJPEG mode — inject basic-auth credentials into the URL if provided.
-  let mjpegUrl = url;
-  if (basicAuthUser && basicAuthPass) {
-    try {
-      const parsed = new URL(url);
-      parsed.username = basicAuthUser;
-      parsed.password = basicAuthPass;
-      mjpegUrl = parsed.toString();
-    } catch {
-      // keep original url
-    }
-  }
+  const mjpegUrl = withBasicAuth(url, basicAuthUser, basicAuthPass);
 
   return (
     <div className="h-screen bg-black flex items-center justify-center">

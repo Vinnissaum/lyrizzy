@@ -15,7 +15,7 @@ fn pool(state: &State<'_, AppState>) -> Result<sqlx::SqlitePool, ErrorPayload> {
         .db
         .get()
         .ok_or_else(|| ErrorPayload::new("backup.db_not_ready"))
-        .map(|p| p.clone())
+        .cloned()
 }
 
 /// Spawn a forwarder that re-emits `ExportProgress` as `backup_progress` events.

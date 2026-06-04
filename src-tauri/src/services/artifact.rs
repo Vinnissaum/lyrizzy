@@ -68,7 +68,7 @@ pub struct Resolution {
 // ── Small query helpers ─────────────────────────────────────────────────────────
 
 fn placeholders(n: usize) -> String {
-    std::iter::repeat("?").take(n).collect::<Vec<_>>().join(",")
+    std::iter::repeat_n("?", n).collect::<Vec<_>>().join(",")
 }
 
 /// `SELECT json_group_array(<json_object>) FROM <table> WHERE <col> IN (ids…)`.
@@ -119,6 +119,7 @@ fn count(json: &str) -> u64 {
     parse_json_array(json).map(|v| v.len() as u64).unwrap_or(0)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_dump(
     kind: ArchiveKind,
     songs: String,
@@ -278,7 +279,7 @@ where
     let bg_ids = background_media_ids(pool, &valid_song_ids).await?;
     let mut all_media: Vec<String> = Vec::new();
     let mut seen = HashSet::new();
-    for id in direct_media_ids.into_iter().chain(bg_ids.into_iter()) {
+    for id in direct_media_ids.into_iter().chain(bg_ids) {
         if seen.insert(id.clone()) {
             all_media.push(id);
         }

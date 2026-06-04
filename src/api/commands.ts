@@ -384,6 +384,7 @@ export interface ExportSummary {
   outPath: string;
   byteSize: number;
   counts: ManifestCounts;
+  warnings?: string[];
 }
 
 export interface ArchiveInspection {
@@ -396,11 +397,18 @@ export interface ArchiveInspection {
 export interface ImportSummary {
   songsImported: number;
   songsSkipped: number;
+  songsOverwritten: number;
+  songsCopied: number;
   sectionsImported: number;
   setsImported: number;
+  setsSkipped: number;
+  setsOverwritten: number;
+  setsCopied: number;
   setItemsImported: number;
   mediaImported: number;
   mediaSkipped: number;
+  mediaOverwritten: number;
+  mediaCopied: number;
   mediaFailed: number;
   settingsImported: number;
 }
@@ -430,6 +438,47 @@ export const abortRestore = () =>
 
 export const onBackupProgress = (cb: (p: ExportProgress) => void) =>
   listen<ExportProgress>("backup_progress", (e) => cb(e.payload));
+
+// ─── Artifact share (selective export/import — Phase 12) ──────────────────────
+
+export type ArchiveKind = "library" | "songs" | "set" | "settings";
+export type ConflictKind = "sameId" | "sameTitleArtist" | null;
+export type ResolutionAction = "skip" | "overwrite" | "copy";
+
+export interface ImportPlanItem {
+  artifactType: "song" | "set" | "media";
+  id: string;
+  title: string;
+  conflict: ConflictKind;
+  defaultAction: ResolutionAction;
+}
+
+export interface ImportPlan {
+  kind: ArchiveKind;
+  schemaVersion: number;
+  counts: ManifestCounts;
+  items: ImportPlanItem[];
+}
+
+export interface Resolution {
+  id: string;
+  action: ResolutionAction;
+}
+
+export const exportSongs = (songIds: string[], outPath: string) =>
+  invoke<ExportSummary>("export_songs", { songIds, outPath });
+
+export const exportSet = (setId: string, outPath: string) =>
+  invoke<ExportSummary>("export_set", { setId, outPath });
+
+export const exportSettingsProfile = (outPath: string) =>
+  invoke<ExportSummary>("export_settings_profile", { outPath });
+
+export const planArtifactImport = (path: string) =>
+  invoke<ImportPlan>("plan_artifact_import", { path });
+
+export const importArtifact = (path: string, resolutions: Resolution[]) =>
+  invoke<ImportSummary>("import_artifact", { path, resolutions });
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 

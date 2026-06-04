@@ -496,6 +496,55 @@
       "backButton": "Voltar"
     }
   },
+  "artifact": {
+    "export": {
+      "select": "Selecionar",
+      "cancelSelect": "Cancelar seleção",
+      "selectedCount": "{{count}} selecionada(s)",
+      "songsButton": "Exportar selecionadas…",
+      "setButton": "Exportar conjunto…",
+      "running": "Exportando…",
+      "success": "Exportado: {{songs}} músicas · {{media}} mídias",
+      "failed": "Falha ao exportar: {{detail}}"
+    },
+    "import": {
+      "button": "Importar artefato…",
+      "reading": "Lendo arquivo…",
+      "running": "Importando…",
+      "success": "Importado: {{songs}} músicas · {{sets}} conjuntos · {{media}} mídias",
+      "failed": "Falha ao importar: {{detail}}"
+    },
+    "review": {
+      "title": "Revisar importação",
+      "summary": "{{songs}} músicas · {{sets}} conjuntos · {{media}} mídias",
+      "noConflicts": "Nenhum conflito — tudo será importado como novo.",
+      "resolution": "resolução",
+      "willImport": "Importar",
+      "confirm": "Importar",
+      "cancel": "Cancelar",
+      "importing": "Importando…",
+      "kind": {
+        "library": "Biblioteca completa",
+        "songs": "Músicas",
+        "set": "Conjunto",
+        "settings": "Configurações"
+      },
+      "type": {
+        "song": "Música",
+        "set": "Conjunto",
+        "media": "Mídia"
+      },
+      "conflict": {
+        "sameId": "Já existe",
+        "sameTitleArtist": "Possível duplicata"
+      },
+      "action": {
+        "skip": "Ignorar",
+        "overwrite": "Substituir",
+        "copy": "Importar como cópia"
+      }
+    }
+  },
   "settings": {
     "title": "Configurações",
     "tabs": {

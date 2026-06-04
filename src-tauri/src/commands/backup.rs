@@ -9,7 +9,7 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, State};
 
-fn media_dir(app: &AppHandle) -> Result<PathBuf, ErrorPayload> {
+pub(crate) fn media_dir(app: &AppHandle) -> Result<PathBuf, ErrorPayload> {
     let data_dir = app
         .path()
         .app_data_dir()

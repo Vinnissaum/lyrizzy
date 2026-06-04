@@ -14,10 +14,26 @@ use sqlx::SqlitePool;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use sqlx::query::Query;
+use sqlx::sqlite::SqliteArguments;
+use sqlx::Sqlite;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-pub const SUPPORTED_SCHEMA_VERSION: u32 = 1;
+/// Type of a `.tlz` archive. Drives how the importer treats the contents.
+/// `Library` is the default for backward compatibility: legacy archives have
+/// no `kind` field and must keep restoring through the full-library path.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum ArchiveKind {
+    #[default]
+    Library,
+    Songs,
+    Set,
+    Settings,
+}
+
+pub const SUPPORTED_SCHEMA_VERSION: u32 = 2;
 pub const RESTORE_IN_PROGRESS_FLAG: &str = ".restore_in_progress";
 
 /// Return type alias for `read_archive_data` to avoid complex-type lint.
@@ -80,6 +96,9 @@ impl From<sqlx::Error> for ArchiveError {
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveManifest {
     pub schema_version: u32,
+    /// Missing in v1 archives → defaults to `Library` (C-2 / SHARE-09).
+    #[serde(default)]
+    pub kind: ArchiveKind,
     pub exported_at: i64,
     pub app_version: String,
     pub counts: ManifestCounts,
@@ -102,6 +121,9 @@ pub struct ExportSummary {
     pub out_path: String,
     pub byte_size: u64,
     pub counts: ManifestCounts,
+    /// Non-fatal notices (e.g. a set's dangling song reference skipped on export).
+    #[serde(default)]
+    pub warnings: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -118,11 +140,18 @@ pub struct ArchiveInspection {
 pub struct ImportSummary {
     pub songs_imported: u64,
     pub songs_skipped: u64,
+    pub songs_overwritten: u64,
+    pub songs_copied: u64,
     pub sections_imported: u64,
     pub sets_imported: u64,
+    pub sets_skipped: u64,
+    pub sets_overwritten: u64,
+    pub sets_copied: u64,
     pub set_items_imported: u64,
     pub media_imported: u64,
     pub media_skipped: u64,
+    pub media_overwritten: u64,
+    pub media_copied: u64,
     pub media_failed: u64,
     pub settings_imported: u64,
 }
@@ -144,16 +173,16 @@ pub struct ExportProgress {
 
 // ── Internal snapshot type ────────────────────────────────────────────────────
 
-struct JsonDump {
-    manifest: ArchiveManifest,
-    songs: String,
-    sections: String,
-    sets: String,
-    set_items: String,
-    media: String,
-    settings: String,
-    /// file_name values of every non-deleted media row (used for file copies)
-    media_file_names: Vec<String>,
+pub(crate) struct JsonDump {
+    pub(crate) manifest: ArchiveManifest,
+    pub(crate) songs: String,
+    pub(crate) sections: String,
+    pub(crate) sets: String,
+    pub(crate) set_items: String,
+    pub(crate) media: String,
+    pub(crate) settings: String,
+    /// file_name values of every media file to bundle into the archive.
+    pub(crate) media_file_names: Vec<String>,
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
@@ -175,9 +204,11 @@ where
     let out = out_path.to_path_buf();
     let mdir = media_dir.to_path_buf();
 
-    let summary = tokio::task::spawn_blocking(move || write_zip(&out, &mdir, dump, on_progress))
-        .await
-        .map_err(|e| ArchiveError::JoinError(e.to_string()))??;
+    let summary = tokio::task::spawn_blocking(move || {
+        write_tlz(&out, &mdir, dump, ArchiveKind::Library, on_progress)
+    })
+    .await
+    .map_err(|e| ArchiveError::JoinError(e.to_string()))??;
 
     Ok(summary)
 }
@@ -271,7 +302,17 @@ pub async fn wipe_db(pool: &SqlitePool) -> Result<(), ArchiveError> {
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 
-fn now_ms() -> i64 {
+/// Normalize a title/artist for duplicate detection: trim, lowercase, collapse
+/// whitespace. Shared by Holyrics import and selective-artifact conflict checks.
+pub(crate) fn normalize_title(s: &str) -> String {
+    s.trim()
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+pub(crate) fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
@@ -292,47 +333,27 @@ fn count_json_array(json: &str) -> u64 {
 
 async fn gather_json_dump(pool: &SqlitePool) -> Result<JsonDump, ArchiveError> {
     let songs = fetch_json_array(pool,
-        "SELECT COALESCE(json_group_array(json_object(\
-            'id', id, 'title', title, 'artist', artist, 'ccli_number', ccli_number, \
-            'key_signature', key_signature, 'language', language, 'notes', notes, \
-            'background_id', background_id, 'slide_config', slide_config, 'source', source, \
-            'scrim_opacity', scrim_opacity, 'created_at', created_at, \
-            'updated_at', updated_at, 'deleted_at', deleted_at)), '[]') FROM songs",
+        &format!("SELECT COALESCE(json_group_array({SONG_JSON_OBJECT}), '[]') FROM songs"),
     ).await?;
 
     let sections = fetch_json_array(pool,
-        "SELECT COALESCE(json_group_array(json_object(\
-            'id', id, 'song_id', song_id, 'label', label, 'type', type, \
-            'body', body, 'sort_order', sort_order, 'repeat_count', repeat_count)), '[]') \
-         FROM song_sections",
+        &format!("SELECT COALESCE(json_group_array({SECTION_JSON_OBJECT}), '[]') FROM song_sections"),
     ).await?;
 
     let sets = fetch_json_array(pool,
-        "SELECT COALESCE(json_group_array(json_object(\
-            'id', id, 'name', name, 'service_date', service_date, 'notes', notes, \
-            'created_at', created_at, 'updated_at', updated_at)), '[]') FROM sets",
+        &format!("SELECT COALESCE(json_group_array({SET_JSON_OBJECT}), '[]') FROM sets"),
     ).await?;
 
     let set_items = fetch_json_array(pool,
-        "SELECT COALESCE(json_group_array(json_object(\
-            'id', id, 'set_id', set_id, 'item_type', item_type, 'song_id', song_id, \
-            'media_id', media_id, 'countdown_config', countdown_config, 'web_url', web_url, \
-            'sort_order', sort_order, 'notes', notes, 'webview_config', webview_config, \
-            'media_options', media_options)), '[]') FROM set_items",
+        &format!("SELECT COALESCE(json_group_array({SET_ITEM_JSON_OBJECT}), '[]') FROM set_items"),
     ).await?;
 
     let media = fetch_json_array(pool,
-        "SELECT COALESCE(json_group_array(json_object(\
-            'id', id, 'file_path', file_path, 'file_name', file_name, 'kind', kind, \
-            'url', url, 'mime_type', mime_type, 'duration_ms', duration_ms, \
-            'width', width, 'height', height, 'thumbnail_file', thumbnail_file, \
-            'created_at', created_at, 'display_name', display_name, 'byte_size', byte_size, \
-            'updated_at', updated_at, 'deleted_at', deleted_at)), '[]') FROM media",
+        &format!("SELECT COALESCE(json_group_array({MEDIA_JSON_OBJECT}), '[]') FROM media"),
     ).await?;
 
     let settings = fetch_json_array(pool,
-        "SELECT COALESCE(json_group_array(json_object('key', key, 'value', value)), '[]') \
-         FROM settings",
+        &format!("SELECT COALESCE(json_group_array({SETTINGS_JSON_OBJECT}), '[]') FROM settings"),
     ).await?;
 
     let media_file_names: Vec<String> =
@@ -351,6 +372,7 @@ async fn gather_json_dump(pool: &SqlitePool) -> Result<JsonDump, ArchiveError> {
 
     let manifest = ArchiveManifest {
         schema_version: SUPPORTED_SCHEMA_VERSION,
+        kind: ArchiveKind::Library,
         exported_at: now_ms(),
         app_version: env!("CARGO_PKG_VERSION").to_string(),
         counts,
@@ -359,15 +381,20 @@ async fn gather_json_dump(pool: &SqlitePool) -> Result<JsonDump, ArchiveError> {
     Ok(JsonDump { manifest, songs, sections, sets, set_items, media, settings, media_file_names })
 }
 
-fn write_zip<F>(
+/// Write a `JsonDump` to `out_path` as a `.tlz` archive tagged with `kind`.
+/// Generalized from the original full-library `write_zip`; the selective
+/// exporter (`artifact.rs`) reuses the exact same temp-file + atomic-rename path.
+pub(crate) fn write_tlz<F>(
     out_path: &Path,
     media_dir: &Path,
-    dump: JsonDump,
+    mut dump: JsonDump,
+    kind: ArchiveKind,
     on_progress: F,
 ) -> Result<ExportSummary, ArchiveError>
 where
     F: Fn(ExportProgress),
 {
+    dump.manifest.kind = kind;
     let tmp = out_path.with_extension("tlz.tmp");
 
     // Write to a temp file; rename atomically on success
@@ -430,7 +457,21 @@ where
         out_path: out_path.to_string_lossy().to_string(),
         byte_size,
         counts: dump.manifest.counts,
+        warnings: Vec::new(),
     })
+}
+
+/// Read + version-guard the manifest of a `.tlz` at `path` (selective importer).
+pub(crate) fn read_archive_manifest(path: &Path) -> Result<ArchiveManifest, ArchiveError> {
+    let file = File::open(path)?;
+    let mut archive = ZipArchive::new(file)?;
+    let manifest = read_manifest(&mut archive)?;
+    if manifest.schema_version > SUPPORTED_SCHEMA_VERSION {
+        return Err(ArchiveError::SchemaTooNew {
+            archive_version: manifest.schema_version,
+        });
+    }
+    Ok(manifest)
 }
 
 fn read_manifest(archive: &mut ZipArchive<File>) -> Result<ArchiveManifest, ArchiveError> {
@@ -475,33 +516,9 @@ async fn do_import(
 
     // Media rows (before songs — songs.background_id FK)
     if let Ok(rows) = parse_json_array(&json_data.media) {
+        let sql = media_insert_sql(insert_or);
         for row in &rows {
-            let q = format!(
-                "{insert_or} INTO media \
-                 (id, file_path, file_name, kind, url, mime_type, duration_ms, width, height, \
-                  thumbnail_file, created_at, display_name, byte_size, updated_at, deleted_at) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            if sqlx::query(&q)
-                .bind(str_val(row, "id"))
-                .bind(str_val(row, "file_path"))
-                .bind(str_val(row, "file_name"))
-                .bind(str_val(row, "kind"))
-                .bind(str_val(row, "url"))
-                .bind(str_val(row, "mime_type"))
-                .bind(int_val(row, "duration_ms"))
-                .bind(int_val(row, "width"))
-                .bind(int_val(row, "height"))
-                .bind(str_val(row, "thumbnail_file"))
-                .bind(int_val(row, "created_at").unwrap_or(0))
-                .bind(str_val(row, "display_name"))
-                .bind(int_val(row, "byte_size").unwrap_or(0))
-                .bind(int_val(row, "updated_at").unwrap_or(0))
-                .bind(int_val(row, "deleted_at"))
-                .execute(&pool)
-                .await
-                .is_ok()
-            {
+            if bind_media(sqlx::query(&sql), row).execute(&pool).await.is_ok() {
                 summary.media_imported += 1;
             } else {
                 summary.media_skipped += 1;
@@ -511,32 +528,9 @@ async fn do_import(
 
     // Songs
     if let Ok(rows) = parse_json_array(&json_data.songs) {
+        let sql = song_insert_sql(insert_or);
         for row in &rows {
-            let q = format!(
-                "{insert_or} INTO songs \
-                 (id, title, artist, ccli_number, key_signature, language, notes, \
-                  background_id, slide_config, source, scrim_opacity, created_at, updated_at, deleted_at) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            if sqlx::query(&q)
-                .bind(str_val(row, "id"))
-                .bind(str_val(row, "title"))
-                .bind(str_val(row, "artist"))
-                .bind(str_val(row, "ccli_number"))
-                .bind(str_val(row, "key_signature"))
-                .bind(str_val(row, "language"))
-                .bind(str_val(row, "notes"))
-                .bind(str_val(row, "background_id"))
-                .bind(str_val(row, "slide_config"))
-                .bind(str_val(row, "source"))
-                .bind(int_val(row, "scrim_opacity").unwrap_or(35))
-                .bind(int_val(row, "created_at").unwrap_or(0))
-                .bind(int_val(row, "updated_at").unwrap_or(0))
-                .bind(int_val(row, "deleted_at"))
-                .execute(&pool)
-                .await
-                .is_ok()
-            {
+            if bind_song(sqlx::query(&sql), row).execute(&pool).await.is_ok() {
                 summary.songs_imported += 1;
             } else {
                 summary.songs_skipped += 1;
@@ -546,24 +540,9 @@ async fn do_import(
 
     // Sections
     if let Ok(rows) = parse_json_array(&json_data.sections) {
+        let sql = section_insert_sql(insert_or);
         for row in &rows {
-            let q = format!(
-                "{insert_or} INTO song_sections \
-                 (id, song_id, label, type, body, sort_order, repeat_count) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?)"
-            );
-            if sqlx::query(&q)
-                .bind(str_val(row, "id"))
-                .bind(str_val(row, "song_id"))
-                .bind(str_val(row, "label"))
-                .bind(str_val(row, "type"))
-                .bind(str_val(row, "body"))
-                .bind(int_val(row, "sort_order").unwrap_or(0))
-                .bind(int_val(row, "repeat_count").unwrap_or(1))
-                .execute(&pool)
-                .await
-                .is_ok()
-            {
+            if bind_section(sqlx::query(&sql), row).execute(&pool).await.is_ok() {
                 summary.sections_imported += 1;
             }
         }
@@ -571,22 +550,9 @@ async fn do_import(
 
     // Sets
     if let Ok(rows) = parse_json_array(&json_data.sets) {
+        let sql = set_insert_sql(insert_or);
         for row in &rows {
-            let q = format!(
-                "{insert_or} INTO sets (id, name, service_date, notes, created_at, updated_at) \
-                 VALUES (?, ?, ?, ?, ?, ?)"
-            );
-            if sqlx::query(&q)
-                .bind(str_val(row, "id"))
-                .bind(str_val(row, "name"))
-                .bind(str_val(row, "service_date"))
-                .bind(str_val(row, "notes"))
-                .bind(int_val(row, "created_at").unwrap_or(0))
-                .bind(int_val(row, "updated_at").unwrap_or(0))
-                .execute(&pool)
-                .await
-                .is_ok()
-            {
+            if bind_set(sqlx::query(&sql), row).execute(&pool).await.is_ok() {
                 summary.sets_imported += 1;
             }
         }
@@ -594,29 +560,9 @@ async fn do_import(
 
     // Set items
     if let Ok(rows) = parse_json_array(&json_data.set_items) {
+        let sql = set_item_insert_sql(insert_or);
         for row in &rows {
-            let q = format!(
-                "{insert_or} INTO set_items \
-                 (id, set_id, item_type, song_id, media_id, countdown_config, web_url, \
-                  sort_order, notes, webview_config, media_options) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            if sqlx::query(&q)
-                .bind(str_val(row, "id"))
-                .bind(str_val(row, "set_id"))
-                .bind(str_val(row, "item_type"))
-                .bind(str_val(row, "song_id"))
-                .bind(str_val(row, "media_id"))
-                .bind(str_val(row, "countdown_config"))
-                .bind(str_val(row, "web_url"))
-                .bind(int_val(row, "sort_order").unwrap_or(0))
-                .bind(str_val(row, "notes"))
-                .bind(str_val(row, "webview_config"))
-                .bind(str_val(row, "media_options"))
-                .execute(&pool)
-                .await
-                .is_ok()
-            {
+            if bind_set_item(sqlx::query(&sql), row).execute(&pool).await.is_ok() {
                 summary.set_items_imported += 1;
             }
         }
@@ -648,18 +594,16 @@ async fn do_import(
 
 // ── Archive read helpers ──────────────────────────────────────────────────────
 
-struct ArchiveJsonData {
-    songs: String,
-    sections: String,
-    sets: String,
-    set_items: String,
-    media: String,
-    settings: String,
+pub(crate) struct ArchiveJsonData {
+    pub(crate) songs: String,
+    pub(crate) sections: String,
+    pub(crate) sets: String,
+    pub(crate) set_items: String,
+    pub(crate) media: String,
+    pub(crate) settings: String,
 }
 
-fn read_archive_data(
-    path: &Path,
-) -> ArchiveReadResult {
+pub(crate) fn read_archive_data(path: &Path) -> ArchiveReadResult {
     let file = File::open(path)?;
     let mut archive = ZipArchive::new(file)?;
 
@@ -691,7 +635,10 @@ fn read_archive_data(
     ))
 }
 
-fn read_zip_entry_str(archive: &mut ZipArchive<File>, name: &str) -> Result<String, ArchiveError> {
+pub(crate) fn read_zip_entry_str(
+    archive: &mut ZipArchive<File>,
+    name: &str,
+) -> Result<String, ArchiveError> {
     match archive.by_name(name) {
         Ok(mut entry) => {
             let mut buf = String::new();
@@ -702,11 +649,177 @@ fn read_zip_entry_str(archive: &mut ZipArchive<File>, name: &str) -> Result<Stri
     }
 }
 
+// ── Shared serializers / binders (one source of truth — fixes C-1) ─────────────
+//
+// Each entity has ONE `json_object(...)` fragment (used by every exporter) and
+// ONE insert-SQL + bind helper (used by every importer). This guarantees the
+// full-library backup and the selective artifact path stay field-complete and
+// never diverge — in particular songs/sections now carry the migration 007/008
+// columns that the old `gather_json_dump` silently dropped.
+
+/// SQLite type alias for a bindable query (owned args → `'q` not tied to a row).
+pub(crate) type SqlQuery<'q> = Query<'q, Sqlite, SqliteArguments<'q>>;
+
+pub(crate) const SONG_JSON_OBJECT: &str = "json_object(\
+    'id', id, 'title', title, 'artist', artist, 'ccli_number', ccli_number, \
+    'key_signature', key_signature, 'language', language, 'notes', notes, \
+    'background_id', background_id, 'slide_config', slide_config, 'source', source, \
+    'scrim_opacity', scrim_opacity, 'created_at', created_at, 'updated_at', updated_at, \
+    'deleted_at', deleted_at, 'background_mode', background_mode, \
+    'background_preset', background_preset, 'font_family', font_family, \
+    'font_size', font_size, 'text_casing', text_casing)";
+
+pub(crate) const SECTION_JSON_OBJECT: &str = "json_object(\
+    'id', id, 'song_id', song_id, 'label', label, 'type', type, 'body', body, \
+    'sort_order', sort_order, 'repeat_count', repeat_count, \
+    'background_mode', background_mode, 'background_preset', background_preset, \
+    'font_family', font_family, 'font_size', font_size)";
+
+pub(crate) const SET_JSON_OBJECT: &str = "json_object(\
+    'id', id, 'name', name, 'service_date', service_date, 'notes', notes, \
+    'created_at', created_at, 'updated_at', updated_at)";
+
+pub(crate) const SET_ITEM_JSON_OBJECT: &str = "json_object(\
+    'id', id, 'set_id', set_id, 'item_type', item_type, 'song_id', song_id, \
+    'media_id', media_id, 'countdown_config', countdown_config, 'web_url', web_url, \
+    'sort_order', sort_order, 'notes', notes, 'webview_config', webview_config, \
+    'media_options', media_options)";
+
+pub(crate) const MEDIA_JSON_OBJECT: &str = "json_object(\
+    'id', id, 'file_path', file_path, 'file_name', file_name, 'kind', kind, \
+    'url', url, 'mime_type', mime_type, 'duration_ms', duration_ms, \
+    'width', width, 'height', height, 'thumbnail_file', thumbnail_file, \
+    'created_at', created_at, 'display_name', display_name, 'byte_size', byte_size, \
+    'updated_at', updated_at, 'deleted_at', deleted_at)";
+
+pub(crate) const SETTINGS_JSON_OBJECT: &str = "json_object('key', key, 'value', value)";
+
+pub(crate) fn song_insert_sql(insert_or: &str) -> String {
+    format!(
+        "{insert_or} INTO songs \
+         (id, title, artist, ccli_number, key_signature, language, notes, \
+          background_id, slide_config, source, scrim_opacity, created_at, updated_at, \
+          deleted_at, background_mode, background_preset, font_family, font_size, text_casing) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+}
+
+pub(crate) fn bind_song<'q>(q: SqlQuery<'q>, row: &JsonRow) -> SqlQuery<'q> {
+    q.bind(str_val(row, "id"))
+        .bind(str_val(row, "title"))
+        .bind(str_val(row, "artist"))
+        .bind(str_val(row, "ccli_number"))
+        .bind(str_val(row, "key_signature"))
+        .bind(str_val(row, "language"))
+        .bind(str_val(row, "notes"))
+        .bind(str_val(row, "background_id"))
+        .bind(str_val(row, "slide_config"))
+        .bind(str_val(row, "source"))
+        .bind(int_val(row, "scrim_opacity").unwrap_or(35))
+        .bind(int_val(row, "created_at").unwrap_or(0))
+        .bind(int_val(row, "updated_at").unwrap_or(0))
+        .bind(int_val(row, "deleted_at"))
+        .bind(str_val(row, "background_mode"))
+        .bind(str_val(row, "background_preset"))
+        .bind(str_val(row, "font_family"))
+        .bind(str_val(row, "font_size"))
+        .bind(str_val(row, "text_casing"))
+}
+
+pub(crate) fn section_insert_sql(insert_or: &str) -> String {
+    format!(
+        "{insert_or} INTO song_sections \
+         (id, song_id, label, type, body, sort_order, repeat_count, \
+          background_mode, background_preset, font_family, font_size) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+}
+
+pub(crate) fn bind_section<'q>(q: SqlQuery<'q>, row: &JsonRow) -> SqlQuery<'q> {
+    q.bind(str_val(row, "id"))
+        .bind(str_val(row, "song_id"))
+        .bind(str_val(row, "label"))
+        .bind(str_val(row, "type"))
+        .bind(str_val(row, "body"))
+        .bind(int_val(row, "sort_order").unwrap_or(0))
+        .bind(int_val(row, "repeat_count").unwrap_or(1))
+        .bind(str_val(row, "background_mode"))
+        .bind(str_val(row, "background_preset"))
+        .bind(str_val(row, "font_family"))
+        .bind(str_val(row, "font_size"))
+}
+
+pub(crate) fn set_insert_sql(insert_or: &str) -> String {
+    format!(
+        "{insert_or} INTO sets (id, name, service_date, notes, created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?)"
+    )
+}
+
+pub(crate) fn bind_set<'q>(q: SqlQuery<'q>, row: &JsonRow) -> SqlQuery<'q> {
+    q.bind(str_val(row, "id"))
+        .bind(str_val(row, "name"))
+        .bind(str_val(row, "service_date"))
+        .bind(str_val(row, "notes"))
+        .bind(int_val(row, "created_at").unwrap_or(0))
+        .bind(int_val(row, "updated_at").unwrap_or(0))
+}
+
+pub(crate) fn set_item_insert_sql(insert_or: &str) -> String {
+    format!(
+        "{insert_or} INTO set_items \
+         (id, set_id, item_type, song_id, media_id, countdown_config, web_url, \
+          sort_order, notes, webview_config, media_options) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+}
+
+pub(crate) fn bind_set_item<'q>(q: SqlQuery<'q>, row: &JsonRow) -> SqlQuery<'q> {
+    q.bind(str_val(row, "id"))
+        .bind(str_val(row, "set_id"))
+        .bind(str_val(row, "item_type"))
+        .bind(str_val(row, "song_id"))
+        .bind(str_val(row, "media_id"))
+        .bind(str_val(row, "countdown_config"))
+        .bind(str_val(row, "web_url"))
+        .bind(int_val(row, "sort_order").unwrap_or(0))
+        .bind(str_val(row, "notes"))
+        .bind(str_val(row, "webview_config"))
+        .bind(str_val(row, "media_options"))
+}
+
+pub(crate) fn media_insert_sql(insert_or: &str) -> String {
+    format!(
+        "{insert_or} INTO media \
+         (id, file_path, file_name, kind, url, mime_type, duration_ms, width, height, \
+          thumbnail_file, created_at, display_name, byte_size, updated_at, deleted_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+}
+
+pub(crate) fn bind_media<'q>(q: SqlQuery<'q>, row: &JsonRow) -> SqlQuery<'q> {
+    q.bind(str_val(row, "id"))
+        .bind(str_val(row, "file_path"))
+        .bind(str_val(row, "file_name"))
+        .bind(str_val(row, "kind"))
+        .bind(str_val(row, "url"))
+        .bind(str_val(row, "mime_type"))
+        .bind(int_val(row, "duration_ms"))
+        .bind(int_val(row, "width"))
+        .bind(int_val(row, "height"))
+        .bind(str_val(row, "thumbnail_file"))
+        .bind(int_val(row, "created_at").unwrap_or(0))
+        .bind(str_val(row, "display_name"))
+        .bind(int_val(row, "byte_size").unwrap_or(0))
+        .bind(int_val(row, "updated_at").unwrap_or(0))
+        .bind(int_val(row, "deleted_at"))
+}
+
 // ── JSON row helpers ──────────────────────────────────────────────────────────
 
-type JsonRow = serde_json::Map<String, serde_json::Value>;
+pub(crate) type JsonRow = serde_json::Map<String, serde_json::Value>;
 
-fn parse_json_array(json: &str) -> Result<Vec<JsonRow>, serde_json::Error> {
+pub(crate) fn parse_json_array(json: &str) -> Result<Vec<JsonRow>, serde_json::Error> {
     let val: serde_json::Value = serde_json::from_str(json)?;
     Ok(match val {
         serde_json::Value::Array(arr) => arr
@@ -719,7 +832,7 @@ fn parse_json_array(json: &str) -> Result<Vec<JsonRow>, serde_json::Error> {
     })
 }
 
-fn str_val(row: &JsonRow, key: &str) -> Option<String> {
+pub(crate) fn str_val(row: &JsonRow, key: &str) -> Option<String> {
     match row.get(key) {
         Some(serde_json::Value::String(s)) => Some(s.clone()),
         Some(serde_json::Value::Number(n)) => Some(n.to_string()),
@@ -727,7 +840,7 @@ fn str_val(row: &JsonRow, key: &str) -> Option<String> {
     }
 }
 
-fn int_val(row: &JsonRow, key: &str) -> Option<i64> {
+pub(crate) fn int_val(row: &JsonRow, key: &str) -> Option<i64> {
     match row.get(key) {
         Some(serde_json::Value::Number(n)) => n.as_i64(),
         Some(serde_json::Value::String(s)) => s.parse::<i64>().ok(),
@@ -815,6 +928,64 @@ mod tests {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM songs WHERE id = 's1'")
             .fetch_one(&pool2).await.unwrap();
         assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn round_trip_preserves_007_008_song_columns() {
+        // Proves Concern C-1 is fixed: the migration 007/008 columns survive a
+        // full export → import round-trip.
+        let (pool, dir) = make_test_pool().await;
+        let media_dir = dir.path().join("media");
+        fs::create_dir_all(&media_dir).unwrap();
+
+        let now = now_ms();
+        sqlx::query(
+            "INSERT INTO songs \
+             (id, title, language, created_at, updated_at, background_mode, background_preset, \
+              font_family, font_size, text_casing) \
+             VALUES ('s1', 'Test', 'pt', ?, ?, 'preset', 'preto-branco', 'serif', 'lg', 'upper')",
+        )
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let out = dir.path().join("backup.tlz");
+        export(&pool, &media_dir, &out, |_| {}).await.unwrap();
+
+        let (pool2, dir2) = make_test_pool().await;
+        let media_dir2 = dir2.path().join("media");
+        fs::create_dir_all(&media_dir2).unwrap();
+        import(&pool2, &media_dir2, &out, ImportMode::Replace).await.unwrap();
+
+        let (mode, preset, family, size, casing): (String, String, String, String, String) =
+            sqlx::query_as(
+                "SELECT background_mode, background_preset, font_family, font_size, text_casing \
+                 FROM songs WHERE id = 's1'",
+            )
+            .fetch_one(&pool2)
+            .await
+            .unwrap();
+        assert_eq!(mode, "preset");
+        assert_eq!(preset, "preto-branco");
+        assert_eq!(family, "serif");
+        assert_eq!(size, "lg");
+        assert_eq!(casing, "upper");
+    }
+
+    #[test]
+    fn v1_manifest_without_kind_deserializes_as_library() {
+        // Backward compatibility (C-2 / SHARE-09): legacy archives have no `kind`.
+        let json = r#"{
+            "schemaVersion": 1,
+            "exportedAt": 0,
+            "appVersion": "0.0.0",
+            "counts": {"songs":0,"sections":0,"sets":0,"setItems":0,"media":0,"settings":0}
+        }"#;
+        let manifest: ArchiveManifest = serde_json::from_str(json).unwrap();
+        assert_eq!(manifest.kind, ArchiveKind::Library);
+        assert_eq!(manifest.schema_version, 1);
     }
 
     #[tokio::test]

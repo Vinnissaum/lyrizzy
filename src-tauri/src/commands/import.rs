@@ -47,13 +47,7 @@ pub struct FailedImport {
 #[derive(Debug, Clone, Serialize)]
 struct SongsChangedEvent;
 
-fn normalize(s: &str) -> String {
-    s.trim()
-        .to_lowercase()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
+use crate::services::archive::normalize_title as normalize;
 
 fn now_ms() -> i64 {
     std::time::SystemTime::now()

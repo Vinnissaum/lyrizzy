@@ -5,6 +5,9 @@ mod protocol;
 pub mod services;
 mod state;
 
+use commands::artifact::{
+    export_set, export_settings_profile, export_songs, import_artifact, plan_artifact_import,
+};
 use commands::backup::{
     abort_restore, check_restore_in_progress, export_library, inspect_archive, restore_library,
 };
@@ -175,6 +178,11 @@ pub fn run() {
             restore_library,
             check_restore_in_progress,
             abort_restore,
+            export_songs,
+            export_set,
+            export_settings_profile,
+            plan_artifact_import,
+            import_artifact,
             enter_presentation,
             exit_presentation,
             list_monitors,

@@ -1,18 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
   ArchiveInspection,
   ExportProgress,
   ExportSummary,
+  ImportPlan,
   ImportSummary,
+  Resolution,
 } from "../../api/commands";
 import {
   exportLibrary,
+  importArtifact,
   inspectArchive,
   onBackupProgress,
+  planArtifactImport,
   restoreLibrary,
 } from "../../api/commands";
+import { ImportReviewModal } from "./ImportReviewModal";
 import { formatBytes } from "../media/MediaCard";
 import { formatDatetime } from "../../utils/format";
 
@@ -117,7 +122,7 @@ const ExportCard: React.FC = () => {
 
 type ImportStep = "idle" | "inspecting" | "confirm" | "importing" | "done";
 
-const ImportCard: React.FC = () => {
+const ImportCard: React.FC<{ handoffPath?: string | null }> = ({ handoffPath }) => {
   const { t } = useTranslation();
   const [step, setStep] = useState<ImportStep>("idle");
   const [inspection, setInspection] = useState<ArchiveInspection | null>(null);
@@ -126,6 +131,28 @@ const ImportCard: React.FC = () => {
   const [confirmation, setConfirmation] = useState("");
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const inspectPath = async (path: string) => {
+    setStep("inspecting");
+    setArchivePath(path);
+    try {
+      const info = await inspectArchive(path);
+      setInspection(info);
+      setStep("confirm");
+    } catch (err: unknown) {
+      setError(String(err));
+      setStep("idle");
+    }
+  };
+
+  // A full-library `.tlz` picked through the artifact-import flow is routed here
+  // (SHARE-09) — the destructive restore stays on this card, never the selective path.
+  useEffect(() => {
+    if (handoffPath) {
+      setError(null);
+      void inspectPath(handoffPath);
+    }
+  }, [handoffPath]);
 
   const handleSelectFile = async () => {
     setError(null);
@@ -136,17 +163,7 @@ const ImportCard: React.FC = () => {
     if (!filePath) return;
 
     const path = typeof filePath === "string" ? filePath : filePath[0];
-    setStep("inspecting");
-    setArchivePath(path);
-
-    try {
-      const info = await inspectArchive(path);
-      setInspection(info);
-      setStep("confirm");
-    } catch (err: unknown) {
-      setError(String(err));
-      setStep("idle");
-    }
+    void inspectPath(path);
   };
 
   const handleRestore = async () => {
@@ -340,10 +357,137 @@ const ImportCard: React.FC = () => {
   );
 };
 
+// ── Artifact import card (selective: songs / set / settings) ────────────────────
+
+type ArtifactStep = "idle" | "planning" | "review" | "importing" | "done";
+
+export const ArtifactImportCard: React.FC<{
+  onLibraryFile: (path: string) => void;
+}> = ({ onLibraryFile }) => {
+  const { t } = useTranslation();
+  const [step, setStep] = useState<ArtifactStep>("idle");
+  const [plan, setPlan] = useState<ImportPlan | null>(null);
+  const [archivePath, setArchivePath] = useState<string | null>(null);
+  const [summary, setSummary] = useState<ImportSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reset = () => {
+    setStep("idle");
+    setPlan(null);
+    setArchivePath(null);
+    setSummary(null);
+    setError(null);
+  };
+
+  const handleSelectFile = async () => {
+    setError(null);
+    setSummary(null);
+    const filePath = await open({
+      filters: [{ name: "Lyrizzy Artifact", extensions: ["tlz"] }],
+      multiple: false,
+    });
+    if (!filePath) return; // cancelled — silent no-op
+
+    const path = typeof filePath === "string" ? filePath : filePath[0];
+    setStep("planning");
+    try {
+      const result = await planArtifactImport(path);
+      // SHARE-09: a full-library backup is handed off to the restore card; the
+      // selective importer is never invoked for it.
+      if (result.kind === "library") {
+        reset();
+        onLibraryFile(path);
+        return;
+      }
+      setPlan(result);
+      setArchivePath(path);
+      setStep("review");
+    } catch (err: unknown) {
+      setError(String(err));
+      setStep("idle");
+    }
+  };
+
+  const handleConfirm = async (resolutions: Resolution[]) => {
+    if (!archivePath) return;
+    setStep("importing");
+    setError(null);
+    const unlisten = await onBackupProgress(() => {});
+    try {
+      const result = await importArtifact(archivePath, resolutions);
+      setSummary(result);
+      setStep("done");
+    } catch (err: unknown) {
+      setError(String(err));
+      setStep("review");
+    } finally {
+      (await unlisten)();
+    }
+  };
+
+  return (
+    <div className="bg-surface rounded-xl p-6 flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+          <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="font-semibold">{t("artifact.import.button")}</h3>
+          <p className="text-xs text-muted">{t("backup.import.subtitle")}</p>
+        </div>
+      </div>
+
+      {step === "planning" && <p className="text-sm text-muted">{t("artifact.import.reading")}</p>}
+
+      {summary && step === "done" && (
+        <div className="bg-info-bg border border-info rounded-lg p-3 text-xs space-y-0.5">
+          <p className="text-info font-medium">
+            {t("artifact.import.success", {
+              songs: summary.songsImported + summary.songsCopied + summary.songsOverwritten,
+              sets: summary.setsImported + summary.setsCopied + summary.setsOverwritten,
+              media: summary.mediaImported + summary.mediaCopied + summary.mediaOverwritten,
+            })}
+          </p>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-xs text-danger bg-danger-bg border border-danger rounded-lg px-3 py-2">
+          {t("artifact.import.failed", { detail: error })}
+        </p>
+      )}
+
+      <button
+        data-testid="cta-import-artifact"
+        onClick={handleSelectFile}
+        disabled={step === "planning" || step === "importing"}
+        className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors self-start disabled:opacity-50"
+      >
+        {t("artifact.import.button")}
+      </button>
+
+      {step === "review" && plan && (
+        <ImportReviewModal
+          plan={plan}
+          onConfirm={handleConfirm}
+          onCancel={reset}
+        />
+      )}
+      {step === "importing" && plan && (
+        <ImportReviewModal plan={plan} busy onConfirm={() => {}} onCancel={() => {}} />
+      )}
+    </div>
+  );
+};
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export const BackupScreen: React.FC = () => {
   const { t } = useTranslation();
+  const [handoffPath, setHandoffPath] = useState<string | null>(null);
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -352,7 +496,8 @@ export const BackupScreen: React.FC = () => {
           <p className="text-sm text-muted mt-1">{t("backup.subtitle")}</p>
         </div>
         <ExportCard />
-        <ImportCard />
+        <ArtifactImportCard onLibraryFile={setHandoffPath} />
+        <ImportCard handoffPath={handoffPath} />
       </div>
     </div>
   );

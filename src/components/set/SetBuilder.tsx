@@ -17,6 +17,7 @@ import {
   Globe,
   Square,
   FileText,
+  Share2,
 } from "lucide-react";
 import {
   DndContext,
@@ -35,15 +36,17 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { ItemTypeIcon } from "../presentation/itemMeta";
 import {
   addSetItem,
   duplicateSetItem,
   enterPresentation,
+  exportSet,
   getSet,
   importPresentation,
   loadSetForPresentation,
+  onBackupProgress,
   onSetChanged,
   removeSetItem,
   reorderSetItems,
@@ -135,6 +138,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
+  const [isExportingSet, setIsExportingSet] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -265,6 +269,29 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
       await addSetItem({ setId: serviceSet.id, itemType: "blank" });
     } catch (err) {
       console.error("add blank failed:", err);
+    }
+  };
+
+  const handleExportSet = async () => {
+    if (!serviceSet) return;
+    const outPath = await save({
+      filters: [{ name: "Lyrizzy Artifact", extensions: ["tlz"] }],
+      defaultPath: `${serviceSet.name || "set"}-${new Date()
+        .toISOString()
+        .slice(0, 10)}.tlz`,
+    });
+    if (!outPath) return; // cancelled — silent no-op
+
+    setIsExportingSet(true);
+    setLoadError(null);
+    const unlisten = await onBackupProgress(() => {});
+    try {
+      await exportSet(serviceSet.id, outPath);
+    } catch (err) {
+      setLoadError(t("artifact.export.failed", { detail: String(err) }));
+    } finally {
+      (await unlisten)();
+      setIsExportingSet(false);
     }
   };
 
@@ -494,6 +521,18 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
               title={t("builder.renameTip")}
             >
               {serviceSet.name}
+            </button>
+          )}
+          {!editingName && (
+            <button
+              data-testid="cta-export-set"
+              onClick={handleExportSet}
+              disabled={isExportingSet}
+              title={t("artifact.export.setButton")}
+              className="shrink-0 text-muted hover:text-inherit p-1.5 rounded transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 text-xs"
+            >
+              <Share2 size={16} />
+              {isExportingSet && <span>{t("artifact.export.running")}</span>}
             </button>
           )}
         </div>

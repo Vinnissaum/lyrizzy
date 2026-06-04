@@ -496,6 +496,55 @@
       "backButton": "Back"
     }
   },
+  "artifact": {
+    "export": {
+      "select": "Select",
+      "cancelSelect": "Cancel selection",
+      "selectedCount": "{{count}} selected",
+      "songsButton": "Export selected…",
+      "setButton": "Export set…",
+      "running": "Exporting…",
+      "success": "Exported: {{songs}} songs · {{media}} media",
+      "failed": "Export failed: {{detail}}"
+    },
+    "import": {
+      "button": "Import artifact…",
+      "reading": "Reading file…",
+      "running": "Importing…",
+      "success": "Imported: {{songs}} songs · {{sets}} sets · {{media}} media",
+      "failed": "Import failed: {{detail}}"
+    },
+    "review": {
+      "title": "Review import",
+      "summary": "{{songs}} songs · {{sets}} sets · {{media}} media",
+      "noConflicts": "No conflicts — everything will be imported as new.",
+      "resolution": "resolution",
+      "willImport": "Import",
+      "confirm": "Import",
+      "cancel": "Cancel",
+      "importing": "Importing…",
+      "kind": {
+        "library": "Full library",
+        "songs": "Songs",
+        "set": "Set",
+        "settings": "Settings"
+      },
+      "type": {
+        "song": "Song",
+        "set": "Set",
+        "media": "Media"
+      },
+      "conflict": {
+        "sameId": "Already exists",
+        "sameTitleArtist": "Possible duplicate"
+      },
+      "action": {
+        "skip": "Skip",
+        "overwrite": "Overwrite",
+        "copy": "Import as copy"
+      }
+    }
+  },
   "settings": {
     "title": "Settings",
     "tabs": {

@@ -55,7 +55,6 @@ export const PresentationApp: React.FC = () => {
     state: countdown,
     subscribe: subscribeCountdown,
     start: startCountdown,
-    arm: armCountdown,
   } = useCountdownStore();
   const { refresh: refreshMedia, media } = useMediaStore();
   const {
@@ -156,26 +155,19 @@ export const PresentationApp: React.FC = () => {
     };
   }, []);
 
-  // Auto-start (or auto-arm) countdown when the runtime lands on a countdown
-  // set item. `scheduledStart` arms the timer and waits until HH:MM.
+  // Landing on a countdown set item. Arming a schedule is owned by the launch
+  // modal (OperatorApp), so this effect NEVER arms. If a schedule is already
+  // pending/running (kept-on at launch), leave it alone — navigating here just
+  // previews it via the countdown branch, and the takeover still fires at HH:MM
+  // regardless of where the operator is parked. Otherwise — an unscheduled item,
+  // OR a schedule the operator switched OFF at launch — start the countdown
+  // immediately: this is the manual-present path (clicking the item runs it now,
+  // no takeover).
   useEffect(() => {
     if (currentItem?.itemType === "countdown" && currentItem.countdownConfig) {
-      const { target, message, endBehavior, scheduledStart } = currentItem.countdownConfig;
-      if (scheduledStart) {
-        const durationMs =
-          target.kind === "duration" ? target.durationMs : 0;
-        if (durationMs > 0) {
-          armCountdown({
-            scheduledStart,
-            durationMs,
-            message,
-            endBehavior,
-            setId: state?.set?.id,
-            itemIndex: state?.currentItemIndex,
-          });
-          return;
-        }
-      }
+      const cdMode = useCountdownStore.getState().state.mode;
+      if (cdMode === "scheduled" || cdMode === "running") return;
+      const { target, message, endBehavior } = currentItem.countdownConfig;
       startCountdown({ target, message, endBehavior });
     }
   }, [currentItem?.id]);

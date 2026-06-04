@@ -72,13 +72,18 @@ let cdStateMock = {
   takeover: false,
 } as Record<string, unknown>;
 
+const cdStartMock = vi.fn();
+
 vi.mock("../../stores/countdown", () => ({
-  useCountdownStore: () => ({
-    state: cdStateMock,
-    subscribe: vi.fn(() => Promise.resolve(() => {})),
-    start: vi.fn(),
-    arm: vi.fn(),
-  }),
+  useCountdownStore: Object.assign(
+    () => ({
+      state: cdStateMock,
+      subscribe: vi.fn(() => Promise.resolve(() => {})),
+      start: cdStartMock,
+      arm: vi.fn(),
+    }),
+    { getState: () => ({ state: cdStateMock }) }
+  ),
 }));
 
 vi.mock("../../stores/media", () => ({
@@ -421,5 +426,81 @@ describe("PresentationApp — Esc always escapes + local fallback (P10-02)", () 
 
     // …but the fallback close is armed once (no double-close throw).
     expect(closeMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PresentationApp — set-enter never arms (manual present)", () => {
+  const countdownItemState: PresentationState = {
+    mode: "live",
+    set: {
+      id: "set-1",
+      name: "Set",
+      createdAt: 0,
+      updatedAt: 0,
+      items: [
+        {
+          id: "cd-1",
+          itemType: "countdown",
+          countdownConfig: {
+            target: { kind: "duration", durationMs: 600000 },
+            message: "Começa em…",
+            endBehavior: "holdZero",
+            scheduledStart: { hour: 19, minute: 30 },
+          },
+        } as never,
+      ],
+    },
+    currentItemIndex: 0,
+    currentSlideIndex: 0,
+    itemSlideCounts: [1],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    presStateMock = countdownItemState;
+    mediaMock = [];
+    cdStateMock = {
+      mode: "idle",
+      durationMs: 0,
+      remainingMs: 0,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
+  });
+
+  it("starts immediately when landing on a countdown item with no active schedule", () => {
+    render(<PresentationApp />);
+    expect(cdStartMock).toHaveBeenCalledTimes(1);
+    expect(cdStartMock).toHaveBeenCalledWith({
+      target: { kind: "duration", durationMs: 600000 },
+      message: "Começa em…",
+      endBehavior: "holdZero",
+    });
+  });
+
+  it("does NOT restart/arm when a schedule is already pending (scheduled)", () => {
+    cdStateMock = {
+      mode: "scheduled",
+      durationMs: 600000,
+      remainingMs: 7200000,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
+    render(<PresentationApp />);
+    expect(cdStartMock).not.toHaveBeenCalled();
+  });
+
+  it("does not overlay while scheduled+takeover:false — projector stays put", () => {
+    presStateMock = liveState;
+    cdStateMock = {
+      mode: "scheduled",
+      durationMs: 600000,
+      remainingMs: 7200000,
+      endBehavior: "holdZero",
+      takeover: false,
+    };
+    render(<PresentationApp />);
+    expect(screen.getByText("Blessed be your name")).toBeInTheDocument();
+    expect(screen.queryByText("Começa em…")).toBeNull();
   });
 });

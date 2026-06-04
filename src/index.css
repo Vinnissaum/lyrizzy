@@ -101,6 +101,27 @@
   --app-info-bg:        #E4EEFD;
 }
 
+/* Black — operator UI only. A neutral, true-dark palette modelled on Visual
+   Studio Code's default "Dark+" theme: charcoal surfaces (no blue/violet tint)
+   and VS Code's signature blue accent. Like light, it overrides only the role
+   variables that differ; the status text tones cascade from :root. */
+:root[data-theme="black"] {
+  color-scheme: dark;
+
+  /* Surfaces — VS Code editor / sidebar / panel greys */
+  --app-bg:             #1E1E1E;
+  --app-surface:        #252526;
+  --app-surface-2:      #2D2D30;
+  --app-border:         #3C3C3C;
+  --app-muted:          #9D9D9D;
+  --app-fg:             #D4D4D4;
+
+  /* Accent — VS Code button blue (hover matches its lighter button state) */
+  --app-primary:        #0E639C;
+  --app-primary-hover:  #1177BB;
+  --app-fg-on-primary:  #FFFFFF;
+}
+
 /* ── Launch splash ──────────────────────────────────────────────────────────
  * The animated wordmark shown briefly on operator startup (SplashScreen.tsx).
  * Animations are skipped when the user prefers reduced motion (also gated in JS). */

@@ -566,7 +566,8 @@
     "themeMode": {
       "label": "Tema",
       "light": "Claro",
-      "dark": "Escuro"
+      "dark": "Escuro",
+      "black": "Preto"
     },
     "about": "Sobre",
     "windows": {

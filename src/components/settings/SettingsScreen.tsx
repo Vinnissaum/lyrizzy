@@ -24,7 +24,7 @@ const MARGIN_OPTIONS: Margin[] = ["none", "sm", "md", "lg", "xl"];
 const REPEAT_MODE_OPTIONS: RepeatMode[] = ["duplicate", "annotate"];
 const LINE_SPACING_OPTIONS: LineSpacing[] = ["tight", "normal", "relaxed", "loose"];
 const BOLD_LEVEL_OPTIONS: BoldLevel[] = ["normal", "medium", "semibold", "bold"];
-const THEME_OPTIONS: ("light" | "dark")[] = ["light", "dark"];
+const THEME_OPTIONS: ("light" | "dark" | "black")[] = ["light", "dark", "black"];
 
 const TAB_IDS = [
   "general",

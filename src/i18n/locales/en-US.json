@@ -566,7 +566,8 @@
     "themeMode": {
       "label": "Theme",
       "light": "Light",
-      "dark": "Dark"
+      "dark": "Dark",
+      "black": "Black"
     },
     "about": "About",
     "windows": {

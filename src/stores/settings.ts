@@ -60,8 +60,8 @@ const POSITION_VALUES: ScreenPosition[] = [
 ];
 const MARGIN_VALUES: Margin[] = ["none", "sm", "md", "lg", "xl"];
 const REPEAT_MODE_VALUES: RepeatMode[] = ["duplicate", "annotate"];
-type Theme = "light" | "dark";
-const THEME_VALUES: Theme[] = ["light", "dark"];
+type Theme = "light" | "dark" | "black";
+const THEME_VALUES: Theme[] = ["light", "dark", "black"];
 const DEFAULT_THEME: Theme = "dark";
 
 /** Applies the operator theme to the document root. No-op for unknown values. */

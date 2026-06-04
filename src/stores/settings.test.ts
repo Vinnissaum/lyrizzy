@@ -199,6 +199,23 @@ describe("useSettingsStore — theme", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(mockSetSetting).toHaveBeenCalledWith(UI_THEME_KEY, "light");
   });
+
+  it("setTheme accepts the black (VS Code dark) palette", () => {
+    useSettingsStore.getState().setTheme("black");
+
+    expect(useSettingsStore.getState().theme).toBe("black");
+    expect(document.documentElement.dataset.theme).toBe("black");
+    expect(mockSetSetting).toHaveBeenCalledWith(UI_THEME_KEY, "black");
+  });
+
+  it("loadTheme applies the persisted black value to <html> and store", async () => {
+    mockGetSetting.mockResolvedValue("black");
+
+    await useSettingsStore.getState().loadTheme();
+
+    expect(useSettingsStore.getState().theme).toBe("black");
+    expect(document.documentElement.dataset.theme).toBe("black");
+  });
 });
 
 describe("useSettingsStore — PRESENTATION_SETTING_KEYS includes new keys", () => {

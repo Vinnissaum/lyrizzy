@@ -245,10 +245,7 @@
       "scheduledStartHint": "Quando entrar neste item, o cronômetro aguarda até a hora marcada antes de começar."
     },
     "schedule": {
-      "heading": "Agendar início",
-      "startAt": "Começar às",
-      "armButton": "Agendar",
-      "hint": "Defina a duração acima e o horário ao lado. O cronômetro só começa a contar a duração ao bater o horário."
+      "badge": "Cronômetro em {{remaining}}"
     },
     "scheduled": {
       "label": "Aguardando",
@@ -256,10 +253,13 @@
       "rendererLabel": "Começa em"
     },
     "arm": {
-      "button": "Armar contagem",
-      "cancel": "Cancelar contagem agendada",
-      "badge": "Contagem {{time}}",
-      "toast": "Contagem agendada para {{time}} — vai assumir a tela"
+      "cancel": "Cancelar contagem agendada"
+    },
+    "launch": {
+      "title": "Cronômetro agendado",
+      "body": "Um cronômetro está agendado para {{time}} (em {{remaining}}). Ele vai assumir a tela automaticamente. Manter ativo ou desativar?",
+      "keep": "Manter ativo",
+      "disable": "Desativar"
     },
     "position": {
       "top-left": "Superior esquerdo",

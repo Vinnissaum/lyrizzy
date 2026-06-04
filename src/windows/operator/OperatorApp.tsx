@@ -6,6 +6,7 @@ import {
   clearOverlay,
   enterPresentation,
   exitPresentation,
+  getOrCreateDefaultSet,
   onCountdownTriggered,
   onLocaleChanged,
   onPresentationLifecycle,
@@ -29,6 +30,11 @@ import { RestoreInProgressDialog } from "../../components/backup/RestoreInProgre
 import { UpdateBanner } from "../../components/system/UpdateBanner";
 import { UpdateDialog } from "../../components/system/UpdateDialog";
 import { SplashScreen } from "../../components/system/SplashScreen";
+import { CountdownLaunchPrompt } from "../../components/system/CountdownLaunchPrompt";
+import {
+  findUpcomingScheduledCountdown,
+  type UpcomingScheduledCountdown,
+} from "../../runtime/scheduledCountdown";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
@@ -54,6 +60,9 @@ export const OperatorApp: React.FC = () => {
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
   const [showSplash, setShowSplash] = useState(true);
+  const [launchPrompt, setLaunchPrompt] = useState<
+    (UpcomingScheduledCountdown & { setId: string }) | null
+  >(null);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
@@ -113,6 +122,20 @@ export const OperatorApp: React.FC = () => {
       .catch(() => {});
 
     loadFixedSet();
+
+    // Launch-time scheduled-countdown scan: if the fixed set has a countdown
+    // scheduled for later today, warn the operator with a modal and let them keep
+    // it armed or switch it off for this session. Arming is owned here — there is
+    // no manual "arm" button anymore. (Cold launch is never presenting; the guard
+    // covers a re-launch into an active presentation, where the header badge takes
+    // over the "still pending" job instead.)
+    getOrCreateDefaultSet()
+      .then((set) => {
+        if (isPresentationActive(usePresentationStore.getState().state)) return;
+        const hit = findUpcomingScheduledCountdown(set.items ?? [], Date.now());
+        if (hit) setLaunchPrompt({ ...hit, setId: set.id });
+      })
+      .catch(() => {});
 
     return () => {
       unlistenSongs.then((u) => u());
@@ -204,6 +227,25 @@ export const OperatorApp: React.FC = () => {
     }
   };
 
+  // Launch modal — "Keep on": arm the scheduled countdown (Scheduled mode, NO
+  // takeover; it overlays the screen only when it fires — see commands/countdown.rs).
+  const handleKeepCountdown = () => {
+    const p = launchPrompt;
+    setLaunchPrompt(null);
+    if (!p) return;
+    useCountdownStore
+      .getState()
+      .arm({
+        scheduledStart: p.scheduledStart,
+        durationMs: p.durationMs,
+        message: p.message,
+        endBehavior: p.endBehavior,
+        setId: p.setId,
+        itemIndex: p.itemIndex,
+      })
+      .catch(console.error);
+  };
+
   const isLibrarySection =
     currentView === "library" ||
     currentView === "editor" ||
@@ -227,6 +269,15 @@ export const OperatorApp: React.FC = () => {
   return (
     <div className="h-screen bg-bg text-inherit flex flex-col">
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+
+      {launchPrompt && (
+        <CountdownLaunchPrompt
+          scheduledHHMM={launchPrompt.hhmm}
+          remainingMs={launchPrompt.remainingMs}
+          onKeep={handleKeepCountdown}
+          onDisable={() => setLaunchPrompt(null)}
+        />
+      )}
 
       {restoreInProgress && (
         <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />

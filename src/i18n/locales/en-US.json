@@ -245,10 +245,7 @@
       "scheduledStartHint": "When this item is presented, the countdown waits until HH:MM before starting."
     },
     "schedule": {
-      "heading": "Schedule start",
-      "startAt": "Start at",
-      "armButton": "Schedule",
-      "hint": "Set the duration above and the start time on the side. The countdown only begins ticking once the start time hits."
+      "badge": "Countdown in {{remaining}}"
     },
     "scheduled": {
       "label": "Waiting",
@@ -256,10 +253,13 @@
       "rendererLabel": "Starts in"
     },
     "arm": {
-      "button": "Arm takeover",
-      "cancel": "Cancel scheduled countdown",
-      "badge": "Countdown {{time}}",
-      "toast": "Countdown scheduled for {{time}} — it will take over the screen"
+      "cancel": "Cancel scheduled countdown"
+    },
+    "launch": {
+      "title": "Scheduled countdown",
+      "body": "A countdown is scheduled for {{time}} (in {{remaining}}). It will take over the screen automatically. Keep it on, or switch it off?",
+      "keep": "Keep on",
+      "disable": "Switch off"
     },
     "position": {
       "top-left": "Top left",

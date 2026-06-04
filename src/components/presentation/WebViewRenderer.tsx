@@ -64,8 +64,13 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
         <iframe
           key={url}
           src={url}
+          // Login-gated pages (e.g. IP cameras) need more than scripts: a JS
+          // login dialog uses window.prompt/alert/confirm (allow-modals), a
+          // form login needs to POST (allow-forms), and some panels open the
+          // live view in a popup (allow-popups). Without these the sandbox
+          // silently suppresses the dialog and the page looks broken.
           // eslint-disable-next-line react/no-unknown-property
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
           className="w-full h-full border-0"
           onLoad={handleLoad}
           onError={handleError}

@@ -376,8 +376,8 @@ describe("LivePreview", () => {
     expect(img?.src).toContain("offer.jpg");
   });
 
-  // ── Soft takeover precedence (T7) ──────────────────────────────────────────
-  describe("countdown soft takeover", () => {
+  // ── Hard takeover precedence ────────────────────────────────────────────────
+  describe("countdown hard takeover", () => {
     const runningTakeover = {
       mode: "running",
       durationMs: 600000,
@@ -386,23 +386,23 @@ describe("LivePreview", () => {
       takeover: true,
     };
 
-    it("YIELDS to a clean live song — takeover does NOT cover lyrics", () => {
+    it("OVERLAYS a clean live song — takeover covers lyrics", () => {
       cdStateMock = runningTakeover;
       mockStores({
         ...baseState(),
         currentSlide: { lines: ["Aleluia"], sectionLabel: "Verse", sectionId: "s1" },
       });
       render(<LivePreview />);
-      expect(screen.getByText("Aleluia")).toBeInTheDocument();
-      expect(screen.queryByText("10:00")).toBeNull();
+      expect(screen.getByText("10:00")).toBeInTheDocument();
+      expect(screen.queryByText("Aleluia")).toBeNull();
     });
 
-    it("YIELDS to a clean frozen song too (mode frozen, no overlay)", () => {
+    it("OVERLAYS a clean frozen song too (mode frozen, no overlay)", () => {
       cdStateMock = runningTakeover;
       mockStores({ ...baseState(), mode: "frozen" });
       render(<LivePreview />);
-      expect(screen.getByText("Aleluia")).toBeInTheDocument();
-      expect(screen.queryByText("10:00")).toBeNull();
+      expect(screen.getByText("10:00")).toBeInTheDocument();
+      expect(screen.queryByText("Aleluia")).toBeNull();
     });
 
     it("overlays the countdown over a blackout (mode blank)", () => {

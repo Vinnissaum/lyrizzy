@@ -7,6 +7,7 @@ import {
   enterPresentation,
   exitPresentation,
   getOrCreateDefaultSet,
+  loadSetForPresentation,
   onCountdownTriggered,
   onLocaleChanged,
   onPresentationLifecycle,
@@ -99,17 +100,23 @@ export const OperatorApp: React.FC = () => {
           usePresentationStore.getState().state,
         );
         if (presenting) {
-          // Soft takeover (T7): the countdown overlays filler states (blank /
-          // media overlay / aviso) but yields to a clean live song. Don't jump
-          // the underlying set position — leave the live content alone.
+          // Already presenting: the takeover overlay (takeover=true) now covers
+          // the whole projector — including a live song — so there is nothing to
+          // open and no need to move the underlying set position. The overlay
+          // auto-clears at 00:00, restoring whatever was on the wall.
           return;
         }
-        // Not presenting: open the projector and make the countdown item live so
-        // it renders via the normal `itemType === "countdown"` branch.
+        // Not presenting: replicate the "Present" button. Load the armed set
+        // into the navigator first (otherwise jumpToItem fails with no slides),
+        // open the projector, then jump to the countdown item so it underlies
+        // the takeover overlay and shows once the overlay clears.
+        const armed = useCountdownStore.getState().armedItem;
+        const setId = armed?.setId ?? payload.setId;
+        if (typeof setId === "string") {
+          await loadSetForPresentation(setId);
+        }
         await enterPresentation();
-        const itemIndex =
-          useCountdownStore.getState().armedItem?.itemIndex ??
-          payload.itemIndex;
+        const itemIndex = armed?.itemIndex ?? payload.itemIndex;
         if (typeof itemIndex === "number") {
           await usePresentationStore.getState().jumpToItem(itemIndex);
         }

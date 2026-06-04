@@ -77,15 +77,10 @@ export const LivePreview: React.FC = () => {
 
   const mode = state.mode;
 
-  // ── Soft takeover (T7, mirrors PresentationApp) ─────────────────────────────
-  // A "clean live song" is sacred — never covered by a countdown takeover. Clean
-  // live content = mode ∈ {live, frozen} AND no active overlay. When clean, fall
-  // through to the normal set-content rendering below. Otherwise (blackout, any
-  // overlay, idle) a running/active takeover overlays the filler state.
-  const isCleanLiveContent =
-    (mode === "live" || mode === "frozen") && !state.overlay;
-
-  if (countdown.takeover && countdown.mode !== "idle" && !isCleanLiveContent) {
+  // ── Hard takeover (mirrors PresentationApp) ─────────────────────────────────
+  // A countdown takeover overlays EVERYTHING on the wall — including a live song
+  // — so the operator's preview reflects exactly what the projector shows.
+  if (countdown.takeover && countdown.mode !== "idle") {
     const cfg: CountdownConfig = {
       target: { kind: "duration", durationMs: countdown.durationMs },
       message: countdown.message,

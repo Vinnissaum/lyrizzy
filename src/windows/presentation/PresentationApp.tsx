@@ -187,20 +187,14 @@ export const PresentationApp: React.FC = () => {
   //   5. live/frozen → set content (below)
   const overlay = state?.overlay;
 
-  // Soft takeover (T7): a "clean live song" is sacred — a song already on the
-  // wall is never covered by a countdown takeover. Clean live content =
-  // mode ∈ {live, frozen} AND no active overlay. When clean, we fall through to
-  // the normal set-content rendering below (the takeover guard is skipped).
-  const isCleanLiveContent = (mode === "live" || mode === "frozen") && !overlay;
-
-  // Countdown takeover — overlays every "filler" state (blackout, aviso,
-  // media/webView overlay, idle) but YIELDS to clean live content (above). A
-  // countdown armed/started as a "takeover" overlays the filler until it
-  // finishes (auto-clears, restoring the underlying screen) or is reset. The
+  // Countdown takeover — a hard takeover that overlays EVERYTHING on the wall
+  // (blackout, aviso, media/webView overlay, idle, AND a live song). A countdown
+  // armed/started as a "takeover" covers the projector until it finishes
+  // (auto-clears, restoring the underlying screen) or is reset. The
   // digits/scheduled label come from the live countdown store via
   // CountdownRenderer → useCountdownDigits; we only need a minimal synthetic
   // config for position + message.
-  if (countdown.takeover && countdown.mode !== "idle" && !isCleanLiveContent) {
+  if (countdown.takeover && countdown.mode !== "idle") {
     const takeoverConfig: CountdownConfig = {
       target: { kind: "duration", durationMs: countdown.durationMs },
       message: countdown.message,

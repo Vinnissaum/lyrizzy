@@ -189,8 +189,8 @@ describe("PresentationApp — countdown takeover precedence", () => {
     };
   });
 
-  it("YIELDS to a clean live song — takeover does NOT cover lyrics on the wall", () => {
-    // Soft takeover (T7): a clean live song (mode live, no overlay) wins.
+  it("OVERLAYS a clean live song — hard takeover covers lyrics on the wall", () => {
+    // Hard takeover: a running takeover covers everything, including a live song.
     cdStateMock = {
       mode: "running",
       durationMs: 600000,
@@ -199,11 +199,11 @@ describe("PresentationApp — countdown takeover precedence", () => {
       takeover: true,
     };
     render(<PresentationApp />);
-    expect(screen.getByText("Blessed be your name")).toBeInTheDocument();
-    expect(screen.queryByText("05:00")).toBeNull();
+    expect(screen.getByText("05:00")).toBeInTheDocument();
+    expect(screen.queryByText("Blessed be your name")).toBeNull();
   });
 
-  it("YIELDS to a clean frozen song too (mode frozen, no overlay)", () => {
+  it("OVERLAYS a clean frozen song too (mode frozen, no overlay)", () => {
     presStateMock = { ...liveState, mode: "frozen" };
     cdStateMock = {
       mode: "running",
@@ -213,8 +213,8 @@ describe("PresentationApp — countdown takeover precedence", () => {
       takeover: true,
     };
     render(<PresentationApp />);
-    expect(screen.getByText("Blessed be your name")).toBeInTheDocument();
-    expect(screen.queryByText("05:00")).toBeNull();
+    expect(screen.getByText("05:00")).toBeInTheDocument();
+    expect(screen.queryByText("Blessed be your name")).toBeNull();
   });
 
   it("overlays a running takeover countdown over a blackout (mode blank)", () => {

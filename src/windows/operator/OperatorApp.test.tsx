@@ -319,7 +319,7 @@ describe("OperatorApp", () => {
       jumpSpy.mockRestore();
     });
 
-    it("when already presenting, does not jump (soft takeover)", async () => {
+    it("when already presenting, does not jump (hard takeover overlay covers all)", async () => {
       let triggerCb: ((e: { payload: unknown }) => void) | null = null;
       vi.mocked(listen).mockImplementation((event: string, cb: any) => {
         if (event === "countdown_triggered") triggerCb = cb;

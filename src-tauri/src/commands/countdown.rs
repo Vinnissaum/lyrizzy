@@ -1,6 +1,7 @@
 use crate::commands::presentation::{do_blank_presentation, do_next_slide};
 use crate::domain::countdown::{
-    CountdownEndBehavior, CountdownMode, CountdownState, CountdownTarget, ScheduledStart,
+    CountdownEndBehavior, CountdownMode, CountdownPosition, CountdownState, CountdownTarget,
+    ScheduledStart,
 };
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::PresentationState;
@@ -274,6 +275,7 @@ pub async fn set_countdown_duration(
 /// - `message`: if provided, overrides the stored message.
 /// - `end_behavior`: if provided, overrides the stored end behavior.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn start_countdown(
     state: State<'_, AppState>,
     app: AppHandle,
@@ -282,6 +284,8 @@ pub async fn start_countdown(
     message: Option<String>,
     end_behavior: Option<CountdownEndBehavior>,
     takeover: Option<bool>,
+    position: Option<CountdownPosition>,
+    background_media_id: Option<String>,
 ) -> Result<CountdownState, ErrorPayload> {
     // Abort any running ticker first.
     {
@@ -327,6 +331,10 @@ pub async fn start_countdown(
         if let Some(t) = takeover {
             s.takeover = t;
         }
+        // A fresh start adopts the source item's appearance (or clears it when
+        // unspecified) so the takeover renderer mirrors the configured look.
+        s.position = position.unwrap_or_default();
+        s.background_media_id = background_media_id;
         s.clone()
     };
 
@@ -397,6 +405,8 @@ pub async fn reset_countdown(
         s.target_epoch_ms = None;
         s.scheduled_start_epoch_ms = None;
         s.takeover = false;
+        s.position = CountdownPosition::default();
+        s.background_media_id = None;
         s.clone()
     };
     let _ = app.emit("countdown_tick", &snapshot);
@@ -419,6 +429,8 @@ pub async fn arm_countdown(
     set_id: Option<String>,
     item_index: Option<usize>,
     takeover: Option<bool>,
+    position: Option<CountdownPosition>,
+    background_media_id: Option<String>,
 ) -> Result<CountdownState, ErrorPayload> {
     if duration_ms == 0 {
         return Err(ErrorPayload::new("countdown.duration_not_set"));
@@ -452,6 +464,10 @@ pub async fn arm_countdown(
         // (see tick_scheduled). The param is retained for IPC compat only.
         let _ = takeover;
         s.takeover = false;
+        // Stash the look now so the Scheduled→Running fire renders it without
+        // needing the set item again.
+        s.position = position.unwrap_or_default();
+        s.background_media_id = background_media_id;
         s.clone()
     };
 

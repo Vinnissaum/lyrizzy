@@ -136,6 +136,8 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
           endBehavior,
           setId,
           itemIndex,
+          position,
+          backgroundMediaId,
         });
       } else {
         await useCountdownStore.getState().reset();

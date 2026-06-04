@@ -3,6 +3,7 @@ import { listen, emit } from "@tauri-apps/api/event";
 import type {
   CountdownConfig,
   CountdownEndBehavior,
+  CountdownPosition,
   CountdownState,
   CountdownTarget,
   CountdownTriggeredPayload,
@@ -339,6 +340,10 @@ export interface StartCountdownParams {
   endBehavior?: CountdownEndBehavior;
   /** When true, the running countdown overlays the presentation regardless of mode. */
   takeover?: boolean;
+  /** On-screen anchor for the digits (mirrored into runtime state for takeover). */
+  position?: CountdownPosition;
+  /** Looped-video background id (mirrored into runtime state for takeover). */
+  backgroundMediaId?: string;
   [key: string]: unknown;
 }
 
@@ -354,6 +359,10 @@ export interface ArmCountdownParams {
   itemIndex?: number;
   /** When true, the scheduled→running countdown overlays the presentation. */
   takeover?: boolean;
+  /** On-screen anchor for the digits (mirrored into runtime state for takeover). */
+  position?: CountdownPosition;
+  /** Looped-video background id (mirrored into runtime state for takeover). */
+  backgroundMediaId?: string;
   [key: string]: unknown;
 }
 

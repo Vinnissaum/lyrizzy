@@ -1,3 +1,4 @@
+use crate::domain::countdown::{CountdownMode, CountdownPosition};
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::state::AppState;
@@ -352,6 +353,32 @@ pub async fn exit_presentation(
         pres.overlay = None;
         pres.clone()
     };
+
+    // Stop/Esc must also tear down an active countdown takeover — otherwise the
+    // ticker keeps running, `takeover` stays set, and reopening the projector
+    // (or the lingering floating widget) re-seizes the screen. Only an actually
+    // engaged takeover is cleared; a merely-Scheduled (armed-for-later) countdown
+    // is left alone so exiting a presentation doesn't silently disarm it.
+    if state.countdown.read().await.takeover {
+        {
+            let mut task = state.countdown_task.lock().await;
+            if let Some(handle) = task.take() {
+                handle.abort();
+            }
+        }
+        let cd_snapshot = {
+            let mut cd = state.countdown.write().await;
+            cd.remaining_ms = cd.duration_ms;
+            cd.mode = CountdownMode::Idle;
+            cd.target_epoch_ms = None;
+            cd.scheduled_start_epoch_ms = None;
+            cd.takeover = false;
+            cd.position = CountdownPosition::default();
+            cd.background_media_id = None;
+            cd.clone()
+        };
+        let _ = app.emit("countdown_tick", &cd_snapshot);
+    }
 
     // Emit BEFORE closing so the operator can react while the presentation
     // window still exists.

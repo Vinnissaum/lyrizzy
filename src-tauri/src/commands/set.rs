@@ -430,6 +430,31 @@ pub async fn update_set_item(
     }
 
     let item = db_load_set_item(pool, &payload.id).await?;
+
+    // Keep the loaded-for-presentation snapshot in sync: if the edited item is
+    // part of the set currently loaded for presentation, patch it in place and
+    // re-emit state so a live presentation picks up the new config (e.g. a
+    // countdown's position/background) without a disruptive full reload.
+    let presentation_snapshot = {
+        let mut pres = state.presentation.write().await;
+        let mut patched = false;
+        if let Some(set) = pres.set.as_mut() {
+            if let Some(slot) = set.items.iter_mut().find(|i| i.id == item.id) {
+                *slot = item.clone();
+                patched = true;
+            }
+        }
+        if patched {
+            Some(pres.clone())
+        } else {
+            None
+        }
+    };
+    if let Some(snapshot) = presentation_snapshot {
+        app.emit("state_changed", &snapshot)
+            .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    }
+
     app.emit("set_changed", ())
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(item)

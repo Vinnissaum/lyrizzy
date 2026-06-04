@@ -153,6 +153,15 @@ pub struct CountdownState {
     /// countdown finishes so the underlying content returns.
     #[serde(default)]
     pub takeover: bool,
+    /// On-screen anchor for the digits while running/taking over. Mirrors the
+    /// source set item's `CountdownConfig.position` so the takeover renderer can
+    /// honour it (the takeover path has no access to the set item).
+    #[serde(default)]
+    pub position: CountdownPosition,
+    /// Optional looped-video background id, mirrored from the source item's
+    /// `CountdownConfig.background_media_id` for the same reason as `position`.
+    #[serde(default)]
+    pub background_media_id: Option<String>,
 }
 
 impl Default for CountdownState {
@@ -166,6 +175,8 @@ impl Default for CountdownState {
             message: None,
             end_behavior: CountdownEndBehavior::HoldZero,
             takeover: false,
+            position: CountdownPosition::Center,
+            background_media_id: None,
         }
     }
 }

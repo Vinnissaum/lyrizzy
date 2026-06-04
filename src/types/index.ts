@@ -261,6 +261,10 @@ export interface CountdownState {
   endBehavior: CountdownEndBehavior;
   /** When true, the countdown overlays the presentation regardless of mode. */
   takeover?: boolean;
+  /** On-screen anchor for the digits, mirrored from the source item config. */
+  position?: CountdownPosition;
+  /** Looped-video background id, mirrored from the source item config. */
+  backgroundMediaId?: string;
 }
 
 /** Emitted when a scheduled countdown reaches its wall-clock start time. */

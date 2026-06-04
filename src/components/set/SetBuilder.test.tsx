@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 vi.mock("../../stores/library", () => ({
   useLibraryStore: vi.fn(),
@@ -117,18 +117,16 @@ describe("SetBuilder — countdown row", () => {
     vi.mocked(getSet).mockResolvedValue(countdownSet);
   });
 
-  it("shows the schedule button and ⏰ chip when expanded with a scheduled countdown", async () => {
+  it("shows the schedule button and ⏰ chip inline (no expand needed) for a scheduled countdown", async () => {
     render(<SetBuilder setId="set-cd" />);
     await waitFor(() => expect(screen.getByText("Cd")).toBeInTheDocument());
 
-    // Expand the countdown row (chevron toggle).
-    const editButtons = screen.getAllByTitle("builder.actions.edit");
-    fireEvent.click(editButtons[0]);
-
+    // Countdown rows render their config button inline — no chevron/expand.
     await waitFor(() =>
       expect(screen.getByText("countdown.schedule.button")).toBeInTheDocument()
     );
     expect(screen.getByText(/19:30/)).toBeInTheDocument();
+    expect(screen.queryByTitle("builder.actions.edit")).not.toBeInTheDocument();
   });
 });
 

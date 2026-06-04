@@ -113,8 +113,9 @@ const SortableSetItemRow: React.FC<SortableSetItemRowProps> = ({
 
 
 function isExpandable(item: SetItem): boolean {
+  // Countdown deliberately excluded: its config button is always shown inline
+  // (no expand/collapse), so the schedule modal is reachable in one click.
   return (
-    item.itemType === "countdown" ||
     item.itemType === "web_view" ||
     item.itemType === "blank" ||
     item.itemType === "slide_show" ||
@@ -646,25 +647,28 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
                           </div>
                         </div>
 
+                        {item.itemType === "countdown" && (
+                          <div className="border-t border-border">
+                            <div className="p-3 flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setCountdownModal({ item, itemIndex: idx })}
+                                className="px-3 py-1.5 text-sm rounded-lg bg-surface-2 border border-border hover:border-primary transition-colors inline-flex items-center gap-1.5"
+                              >
+                                <Timer size={14} />
+                                {t("countdown.schedule.button")}
+                              </button>
+                              {item.countdownConfig?.scheduledStart && (
+                                <span className="inline-flex items-center gap-1 text-xs text-muted">
+                                  {`⏰ ${String(item.countdownConfig.scheduledStart.hour).padStart(2, "0")}:${String(item.countdownConfig.scheduledStart.minute).padStart(2, "0")}`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {expanded && (
                           <div className="border-t border-border">
-                            {item.itemType === "countdown" && (
-                              <div className="p-3 flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setCountdownModal({ item, itemIndex: idx })}
-                                  className="px-3 py-1.5 text-sm rounded-lg bg-surface-2 border border-border hover:border-primary transition-colors inline-flex items-center gap-1.5"
-                                >
-                                  <Timer size={14} />
-                                  {t("countdown.schedule.button")}
-                                </button>
-                                {item.countdownConfig?.scheduledStart && (
-                                  <span className="inline-flex items-center gap-1 text-xs text-muted">
-                                    {`⏰ ${String(item.countdownConfig.scheduledStart.hour).padStart(2, "0")}:${String(item.countdownConfig.scheduledStart.minute).padStart(2, "0")}`}
-                                  </span>
-                                )}
-                              </div>
-                            )}
                             {item.itemType === "web_view" && (
                               <WebViewSetItemEditor item={item} />
                             )}

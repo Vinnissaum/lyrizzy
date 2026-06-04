@@ -167,8 +167,9 @@ export const PresentationApp: React.FC = () => {
     if (currentItem?.itemType === "countdown" && currentItem.countdownConfig) {
       const cdMode = useCountdownStore.getState().state.mode;
       if (cdMode === "scheduled" || cdMode === "running") return;
-      const { target, message, endBehavior } = currentItem.countdownConfig;
-      startCountdown({ target, message, endBehavior });
+      const { target, message, endBehavior, position, backgroundMediaId } =
+        currentItem.countdownConfig;
+      startCountdown({ target, message, endBehavior, position, backgroundMediaId });
     }
   }, [currentItem?.id]);
 
@@ -204,11 +205,26 @@ export const PresentationApp: React.FC = () => {
       target: { kind: "duration", durationMs: countdown.durationMs },
       message: countdown.message,
       endBehavior: countdown.endBehavior,
-      position: "center",
+      position: countdown.position ?? "center",
+      backgroundMediaId: countdown.backgroundMediaId,
     };
+    // Resolve the configured background the same way the manual countdown branch
+    // does, so a takeover honours the set item's background video.
+    let takeoverBackground: BackgroundInfo | undefined = undefined;
+    if (countdown.backgroundMediaId) {
+      const bgMedia = media.find((m) => m.id === countdown.backgroundMediaId);
+      if (bgMedia) {
+        takeoverBackground = {
+          mediaKind: bgMedia.kind,
+          assetUrl: mediaUrl(bgMedia.fileName),
+          scrimOpacity: 35,
+          restartOnSectionBoundary: false,
+        };
+      }
+    }
     return (
       <div className="h-screen w-screen overflow-hidden">
-        <CountdownRenderer config={takeoverConfig} />
+        <CountdownRenderer config={takeoverConfig} background={takeoverBackground} />
       </div>
     );
   }

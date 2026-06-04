@@ -58,6 +58,7 @@ export const OperatorApp: React.FC = () => {
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const { subscribe: subscribeCountdown } = useCountdownStore();
+  const countdownState = useCountdownStore((s) => s.state);
   const { setLocale, loadLocale, loadPresentationSettings, loadTheme } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
@@ -287,10 +288,17 @@ export const OperatorApp: React.FC = () => {
   const isBackupSection = currentView === "backup";
   const isSettingsSection = currentView === "settings";
 
+  // A counter-driven takeover seizes the projector without moving the
+  // presentation `mode` off idle, so gate on it too — otherwise the operator
+  // stays on its current view with no Stop button while the countdown is live.
+  const countdownActive =
+    !!countdownState.takeover && countdownState.mode !== "idle";
+
   const isPresenting =
     presState?.mode === "live" ||
     presState?.mode === "blank" ||
-    presState?.mode === "frozen";
+    presState?.mode === "frozen" ||
+    countdownActive;
 
   return (
     <div className="h-screen bg-bg text-inherit flex flex-col">

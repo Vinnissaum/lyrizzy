@@ -67,7 +67,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     if (!config) return;
     setSaving(true);
     try {
-      await updateSetItem({ id: item.id, webViewConfig: config });
+      await updateSetItem({ id: item.id, webviewConfig: config });
     } catch (err) {
       console.error("save webview failed:", err);
     } finally {

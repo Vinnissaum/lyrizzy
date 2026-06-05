@@ -219,13 +219,13 @@ export interface AddSetItemPayload {
   mediaId?: string;
   mediaOptions?: MediaItemOptions;
   countdownConfig?: CountdownConfig;
-  webViewConfig?: WebViewConfig;
+  webviewConfig?: WebViewConfig;
 }
 
 export interface UpdateSetItemPayload {
   id: string;
   countdownConfig?: CountdownConfig;
-  webViewConfig?: WebViewConfig;
+  webviewConfig?: WebViewConfig;
   mediaOptions?: MediaItemOptions;
   notes?: string;
 }

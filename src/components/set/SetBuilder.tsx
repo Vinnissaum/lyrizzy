@@ -259,7 +259,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
       const item = await addSetItem({
         setId: serviceSet.id,
         itemType: "web_view",
-        webViewConfig: { mode: "iframe", url: "" },
+        webviewConfig: { mode: "iframe", url: "" },
       });
       setExpandedItemId(item.id);
     } catch (err) {

@@ -38,10 +38,16 @@ pub fn mediamtx_path(resource_dir: Option<&Path>) -> Option<PathBuf> {
         }
     }
 
-    // 2. MEDIAMTX_PATH env var
+    // 2. MEDIAMTX_PATH env var — accept either the executable itself or a
+    //    directory containing it (a common misconfiguration).
     if let Ok(val) = std::env::var("MEDIAMTX_PATH") {
-        let p = PathBuf::from(val);
-        if p.exists() {
+        let p = PathBuf::from(val.trim());
+        if p.is_dir() {
+            let exe = p.join(BUNDLED_BIN);
+            if exe.exists() {
+                return Some(exe);
+            }
+        } else if p.exists() {
             return Some(p);
         }
     }
@@ -231,11 +237,21 @@ mod tests {
         let exe = tmp.path().join(BUNDLED_BIN);
         std::fs::write(&exe, b"stub").unwrap();
 
+        // Both kept in one test: they mutate the same process-wide env var, so
+        // splitting them risks a race under parallel test execution.
+
+        // (a) env var points at the executable itself.
         std::env::set_var("MEDIAMTX_PATH", exe.to_str().unwrap());
-        let result = mediamtx_path(None);
+        let from_file = mediamtx_path(None);
+
+        // (b) env var points at the *directory* containing it.
+        std::env::set_var("MEDIAMTX_PATH", tmp.path().to_str().unwrap());
+        let from_dir = mediamtx_path(None);
+
         std::env::remove_var("MEDIAMTX_PATH");
 
-        assert_eq!(result, Some(exe));
+        assert_eq!(from_file, Some(exe.clone()));
+        assert_eq!(from_dir, Some(exe));
     }
 
     #[test]

@@ -21,6 +21,21 @@ pub enum WebViewMode {
     Mjpeg,
     /// RTMP(S) camera stream, bridged to WebRTC by the MediaMTX proxy.
     Rtmp,
+    /// SRT camera stream, bridged to WebRTC by the MediaMTX proxy.
+    Srt,
+    /// UDP/MPEG-TS multicast stream, bridged to WebRTC by the MediaMTX proxy.
+    Multicast,
+    /// RTSP camera stream, bridged to WebRTC by the MediaMTX proxy.
+    Rtsp,
+}
+
+/// RTSP lower-transport, matching MediaMTX's `rtspTransport` path option.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum RtspTransport {
+    Automatic,
+    Udp,
+    Tcp,
 }
 
 /// Visual crop for iframe mode — scales/shifts the iframe so a region (e.g. a
@@ -34,6 +49,44 @@ pub struct WebViewCrop {
     pub offset_y: f64,
 }
 
+/// Whether the camera initiates the SRT connection (`Caller`, it pushes to us)
+/// or waits for one (`Listener`, we pull from it).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum SrtMode {
+    Caller,
+    Listener,
+}
+
+/// SRT connection parameters, mirroring a camera's SRT settings page.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SrtConfig {
+    pub host: String,
+    pub port: u16,
+    pub mode: SrtMode,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stream_id: Option<String>,
+    #[serde(default)]
+    pub encrypted: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub passphrase: Option<String>,
+    /// SRT latency in milliseconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latency_ms: Option<u32>,
+    /// Overhead bandwidth as a percentage (libsrt `oheadbw`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overhead_bandwidth: Option<u32>,
+}
+
+/// UDP multicast (MPEG-TS) parameters.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MulticastConfig {
+    pub ip: String,
+    pub port: u16,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WebViewConfig {
@@ -43,6 +96,13 @@ pub struct WebViewConfig {
     pub basic_auth_pass: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crop: Option<WebViewCrop>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub srt_config: Option<SrtConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multicast_config: Option<MulticastConfig>,
+    /// RTSP lower-transport (rtsp mode reuses `url` for the rtsp:// address).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rtsp_transport: Option<RtspTransport>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -184,6 +244,9 @@ mod tests {
                 basic_auth_user: Some("admin".into()),
                 basic_auth_pass: Some("secret".into()),
                 crop: None,
+                srt_config: None,
+                multicast_config: None,
+                rtsp_transport: None,
             }),
             sort_order: 0,
             notes: None,

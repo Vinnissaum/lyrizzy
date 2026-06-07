@@ -1,29 +1,33 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { startRtmpProxy } from "../../api/commands";
+import { startStreamProxy } from "../../api/commands";
 import { connectWhep } from "../../utils/whep";
+import type { StreamSource } from "../../types";
 
 interface Props {
-  url: string;
+  source: StreamSource;
 }
 
 const MAX_ATTEMPTS = 5;
 const RETRY_DELAY_MS = 1500;
 
 /**
- * Plays an RTMP(S) camera by asking the Rust MediaMTX proxy to bridge it to
- * WebRTC, then attaching the WHEP stream to a `<video>`. RTMP can't play in
- * WebView2 directly, so this is the only way to show such a camera.
+ * Plays a camera stream (RTMP, SRT, or UDP/multicast) by asking the Rust
+ * MediaMTX proxy to bridge it to WebRTC, then attaching the WHEP stream to a
+ * `<video>`. None of those transports play in WebView2 directly, so this is the
+ * only way to show such a camera.
  *
  * On first connect the proxy may still be spinning up MediaMTX / dialling the
  * camera, so we retry the WHEP handshake a few times before giving up. The video
  * is muted (a church camera's audio comes from the sound desk, not the stream)
  * which also satisfies autoplay policy.
  */
-export const RtmpRenderer: React.FC<Props> = ({ url }) => {
+export const StreamProxyRenderer: React.FC<Props> = ({ source }) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // Re-run the effect whenever the source meaningfully changes.
+  const sourceKey = JSON.stringify(source);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,11 +39,19 @@ export const RtmpRenderer: React.FC<Props> = ({ url }) => {
       setError(null);
       let whepUrl: string;
       try {
-        const info = await startRtmpProxy(url);
+        const info = await startStreamProxy(source);
         whepUrl = info.whepUrl;
       } catch (err) {
-        if (!cancelled) setError(t("webview.rtmp.errors.proxyFailed"));
-        console.error("start_rtmp_proxy failed:", err);
+        // The Tauri command rejects with an ErrorPayload { code, params }.
+        const code = (err as { code?: string })?.code;
+        if (!cancelled) {
+          setError(
+            code === "stream.mediamtx_not_found"
+              ? t("webview.stream.errors.mediamtxNotFound")
+              : t("webview.stream.errors.proxyFailed")
+          );
+        }
+        console.error("start_stream_proxy failed:", err);
         return;
       }
 
@@ -53,7 +65,7 @@ export const RtmpRenderer: React.FC<Props> = ({ url }) => {
           if (n < MAX_ATTEMPTS) {
             retryTimer = setTimeout(() => void attempt(n + 1), RETRY_DELAY_MS);
           } else {
-            setError(t("webview.rtmp.errors.connectFailed"));
+            setError(t("webview.stream.errors.connectFailed"));
             console.error("WHEP connect failed:", err);
           }
         }
@@ -69,7 +81,8 @@ export const RtmpRenderer: React.FC<Props> = ({ url }) => {
       if (retryTimer) clearTimeout(retryTimer);
       pc?.close();
     };
-  }, [url, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceKey, t]);
 
   return (
     <div className="h-screen bg-black flex items-center justify-center">

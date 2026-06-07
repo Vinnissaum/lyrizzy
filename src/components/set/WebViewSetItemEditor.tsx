@@ -4,9 +4,23 @@ import { updateSetItem } from "../../api/commands";
 import { isUrlAllowed } from "../../utils/urlAllowlist";
 import { iframeCropStyle, withBasicAuth } from "../../utils/webview";
 import { NotesField } from "../common/NotesField";
-import type { SetItem, WebViewConfig, WebViewCrop, WebViewMode } from "../../types";
+import type {
+  MulticastConfig,
+  RtspTransport,
+  SetItem,
+  SrtConfig,
+  SrtMode,
+  WebViewConfig,
+  WebViewCrop,
+  WebViewMode,
+} from "../../types";
 
 const DEFAULT_CROP: WebViewCrop = { zoom: 1, offsetX: 0, offsetY: 0 };
+const DEFAULT_SRT: SrtConfig = { host: "", port: 9000, mode: "listener", encrypted: false };
+const DEFAULT_MULTICAST: MulticastConfig = { ip: "", port: 1234 };
+
+const INPUT_CLS =
+  "w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary";
 
 function isIdentityCrop(c: WebViewCrop): boolean {
   return c.zoom === 1 && c.offsetX === 0 && c.offsetY === 0;
@@ -24,7 +38,10 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
   const [authUser, setAuthUser] = useState(cfg?.basicAuthUser ?? "");
   const [authPass, setAuthPass] = useState(cfg?.basicAuthPass ?? "");
   const [crop, setCrop] = useState<WebViewCrop>(cfg?.crop ?? DEFAULT_CROP);
-  const [urlError, setUrlError] = useState<string | null>(null);
+  const [srt, setSrt] = useState<SrtConfig>(cfg?.srtConfig ?? DEFAULT_SRT);
+  const [multicast, setMulticast] = useState<MulticastConfig>(cfg?.multicastConfig ?? DEFAULT_MULTICAST);
+  const [rtspTransport, setRtspTransport] = useState<RtspTransport>(cfg?.rtspTransport ?? "udp");
+  const [configError, setConfigError] = useState<string | null>(null);
   const [httpWarning, setHttpWarning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState(item.notes ?? "");
@@ -36,7 +53,10 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     setAuthUser(cfg?.basicAuthUser ?? "");
     setAuthPass(cfg?.basicAuthPass ?? "");
     setCrop(cfg?.crop ?? DEFAULT_CROP);
-    setUrlError(null);
+    setSrt(cfg?.srtConfig ?? DEFAULT_SRT);
+    setMulticast(cfg?.multicastConfig ?? DEFAULT_MULTICAST);
+    setRtspTransport(cfg?.rtspTransport ?? "udp");
+    setConfigError(null);
     setHttpWarning(false);
     setNotes(item.notes ?? "");
   }, [item.id]);
@@ -50,26 +70,56 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
   };
 
   const buildConfig = (): WebViewConfig | null => {
+    if (mode === "srt") {
+      if (!srt.host.trim() || !srt.port) {
+        setConfigError(t("webview.editor.errors.srtRequired"));
+        return null;
+      }
+      setConfigError(null);
+      return {
+        mode,
+        url: "",
+        srtConfig: {
+          ...srt,
+          host: srt.host.trim(),
+          streamId: srt.streamId?.trim() || undefined,
+          passphrase: srt.encrypted ? srt.passphrase || undefined : undefined,
+        },
+      };
+    }
+
+    if (mode === "multicast") {
+      if (!multicast.ip.trim() || !multicast.port) {
+        setConfigError(t("webview.editor.errors.multicastRequired"));
+        return null;
+      }
+      setConfigError(null);
+      return { mode, url: "", multicastConfig: { ...multicast, ip: multicast.ip.trim() } };
+    }
+
+    // URL-based modes (iframe, mjpeg, rtmp).
     const trimmed = url.trim();
     if (!trimmed) {
-      setUrlError(t("webview.editor.errors.urlRequired"));
+      setConfigError(t("webview.editor.errors.urlRequired"));
       return null;
     }
     const check = isUrlAllowed(trimmed);
     if (!check.ok) {
-      setUrlError(check.reason ?? t("webview.editor.errors.urlInvalid"));
+      setConfigError(check.reason ?? t("webview.editor.errors.urlInvalid"));
       return null;
     }
-    setUrlError(null);
+    setConfigError(null);
     return {
       mode,
       url: trimmed,
-      // Credentials apply to both modes: iframe (Basic-Auth-gated pages) and
-      // MJPEG (raw streams). Only persist a pair when both are filled.
+      // Credentials apply to iframe (Basic-Auth-gated pages) and MJPEG (raw
+      // streams). Only persist a pair when both are filled.
       basicAuthUser: authUser && authPass ? authUser : undefined,
       basicAuthPass: authUser && authPass ? authPass : undefined,
       // Crop is iframe-only and visual; skip it when it has no effect.
       crop: mode === "iframe" && !isIdentityCrop(crop) ? crop : undefined,
+      // RTSP lower-transport (rtsp mode only).
+      rtspTransport: mode === "rtsp" ? rtspTransport : undefined,
     };
   };
 
@@ -88,7 +138,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
-    setUrlError(null);
+    setConfigError(null);
     try {
       const parsed = new URL(value);
       setHttpWarning(mode === "iframe" && parsed.protocol === "http:");
@@ -100,6 +150,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
   const handleModeChange = (newMode: WebViewMode) => {
     setMode(newMode);
     setHttpWarning(false);
+    setConfigError(null);
   };
 
   const updateCrop = (patch: Partial<WebViewCrop>) =>
@@ -110,6 +161,41 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     void handleSave();
   };
 
+  const updateSrt = (patch: Partial<SrtConfig>) => setSrt((prev) => ({ ...prev, ...patch }));
+  const updateMulticast = (patch: Partial<MulticastConfig>) =>
+    setMulticast((prev) => ({ ...prev, ...patch }));
+
+  // Radio toggles persist with the explicit chosen value: a setState + onBlur
+  // save would race the async state update and persist the previous value.
+  const persist = (webviewConfig: WebViewConfig) => {
+    updateSetItem({ id: item.id, webviewConfig }).catch((err) =>
+      console.error("save webview failed:", err)
+    );
+  };
+
+  const selectRtspTransport = (tp: RtspTransport) => {
+    setRtspTransport(tp);
+    const trimmed = url.trim();
+    if (trimmed) persist({ mode: "rtsp", url: trimmed, rtspTransport: tp });
+  };
+
+  const selectSrtMode = (m: SrtMode) => {
+    const next = { ...srt, mode: m };
+    setSrt(next);
+    if (next.host.trim() && next.port) {
+      persist({
+        mode: "srt",
+        url: "",
+        srtConfig: {
+          ...next,
+          host: next.host.trim(),
+          streamId: next.streamId?.trim() || undefined,
+          passphrase: next.encrypted ? next.passphrase || undefined : undefined,
+        },
+      });
+    }
+  };
+
   // Live preview only renders a real iframe when the URL is valid; otherwise the
   // box stays blank. Auth is injected the same way the renderer does it.
   const trimmedUrl = url.trim();
@@ -118,13 +204,16 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
       ? withBasicAuth(trimmedUrl, authUser || undefined, authPass || undefined)
       : null;
 
+  const isUrlMode =
+    mode === "iframe" || mode === "mjpeg" || mode === "rtmp" || mode === "rtsp";
+
   return (
     <div className="p-3 space-y-3">
       {/* Mode */}
       <div>
         <label className="text-xs text-muted mb-1 block">{t("webview.editor.mode")}</label>
-        <div className="flex gap-4">
-          {(["iframe", "mjpeg", "rtmp"] as WebViewMode[]).map((m) => (
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+          {(["iframe", "mjpeg", "rtmp", "rtsp", "srt", "multicast"] as WebViewMode[]).map((m) => (
             <label key={m} className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="radio"
@@ -140,62 +229,234 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
         </div>
       </div>
 
-      {/* URL */}
-      <div>
-        <label className="text-xs text-muted mb-1 block">{t("webview.editor.url")}</label>
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => handleUrlChange(e.target.value)}
-          onBlur={handleSave}
-          placeholder={
-            mode === "iframe"
-              ? "https://exemplo.com"
-              : mode === "rtmp"
-                ? "rtmp://192.168.100.138/live/stream0"
-                : "http://192.168.1.10/stream"
-          }
-          className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
-            urlError ? "border-danger" : "border-border"
-          }`}
-        />
-        {urlError && (
-          <p className="text-xs text-danger mt-1">{urlError}</p>
-        )}
-        {httpWarning && !urlError && (
-          <p className="text-xs text-warning mt-1">
-            {t("webview.editor.warnings.http")}
-          </p>
-        )}
-        {mode === "rtmp" && !urlError && (
-          <p className="text-xs text-muted mt-1">{t("webview.editor.rtmp.hint")}</p>
-        )}
-      </div>
+      {/* URL — iframe / mjpeg / rtmp */}
+      {isUrlMode && (
+        <div>
+          <label className="text-xs text-muted mb-1 block">{t("webview.editor.url")}</label>
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => handleUrlChange(e.target.value)}
+            onBlur={handleSave}
+            placeholder={
+              mode === "iframe"
+                ? "https://exemplo.com"
+                : mode === "rtmp"
+                  ? "rtmp://192.168.100.138/live/stream0"
+                  : mode === "rtsp"
+                    ? "rtsp://192.168.15.50/1"
+                    : "http://192.168.1.10/stream"
+            }
+            className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm font-mono focus:outline-none focus:border-primary ${
+              configError ? "border-danger" : "border-border"
+            }`}
+          />
+          {configError && <p className="text-xs text-danger mt-1">{configError}</p>}
+          {httpWarning && !configError && (
+            <p className="text-xs text-warning mt-1">{t("webview.editor.warnings.http")}</p>
+          )}
+          {mode === "rtmp" && !configError && (
+            <p className="text-xs text-muted mt-1">{t("webview.editor.rtmp.hint")}</p>
+          )}
 
-      {/* Basic auth — iframe (login-gated pages) and MJPEG (streams). RTMP auth
-          is embedded directly in the rtmp:// URL, so we hide these there. */}
-      {mode !== "rtmp" && (
-      <div className="space-y-2">
-        <label className="text-xs text-muted block">
-          {t("webview.editor.auth")}
-        </label>
-        <input
-          type="text"
-          value={authUser}
-          onChange={(e) => setAuthUser(e.target.value)}
-          onBlur={handleSave}
-          placeholder={t("webview.editor.user")}
-          className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
-        />
-        <input
-          type="password"
-          value={authPass}
-          onChange={(e) => setAuthPass(e.target.value)}
-          onBlur={handleSave}
-          placeholder={t("webview.editor.pass")}
-          className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
-        />
-      </div>
+          {/* RTSP lower-transport — udp matches OBS's rtsp_transport=udp. */}
+          {mode === "rtsp" && (
+            <div className="mt-2">
+              <label className="text-xs text-muted mb-1 block">
+                {t("webview.editor.rtsp.transport")}
+              </label>
+              <div className="flex gap-4">
+                {(["udp", "tcp", "automatic"] as RtspTransport[]).map((tp) => (
+                  <label key={tp} className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`rtsp-transport-${item.id}`}
+                      checked={rtspTransport === tp}
+                      onChange={() => selectRtspTransport(tp)}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">{t(`webview.editor.rtsp.transports.${tp}`)}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted/70 mt-1">{t("webview.editor.rtsp.hint")}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SRT form */}
+      {mode === "srt" && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div>
+              <label className="text-xs text-muted mb-1 block">{t("webview.editor.srt.host")}</label>
+              <input
+                type="text"
+                value={srt.host}
+                onChange={(e) => updateSrt({ host: e.target.value })}
+                onBlur={handleSave}
+                placeholder="192.168.100.138"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div className="w-24">
+              <label className="text-xs text-muted mb-1 block">{t("webview.editor.srt.port")}</label>
+              <input
+                type="number"
+                value={srt.port}
+                onChange={(e) => updateSrt({ port: Number(e.target.value) })}
+                onBlur={handleSave}
+                className={INPUT_CLS}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted mb-1 block">{t("webview.editor.srt.mode")}</label>
+            <div className="flex gap-4">
+              {(["listener", "caller"] as SrtMode[]).map((sm) => (
+                <label key={sm} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`srt-mode-${item.id}`}
+                    checked={srt.mode === sm}
+                    onChange={() => selectSrtMode(sm)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">{t(`webview.editor.srt.modes.${sm}`)}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted/70 mt-1">
+              {t(`webview.editor.srt.modeHint.${srt.mode}`)}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted mb-1 block">{t("webview.editor.srt.streamId")}</label>
+            <input
+              type="text"
+              value={srt.streamId ?? ""}
+              onChange={(e) => updateSrt({ streamId: e.target.value })}
+              onBlur={handleSave}
+              placeholder={t("webview.editor.srt.optional")}
+              className={INPUT_CLS}
+            />
+          </div>
+
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={srt.encrypted}
+              onChange={(e) => updateSrt({ encrypted: e.target.checked })}
+              onBlur={handleSave}
+              className="accent-primary"
+            />
+            <span className="text-sm">{t("webview.editor.srt.encrypted")}</span>
+          </label>
+
+          {srt.encrypted && (
+            <div>
+              <label className="text-xs text-muted mb-1 block">{t("webview.editor.srt.passphrase")}</label>
+              <input
+                type="password"
+                value={srt.passphrase ?? ""}
+                onChange={(e) => updateSrt({ passphrase: e.target.value })}
+                onBlur={handleSave}
+                className={INPUT_CLS}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-muted mb-1 block">{t("webview.editor.srt.latency")}</label>
+              <input
+                type="number"
+                value={srt.latencyMs ?? ""}
+                onChange={(e) =>
+                  updateSrt({ latencyMs: e.target.value === "" ? undefined : Number(e.target.value) })
+                }
+                onBlur={handleSave}
+                placeholder="120"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted mb-1 block">{t("webview.editor.srt.overhead")}</label>
+              <input
+                type="number"
+                value={srt.overheadBandwidth ?? ""}
+                onChange={(e) =>
+                  updateSrt({
+                    overheadBandwidth: e.target.value === "" ? undefined : Number(e.target.value),
+                  })
+                }
+                onBlur={handleSave}
+                placeholder="25"
+                className={INPUT_CLS}
+              />
+            </div>
+          </div>
+
+          {configError && <p className="text-xs text-danger">{configError}</p>}
+          <p className="text-xs text-muted/70">{t("webview.editor.srt.hint")}</p>
+        </div>
+      )}
+
+      {/* Multicast form */}
+      {mode === "multicast" && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div>
+              <label className="text-xs text-muted mb-1 block">{t("webview.editor.multicast.ip")}</label>
+              <input
+                type="text"
+                value={multicast.ip}
+                onChange={(e) => updateMulticast({ ip: e.target.value })}
+                onBlur={handleSave}
+                placeholder="238.0.0.1"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div className="w-24">
+              <label className="text-xs text-muted mb-1 block">{t("webview.editor.multicast.port")}</label>
+              <input
+                type="number"
+                value={multicast.port}
+                onChange={(e) => updateMulticast({ port: Number(e.target.value) })}
+                onBlur={handleSave}
+                className={INPUT_CLS}
+              />
+            </div>
+          </div>
+          {configError && <p className="text-xs text-danger">{configError}</p>}
+          <p className="text-xs text-muted/70">{t("webview.editor.multicast.hint")}</p>
+        </div>
+      )}
+
+      {/* Basic auth — iframe (login-gated pages) and MJPEG (streams) only. */}
+      {(mode === "iframe" || mode === "mjpeg") && (
+        <div className="space-y-2">
+          <label className="text-xs text-muted block">{t("webview.editor.auth")}</label>
+          <input
+            type="text"
+            value={authUser}
+            onChange={(e) => setAuthUser(e.target.value)}
+            onBlur={handleSave}
+            placeholder={t("webview.editor.user")}
+            className={INPUT_CLS}
+          />
+          <input
+            type="password"
+            value={authPass}
+            onChange={(e) => setAuthPass(e.target.value)}
+            onBlur={handleSave}
+            placeholder={t("webview.editor.pass")}
+            className={INPUT_CLS}
+          />
+        </div>
       )}
 
       {/* Crop — iframe only. Visual zoom/pan to frame a region (e.g. a camera

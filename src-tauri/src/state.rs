@@ -25,15 +25,16 @@ pub struct AppState {
     /// AbortHandle for the active countdown ticker task. None when not running.
     pub countdown_task: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
 
-    /// Running MediaMTX process bridging an RTMP camera to WebRTC, plus the RTMP
-    /// URL it was started for. None when no RTMP stream is being proxied. The
-    /// child is spawned with `kill_on_drop` so it dies with the app.
-    pub rtmp_proxy: Arc<Mutex<Option<RtmpProxy>>>,
+    /// Running MediaMTX process bridging a camera stream (RTMP/SRT/multicast) to
+    /// WebRTC, plus the config it was started for. None when nothing is being
+    /// proxied. The child is spawned with `kill_on_drop` so it dies with the app.
+    pub stream_proxy: Arc<Mutex<Option<StreamProxy>>>,
 }
 
-/// A running MediaMTX proxy and the camera URL it serves.
-pub struct RtmpProxy {
-    pub rtmp_url: String,
+/// A running MediaMTX proxy and the rendered config it serves. The config string
+/// doubles as an identity key: an identical request reuses the live process.
+pub struct StreamProxy {
+    pub config: String,
     pub child: tokio::process::Child,
 }
 
@@ -45,7 +46,7 @@ impl Default for AppState {
             presentation_slides: Arc::new(RwLock::new(Vec::new())),
             countdown: Arc::new(RwLock::new(CountdownState::default())),
             countdown_task: Arc::new(Mutex::new(None)),
-            rtmp_proxy: Arc::new(Mutex::new(None)),
+            stream_proxy: Arc::new(Mutex::new(None)),
         }
     }
 }

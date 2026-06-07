@@ -1,12 +1,13 @@
-/// MediaMTX sidecar service — bridges a camera's RTMP(S) stream to WebRTC so it
-/// can play in WebView2 (Chromium dropped RTMP/Flash years ago, so `<video
-/// src="rtmp://…">` never works).
+/// MediaMTX sidecar service — bridges a camera's RTMP(S), SRT, or UDP/multicast
+/// stream to WebRTC so it can play in WebView2 (Chromium dropped RTMP/Flash
+/// years ago and never spoke SRT or raw MPEG-TS, so none of these play in a
+/// `<video>` directly).
 ///
-/// MediaMTX is run as a single managed process configured to *pull* from the
-/// camera's RTMP URL on demand and *serve* it over WebRTC (WHEP) on localhost.
-/// The frontend then plays the WHEP endpoint in a plain `<video>`.
+/// MediaMTX is run as a single managed process configured to ingest the camera
+/// stream and *serve* it over WebRTC (WHEP) on localhost. The frontend then
+/// plays the WHEP endpoint in a plain `<video>`.
 ///
-/// We re-write the config and restart the process whenever the target RTMP URL
+/// We re-write the config and restart the process whenever the target source
 /// changes (only one camera is presented at a time), which avoids depending on
 /// an HTTP client to drive the MediaMTX control API.
 use std::path::{Path, PathBuf};
@@ -63,15 +64,66 @@ pub fn whep_url() -> String {
     format!("http://127.0.0.1:{WEBRTC_PORT}/{PATH_NAME}/whep")
 }
 
-/// Render the minimal MediaMTX YAML config that proxies `rtmp_url` to WebRTC.
+/// A camera stream MediaMTX should ingest and re-serve over WebRTC.
+pub enum Source {
+    /// MediaMTX *pulls* from this URL (RTMP/RTMPS, or `udp://ip:port` multicast).
+    Pull(String),
+    /// SRT where the camera is listener and MediaMTX dials it (the common
+    /// "give me an SRT URL to play" case). Carries the full source URL.
+    SrtPull(String),
+    /// SRT where the camera is caller and pushes to us: MediaMTX runs an SRT
+    /// server bound to `port` and the camera publishes to path [`PATH_NAME`].
+    SrtListen { port: u16 },
+    /// RTSP pull. `transport` maps to MediaMTX's `rtspTransport` (e.g. "udp",
+    /// "tcp"); `None` lets MediaMTX choose automatically.
+    Rtsp {
+        url: String,
+        transport: Option<String>,
+    },
+}
+
+/// YAML single-quoted scalar: escape embedded single quotes by doubling them.
+fn yaml_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "''"))
+}
+
+/// Render the minimal MediaMTX YAML config that bridges `source` to WebRTC.
 ///
-/// All servers except WebRTC are disabled and everything is bound to localhost.
-/// `sourceOnDemand` makes MediaMTX connect to the camera only while a reader is
-/// attached, so we don't hammer the camera when nothing is being presented.
-/// Targets MediaMTX v1.x config keys.
-pub fn render_config(rtmp_url: &str) -> String {
-    // YAML single-quoted scalar: escape embedded single quotes by doubling them.
-    let escaped = rtmp_url.replace('\'', "''");
+/// Every server except WebRTC (and the SRT server, only for `SrtListen`) is
+/// disabled, and WebRTC is bound to localhost. `sourceOnDemand` makes MediaMTX
+/// connect to the camera only while a reader is attached, so we don't hammer it
+/// when nothing is being presented. Targets MediaMTX v1.x config keys.
+pub fn render_config(source: &Source) -> String {
+    // SRT-listen needs MediaMTX's SRT server bound to all interfaces so the
+    // camera (a remote host) can publish to it; all other modes keep SRT off.
+    let (srt_server, path_body) = match source {
+        Source::Pull(url) | Source::SrtPull(url) => (
+            "srt: no\n".to_string(),
+            format!(
+                "    source: {}\n    sourceOnDemand: yes\n",
+                yaml_quote(url)
+            ),
+        ),
+        Source::Rtsp { url, transport } => {
+            let transport_line = transport
+                .as_deref()
+                .map(|t| format!("    rtspTransport: {t}\n"))
+                .unwrap_or_default();
+            (
+                "srt: no\n".to_string(),
+                format!(
+                    "    source: {}\n{transport_line}    sourceOnDemand: yes\n",
+                    yaml_quote(url)
+                ),
+            )
+        }
+        Source::SrtListen { port } => (
+            format!("srt: yes\nsrtAddress: :{port}\n"),
+            // No `source`: the path accepts a publisher (the camera).
+            String::new(),
+        ),
+    };
+
     format!(
         "logLevel: error\n\
          api: no\n\
@@ -81,7 +133,7 @@ pub fn render_config(rtmp_url: &str) -> String {
          rtsp: no\n\
          rtmp: no\n\
          hls: no\n\
-         srt: no\n\
+         {srt_server}\
          webrtc: yes\n\
          webrtcAddress: 127.0.0.1:{WEBRTC_PORT}\n\
          webrtcEncryption: no\n\
@@ -90,16 +142,61 @@ pub fn render_config(rtmp_url: &str) -> String {
          webrtcIPsFromInterfaces: no\n\
          webrtcAdditionalHosts: [127.0.0.1]\n\
          paths:\n  \
-           {PATH_NAME}:\n    \
-             source: '{escaped}'\n    \
-             sourceOnDemand: yes\n",
+           {PATH_NAME}:\n\
+         {path_body}",
     )
 }
 
+/// Build the `srt://` source URL MediaMTX dials for a listener camera, from the
+/// individual SRT parameters. `latency_ms` and `overhead_bw` are libsrt
+/// `latency`/`oheadbw` query params; a passphrase enables encryption.
+pub fn build_srt_url(
+    host: &str,
+    port: u16,
+    stream_id: Option<&str>,
+    passphrase: Option<&str>,
+    latency_ms: Option<u32>,
+    overhead_bw: Option<u32>,
+) -> String {
+    let mut params: Vec<String> = Vec::new();
+    if let Some(id) = stream_id.filter(|s| !s.is_empty()) {
+        params.push(format!("streamid={}", urlencode(id)));
+    }
+    if let Some(pass) = passphrase.filter(|s| !s.is_empty()) {
+        params.push(format!("passphrase={}", urlencode(pass)));
+    }
+    if let Some(ms) = latency_ms {
+        params.push(format!("latency={ms}"));
+    }
+    if let Some(bw) = overhead_bw {
+        params.push(format!("oheadbw={bw}"));
+    }
+    if params.is_empty() {
+        format!("srt://{host}:{port}")
+    } else {
+        format!("srt://{host}:{port}?{}", params.join("&"))
+    }
+}
+
+/// Percent-encode an SRT query value (passphrases/streamids may contain `&`,
+/// `=`, spaces, etc.). Keeps unreserved characters per RFC 3986.
+fn urlencode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
+
 /// Write the rendered config to `<dir>/mediamtx.yml` and return its path.
-pub fn write_config(dir: &Path, rtmp_url: &str) -> std::io::Result<PathBuf> {
+pub fn write_config(dir: &Path, source: &Source) -> std::io::Result<PathBuf> {
     let path = dir.join("mediamtx.yml");
-    std::fs::write(&path, render_config(rtmp_url))?;
+    std::fs::write(&path, render_config(source))?;
     Ok(path)
 }
 
@@ -147,24 +244,92 @@ mod tests {
     }
 
     #[test]
-    fn render_config_embeds_source_and_disables_other_servers() {
-        let cfg = render_config("rtmp://192.168.100.138/live/stream0");
+    fn render_config_pull_embeds_source_and_disables_other_servers() {
+        let cfg = render_config(&Source::Pull(
+            "rtmp://192.168.100.138/live/stream0".to_string(),
+        ));
         assert!(cfg.contains("source: 'rtmp://192.168.100.138/live/stream0'"));
         assert!(cfg.contains("webrtc: yes"));
         assert!(cfg.contains("rtmp: no"));
+        assert!(cfg.contains("srt: no"));
         assert!(cfg.contains("sourceOnDemand: yes"));
     }
 
     #[test]
+    fn render_config_pull_handles_multicast_udp() {
+        let cfg = render_config(&Source::Pull("udp://238.0.0.1:1234".to_string()));
+        assert!(cfg.contains("source: 'udp://238.0.0.1:1234'"));
+    }
+
+    #[test]
     fn render_config_escapes_single_quotes() {
-        let cfg = render_config("rtmp://h/a'b");
+        let cfg = render_config(&Source::Pull("rtmp://h/a'b".to_string()));
         assert!(cfg.contains("source: 'rtmp://h/a''b'"));
+    }
+
+    #[test]
+    fn render_config_rtsp_includes_transport() {
+        let cfg = render_config(&Source::Rtsp {
+            url: "rtsp://192.168.15.50/1".to_string(),
+            transport: Some("udp".to_string()),
+        });
+        assert!(cfg.contains("source: 'rtsp://192.168.15.50/1'"));
+        assert!(cfg.contains("rtspTransport: udp"));
+        assert!(cfg.contains("sourceOnDemand: yes"));
+    }
+
+    #[test]
+    fn render_config_rtsp_omits_transport_when_none() {
+        let cfg = render_config(&Source::Rtsp {
+            url: "rtsp://h/1".to_string(),
+            transport: None,
+        });
+        assert!(cfg.contains("source: 'rtsp://h/1'"));
+        assert!(!cfg.contains("rtspTransport"));
+    }
+
+    #[test]
+    fn render_config_srt_listen_enables_srt_server_without_source() {
+        let cfg = render_config(&Source::SrtListen { port: 8890 });
+        assert!(cfg.contains("srt: yes"));
+        assert!(cfg.contains("srtAddress: :8890"));
+        assert!(!cfg.contains("source:"));
+        // The path still exists so a publisher can attach.
+        assert!(cfg.contains("cam:"));
+    }
+
+    #[test]
+    fn build_srt_url_assembles_query_params() {
+        let url = build_srt_url(
+            "192.168.100.138",
+            9000,
+            Some("stream0"),
+            Some("s3cr3t"),
+            Some(120),
+            Some(25),
+        );
+        assert_eq!(
+            url,
+            "srt://192.168.100.138:9000?streamid=stream0&passphrase=s3cr3t&latency=120&oheadbw=25"
+        );
+    }
+
+    #[test]
+    fn build_srt_url_omits_empty_params() {
+        let url = build_srt_url("host", 9000, None, None, None, None);
+        assert_eq!(url, "srt://host:9000");
+    }
+
+    #[test]
+    fn build_srt_url_percent_encodes_passphrase() {
+        let url = build_srt_url("h", 9, None, Some("a b&c"), None, None);
+        assert!(url.contains("passphrase=a%20b%26c"));
     }
 
     #[test]
     fn write_config_creates_file() {
         let tmp = TempDir::new().unwrap();
-        let path = write_config(tmp.path(), "rtmp://h/s").unwrap();
+        let path = write_config(tmp.path(), &Source::Pull("rtmp://h/s".to_string())).unwrap();
         assert!(path.exists());
         let contents = std::fs::read_to_string(&path).unwrap();
         assert!(contents.contains("rtmp://h/s"));

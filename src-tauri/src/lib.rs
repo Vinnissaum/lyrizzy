@@ -31,7 +31,7 @@ use commands::set::{
 use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
 use commands::key_bindings::{get_key_bindings, set_key_bindings, reset_key_bindings};
 use commands::reports::{export_ccli_csv, preview_ccli_export};
-use commands::rtmp::{check_mediamtx, start_rtmp_proxy, stop_rtmp_proxy};
+use commands::stream::{check_mediamtx, start_stream_proxy, stop_stream_proxy};
 use commands::settings::{get_setting, set_setting};
 use commands::updates::{apply_update_and_restart, check_for_updates};
 use commands::window::{
@@ -214,8 +214,8 @@ pub fn run() {
             check_ffprobe,
             check_libreoffice,
             check_mediamtx,
-            start_rtmp_proxy,
-            stop_rtmp_proxy,
+            start_stream_proxy,
+            stop_stream_proxy,
             import_media,
             import_presentation,
             list_media,

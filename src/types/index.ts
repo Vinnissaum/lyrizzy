@@ -115,7 +115,10 @@ export interface MediaItemOptions {
 
 export type SetItemType = 'song' | 'media' | 'countdown' | 'web_view' | 'blank' | 'slide_show';
 
-export type WebViewMode = 'iframe' | 'mjpeg' | 'rtmp';
+export type WebViewMode = 'iframe' | 'mjpeg' | 'rtmp' | 'srt' | 'multicast' | 'rtsp';
+
+/** RTSP lower-transport, matching MediaMTX's `rtspTransport` path option. */
+export type RtspTransport = 'automatic' | 'udp' | 'tcp';
 
 /**
  * Visual crop for iframe mode — scales/shifts the iframe so a region (e.g. the
@@ -128,13 +131,47 @@ export interface WebViewCrop {
   offsetY: number;
 }
 
+/** Whether the camera dials us (`caller`, pushes) or waits for us (`listener`). */
+export type SrtMode = 'caller' | 'listener';
+
+/** SRT connection parameters, mirroring a camera's SRT settings page. */
+export interface SrtConfig {
+  host: string;
+  port: number;
+  mode: SrtMode;
+  streamId?: string;
+  encrypted: boolean;
+  passphrase?: string;
+  /** SRT latency in milliseconds. */
+  latencyMs?: number;
+  /** Overhead bandwidth as a percentage (libsrt `oheadbw`). */
+  overheadBandwidth?: number;
+}
+
+/** UDP multicast (MPEG-TS) parameters. */
+export interface MulticastConfig {
+  ip: string;
+  port: number;
+}
+
 export interface WebViewConfig {
   mode: WebViewMode;
   url: string;
   basicAuthUser?: string;
   basicAuthPass?: string;
   crop?: WebViewCrop;
+  srtConfig?: SrtConfig;
+  multicastConfig?: MulticastConfig;
+  /** RTSP lower-transport (rtsp mode reuses `url` for the rtsp:// address). */
+  rtspTransport?: RtspTransport;
 }
+
+/** Discriminated stream source sent to the `start_stream_proxy` command. */
+export type StreamSource =
+  | { kind: 'rtmp'; url: string }
+  | { kind: 'rtsp'; url: string; transport: RtspTransport }
+  | { kind: 'srt'; config: SrtConfig }
+  | { kind: 'multicast'; config: MulticastConfig };
 
 export interface SetItem {
   id: string;

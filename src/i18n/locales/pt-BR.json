@@ -300,7 +300,10 @@
       "modes": {
         "iframe": "Iframe (URL)",
         "mjpeg": "MJPEG (câmera)",
-        "rtmp": "RTMP (câmera)"
+        "rtmp": "RTMP (câmera)",
+        "rtsp": "RTSP (câmera)",
+        "srt": "SRT (câmera)",
+        "multicast": "Multicast (câmera)"
       },
       "crop": {
         "label": "Recorte / zoom (iframe)",
@@ -314,18 +317,55 @@
       "rtmp": {
         "hint": "O fluxo RTMP é convertido para WebRTC pelo servidor MediaMTX. Inclua usuário e senha na própria URL, se necessário."
       },
+      "rtsp": {
+        "transport": "Transporte",
+        "transports": {
+          "udp": "UDP",
+          "tcp": "TCP",
+          "automatic": "Automático"
+        },
+        "hint": "O fluxo RTSP é convertido para WebRTC pelo servidor MediaMTX. UDP equivale à opção do OBS rtsp_transport=udp."
+      },
+      "srt": {
+        "host": "Servidor",
+        "port": "Porta",
+        "mode": "Modo",
+        "modes": {
+          "listener": "Listener (a câmera aguarda)",
+          "caller": "Caller (a câmera envia)"
+        },
+        "modeHint": {
+          "listener": "A câmera aguarda conexões; o app conecta nela.",
+          "caller": "A câmera envia o fluxo; o app abre um servidor SRT na porta informada."
+        },
+        "streamId": "Stream ID",
+        "optional": "opcional",
+        "encrypted": "Criptografado",
+        "passphrase": "Senha (passphrase)",
+        "latency": "Latência (ms)",
+        "overhead": "Banda extra (%)",
+        "hint": "O fluxo SRT é convertido para WebRTC pelo servidor MediaMTX."
+      },
+      "multicast": {
+        "ip": "IP multicast",
+        "port": "Porta",
+        "hint": "O fluxo UDP/MPEG-TS multicast é convertido para WebRTC pelo servidor MediaMTX."
+      },
       "errors": {
         "urlRequired": "URL obrigatória",
-        "urlInvalid": "URL inválida"
+        "urlInvalid": "URL inválida",
+        "srtRequired": "Servidor e porta SRT são obrigatórios",
+        "multicastRequired": "IP e porta multicast são obrigatórios"
       },
       "warnings": {
         "http": "Conexões http podem ser bloqueadas pelo navegador."
       }
     },
-    "rtmp": {
+    "stream": {
       "errors": {
         "proxyFailed": "Não foi possível iniciar o servidor de vídeo (MediaMTX).",
-        "connectFailed": "Não foi possível conectar ao fluxo da câmera."
+        "connectFailed": "Não foi possível conectar ao fluxo da câmera.",
+        "mediamtxNotFound": "MediaMTX não encontrado. Instale-o e defina MEDIAMTX_PATH ou adicione-o ao PATH."
       }
     }
   },

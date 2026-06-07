@@ -1,11 +1,38 @@
 import React, { useEffect, useRef, useState } from "react";
 import { isUrlAllowed } from "../../utils/urlAllowlist";
 import { iframeCropStyle, withBasicAuth } from "../../utils/webview";
-import { RtmpRenderer } from "./RtmpRenderer";
-import type { WebViewConfig } from "../../types";
+import { StreamProxyRenderer } from "./StreamProxyRenderer";
+import type { StreamSource, WebViewConfig } from "../../types";
 
 interface Props {
   config: WebViewConfig;
+}
+
+/** Modes bridged to WebRTC by the Rust MediaMTX proxy. */
+function isProxyMode(mode: WebViewConfig["mode"]): boolean {
+  return mode === "rtmp" || mode === "rtsp" || mode === "srt" || mode === "multicast";
+}
+
+/** Build the proxy source payload from config, or null if it's incomplete. */
+function buildStreamSource(config: WebViewConfig): StreamSource | null {
+  switch (config.mode) {
+    case "rtmp":
+      return config.url.trim() ? { kind: "rtmp", url: config.url.trim() } : null;
+    case "rtsp":
+      return config.url.trim()
+        ? { kind: "rtsp", url: config.url.trim(), transport: config.rtspTransport ?? "udp" }
+        : null;
+    case "srt":
+      return config.srtConfig?.host.trim()
+        ? { kind: "srt", config: config.srtConfig }
+        : null;
+    case "multicast":
+      return config.multicastConfig?.ip.trim()
+        ? { kind: "multicast", config: config.multicastConfig }
+        : null;
+    default:
+      return null;
+  }
 }
 
 export const WebViewRenderer: React.FC<Props> = ({ config }) => {
@@ -18,6 +45,14 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
     loadedRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
 
+    // Proxy modes (rtmp/srt/multicast) don't use `url` and own their own
+    // load/error lifecycle in StreamProxyRenderer, so skip URL validation and
+    // the load-timeout watchdog that never resolves for a <video>.
+    if (isProxyMode(mode)) {
+      setError(null);
+      return;
+    }
+
     const check = isUrlAllowed(url);
     if (!check.ok) {
       setError(check.reason ?? "URL não permitida");
@@ -28,10 +63,6 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
       return;
     }
     setError(null);
-
-    // RTMP mode owns its own load/error lifecycle (RtmpRenderer), so skip the
-    // iframe/img load-timeout watchdog that never resolves for a <video>.
-    if (mode === "rtmp") return;
 
     timerRef.current = setTimeout(() => {
       if (!loadedRef.current) {
@@ -91,10 +122,20 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
     );
   }
 
-  if (mode === "rtmp") {
-    // RTMP can't play in WebView2; RtmpRenderer bridges it via the MediaMTX
-    // WebRTC proxy and manages its own connection lifecycle.
-    return <RtmpRenderer url={url} />;
+  if (isProxyMode(mode)) {
+    // RTMP/SRT/multicast can't play in WebView2; StreamProxyRenderer bridges
+    // them via the MediaMTX WebRTC proxy and manages its own lifecycle.
+    const source = buildStreamSource(config);
+    if (!source) {
+      return (
+        <div className="h-screen bg-black relative select-none">
+          <p className="absolute bottom-4 right-4 text-xs text-gray-500">
+            URL não configurada
+          </p>
+        </div>
+      );
+    }
+    return <StreamProxyRenderer source={source} />;
   }
 
   // MJPEG mode — inject basic-auth credentials into the URL if provided.

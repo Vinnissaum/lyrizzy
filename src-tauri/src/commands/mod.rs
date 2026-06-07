@@ -8,7 +8,7 @@ pub mod media;
 pub mod overlay;
 pub mod presentation;
 pub mod reports;
-pub mod rtmp;
+pub mod stream;
 pub mod set;
 pub mod settings;
 pub mod song;

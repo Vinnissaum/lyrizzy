@@ -20,6 +20,7 @@ import type {
   ServiceSet,
   SetItem,
   Song,
+  StreamSource,
   TextCasing,
   UpdateInfo,
   WebViewConfig,
@@ -301,12 +302,12 @@ export const checkLibreOffice = () =>
 export const checkMediaMtx = () =>
   invoke<boolean>("check_mediamtx");
 
-/** Start (or reuse) the MediaMTX proxy for an RTMP(S) URL; returns its WHEP URL. */
-export const startRtmpProxy = (rtmpUrl: string) =>
-  invoke<{ whepUrl: string }>("start_rtmp_proxy", { rtmpUrl });
+/** Start (or reuse) the MediaMTX proxy for a camera stream; returns its WHEP URL. */
+export const startStreamProxy = (source: StreamSource) =>
+  invoke<{ whepUrl: string }>("start_stream_proxy", { source });
 
-export const stopRtmpProxy = () =>
-  invoke<void>("stop_rtmp_proxy");
+export const stopStreamProxy = () =>
+  invoke<void>("stop_stream_proxy");
 
 export const importMedia = (sourcePath: string) =>
   invoke<Media>("import_media", { sourcePath });

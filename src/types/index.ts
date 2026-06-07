@@ -115,13 +115,25 @@ export interface MediaItemOptions {
 
 export type SetItemType = 'song' | 'media' | 'countdown' | 'web_view' | 'blank' | 'slide_show';
 
-export type WebViewMode = 'iframe' | 'mjpeg';
+export type WebViewMode = 'iframe' | 'mjpeg' | 'rtmp';
+
+/**
+ * Visual crop for iframe mode — scales/shifts the iframe so a region (e.g. the
+ * camera page's `<video>`) fills the screen. `zoom` is a multiplier (1 = none);
+ * `offsetX`/`offsetY` are percentages of the viewport (negative moves up/left).
+ */
+export interface WebViewCrop {
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+}
 
 export interface WebViewConfig {
   mode: WebViewMode;
   url: string;
   basicAuthUser?: string;
   basicAuthPass?: string;
+  crop?: WebViewCrop;
 }
 
 export interface SetItem {

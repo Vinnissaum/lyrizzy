@@ -6,6 +6,7 @@ pub mod fts_query;
 pub mod holyrics_parser;
 pub mod libreoffice;
 pub mod media_probe;
+pub mod mediamtx;
 pub mod play_counter;
 pub mod slide_splitter;
 pub mod text_import;

@@ -298,6 +298,16 @@ export const checkFfprobe = () =>
 export const checkLibreOffice = () =>
   invoke<boolean>("check_libreoffice");
 
+export const checkMediaMtx = () =>
+  invoke<boolean>("check_mediamtx");
+
+/** Start (or reuse) the MediaMTX proxy for an RTMP(S) URL; returns its WHEP URL. */
+export const startRtmpProxy = (rtmpUrl: string) =>
+  invoke<{ whepUrl: string }>("start_rtmp_proxy", { rtmpUrl });
+
+export const stopRtmpProxy = () =>
+  invoke<void>("stop_rtmp_proxy");
+
 export const importMedia = (sourcePath: string) =>
   invoke<Media>("import_media", { sourcePath });
 

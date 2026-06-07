@@ -19,6 +19,19 @@ pub enum SetItemType {
 pub enum WebViewMode {
     Iframe,
     Mjpeg,
+    /// RTMP(S) camera stream, bridged to WebRTC by the MediaMTX proxy.
+    Rtmp,
+}
+
+/// Visual crop for iframe mode — scales/shifts the iframe so a region (e.g. a
+/// camera page's `<video>`) fills the screen. Stored verbatim and round-tripped
+/// to the frontend, which owns the transform math.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WebViewCrop {
+    pub zoom: f64,
+    pub offset_x: f64,
+    pub offset_y: f64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -28,6 +41,8 @@ pub struct WebViewConfig {
     pub url: String,
     pub basic_auth_user: Option<String>,
     pub basic_auth_pass: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop: Option<WebViewCrop>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -168,6 +183,7 @@ mod tests {
                 url: "http://192.168.1.10/stream".into(),
                 basic_auth_user: Some("admin".into()),
                 basic_auth_pass: Some("secret".into()),
+                crop: None,
             }),
             sort_order: 0,
             notes: None,

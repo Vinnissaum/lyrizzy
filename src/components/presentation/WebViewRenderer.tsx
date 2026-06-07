@@ -1,31 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { isUrlAllowed } from "../../utils/urlAllowlist";
+import { iframeCropStyle, withBasicAuth } from "../../utils/webview";
+import { RtmpRenderer } from "./RtmpRenderer";
 import type { WebViewConfig } from "../../types";
 
 interface Props {
   config: WebViewConfig;
 }
 
-/**
- * Embed HTTP Basic Auth credentials in a URL as `user:pass@host`. Used by both
- * webview modes so credentials can be supplied without the page prompting:
- * iframe mode (login-gated camera pages) and MJPEG mode (raw streams). Returns
- * the original URL unchanged when credentials are absent or the URL is invalid.
- */
-function withBasicAuth(url: string, user?: string, pass?: string): string {
-  if (!user || !pass) return url;
-  try {
-    const parsed = new URL(url);
-    parsed.username = user;
-    parsed.password = pass;
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
 export const WebViewRenderer: React.FC<Props> = ({ config }) => {
-  const { mode, url, basicAuthUser, basicAuthPass } = config;
+  const { mode, url, basicAuthUser, basicAuthPass, crop } = config;
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,6 +28,10 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
       return;
     }
     setError(null);
+
+    // RTMP mode owns its own load/error lifecycle (RtmpRenderer), so skip the
+    // iframe/img load-timeout watchdog that never resolves for a <video>.
+    if (mode === "rtmp") return;
 
     timerRef.current = setTimeout(() => {
       if (!loadedRef.current) {
@@ -82,7 +70,8 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
     // prompt is suppressed inside the sandbox).
     const iframeUrl = withBasicAuth(url, basicAuthUser, basicAuthPass);
     return (
-      <div className="h-screen bg-black">
+      // overflow-hidden clips whatever the crop transform pushes off-screen.
+      <div className="h-screen bg-black overflow-hidden">
         <iframe
           key={iframeUrl}
           src={iframeUrl}
@@ -93,13 +82,19 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
           // silently suppresses the dialog and the page looks broken.
           // eslint-disable-next-line react/no-unknown-property
           sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
-          className="w-full h-full border-0"
+          style={iframeCropStyle(crop)}
           onLoad={handleLoad}
           onError={handleError}
           title="WebView"
         />
       </div>
     );
+  }
+
+  if (mode === "rtmp") {
+    // RTMP can't play in WebView2; RtmpRenderer bridges it via the MediaMTX
+    // WebRTC proxy and manages its own connection lifecycle.
+    return <RtmpRenderer url={url} />;
   }
 
   // MJPEG mode — inject basic-auth credentials into the URL if provided.

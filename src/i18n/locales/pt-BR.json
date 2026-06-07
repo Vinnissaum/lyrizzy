@@ -299,7 +299,20 @@
       "saving": "Salvando…",
       "modes": {
         "iframe": "Iframe (URL)",
-        "mjpeg": "MJPEG (câmera)"
+        "mjpeg": "MJPEG (câmera)",
+        "rtmp": "RTMP (câmera)"
+      },
+      "crop": {
+        "label": "Recorte / zoom (iframe)",
+        "hint": "Aproxima e desloca a página para enquadrar uma região (ex.: o vídeo da câmera) em tela cheia. Recorte visual — a página inteira ainda é carregada.",
+        "zoom": "Zoom",
+        "offsetX": "Deslocamento horizontal",
+        "offsetY": "Deslocamento vertical",
+        "reset": "Redefinir",
+        "noPreview": "Informe uma URL válida para pré-visualizar"
+      },
+      "rtmp": {
+        "hint": "O fluxo RTMP é convertido para WebRTC pelo servidor MediaMTX. Inclua usuário e senha na própria URL, se necessário."
       },
       "errors": {
         "urlRequired": "URL obrigatória",
@@ -307,6 +320,12 @@
       },
       "warnings": {
         "http": "Conexões http podem ser bloqueadas pelo navegador."
+      }
+    },
+    "rtmp": {
+      "errors": {
+        "proxyFailed": "Não foi possível iniciar o servidor de vídeo (MediaMTX).",
+        "connectFailed": "Não foi possível conectar ao fluxo da câmera."
       }
     }
   },

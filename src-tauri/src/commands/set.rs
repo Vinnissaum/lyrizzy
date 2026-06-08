@@ -2,6 +2,7 @@ use crate::commands::song::new_id;
 use crate::domain::error::ErrorPayload;
 use crate::domain::media::{MediaItemOptions, MediaKind};
 use crate::domain::set::{ServiceSet, SetItem, SetItemType, WebViewConfig};
+use crate::domain::output::OutputId;
 use crate::state::AppState;
 use serde::Deserialize;
 use serde_json;
@@ -441,7 +442,7 @@ pub async fn update_set_item(
     // re-emit state so a live presentation picks up the new config (e.g. a
     // countdown's position/background) without a disruptive full reload.
     let presentation_snapshot = {
-        let mut pres = state.presentation.write().await;
+        let mut pres = state.output(OutputId::One).presentation.write().await;
         let mut patched = false;
         if let Some(set) = pres.set.as_mut() {
             if let Some(slot) = set.items.iter_mut().find(|i| i.id == item.id) {

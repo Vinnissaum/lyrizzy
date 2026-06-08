@@ -1,6 +1,7 @@
 use crate::domain::countdown::{CountdownMode, CountdownPosition};
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
+use crate::domain::output::OutputId;
 use crate::state::AppState;
 use serde::Serialize;
 use tauri::{
@@ -219,7 +220,7 @@ pub async fn enter_presentation(
     monitor_index: Option<usize>,
 ) -> Result<(), ErrorPayload> {
     {
-        let pres = state.presentation.read().await;
+        let pres = state.output(OutputId::One).presentation.read().await;
         if presentation_set_is_empty(&pres) {
             return Err(ErrorPayload::new("presentation.empty_set"));
         }
@@ -343,7 +344,7 @@ pub async fn exit_presentation(
     // write lock and short-circuit the loser: hold the lock, decide, and mutate
     // in one critical section so the second caller sees Idle and no-ops.
     let state_snapshot = {
-        let mut pres = state.presentation.write().await;
+        let mut pres = state.output(OutputId::One).presentation.write().await;
         let window_exists = app.get_webview_window("presentation").is_some();
         if is_already_exited(&pres.mode, window_exists) {
             return Ok(());
@@ -359,15 +360,15 @@ pub async fn exit_presentation(
     // (or the lingering floating widget) re-seizes the screen. Only an actually
     // engaged takeover is cleared; a merely-Scheduled (armed-for-later) countdown
     // is left alone so exiting a presentation doesn't silently disarm it.
-    if state.countdown.read().await.takeover {
+    if state.output(OutputId::One).countdown.read().await.takeover {
         {
-            let mut task = state.countdown_task.lock().await;
+            let mut task = state.output(OutputId::One).countdown_task.lock().await;
             if let Some(handle) = task.take() {
                 handle.abort();
             }
         }
         let cd_snapshot = {
-            let mut cd = state.countdown.write().await;
+            let mut cd = state.output(OutputId::One).countdown.write().await;
             cd.remaining_ms = cd.duration_ms;
             cd.mode = CountdownMode::Idle;
             cd.target_epoch_ms = None;

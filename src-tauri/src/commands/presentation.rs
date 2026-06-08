@@ -5,6 +5,7 @@ use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{RepeatMode, Slide, SlideConfig};
 use crate::services::{background, play_counter, slide_splitter};
+use crate::domain::output::OutputId;
 use crate::state::AppState;
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -404,7 +405,7 @@ pub(crate) async fn append_item_to_live_presentation(
     let pool = state.db.get().expect("db initialized");
 
     let belongs = {
-        let pres = state.presentation.read().await;
+        let pres = state.output(OutputId::One).presentation.read().await;
         pres.set
             .as_ref()
             .map(|s| s.id == item.set_id)
@@ -420,15 +421,15 @@ pub(crate) async fn append_item_to_live_presentation(
     let count = slides.len();
 
     {
-        let mut all = state.presentation_slides.write().await;
+        let mut all = state.output(OutputId::One).presentation_slides.write().await;
         all.push(slides);
     }
 
     // Same lock order as do_next_slide (slides read → presentation write) to avoid
     // deadlocks. Drop both before emitting (see AppState invariants in CLAUDE.md).
     let snapshot = {
-        let all = state.presentation_slides.read().await;
-        let mut pres = state.presentation.write().await;
+        let all = state.output(OutputId::One).presentation_slides.read().await;
+        let mut pres = state.output(OutputId::One).presentation.write().await;
         if let Some(set) = pres.set.as_mut() {
             set.items.push(item.clone());
         }
@@ -492,7 +493,7 @@ pub async fn load_set_for_presentation(
     };
 
     {
-        let mut slides = state.presentation_slides.write().await;
+        let mut slides = state.output(OutputId::One).presentation_slides.write().await;
         *slides = computed_slides;
     }
     {
@@ -503,7 +504,7 @@ pub async fn load_set_for_presentation(
         // load payload below (and on hydration via `get_presentation_state`).
         let mut slim = new_state.clone();
         slim.all_slides_per_item = Vec::new();
-        let mut pres = state.presentation.write().await;
+        let mut pres = state.output(OutputId::One).presentation.write().await;
         *pres = slim;
     }
 
@@ -522,7 +523,7 @@ pub async fn next_slide(
     app: AppHandle,
 ) -> Result<PresentationState, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
-    do_next_slide(pool, &state.presentation, &state.presentation_slides, &app).await
+    do_next_slide(pool, &state.output(OutputId::One).presentation, &state.output(OutputId::One).presentation_slides, &app).await
 }
 
 #[tauri::command]
@@ -531,8 +532,8 @@ pub async fn prev_slide(
     app: AppHandle,
 ) -> Result<PresentationState, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
-    let slides = state.presentation_slides.read().await;
-    let mut pres = state.presentation.write().await;
+    let slides = state.output(OutputId::One).presentation_slides.read().await;
+    let mut pres = state.output(OutputId::One).presentation.write().await;
     wake_to_live(&mut pres);
 
     let prev_item_idx = pres.current_item_index;
@@ -581,8 +582,8 @@ pub async fn go_to_item(
     slide_index: Option<usize>,
 ) -> Result<PresentationState, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
-    let slides = state.presentation_slides.read().await;
-    let mut pres = state.presentation.write().await;
+    let slides = state.output(OutputId::One).presentation_slides.read().await;
+    let mut pres = state.output(OutputId::One).presentation.write().await;
 
     if item_index >= slides.len() {
         return Err(ErrorPayload::new("presentation.index_out_of_bounds")
@@ -617,8 +618,8 @@ pub async fn set_presentation_mode(
     app: AppHandle,
     mode: PresentationMode,
 ) -> Result<PresentationState, ErrorPayload> {
-    let slides = state.presentation_slides.read().await;
-    let mut pres = state.presentation.write().await;
+    let slides = state.output(OutputId::One).presentation_slides.read().await;
+    let mut pres = state.output(OutputId::One).presentation.write().await;
 
     match mode {
         PresentationMode::Frozen => {
@@ -651,8 +652,8 @@ pub async fn get_presentation_state(
     // in-memory state keeps them empty for cheap navigation, so re-attach from
     // `presentation_slides` here. Lock order (slides → presentation) matches the
     // navigation commands to stay deadlock-free.
-    let slides = state.presentation_slides.read().await;
-    let mut snapshot = state.presentation.read().await.clone();
+    let slides = state.output(OutputId::One).presentation_slides.read().await;
+    let mut snapshot = state.output(OutputId::One).presentation.read().await.clone();
     if snapshot.all_slides_per_item.is_empty() {
         snapshot.all_slides_per_item = slides.clone();
     }

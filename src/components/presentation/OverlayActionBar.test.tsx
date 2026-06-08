@@ -14,7 +14,6 @@ const defaultProps = {
   showApresentarButton: true,
   onApresentar: vi.fn(),
   onOferta: vi.fn(),
-  onCamera: vi.fn(),
   onAviso: vi.fn(),
   onPdf: vi.fn(),
   onClearOverlay: vi.fn(),
@@ -61,18 +60,16 @@ describe("OverlayActionBar", () => {
     expect(onClearOverlay).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onOferta when Oferta button is clicked", () => {
+  it("calls onOferta when Image button is clicked", () => {
     const onOferta = vi.fn();
     render(<OverlayActionBar {...defaultProps} onOferta={onOferta} />);
-    fireEvent.click(screen.getByText("home.overlay.oferta", { exact: false }));
+    fireEvent.click(screen.getByText("home.overlay.image", { exact: false }));
     expect(onOferta).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onCamera when Camera button is clicked", () => {
-    const onCamera = vi.fn();
-    render(<OverlayActionBar {...defaultProps} onCamera={onCamera} />);
-    fireEvent.click(screen.getByText("home.overlay.camera", { exact: false }));
-    expect(onCamera).toHaveBeenCalledTimes(1);
+  it("does NOT render a Camera button (removed)", () => {
+    render(<OverlayActionBar {...defaultProps} />);
+    expect(screen.queryByText("home.overlay.camera", { exact: false })).not.toBeInTheDocument();
   });
 
   it("calls onAviso when Aviso button is clicked", () => {

@@ -213,16 +213,6 @@ export const SettingsScreen: React.FC = () => {
                   {t("settings.windows.title")}
                 </h3>
                 <MonitorPicker />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">{t("settings.windows.cameraUrl")}</p>
-                  <input
-                    type="url"
-                    value={s.cameraUrl}
-                    onChange={(e) => s.setCameraUrl(e.target.value)}
-                    placeholder="http://192.168.1.x/cam"
-                    className="w-full bg-surface border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-primary"
-                  />
-                </div>
               </div>
             </>
           )}

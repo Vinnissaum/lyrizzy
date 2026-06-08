@@ -298,6 +298,150 @@ pub async fn do_blank_presentation(
     emit_state(app, &new_state).await
 }
 
+/// Presentation settings that influence per-item slide generation.
+pub(crate) struct SlideGenSettings {
+    pub show_title_slide: bool,
+    pub author_in_parens: bool,
+    pub blackout_after_song: bool,
+    pub repeat_mode: RepeatMode,
+}
+
+/// Read the slide-generation settings once for a presentation build.
+pub(crate) async fn load_slide_gen_settings(pool: &SqlitePool) -> SlideGenSettings {
+    SlideGenSettings {
+        show_title_slide: read_bool_setting(pool, "presentation.show_title_slide", true).await,
+        author_in_parens: read_bool_setting(pool, "presentation.author_in_parens", true).await,
+        blackout_after_song: read_bool_setting(pool, "presentation.blackout_after_song", true).await,
+        repeat_mode: RepeatMode::from_opt(
+            read_string_setting(pool, "presentation.repeat_mode")
+                .await
+                .as_deref(),
+        ),
+    }
+}
+
+/// Generate the full slide list for a single set item. Independent of navigation
+/// state, so it serves both the initial presentation build and live item appends.
+pub(crate) async fn compute_item_slides(
+    pool: &SqlitePool,
+    item: &SetItem,
+    config: &SlideConfig,
+    settings: &SlideGenSettings,
+) -> Result<Vec<Slide>, ErrorPayload> {
+    let slides = match item.item_type {
+        SetItemType::Song => {
+            if let Some(song_id) = &item.song_id {
+                #[allow(clippy::type_complexity)]
+                let meta: Option<(String, Option<String>, Option<String>, Option<String>)> =
+                    sqlx::query_as(
+                        "SELECT title, author, artist, text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
+                    )
+                    .bind(song_id)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None);
+                let (title, author, artist, casing_str) = match meta {
+                    Some((t, au, ar, c)) => (t, au, ar, c),
+                    None => (String::new(), None, None, None),
+                };
+                let casing = crate::domain::song::TextCasing::from_opt(casing_str.as_deref());
+                let sections = load_sections(pool, song_id).await?;
+                let mut s = sections_to_slides(&sections, config, casing, settings.repeat_mode);
+                if s.is_empty() {
+                    s = vec![blank_slide()];
+                }
+                if settings.show_title_slide {
+                    // Most users fill the prominent "Artist" field; fall back
+                    // to it when the (collapsed) "Author" field is empty.
+                    let credit = resolve_title_credit(author.as_deref(), artist.as_deref());
+                    if let Some(title_slide) =
+                        build_title_slide(song_id, &title, credit, settings.author_in_parens)
+                    {
+                        s.insert(0, title_slide);
+                    }
+                }
+                if settings.blackout_after_song {
+                    s.push(blackout_slide(song_id));
+                }
+                s
+            } else {
+                vec![blank_slide()]
+            }
+        }
+        SetItemType::Media => vec![Slide::pseudo("media")],
+        SetItemType::Countdown => vec![Slide::pseudo("countdown")],
+        SetItemType::WebView => vec![Slide::pseudo("webview")],
+        SetItemType::Blank => vec![blank_slide()],
+        SetItemType::SlideShow => {
+            if let Some(media_id) = &item.media_id {
+                let n: Option<i64> = sqlx::query_scalar(
+                    "SELECT slide_count FROM media WHERE id = ? AND deleted_at IS NULL",
+                )
+                .bind(media_id)
+                .fetch_optional(pool)
+                .await
+                .unwrap_or(None)
+                .flatten();
+                let count = n.unwrap_or(1).max(1) as usize;
+                (0..count).map(Slide::pseudo_slideshow).collect()
+            } else {
+                vec![blank_slide()]
+            }
+        }
+    };
+    Ok(slides)
+}
+
+/// Append a newly created set item to the live presentation snapshot when its set
+/// is the one currently loaded. Lets items added mid-presentation (e.g. a pptx/pdf
+/// slideshow imported from the operator) appear without a disruptive full reload.
+/// No-op when nothing is presenting or the item belongs to another set.
+pub(crate) async fn append_item_to_live_presentation(
+    state: &AppState,
+    app: &AppHandle,
+    item: &SetItem,
+) -> Result<(), ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
+
+    let belongs = {
+        let pres = state.presentation.read().await;
+        pres.set
+            .as_ref()
+            .map(|s| s.id == item.set_id)
+            .unwrap_or(false)
+    };
+    if !belongs {
+        return Ok(());
+    }
+
+    let config = SlideConfig::default();
+    let settings = load_slide_gen_settings(pool).await;
+    let slides = compute_item_slides(pool, item, &config, &settings).await?;
+    let count = slides.len();
+
+    {
+        let mut all = state.presentation_slides.write().await;
+        all.push(slides);
+    }
+
+    // Same lock order as do_next_slide (slides read → presentation write) to avoid
+    // deadlocks. Drop both before emitting (see AppState invariants in CLAUDE.md).
+    let snapshot = {
+        let all = state.presentation_slides.read().await;
+        let mut pres = state.presentation.write().await;
+        if let Some(set) = pres.set.as_mut() {
+            set.items.push(item.clone());
+        }
+        pres.item_slide_counts.push(count);
+        // The new item lands at the end, so it only changes the lookahead when we
+        // were already sitting on the final slide (next_slide was None).
+        pres.next_slide = resolve_next_slide(&all, &pres);
+        pres.clone()
+    };
+
+    emit_state(app, &snapshot).await
+}
+
 // ─── Tauri commands ──────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -309,77 +453,11 @@ pub async fn load_set_for_presentation(
     let pool = state.db.get().expect("db initialized");
     let service_set = db_load_set(pool, &set_id).await?;
     let config = SlideConfig::default();
-
-    let show_title_slide = read_bool_setting(pool, "presentation.show_title_slide", true).await;
-    let author_in_parens = read_bool_setting(pool, "presentation.author_in_parens", true).await;
-    let blackout_after_song = read_bool_setting(pool, "presentation.blackout_after_song", true).await;
-    let repeat_mode =
-        RepeatMode::from_opt(read_string_setting(pool, "presentation.repeat_mode").await.as_deref());
+    let settings = load_slide_gen_settings(pool).await;
 
     let mut computed_slides: Vec<Vec<Slide>> = Vec::new();
     for item in &service_set.items {
-        let slides = match item.item_type {
-            SetItemType::Song => {
-                if let Some(song_id) = &item.song_id {
-                    #[allow(clippy::type_complexity)]
-                    let meta: Option<(String, Option<String>, Option<String>, Option<String>)> =
-                        sqlx::query_as(
-                            "SELECT title, author, artist, text_casing FROM songs WHERE id = ? AND deleted_at IS NULL",
-                        )
-                        .bind(song_id)
-                        .fetch_optional(pool)
-                        .await
-                        .unwrap_or(None);
-                    let (title, author, artist, casing_str) = match meta {
-                        Some((t, au, ar, c)) => (t, au, ar, c),
-                        None => (String::new(), None, None, None),
-                    };
-                    let casing = crate::domain::song::TextCasing::from_opt(casing_str.as_deref());
-                    let sections = load_sections(pool, song_id).await?;
-                    let mut s = sections_to_slides(&sections, &config, casing, repeat_mode);
-                    if s.is_empty() {
-                        s = vec![blank_slide()];
-                    }
-                    if show_title_slide {
-                        // Most users fill the prominent "Artist" field; fall back
-                        // to it when the (collapsed) "Author" field is empty.
-                        let credit = resolve_title_credit(author.as_deref(), artist.as_deref());
-                        if let Some(title_slide) =
-                            build_title_slide(song_id, &title, credit, author_in_parens)
-                        {
-                            s.insert(0, title_slide);
-                        }
-                    }
-                    if blackout_after_song {
-                        s.push(blackout_slide(song_id));
-                    }
-                    s
-                } else {
-                    vec![blank_slide()]
-                }
-            }
-            SetItemType::Media => vec![Slide::pseudo("media")],
-            SetItemType::Countdown => vec![Slide::pseudo("countdown")],
-            SetItemType::WebView => vec![Slide::pseudo("webview")],
-            SetItemType::Blank => vec![blank_slide()],
-            SetItemType::SlideShow => {
-                if let Some(media_id) = &item.media_id {
-                    let n: Option<i64> = sqlx::query_scalar(
-                        "SELECT slide_count FROM media WHERE id = ? AND deleted_at IS NULL",
-                    )
-                    .bind(media_id)
-                    .fetch_optional(pool)
-                    .await
-                    .unwrap_or(None)
-                    .flatten();
-                    let count = n.unwrap_or(1).max(1) as usize;
-                    (0..count).map(Slide::pseudo_slideshow).collect()
-                } else {
-                    vec![blank_slide()]
-                }
-            }
-        };
-        computed_slides.push(slides);
+        computed_slides.push(compute_item_slides(pool, item, &config, &settings).await?);
     }
 
     let all_slides_per_item = computed_slides.clone();

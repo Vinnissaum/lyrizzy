@@ -635,7 +635,6 @@
       "open": "Abrir / Reabrir nesta tela",
       "autoSelect": "— Automático —",
       "current": "(atual)",
-      "cameraUrl": "URL da câmera",
       "fontSize": "Tamanho do texto das músicas",
       "fontSizes": {
         "sm": "Pequeno",
@@ -800,8 +799,7 @@
   },
   "home": {
     "overlay": {
-      "oferta": "Oferta",
-      "camera": "Câmera",
+      "image": "Imagem",
       "aviso": "Aviso",
       "pdf": "Apresentação",
       "pdfTooltip": "Importar PPTX ou PDF",
@@ -810,10 +808,7 @@
       "announcementPlaceholder": "Digite o texto do aviso…",
       "confirm": "Confirmar",
       "cancel": "Cancelar",
-      "cameraNoUrl": "URL da câmera não configurada. Configure em Configurações.",
-      "goToSettings": "Ir para Configurações",
-      "cameraUse": "Usar",
-      "selectMedia": "Selecionar imagem para oferta",
+      "selectMedia": "Selecionar imagem",
       "blackout": "Tela preta"
     },
     "sidebar": {

@@ -126,6 +126,7 @@ function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
     ],
     fixedSetId: "set-1",
     setView: vi.fn(),
+    refresh: vi.fn(),
   } as unknown as ReturnType<typeof useLibraryStore>);
   vi.mocked(useMediaStore).mockReturnValue({
     media: [],
@@ -180,6 +181,7 @@ describe("OperatorPresentationLayout", () => {
       songs: [],
       fixedSetId: null,
       setView: vi.fn(),
+      refresh: vi.fn(),
     } as unknown as ReturnType<typeof useLibraryStore>);
     vi.mocked(useMediaStore).mockReturnValue({
       media: [],
@@ -225,7 +227,7 @@ describe("OperatorPresentationLayout", () => {
 
     // But the overlay action bar itself is present (check one of its stable buttons)
     expect(
-      screen.getByRole("button", { name: /home\.overlay\.oferta/ }),
+      screen.getByRole("button", { name: /home\.overlay\.image/ }),
     ).toBeInTheDocument();
   });
 });

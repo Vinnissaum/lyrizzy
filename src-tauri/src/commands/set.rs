@@ -383,6 +383,11 @@ pub async fn add_set_item(
     let item = db_load_set_item(pool, &item_id).await?;
     app.emit("set_changed", ())
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    // If this set is the one currently presenting, splice the new item into the
+    // live snapshot so it shows up immediately (e.g. a slideshow imported mid-
+    // presentation) instead of only after a full reload.
+    crate::commands::presentation::append_item_to_live_presentation(state.inner(), &app, &item)
+        .await?;
     Ok(item)
 }
 

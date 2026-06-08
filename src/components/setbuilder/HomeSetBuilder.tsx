@@ -13,22 +13,19 @@ import {
   onSongsChanged,
   setAnnouncementOverlay,
   setMediaOverlay,
-  setWebviewOverlay,
 } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { usePresentationStore } from "../../stores/presentation";
-import { useSettingsStore } from "../../stores/settings";
 import { SetBuilder } from "../set/SetBuilder";
 import { OverlayActionBar } from "../presentation/OverlayActionBar";
 import type { Song } from "../../types";
 
 export const HomeSetBuilder: React.FC = () => {
   const { t } = useTranslation();
-  const { fixedSetId, setView } = useLibraryStore();
+  const { fixedSetId } = useLibraryStore();
   const { state: presState } = usePresentationStore();
-  const { cameraUrl, loadCameraUrl } = useSettingsStore();
   const { media, refresh: refreshMedia } = useMediaStore();
 
   const [showSidebar, setShowSidebar] = useState(true);
@@ -41,8 +38,6 @@ export const HomeSetBuilder: React.FC = () => {
 
   const [showMediaPicker, setShowMediaPicker] = useState(false);
 
-  const [showCameraPrompt, setShowCameraPrompt] = useState(false);
-  const [tempCameraUrl, setTempCameraUrl] = useState("");
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
   const [errorToast, setErrorToast] = useState<string | null>(null);
 
@@ -58,7 +53,6 @@ export const HomeSetBuilder: React.FC = () => {
   };
 
   useEffect(() => {
-    loadCameraUrl();
     refreshMedia();
     loadSongs();
 
@@ -133,32 +127,6 @@ export const HomeSetBuilder: React.FC = () => {
       await setMediaOverlay(mediaId);
     } catch (err) {
       console.error("set media overlay failed:", err);
-    }
-  };
-
-  const handleCamera = async () => {
-    if (cameraUrl) {
-      await ensurePresentation();
-      try {
-        await setWebviewOverlay(cameraUrl);
-      } catch (err) {
-        console.error("set webview overlay failed:", err);
-      }
-    } else {
-      setTempCameraUrl("");
-      setShowCameraPrompt(true);
-    }
-  };
-
-  const handleConfirmCameraUrl = async () => {
-    const url = tempCameraUrl.trim();
-    if (!url) return;
-    setShowCameraPrompt(false);
-    await ensurePresentation();
-    try {
-      await setWebviewOverlay(url);
-    } catch (err) {
-      console.error("set webview overlay failed:", err);
     }
   };
 
@@ -237,7 +205,6 @@ export const HomeSetBuilder: React.FC = () => {
         showApresentarButton={true}
         onApresentar={handleApresentar}
         onOferta={handleOferta}
-        onCamera={handleCamera}
         onAviso={handleAvisoClick}
         onPdf={handleImportPresentation}
         onClearOverlay={handleClearOverlay}
@@ -361,59 +328,7 @@ export const HomeSetBuilder: React.FC = () => {
         </div>
       )}
 
-      {/* Camera URL prompt */}
-      {showCameraPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-surface rounded-xl shadow-2xl w-96 flex flex-col">
-            <div className="px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-semibold">{t("home.overlay.camera")}</h3>
-            </div>
-            <div className="p-4 space-y-2">
-              <p className="text-xs text-muted">{t("home.overlay.cameraNoUrl")}</p>
-              <input
-                autoFocus
-                type="url"
-                value={tempCameraUrl}
-                onChange={(e) => setTempCameraUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirmCameraUrl();
-                  if (e.key === "Escape") setShowCameraPrompt(false);
-                }}
-                placeholder="http://192.168.1.x/cam"
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-              <button
-                onClick={() => {
-                  setShowCameraPrompt(false);
-                  setView("settings");
-                }}
-                className="text-xs text-primary hover:underline"
-              >
-                {t("home.overlay.goToSettings")}
-              </button>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowCameraPrompt(false)}
-                  className="px-4 py-2 text-sm rounded-lg bg-surface-2 hover:bg-border transition-colors"
-                >
-                  {t("home.overlay.cancel")}
-                </button>
-                <button
-                  onClick={handleConfirmCameraUrl}
-                  disabled={!tempCameraUrl.trim()}
-                  className="px-4 py-2 text-sm rounded-lg bg-primary hover:bg-primary-hover text-fg-on-primary font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t("home.overlay.cameraUse")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Media picker (Oferta) */}
+      {/* Media picker (image overlay) */}
       {showMediaPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="bg-surface rounded-xl shadow-2xl w-[520px] max-h-[70vh] flex flex-col">
@@ -421,8 +336,8 @@ export const HomeSetBuilder: React.FC = () => {
               <h3 className="text-sm font-semibold">{t("home.overlay.selectMedia")}</h3>
               <button
                 onClick={() => setShowMediaPicker(false)}
-                className="text-muted hover:text-inherit"
-               inline-flex items-center>
+                className="text-muted hover:text-inherit inline-flex items-center"
+              >
                 <X size={16} />
               </button>
             </div>

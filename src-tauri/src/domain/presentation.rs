@@ -21,7 +21,13 @@ pub enum PresentationMode {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum OverlayState {
     Announcement { text: String },
-    Media { media_id: String },
+    // `rename_all = "camelCase"` on the enum renames only the variants, not the
+    // fields inside struct variants — so `media_id` would serialize as
+    // `media_id`, while the frontend reads `mediaId`. Rename it explicitly.
+    Media {
+        #[serde(rename = "mediaId")]
+        media_id: String,
+    },
     WebView { url: String },
 }
 
@@ -93,6 +99,22 @@ mod tests {
         assert!(json.contains("\"overlay\""), "expected overlay field: {json}");
         let back: PresentationState = serde_json::from_str(&json).unwrap();
         assert_eq!(back, state);
+    }
+
+    #[test]
+    fn media_overlay_serializes_media_id_as_camel_case() {
+        // Regression: the enum-level `rename_all` renames only variants, not the
+        // fields inside struct variants. Without an explicit field rename the
+        // frontend (which reads `mediaId`) gets `undefined` and shows a black
+        // screen instead of the image overlay.
+        let overlay = OverlayState::Media {
+            media_id: "abc".into(),
+        };
+        let json = serde_json::to_string(&overlay).unwrap();
+        assert!(json.contains("\"type\":\"media\""), "{json}");
+        assert!(json.contains("\"mediaId\":\"abc\""), "{json}");
+        let back: OverlayState = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, overlay);
     }
 
     #[test]

@@ -1,12 +1,11 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Play, X, Image as ImageIcon, Camera, Megaphone, FileText, MonitorOff, Square } from "lucide-react";
+import { Play, X, Image as ImageIcon, Megaphone, FileText, MonitorOff, Square } from "lucide-react";
 
 interface Props {
   showApresentarButton: boolean;
   onApresentar?: () => void;
   onOferta: () => void;
-  onCamera: () => void;
   onAviso: () => void;
   onPdf: () => void;
   onClearOverlay: () => void;
@@ -21,7 +20,6 @@ export const OverlayActionBar: React.FC<Props> = ({
   showApresentarButton,
   onApresentar,
   onOferta,
-  onCamera,
   onAviso,
   onPdf,
   onClearOverlay,
@@ -79,13 +77,7 @@ export const OverlayActionBar: React.FC<Props> = ({
         onClick={onOferta}
         className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors inline-flex items-center gap-1"
       >
-        <ImageIcon size={12} /> {t("home.overlay.oferta")}
-      </button>
-      <button
-        onClick={onCamera}
-        className="px-3 py-1 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors inline-flex items-center gap-1"
-      >
-        <Camera size={12} /> {t("home.overlay.camera")}
+        <ImageIcon size={12} /> {t("home.overlay.image")}
       </button>
       <button
         onClick={onAviso}

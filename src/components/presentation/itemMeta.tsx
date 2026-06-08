@@ -82,3 +82,12 @@ export function itemLabel(
       return "Branco";
   }
 }
+
+/**
+ * Author/artist credit for a song set item, for showing alongside the title.
+ * Returns undefined for non-song items or songs without a credit. Pure function.
+ */
+export function songArtist(item: SetItem, songs: Song[]): string | undefined {
+  if (item.itemType !== "song") return undefined;
+  return songs.find((s) => s.id === item.songId)?.artist || undefined;
+}

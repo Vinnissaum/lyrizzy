@@ -91,7 +91,6 @@ interface SettingsStore {
   reduceMotion: boolean;
   locale: string;
   notesPanelCollapsed: boolean;
-  cameraUrl: string;
   theme: Theme;
   // Global presentation appearance
   presentationFontSize: FontSize;
@@ -118,8 +117,6 @@ interface SettingsStore {
   loadLocale: () => Promise<void>;
   setNotesPanelCollapsed: (collapsed: boolean) => void;
   loadNotesPanelCollapsed: () => Promise<void>;
-  setCameraUrl: (url: string) => void;
-  loadCameraUrl: () => Promise<void>;
   setTheme: (theme: Theme) => void;
   loadTheme: () => Promise<void>;
 
@@ -168,7 +165,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   reduceMotion: false,
   locale: "pt-BR",
   notesPanelCollapsed: false,
-  cameraUrl: "",
   theme: DEFAULT_THEME,
   presentationFontSize: DEFAULT_FONT_SIZE,
   presentationFontFamily: DEFAULT_FONT_FAMILY,
@@ -211,18 +207,6 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       set({ notesPanelCollapsed: val === "true" });
     } catch {
       // setting not found — use default false
-    }
-  },
-  setCameraUrl: (url) => {
-    set({ cameraUrl: url });
-    setSetting("camera.url", url).catch(() => {});
-  },
-  loadCameraUrl: async () => {
-    try {
-      const url = await getSetting("camera.url");
-      set({ cameraUrl: url });
-    } catch {
-      // setting not found — use default ""
     }
   },
   setTheme: (theme) => {

@@ -15,7 +15,21 @@
 - ✅ **A7** tagged `{output,state}` events end-to-end + frontend output routing (`onStateChanged`/`onCountdownTick` filter by output; `subscribe(output)`; `PresentationApp` `output` prop; `main.tsx` label→OutputId). (91692be)
 - ✅ **A8** no new commands to register; full gate green; docs updated. (this commit)
 
-**SLICE A COMPLETE.** Gate: **235 Rust lib + integration tests, clippy `-D warnings`, tsc, 339 vitest — all green.** The backend has a full output dimension and the frontend routes by output; the app still drives output One identically. Output Two has no operator UI yet — that's **Slice B** (switcher, per-output set/monitor selection, keyboard routing).
+**SLICE A COMPLETE.** Gate: **235 Rust lib + integration tests, clippy `-D warnings`, tsc, 339 vitest — all green.** The backend has a full output dimension and the frontend routes by output; the app still drives output One identically.
+
+**SLICE B — operator dual-output control, gated behind a config toggle (per user request).** Done 2026-06-08 (commits 969f395, f0e914b):
+- ✅ **B0** `multiScreenEnabled` setting (`output.multi_screen_enabled`, default false) + Settings toggle + i18n. Single-screen UI unchanged when off.
+- ✅ **B1** output-aware presentation store (`output`/`focusedOutput`, mutations target focused output) + per-output command wrappers (nav/overlay/enter/exit/load, per-output monitor key + exit dedup).
+- ✅ **B2** `OutputSwitcher` (Tela 1/2 tabs, render-gated on the setting) + `OperatorApp` focus-keyed re-subscription so the panes follow the selected screen. +3 tests.
+- ✅ **B3** keyboard/Esc act on the focused output (live-read to dodge stale closure).
+- ✅ **B5** per-output set picker (operator empty-state) → `loadSetForPresentation(setId, output)` + `enterPresentation(output)`.
+- ⏳ **B4 (partial)** TV-2 `last_set_id` persistence not yet wired (picker is per-session).
+- ⏳ **B6** per-output countdown *arming*: countdown store mutations (start/arm) still target output One — needs `output` on the countdown command wrappers + store. Display already follows the focused output.
+- ⏳ status-strip for the unfocused output: deferred.
+
+Gate after Slice B: **tsc, 342 vitest (+3) green; Rust unchanged (235).** **Needs a real two-monitor `npm run tauri dev` validation pass** (cannot be verified headless).
+
+**Next:** Slice C (camera audio + mic + HDMI routing) — start with the C0 rig checks. Optionally finish B4/B6 first.
 
 **A6 simplification:** both windows load the same `presentation.html` (label differentiates them), so no `presentation-2.html`/Vite/tauri.conf changes are needed — A6 was pure Rust.
 

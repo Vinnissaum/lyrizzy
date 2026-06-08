@@ -6,10 +6,13 @@ import {
   clearOverlay,
   enterPresentation,
   exitPresentation,
+  getSetting,
   importPresentation,
   loadSetForPresentation,
+  OUTPUT2_LAST_SET_KEY,
   setAnnouncementOverlay,
   setMediaOverlay,
+  setSetting,
   addSetItem,
 } from "../../api/commands";
 import { usePresentationStore } from "../../stores/presentation";
@@ -44,6 +47,7 @@ export const OperatorPresentationLayout: React.FC = () => {
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
 
   const announcementRef = useRef<HTMLTextAreaElement>(null);
+  const autoLoadedTwoRef = useRef(false);
 
   useEffect(() => {
     refreshMedia();
@@ -60,11 +64,31 @@ export const OperatorPresentationLayout: React.FC = () => {
   const handlePickSet = async (setId: string) => {
     try {
       await loadSetForPresentation(setId, focusedOutput);
+      if (focusedOutput === "two") {
+        setSetting(OUTPUT2_LAST_SET_KEY, setId).catch(() => {});
+      }
       await enterPresentation(focusedOutput);
     } catch (err) {
       console.error("load set for output failed:", err);
     }
   };
+
+  // TV-2 remembers its last set: when the operator focuses Tela 2 and it has no
+  // set yet, auto-load the last set it presented into the operator view (without
+  // opening the window — the operator presses Present when ready).
+  useEffect(() => {
+    if (!multiScreenEnabled || focusedOutput !== "two") {
+      autoLoadedTwoRef.current = false;
+      return;
+    }
+    if (state?.set || autoLoadedTwoRef.current) return;
+    autoLoadedTwoRef.current = true;
+    getSetting(OUTPUT2_LAST_SET_KEY)
+      .then((setId) => {
+        if (setId) loadSetForPresentation(setId, "two").catch(() => {});
+      })
+      .catch(() => {});
+  }, [multiScreenEnabled, focusedOutput, state?.set]);
 
   const items = state?.set?.items ?? [];
   const currentItemIndex = state?.currentItemIndex ?? 0;

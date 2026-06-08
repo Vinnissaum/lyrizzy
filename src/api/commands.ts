@@ -46,6 +46,8 @@ export function normalizeError(err: unknown): ErrorPayload {
 export const PRESENTATION_MONITOR_KEY = "presentation.monitor_index";
 /** Settings key for output Two's saved monitor choice. */
 export const OUTPUT2_MONITOR_KEY = "output2.monitor_index";
+/** Settings key remembering the last set presented on output Two. */
+export const OUTPUT2_LAST_SET_KEY = "output2.last_set_id";
 
 /** Map a window label to its output id, or null for non-presentation windows. */
 export const outputFromWindowLabel = (label: string): OutputId | null =>
@@ -354,8 +356,8 @@ export const onMediaLibraryChanged = (cb: () => void) =>
 
 // ─── Countdown timer ─────────────────────────────────────────────────────────
 
-export const setCountdownDuration = (durationMs: number) =>
-  invoke<CountdownState>("set_countdown_duration", { durationMs });
+export const setCountdownDuration = (durationMs: number, output?: OutputId) =>
+  invoke<CountdownState>("set_countdown_duration", { durationMs, output: output ?? null });
 
 export interface StartCountdownParams {
   target?: CountdownTarget;
@@ -371,8 +373,8 @@ export interface StartCountdownParams {
   [key: string]: unknown;
 }
 
-export const startCountdown = (params?: StartCountdownParams) =>
-  invoke<CountdownState>("start_countdown", params ?? {});
+export const startCountdown = (params?: StartCountdownParams, output?: OutputId) =>
+  invoke<CountdownState>("start_countdown", { ...(params ?? {}), output: output ?? null });
 
 export interface ArmCountdownParams {
   scheduledStart: ScheduledStart;
@@ -390,14 +392,14 @@ export interface ArmCountdownParams {
   [key: string]: unknown;
 }
 
-export const armCountdown = (params: ArmCountdownParams) =>
-  invoke<CountdownState>("arm_countdown", params);
+export const armCountdown = (params: ArmCountdownParams, output?: OutputId) =>
+  invoke<CountdownState>("arm_countdown", { ...params, output: output ?? null });
 
-export const pauseCountdown = () =>
-  invoke<CountdownState>("pause_countdown");
+export const pauseCountdown = (output?: OutputId) =>
+  invoke<CountdownState>("pause_countdown", { output: output ?? null });
 
-export const resetCountdown = () =>
-  invoke<CountdownState>("reset_countdown");
+export const resetCountdown = (output?: OutputId) =>
+  invoke<CountdownState>("reset_countdown", { output: output ?? null });
 
 export const getCountdownState = (output?: OutputId) =>
   invoke<CountdownState>("get_countdown_state", { output: output ?? null });

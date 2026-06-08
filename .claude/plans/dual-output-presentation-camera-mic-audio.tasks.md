@@ -29,7 +29,19 @@
 
 Gate after Slice B: **tsc, 342 vitest (+3) green; Rust unchanged (235).** **Needs a real two-monitor `npm run tauri dev` validation pass** (cannot be verified headless).
 
-**Next:** Slice C (camera audio + mic + HDMI routing) — start with the C0 rig checks. Optionally finish B4/B6 first.
+**SLICE B COMPLETE** (B0–B6) incl. per-output countdown arming + TV-2 last-set memory. Commits 969f395, f0e914b, + B4/B6 commit.
+
+**SLICE C — in progress (primitives done).** Commit (Slice C primitives):
+- ✅ **C5** `StreamProxyRenderer` `muted` prop (default true) + `sinkId` (camera audio → output device via `HTMLMediaElement.setSinkId`). +existing tests.
+- ✅ **C3** `utils/audioDevices.ts` — enumerate inputs/outputs, replug-safe `resolveDeviceId` (id → label+groupId), `supportsAudioOutputSelection`. +7 tests.
+- ✅ **C4** `hooks/useMicAudio.ts` — getUserMedia → `DelayNode` → `AudioContext.setSinkId`, live delay, full teardown. +4 tests.
+- ⏳ **C2** Windows `PermissionRequested`→Allow(Microphone) handler (Rust, `with_webview` + `webview2-com`) — **needs the real WebView2 native API + a Windows build to verify; not written yet (won't fabricate the binding blind).**
+- ⏳ **C6/C7** operator `MicSwitch` (on/off + delay) + camera-audio toggle + mounting `useMicAudio` in the camera output window — buildable but **non-functional until C2 + rig**, and entangled with the audio-device settings (D1/D2).
+- ⏳ **C1** rig verification (mic actually exits TV-2 HDMI; autoplay gesture; sane delay default) — **your Windows 3-display hardware only.**
+
+Gate after Slice C primitives: **tsc, 353 vitest (+11) green; Rust 235 + clippy unchanged.**
+
+**Genuine handoff point:** the remaining Slice C work needs (1) the native mic-permission handler verified on a Windows build, and (2) real-hardware confirmation of the audio path. Slices A+B also still want a two-monitor `tauri dev` validation pass.
 
 **A6 simplification:** both windows load the same `presentation.html` (label differentiates them), so no `presentation-2.html`/Vite/tauri.conf changes are needed — A6 was pure Rust.
 

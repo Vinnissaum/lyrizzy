@@ -5,9 +5,19 @@
 **Status**: In progress. 4 slices, 23 tasks. Backend `output` dimension defaults to
 `One` so each step stays green during migration (plan R-7).
 
-**Progress**
-- ✅ **A1** `OutputId` domain type — `domain/output.rs`, 4 tests. (2026-06-08)
-- ✅ **A2** `AppState` → `outputs: HashMap<OutputId, OutputState>` (presentation+slides+countdown+task per output; `stream_proxy` global); all 55 access sites migrated to `state.output(OutputId::One)`; +1 independence test. Gate: 230 lib tests + clippy `-D warnings` green. (2026-06-08)
+**Progress** (branch `feat/dual-output`)
+- ✅ **A1** `OutputId` domain type — `domain/output.rs` (+`other()`), tests. (2026-06-08, commit 4d90a1e)
+- ✅ **A2** `AppState` → `outputs: HashMap<OutputId, OutputState>` (presentation+slides+countdown+task per output; `stream_proxy` global); all 55 access sites migrated. (4d90a1e)
+- ✅ **A3** `output` param through presentation nav/load commands. (3f1c7ff)
+- ✅ **A4** `output` param through overlay commands. (3f1c7ff)
+- ✅ **A5** `output` param through countdown commands (per-output ticker/takeover; helpers already Arc-parameterised). (3f1c7ff)
+- ✅ **A6** per-output `enter/exit_presentation` (window label `presentation`/`presentation-2`, both load `presentation.html`), `resolve_output_monitor` exclusion, operator-destroy closes all presentation* windows, lifecycle payload carries `output`. (03c02e3)
+- ✅ **A7** tagged `{output,state}` events end-to-end + frontend output routing (`onStateChanged`/`onCountdownTick` filter by output; `subscribe(output)`; `PresentationApp` `output` prop; `main.tsx` label→OutputId). (91692be)
+- ✅ **A8** no new commands to register; full gate green; docs updated. (this commit)
+
+**SLICE A COMPLETE.** Gate: **235 Rust lib + integration tests, clippy `-D warnings`, tsc, 339 vitest — all green.** The backend has a full output dimension and the frontend routes by output; the app still drives output One identically. Output Two has no operator UI yet — that's **Slice B** (switcher, per-output set/monitor selection, keyboard routing).
+
+**A6 simplification:** both windows load the same `presentation.html` (label differentiates them), so no `presentation-2.html`/Vite/tauri.conf changes are needed — A6 was pure Rust.
 
 **Sequencing refinement (decided during A2):** the **tagged `state_changed`/`countdown_tick` payload** is deferred from A3/A5 to land **together with the frontend (A7)**. Reason: flipping the event shape before the frontend can filter it would break the *running* app between commits (Rust tests would pass, but the presentation window would mis-parse events). Until Slice B, only output One is ever driven, so A3–A6 keep emitting the existing bare payloads. A7 introduces the tagged shape + frontend filters in lockstep.
 

@@ -1,6 +1,7 @@
 use crate::domain::countdown::{CountdownMode, CountdownPosition};
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
+use crate::domain::events::{CountdownTickPayload, StateChangedPayload};
 use crate::domain::output::OutputId;
 use crate::state::AppState;
 use serde::Serialize;
@@ -427,13 +428,19 @@ pub async fn exit_presentation(
             cd.background_media_id = None;
             cd.clone()
         };
-        let _ = app.emit("countdown_tick", &cd_snapshot);
+        let _ = app.emit(
+            "countdown_tick",
+            CountdownTickPayload::new(output, cd_snapshot),
+        );
     }
 
     // Emit BEFORE closing so the operator can react while the presentation
     // window still exists.
-    app.emit("state_changed", &state_snapshot)
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    app.emit(
+        "state_changed",
+        StateChangedPayload::new(output, state_snapshot),
+    )
+    .map_err(|e| ErrorPayload::from(e.to_string()))?;
 
     // The window may already be tearing down (the racing call closed it, or the
     // user hit the OS close button) — ignore close errors, they are not fatal.

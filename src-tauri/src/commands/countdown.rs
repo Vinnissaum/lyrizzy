@@ -6,6 +6,7 @@ use crate::domain::countdown::{
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::PresentationState;
 use crate::domain::slide::Slide;
+use crate::domain::events::CountdownTickPayload;
 use crate::domain::output::OutputId;
 use crate::state::AppState;
 use serde::Serialize;
@@ -24,6 +25,7 @@ use tokio::time::Duration;
 pub struct CountdownTriggeredPayload {
     pub set_id: Option<String>,
     pub item_index: Option<usize>,
+    pub output: OutputId,
 }
 
 fn now_ms() -> u64 {
@@ -100,6 +102,7 @@ async fn tick_countdown(
     presentation: Arc<RwLock<PresentationState>>,
     presentation_slides: Arc<RwLock<Vec<Vec<Slide>>>>,
     pool: SqlitePool,
+    output: OutputId,
 ) {
     loop {
         // Sleep until next whole-second boundary to keep the display smooth.
@@ -135,18 +138,18 @@ async fn tick_countdown(
 
         // Drop all locks before emitting (CLAUDE.md invariant).
         let snapshot = countdown.read().await.clone();
-        let _ = app.emit("countdown_tick", &snapshot);
+        let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
 
         if remaining == 0 {
             match end_behavior {
                 CountdownEndBehavior::HoldZero => {}
                 CountdownEndBehavior::Blackout => {
                     let _ =
-                        do_blank_presentation(&presentation, &presentation_slides, &app).await;
+                        do_blank_presentation(&presentation, &presentation_slides, &app, output).await;
                 }
                 CountdownEndBehavior::AdvanceSet => {
                     let _ =
-                        do_next_slide(&pool, &presentation, &presentation_slides, &app).await;
+                        do_next_slide(&pool, &presentation, &presentation_slides, &app, output).await;
                 }
             }
             break;
@@ -169,6 +172,7 @@ async fn tick_scheduled(
     pool: SqlitePool,
     set_id: Option<String>,
     item_index: Option<usize>,
+    output: OutputId,
 ) {
     loop {
         let sleep_ms = {
@@ -197,7 +201,7 @@ async fn tick_scheduled(
 
         // Emit tick (mode still Scheduled).
         let snapshot = countdown.read().await.clone();
-        let _ = app.emit("countdown_tick", &snapshot);
+        let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
 
         if remaining == 0 {
             // Transition to Running: clear scheduled, set target, switch mode.
@@ -220,11 +224,14 @@ async fn tick_scheduled(
             // Tell the operator window to ensure presentation is open + jump to item.
             let _ = app.emit(
                 "countdown_triggered",
-                CountdownTriggeredPayload { set_id, item_index },
+                CountdownTriggeredPayload { set_id, item_index, output },
             );
 
             // Emit the first Running tick so renderers swap immediately.
-            let _ = app.emit("countdown_tick", &running_snapshot);
+            let _ = app.emit(
+                "countdown_tick",
+                CountdownTickPayload::new(output, running_snapshot),
+            );
 
             // Hand off to the normal tick_countdown.
             let join_handle = tokio::spawn(tick_countdown(
@@ -233,6 +240,7 @@ async fn tick_scheduled(
                 Arc::clone(&presentation),
                 Arc::clone(&presentation_slides),
                 pool.clone(),
+                output,
             ));
             let mut task = countdown_task.lock().await;
             *task = Some(join_handle.abort_handle());
@@ -268,7 +276,7 @@ pub async fn set_countdown_duration(
         s.takeover = false;
         s.clone()
     };
-    let _ = app.emit("countdown_tick", &snapshot);
+    let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
     Ok(snapshot)
 }
 
@@ -355,6 +363,7 @@ pub async fn start_countdown(
         presentation_arc,
         slides_arc,
         pool,
+        output,
     ));
 
     {
@@ -362,7 +371,7 @@ pub async fn start_countdown(
         *task = Some(join_handle.abort_handle());
     }
 
-    let _ = app.emit("countdown_tick", &snapshot);
+    let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
     Ok(snapshot)
 }
 
@@ -390,7 +399,7 @@ pub async fn pause_countdown(
         s.mode = CountdownMode::Paused;
         s.clone()
     };
-    let _ = app.emit("countdown_tick", &snapshot);
+    let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
     Ok(snapshot)
 }
 
@@ -418,7 +427,7 @@ pub async fn reset_countdown(
         s.background_media_id = None;
         s.clone()
     };
-    let _ = app.emit("countdown_tick", &snapshot);
+    let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
     Ok(snapshot)
 }
 
@@ -498,6 +507,7 @@ pub async fn arm_countdown(
         pool,
         set_id,
         item_index,
+        output,
     ));
 
     {
@@ -505,7 +515,7 @@ pub async fn arm_countdown(
         *task = Some(join_handle.abort_handle());
     }
 
-    let _ = app.emit("countdown_tick", &snapshot);
+    let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
     Ok(snapshot)
 }
 

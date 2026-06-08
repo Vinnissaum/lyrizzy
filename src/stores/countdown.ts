@@ -10,14 +10,14 @@ import {
   type ArmCountdownParams,
   type StartCountdownParams,
 } from "../api/commands";
-import type { CountdownState } from "../types";
+import type { CountdownState, OutputId } from "../types";
 
 interface CountdownStore {
   state: CountdownState;
   /** Which set item is currently armed (frontend-only; null when none). */
   armedItem: { setId: string; itemIndex: number } | null;
   isSubscribed: boolean;
-  subscribe: () => Promise<() => void>;
+  subscribe: (output?: OutputId) => Promise<() => void>;
   setDuration: (durationMs: number) => Promise<void>;
   start: (params?: StartCountdownParams) => Promise<void>;
   arm: (params: ArmCountdownParams) => Promise<void>;
@@ -37,20 +37,20 @@ export const useCountdownStore = create<CountdownStore>((set) => ({
   armedItem: null,
   isSubscribed: false,
 
-  subscribe: async () => {
+  subscribe: async (output: OutputId = "one") => {
     // Per-mount listener registration with a real unlisten cleanup — see the
     // matching note in stores/presentation.ts for why the `isSubscribed` guard
     // was removed (it strands the listener under React 18 StrictMode).
     set({ isSubscribed: true });
 
     try {
-      const current = await getCountdownState();
+      const current = await getCountdownState(output);
       set({ state: current });
     } catch (_) {}
 
     const unlistenPromise = onCountdownTick((newState) => {
       set({ state: newState });
-    });
+    }, output);
 
     return async () => {
       (await unlistenPromise)();

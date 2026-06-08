@@ -1,4 +1,5 @@
 use crate::domain::error::ErrorPayload;
+use crate::domain::events::StateChangedPayload;
 use crate::domain::output::OutputId;
 use crate::domain::presentation::OverlayState;
 use crate::state::AppState;
@@ -9,7 +10,7 @@ use tauri::{AppHandle, Emitter, State};
 /// which set the presentation window's store to `null` and blanked the screen.
 async fn emit_state_changed(app: &AppHandle, state: &AppState, output: OutputId) -> Result<(), ErrorPayload> {
     let snapshot = state.output(output).presentation.read().await.clone();
-    app.emit("state_changed", &snapshot)
+    app.emit("state_changed", StateChangedPayload::new(output, snapshot))
         .map_err(|e| ErrorPayload::from(e.to_string()))
 }
 

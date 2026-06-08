@@ -7,7 +7,7 @@ import {
   prevSlide,
   setPresentationMode,
 } from "../api/commands";
-import type { PresentationMode, PresentationState } from "../types";
+import type { OutputId, PresentationMode, PresentationState } from "../types";
 
 /**
  * Reconcile an incoming state payload with the slides we already hold.
@@ -42,7 +42,7 @@ interface PresentationStore {
    */
   pendingSelection: { itemIndex: number; slideIndex: number } | null;
   isSubscribed: boolean;
-  subscribe: () => Promise<() => void>;
+  subscribe: (output?: OutputId) => Promise<() => void>;
   syncState: () => Promise<void>;
   next: () => Promise<void>;
   prev: () => Promise<void>;
@@ -56,7 +56,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
   pendingSelection: null,
   isSubscribed: false,
 
-  subscribe: async () => {
+  subscribe: async (output: OutputId = "one") => {
     // Each mount registers its own `state_changed` listener and returns a
     // cleanup that unlistens exactly that listener. We deliberately do NOT gate
     // on an `isSubscribed` flag: under React 18 StrictMode the mount→unmount→
@@ -69,7 +69,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
 
     // Hydrate immediately
     try {
-      const current = await getPresentationState();
+      const current = await getPresentationState(output);
       set((s) => ({ state: reconcileSlides(s.state, current) }));
     } catch (_) {}
 
@@ -77,7 +77,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
       // Any authoritative update (including nav from the other window) clears
       // a standing optimistic selection.
       set((s) => ({ state: reconcileSlides(s.state, newState), pendingSelection: null }));
-    });
+    }, output);
 
     return async () => {
       (await unlistenPromise)();

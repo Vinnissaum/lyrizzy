@@ -457,8 +457,11 @@ pub async fn update_set_item(
         }
     };
     if let Some(snapshot) = presentation_snapshot {
-        app.emit("state_changed", &snapshot)
-            .map_err(|e| ErrorPayload::from(e.to_string()))?;
+        app.emit(
+            "state_changed",
+            crate::domain::events::StateChangedPayload::new(OutputId::One, snapshot),
+        )
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
     }
 
     app.emit("set_changed", ())

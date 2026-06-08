@@ -8,6 +8,7 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
+import type { OutputId } from "../../types";
 import { PRESET_COLORS } from "../../components/presentation/layout";
 import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRenderer";
 import { CountdownRenderer } from "../../components/presentation/CountdownRenderer";
@@ -48,7 +49,9 @@ function formatMs(ms: number): string {
 }
 
 
-export const PresentationApp: React.FC = () => {
+export const PresentationApp: React.FC<{ output?: OutputId }> = ({
+  output = "one",
+}) => {
   const { i18n, t } = useTranslation();
   const { state, subscribe: subscribePresentation, next } = usePresentationStore();
   const {
@@ -85,8 +88,8 @@ export const PresentationApp: React.FC = () => {
   const currentItem = state?.set?.items[state?.currentItemIndex ?? 0];
 
   useEffect(() => {
-    const unsub = subscribePresentation();
-    const unsubCd = subscribeCountdown();
+    const unsub = subscribePresentation(output);
+    const unsubCd = subscribeCountdown(output);
     const unsubLocale = onLocaleChanged((locale) => {
       i18n.changeLanguage(locale);
       setLocale(locale);

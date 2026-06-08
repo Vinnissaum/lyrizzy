@@ -5,6 +5,7 @@ use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{RepeatMode, Slide, SlideConfig};
 use crate::services::{background, play_counter, slide_splitter};
+use crate::domain::events::StateChangedPayload;
 use crate::domain::output::OutputId;
 use crate::state::AppState;
 use sqlx::SqlitePool;
@@ -223,15 +224,20 @@ async fn resolve_background_for_item(
         .flatten()
 }
 
-async fn emit_state(app: &AppHandle, state: &PresentationState) -> Result<(), ErrorPayload> {
+async fn emit_state(
+    app: &AppHandle,
+    output: OutputId,
+    state: &PresentationState,
+) -> Result<(), ErrorPayload> {
     tracing::info!(
+        output = ?output,
         item = state.current_item_index,
         slide = state.current_slide_index,
         mode = ?state.mode,
         overlay = state.overlay.is_some(),
         "emit state_changed"
     );
-    app.emit("state_changed", state)
+    app.emit("state_changed", StateChangedPayload::new(output, state.clone()))
         .map_err(|e| ErrorPayload::from(e.to_string()))
 }
 
@@ -241,6 +247,7 @@ pub async fn do_next_slide(
     presentation: &Arc<RwLock<PresentationState>>,
     presentation_slides: &Arc<RwLock<Vec<Vec<Slide>>>>,
     app: &AppHandle,
+    output: OutputId,
 ) -> Result<PresentationState, ErrorPayload> {
     let slides = presentation_slides.read().await;
     let mut pres = presentation.write().await;
@@ -277,7 +284,7 @@ pub async fn do_next_slide(
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
-    emit_state(app, &new_state).await?;
+    emit_state(app, output, &new_state).await?;
     Ok(new_state)
 }
 
@@ -286,6 +293,7 @@ pub async fn do_blank_presentation(
     presentation: &Arc<RwLock<PresentationState>>,
     presentation_slides: &Arc<RwLock<Vec<Vec<Slide>>>>,
     app: &AppHandle,
+    output: OutputId,
 ) -> Result<(), ErrorPayload> {
     let slides = presentation_slides.read().await;
     let mut pres = presentation.write().await;
@@ -296,7 +304,7 @@ pub async fn do_blank_presentation(
     let new_state = pres.clone();
     drop(pres);
     drop(slides);
-    emit_state(app, &new_state).await
+    emit_state(app, output, &new_state).await
 }
 
 /// Presentation settings that influence per-item slide generation.
@@ -440,7 +448,7 @@ pub(crate) async fn append_item_to_live_presentation(
         pres.clone()
     };
 
-    emit_state(app, &snapshot).await
+    emit_state(app, OutputId::One, &snapshot).await
 }
 
 // ─── Tauri commands ──────────────────────────────────────────────────────────
@@ -515,7 +523,7 @@ pub async fn load_set_for_presentation(
         eprintln!("[trinity] WARN: play_counter::record_set_start failed: {e}");
     }
 
-    emit_state(&app, &new_state).await?;
+    emit_state(&app, output, &new_state).await?;
     Ok(new_state)
 }
 
@@ -527,7 +535,7 @@ pub async fn next_slide(
 ) -> Result<PresentationState, ErrorPayload> {
     let output = output.unwrap_or_default();
     let pool = state.db.get().expect("db initialized");
-    do_next_slide(pool, &state.output(output).presentation, &state.output(output).presentation_slides, &app).await
+    do_next_slide(pool, &state.output(output).presentation, &state.output(output).presentation_slides, &app, output).await
 }
 
 #[tauri::command]
@@ -576,7 +584,7 @@ pub async fn prev_slide(
     drop(pres);
     drop(slides);
 
-    emit_state(&app, &new_state).await?;
+    emit_state(&app, output, &new_state).await?;
     Ok(new_state)
 }
 
@@ -616,7 +624,7 @@ pub async fn go_to_item(
     drop(pres);
     drop(slides);
 
-    emit_state(&app, &new_state).await?;
+    emit_state(&app, output, &new_state).await?;
     Ok(new_state)
 }
 
@@ -649,7 +657,7 @@ pub async fn set_presentation_mode(
     drop(pres);
     drop(slides);
 
-    emit_state(&app, &new_state).await?;
+    emit_state(&app, output, &new_state).await?;
     Ok(new_state)
 }
 

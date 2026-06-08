@@ -42,8 +42,10 @@ export function normalizeError(err: unknown): ErrorPayload {
 
 // ─── Window management ──────────────────────────────────────────────────────
 
-/** Settings key for the operator's saved presentation-monitor choice. */
+/** Settings key for the operator's saved presentation-monitor choice (output One). */
 export const PRESENTATION_MONITOR_KEY = "presentation.monitor_index";
+/** Settings key for output Two's saved monitor choice. */
+export const OUTPUT2_MONITOR_KEY = "output2.monitor_index";
 
 /** Map a window label to its output id, or null for non-presentation windows. */
 export const outputFromWindowLabel = (label: string): OutputId | null =>
@@ -55,11 +57,15 @@ export const outputFromWindowLabel = (label: string): OutputId | null =>
  * is used; if that's unset/"auto", the backend auto-detects the secondary
  * monitor. This means every existing call site honours the monitor picker.
  */
-export const enterPresentation = async (monitorIndex?: number): Promise<void> => {
+export const enterPresentation = async (
+  output: OutputId = "one",
+  monitorIndex?: number,
+): Promise<void> => {
   let idx = monitorIndex;
   if (idx === undefined) {
     try {
-      const stored = await getSetting(PRESENTATION_MONITOR_KEY);
+      const key = output === "two" ? OUTPUT2_MONITOR_KEY : PRESENTATION_MONITOR_KEY;
+      const stored = await getSetting(key);
       if (stored && stored !== "auto") {
         const n = parseInt(stored, 10);
         if (!Number.isNaN(n)) idx = n;
@@ -68,19 +74,21 @@ export const enterPresentation = async (monitorIndex?: number): Promise<void> =>
       // Setting missing → auto-detect.
     }
   }
-  return invoke<void>("enter_presentation", { monitorIndex: idx ?? null });
+  return invoke<void>("enter_presentation", { output, monitorIndex: idx ?? null });
 };
 
 /** Kept for any ActionId bindings that still reference the old name. */
 export const openPresentationWindow = () => enterPresentation();
 
-let exitInflight: Promise<void> | null = null;
-export const exitPresentation = (): Promise<void> => {
-  if (exitInflight) return exitInflight;
-  exitInflight = invoke<void>("exit_presentation").finally(() => {
-    exitInflight = null;
+const exitInflight: Partial<Record<OutputId, Promise<void>>> = {};
+export const exitPresentation = (output: OutputId = "one"): Promise<void> => {
+  const pending = exitInflight[output];
+  if (pending) return pending;
+  const p = invoke<void>("exit_presentation", { output }).finally(() => {
+    exitInflight[output] = undefined;
   });
-  return exitInflight;
+  exitInflight[output] = p;
+  return p;
 };
 
 export const onPresentationLifecycle = (
@@ -271,20 +279,20 @@ export const duplicateSetItem = (itemId: string) =>
 
 // ─── Presentation control ────────────────────────────────────────────────────
 
-export const loadSetForPresentation = (setId: string) =>
-  invoke<PresentationState>("load_set_for_presentation", { setId });
+export const loadSetForPresentation = (setId: string, output?: OutputId) =>
+  invoke<PresentationState>("load_set_for_presentation", { setId, output: output ?? null });
 
-export const nextSlide = () =>
-  invoke<PresentationState>("next_slide");
+export const nextSlide = (output?: OutputId) =>
+  invoke<PresentationState>("next_slide", { output: output ?? null });
 
-export const prevSlide = () =>
-  invoke<PresentationState>("prev_slide");
+export const prevSlide = (output?: OutputId) =>
+  invoke<PresentationState>("prev_slide", { output: output ?? null });
 
-export const goToItem = (itemIndex: number, slideIndex?: number) =>
-  invoke<PresentationState>("go_to_item", { itemIndex, slideIndex });
+export const goToItem = (itemIndex: number, slideIndex?: number, output?: OutputId) =>
+  invoke<PresentationState>("go_to_item", { itemIndex, slideIndex, output: output ?? null });
 
-export const setPresentationMode = (mode: PresentationMode) =>
-  invoke<PresentationState>("set_presentation_mode", { mode });
+export const setPresentationMode = (mode: PresentationMode, output?: OutputId) =>
+  invoke<PresentationState>("set_presentation_mode", { mode, output: output ?? null });
 
 export const getPresentationState = (output?: OutputId) =>
   invoke<PresentationState>("get_presentation_state", { output: output ?? null });

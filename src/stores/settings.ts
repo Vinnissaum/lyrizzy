@@ -30,6 +30,8 @@ export const ANNOUNCEMENT_MARGIN_KEY = "announcement.margin";
 export const ANNOUNCEMENT_LINE_SPACING_KEY = "announcement.line_spacing";
 export const ANNOUNCEMENT_BOLD_LEVEL_KEY = "announcement.bold_level";
 export const BLACKOUT_AFTER_SONG_KEY = "presentation.blackout_after_song";
+/** When true, the operator exposes the second presentation output (Tela 2). */
+export const MULTI_SCREEN_ENABLED_KEY = "output.multi_screen_enabled";
 export const UI_THEME_KEY = "ui.theme";
 
 // Every settings key the presentation window must reload when it changes live.
@@ -112,6 +114,8 @@ interface SettingsStore {
   announcementLineSpacing: LineSpacing;
   announcementBoldLevel: BoldLevel;
   blackoutAfterSong: boolean;
+  /** Multi-screen mode: when on, the operator can drive a second output (Tela 2). */
+  multiScreenEnabled: boolean;
 
   setLocale: (locale: string) => void;
   loadLocale: () => Promise<void>;
@@ -138,6 +142,7 @@ interface SettingsStore {
   setAnnouncementLineSpacing: (spacing: LineSpacing) => void;
   setAnnouncementBoldLevel: (level: BoldLevel) => void;
   setBlackoutAfterSong: (value: boolean) => void;
+  setMultiScreenEnabled: (value: boolean) => void;
 
   /** Loads every persisted presentation/announcement appearance setting. */
   loadPresentationSettings: () => Promise<void>;
@@ -184,6 +189,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   announcementLineSpacing: DEFAULT_LINE_SPACING,
   announcementBoldLevel: DEFAULT_BOLD_LEVEL,
   blackoutAfterSong: true,
+  multiScreenEnabled: false,
 
   setLocale: (locale) => set({ locale }),
   loadLocale: async () => {
@@ -292,6 +298,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ blackoutAfterSong: value });
     setSetting(BLACKOUT_AFTER_SONG_KEY, String(value)).catch(() => {});
   },
+  setMultiScreenEnabled: (value) => {
+    set({ multiScreenEnabled: value });
+    setSetting(MULTI_SCREEN_ENABLED_KEY, String(value)).catch(() => {});
+  },
 
   loadPresentationSettings: async () => {
     const [
@@ -299,6 +309,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       showTitle, authorParens,
       annFamily, annSize, annPreset, annPosition, annMargin, annLineSpacing, annBoldLevel,
       blackoutAfterSong,
+      multiScreenEnabled,
     ] = await Promise.all([
       readSetting(PRESENTATION_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_FONT_SIZE),
       readSetting(PRESENTATION_FONT_FAMILY_KEY, FONT_FAMILY_VALUES, DEFAULT_FONT_FAMILY),
@@ -318,6 +329,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readSetting(ANNOUNCEMENT_LINE_SPACING_KEY, LINE_SPACING_VALUES, DEFAULT_LINE_SPACING),
       readSetting(ANNOUNCEMENT_BOLD_LEVEL_KEY, BOLD_LEVEL_VALUES, DEFAULT_BOLD_LEVEL),
       readBool(BLACKOUT_AFTER_SONG_KEY, true),
+      readBool(MULTI_SCREEN_ENABLED_KEY, false),
     ]);
     set({
       presentationFontSize: fontSize,
@@ -338,6 +350,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       announcementLineSpacing: annLineSpacing,
       announcementBoldLevel: annBoldLevel,
       blackoutAfterSong,
+      multiScreenEnabled,
     });
   },
 }));

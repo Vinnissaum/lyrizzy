@@ -33,6 +33,11 @@ function reconcileSlides(
 
 interface PresentationStore {
   state: PresentationState | null;
+  /** The output this store instance is actively subscribed to / drives. */
+  output: OutputId;
+  /** Operator's selected output (multi-screen mode). Drives the 3-pane focus. */
+  focusedOutput: OutputId;
+  setFocusedOutput: (output: OutputId) => void;
   /**
    * Optimistic selection target. Set synchronously by `selectSlide` so the UI
    * can highlight instantly, then cleared on the next authoritative update
@@ -51,8 +56,11 @@ interface PresentationStore {
   setMode: (mode: PresentationMode) => Promise<void>;
 }
 
-export const usePresentationStore = create<PresentationStore>((set) => ({
+export const usePresentationStore = create<PresentationStore>((set, get) => ({
   state: null,
+  output: "one",
+  focusedOutput: "one",
+  setFocusedOutput: (focusedOutput) => set({ focusedOutput }),
   pendingSelection: null,
   isSubscribed: false,
 
@@ -65,7 +73,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
     // presentation window with no listener (slides emitted but never reflected
     // on screen). Registering per-mount yields register L1 → unlisten L1 →
     // register L2, so exactly one listener stays live.
-    set({ isSubscribed: true });
+    set({ isSubscribed: true, output });
 
     // Hydrate immediately
     try {
@@ -86,7 +94,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
 
   syncState: async () => {
     try {
-      const current = await getPresentationState();
+      const current = await getPresentationState(get().output);
       set((s) => ({ state: reconcileSlides(s.state, current) }));
     } catch (err) {
       console.error("Falha ao sincronizar estado de apresentação:", err);
@@ -95,7 +103,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
 
   next: async () => {
     try {
-      const newState = await nextSlide();
+      const newState = await nextSlide(get().output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao avançar slide:", err);
@@ -104,7 +112,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
 
   prev: async () => {
     try {
-      const newState = await prevSlide();
+      const newState = await prevSlide(get().output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao voltar slide:", err);
@@ -113,7 +121,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
 
   jumpToItem: async (itemIndex: number) => {
     try {
-      const newState = await goToItem(itemIndex, 0);
+      const newState = await goToItem(itemIndex, 0, get().output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao ir para item:", err);
@@ -124,7 +132,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
     // Optimistic: highlight the target immediately, before the round-trip.
     set({ pendingSelection: { itemIndex, slideIndex } });
     try {
-      const newState = await goToItem(itemIndex, slideIndex);
+      const newState = await goToItem(itemIndex, slideIndex, get().output);
       set((s) => ({ state: reconcileSlides(s.state, newState), pendingSelection: null }));
     } catch (err) {
       set({ pendingSelection: null });
@@ -134,7 +142,7 @@ export const usePresentationStore = create<PresentationStore>((set) => ({
 
   setMode: async (mode: PresentationMode) => {
     try {
-      const newState = await setPresentationMode(mode);
+      const newState = await setPresentationMode(mode, get().output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao alterar modo:", err);

@@ -37,6 +37,14 @@ impl OutputId {
             _ => None,
         }
     }
+
+    /// The other output. Used to avoid placing two outputs on the same monitor.
+    pub fn other(self) -> OutputId {
+        match self {
+            OutputId::One => OutputId::Two,
+            OutputId::Two => OutputId::One,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -69,6 +77,12 @@ mod tests {
         }
         assert_eq!(OutputId::One.window_label(), "presentation");
         assert_eq!(OutputId::Two.window_label(), "presentation-2");
+    }
+
+    #[test]
+    fn other_is_the_opposite_output() {
+        assert_eq!(OutputId::One.other(), OutputId::Two);
+        assert_eq!(OutputId::Two.other(), OutputId::One);
     }
 
     #[test]

@@ -604,14 +604,14 @@ export const applyUpdateAndRestart = () =>
 
 // ─── Overlay ─────────────────────────────────────────────────────────────────
 
-export const setAnnouncementOverlay = (text: string) =>
-  invoke<void>("set_announcement_overlay", { text });
+export const setAnnouncementOverlay = (text: string, output?: OutputId) =>
+  invoke<void>("set_announcement_overlay", { text, output: output ?? null });
 
-export const setMediaOverlay = (mediaId: string) =>
-  invoke<void>("set_media_overlay", { mediaId });
+export const setMediaOverlay = (mediaId: string, output?: OutputId) =>
+  invoke<void>("set_media_overlay", { mediaId, output: output ?? null });
 
-export const setWebviewOverlay = (url: string) =>
-  invoke<void>("set_webview_overlay", { url });
+export const setWebviewOverlay = (url: string, output?: OutputId) =>
+  invoke<void>("set_webview_overlay", { url, output: output ?? null });
 
-export const clearOverlay = () =>
-  invoke<void>("clear_overlay");
+export const clearOverlay = (output?: OutputId) =>
+  invoke<void>("clear_overlay", { output: output ?? null });

@@ -7,6 +7,7 @@ import {
   enterPresentation,
   exitPresentation,
   importPresentation,
+  loadSetForPresentation,
   setAnnouncementOverlay,
   setMediaOverlay,
   addSetItem,
@@ -14,6 +15,9 @@ import {
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
+import { useSettingsStore } from "../../stores/settings";
+import { useSetsStore } from "../../stores/sets";
+import { OutputSwitcher } from "./OutputSwitcher";
 import { mediaUrl } from "../../api/assets";
 import { OverlayActionBar } from "./OverlayActionBar";
 import { itemLabel, songArtist } from "./itemMeta";
@@ -24,6 +28,10 @@ import { LivePreview } from "./LivePreview";
 export const OperatorPresentationLayout: React.FC = () => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
+  const focusedOutput = usePresentationStore((s) => s.focusedOutput);
+  const multiScreenEnabled = useSettingsStore((s) => s.multiScreenEnabled);
+  const sets = useSetsStore((s) => s.sets);
+  const refreshSets = useSetsStore((s) => s.refresh);
   const { songs, refresh: refreshSongs } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
   const { fixedSetId } = useLibraryStore();
@@ -43,7 +51,20 @@ export const OperatorPresentationLayout: React.FC = () => {
     // keeps its own local song list), so song items would label as "—". Pull
     // them once when entering the operator presentation view.
     if (songs.length === 0) refreshSongs();
+    // Multi-screen: the per-output set picker needs the list of sets.
+    if (multiScreenEnabled) refreshSets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load a chosen set onto the focused output and open its window (multi-screen).
+  const handlePickSet = async (setId: string) => {
+    try {
+      await loadSetForPresentation(setId, focusedOutput);
+      await enterPresentation(focusedOutput);
+    } catch (err) {
+      console.error("load set for output failed:", err);
+    }
+  };
 
   const items = state?.set?.items ?? [];
   const currentItemIndex = state?.currentItemIndex ?? 0;
@@ -55,7 +76,7 @@ export const OperatorPresentationLayout: React.FC = () => {
 
   const ensurePresentation = async () => {
     try {
-      await enterPresentation();
+      await enterPresentation(focusedOutput);
     } catch (err) {
       console.error("open presentation window failed:", err);
     }
@@ -70,7 +91,7 @@ export const OperatorPresentationLayout: React.FC = () => {
     setShowMediaPicker(false);
     await ensurePresentation();
     try {
-      await setMediaOverlay(mediaId);
+      await setMediaOverlay(mediaId, focusedOutput);
     } catch (err) {
       console.error("set media overlay failed:", err);
     }
@@ -89,7 +110,7 @@ export const OperatorPresentationLayout: React.FC = () => {
     setAnnouncementText("");
     await ensurePresentation();
     try {
-      await setAnnouncementOverlay(text);
+      await setAnnouncementOverlay(text, focusedOutput);
     } catch (err) {
       console.error("set announcement overlay failed:", err);
     }
@@ -97,7 +118,7 @@ export const OperatorPresentationLayout: React.FC = () => {
 
   const handleClearOverlay = async () => {
     try {
-      await clearOverlay();
+      await clearOverlay(focusedOutput);
     } catch (err) {
       console.error("clear overlay failed:", err);
     }
@@ -111,7 +132,7 @@ export const OperatorPresentationLayout: React.FC = () => {
 
   // Stop presentation — same behavior as pressing Esc in operator mode.
   const handleStop = () => {
-    exitPresentation().catch((err) =>
+    exitPresentation(focusedOutput).catch((err) =>
       console.error("exit presentation failed:", err),
     );
   };
@@ -141,11 +162,38 @@ export const OperatorPresentationLayout: React.FC = () => {
 
   if (!state?.set || state.set.items.length === 0) {
     return (
-      <div
-        data-testid="operator-presentation-layout"
-        className="h-full flex items-center justify-center text-muted text-sm"
-      >
-        {t("presentation.empty")}
+      <div data-testid="operator-presentation-layout" className="flex flex-col h-full">
+        <OutputSwitcher />
+        {multiScreenEnabled ? (
+          <div className="flex-1 overflow-y-auto p-3">
+            <p className="text-xs text-muted mb-2">
+              {t("presentation.output.choosePrompt", {
+                n: focusedOutput === "one" ? 1 : 2,
+              })}
+            </p>
+            {sets.length === 0 ? (
+              <p className="text-center text-muted py-8 text-sm">
+                {t("presentation.empty")}
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {sets.map((st) => (
+                  <button
+                    key={st.id}
+                    onClick={() => handlePickSet(st.id)}
+                    className="px-3 py-2 text-sm text-left rounded-lg bg-surface-2 hover:bg-border transition-colors truncate"
+                  >
+                    {st.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-muted text-sm">
+            {t("presentation.empty")}
+          </div>
+        )}
       </div>
     );
   }
@@ -154,6 +202,7 @@ export const OperatorPresentationLayout: React.FC = () => {
 
   return (
     <div data-testid="operator-presentation-layout" className="flex flex-col h-full">
+      <OutputSwitcher />
       <OverlayActionBar
         showApresentarButton={false}
         onOferta={handleOferta}

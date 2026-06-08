@@ -193,6 +193,10 @@
       "strophes": "Strophes",
       "live": "Live"
     },
+    "output": {
+      "tela": "Screen {{n}}",
+      "choosePrompt": "Choose a set for Screen {{n}}"
+    },
     "action": {
       "present": "Present",
       "stop": "Stop"
@@ -696,6 +700,7 @@
     },
     "announcementMargin": "Warning margin",
     "blackoutAfterSong": "Black slide after each song",
+    "multiScreen": "Second screen (multi-output)",
     "blackoutAfterSongDescription": "Automatically insert a black slide after the last slide of every song"
   },
   "reports": {

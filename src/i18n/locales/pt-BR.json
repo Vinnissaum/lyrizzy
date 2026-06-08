@@ -193,6 +193,10 @@
       "strophes": "Estrofes",
       "live": "Ao vivo"
     },
+    "output": {
+      "tela": "Tela {{n}}",
+      "choosePrompt": "Escolha um conjunto para a Tela {{n}}"
+    },
     "action": {
       "present": "Apresentar",
       "stop": "Parar"
@@ -696,6 +700,7 @@
     },
     "announcementMargin": "Margem do aviso",
     "blackoutAfterSong": "Tela preta após cada música",
+    "multiScreen": "Segunda tela (multi-saída)",
     "blackoutAfterSongDescription": "Inserir automaticamente uma tela preta após o último slide de cada música"
   },
   "reports": {

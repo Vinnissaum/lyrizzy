@@ -58,6 +58,7 @@ export const OperatorApp: React.FC = () => {
     loadFixedSet,
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
+  const focusedOutput = usePresentationStore((s) => s.focusedOutput);
   const { subscribe: subscribeCountdown } = useCountdownStore();
   const countdownState = useCountdownStore((s) => s.state);
   const { setLocale, loadLocale, loadPresentationSettings, loadTheme } = useSettingsStore();
@@ -81,8 +82,6 @@ export const OperatorApp: React.FC = () => {
     const unlistenSet = onSetChanged(() => {
       useSetsStore.getState().refresh();
     });
-    const unsubPresentation = subscribePresentation();
-    const unsubCountdown = subscribeCountdown();
     const unlistenLocale = onLocaleChanged((locale) => {
       i18n.changeLanguage(locale);
       setLocale(locale);
@@ -165,8 +164,6 @@ export const OperatorApp: React.FC = () => {
     return () => {
       unlistenSongs.then((u) => u());
       unlistenSet.then((u) => u());
-      unsubPresentation.then((u) => u());
-      unsubCountdown.then((u) => u());
       unlistenLocale.then((u) => u());
       unlistenLifecycle.then((u) => u());
       unlistenCdTrigger.then((u) => u());
@@ -174,6 +171,20 @@ export const OperatorApp: React.FC = () => {
       unsubBindings.then((u) => u());
     };
   }, []);
+
+  // Presentation + countdown subscriptions follow the focused output, so the
+  // operator's panes switch to whichever screen (Tela 1/2) is selected in
+  // multi-screen mode. In single-screen mode focusedOutput stays "one", so this
+  // runs once exactly like before.
+  useEffect(() => {
+    const unsubPresentation = subscribePresentation(focusedOutput);
+    const unsubCountdown = subscribeCountdown(focusedOutput);
+    return () => {
+      unsubPresentation.then((u) => u());
+      unsubCountdown.then((u) => u());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedOutput]);
 
   useEffect(() => {
     const pres = usePresentationStore.getState;
@@ -185,10 +196,12 @@ export const OperatorApp: React.FC = () => {
     // and the user-rebindable `exitPresentation` action go through this, so
     // they behave identically — no more "rebindable exit leaves window open".
     const handleExit = () => {
+      // Act on the focused output (read live to avoid a stale closure).
+      const output = usePresentationStore.getState().focusedOutput;
       if (usePresentationStore.getState().state?.overlay) {
-        clearOverlay().catch(console.error);
+        clearOverlay(output).catch(console.error);
       } else {
-        exitPresentation().catch(console.error);
+        exitPresentation(output).catch(console.error);
       }
     };
 

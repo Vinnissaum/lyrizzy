@@ -291,6 +291,11 @@ export const SettingsScreen: React.FC = () => {
                 value={s.blackoutAfterSong}
                 onChange={s.setBlackoutAfterSong}
               />
+              <BoolToggle
+                label={t("settings.multiScreen")}
+                value={s.multiScreenEnabled}
+                onChange={s.setMultiScreenEnabled}
+              />
             </div>
           )}
 

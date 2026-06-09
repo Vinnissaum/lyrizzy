@@ -195,7 +195,9 @@
     },
     "output": {
       "tela": "Screen {{n}}",
-      "choosePrompt": "Choose a set for Screen {{n}}"
+      "choosePrompt": "Choose a set for Screen {{n}}",
+      "mic": "Mic",
+      "delay": "Delay"
     },
     "action": {
       "present": "Present",
@@ -701,6 +703,19 @@
     "announcementMargin": "Warning margin",
     "blackoutAfterSong": "Black slide after each song",
     "multiScreen": "Second screen (multi-output)",
+    "audio": {
+      "description": "Camera + microphone audio per screen (Tela 2 is usually the camera).",
+      "grant": "Allow microphone",
+      "permissionDenied": "Microphone access denied.",
+      "noOutputSelection": "This system can't choose the audio output device.",
+      "enumerateFailed": "Failed to list audio devices.",
+      "micEnabled": "Play microphone on this screen",
+      "cameraUnmuted": "Camera audio",
+      "micDelay": "Microphone delay (ms)",
+      "micDevice": "Microphone (input)",
+      "outputDevice": "Audio output (TV/HDMI)",
+      "defaultDevice": "System default"
+    },
     "blackoutAfterSongDescription": "Automatically insert a black slide after the last slide of every song"
   },
   "reports": {

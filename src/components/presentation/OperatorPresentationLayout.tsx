@@ -21,6 +21,7 @@ import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
 import { OutputSwitcher } from "./OutputSwitcher";
+import { MicSwitch } from "./MicSwitch";
 import { mediaUrl } from "../../api/assets";
 import { OverlayActionBar } from "./OverlayActionBar";
 import { itemLabel, songArtist } from "./itemMeta";
@@ -188,6 +189,7 @@ export const OperatorPresentationLayout: React.FC = () => {
     return (
       <div data-testid="operator-presentation-layout" className="flex flex-col h-full">
         <OutputSwitcher />
+        <MicSwitch />
         {multiScreenEnabled ? (
           <div className="flex-1 overflow-y-auto p-3">
             <p className="text-xs text-muted mb-2">
@@ -227,6 +229,7 @@ export const OperatorPresentationLayout: React.FC = () => {
   return (
     <div data-testid="operator-presentation-layout" className="flex flex-col h-full">
       <OutputSwitcher />
+      <MicSwitch />
       <OverlayActionBar
         showApresentarButton={false}
         onOferta={handleOferta}

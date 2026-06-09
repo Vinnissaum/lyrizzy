@@ -35,13 +35,20 @@ Gate after Slice B: **tsc, 342 vitest (+3) green; Rust unchanged (235).** **Need
 - ✅ **C5** `StreamProxyRenderer` `muted` prop (default true) + `sinkId` (camera audio → output device via `HTMLMediaElement.setSinkId`). +existing tests.
 - ✅ **C3** `utils/audioDevices.ts` — enumerate inputs/outputs, replug-safe `resolveDeviceId` (id → label+groupId), `supportsAudioOutputSelection`. +7 tests.
 - ✅ **C4** `hooks/useMicAudio.ts` — getUserMedia → `DelayNode` → `AudioContext.setSinkId`, live delay, full teardown. +4 tests.
-- ⏳ **C2** Windows `PermissionRequested`→Allow(Microphone) handler (Rust, `with_webview` + `webview2-com`) — **needs the real WebView2 native API + a Windows build to verify; not written yet (won't fabricate the binding blind).**
-- ⏳ **C6/C7** operator `MicSwitch` (on/off + delay) + camera-audio toggle + mounting `useMicAudio` in the camera output window — buildable but **non-functional until C2 + rig**, and entangled with the audio-device settings (D1/D2).
+- ✅ **C6** operator `MicSwitch` (on/off + delay for the focused output) + `useMicAudio` mounted in the camera window via `OutputContext`; `WebViewRenderer` passes muted/sinkId to `StreamProxyRenderer`. +4 tests.
+- ✅ **C7** camera-audio (un-mute) toggle in `MicAudioSettings`.
+- ✅ **C2** Windows `PermissionRequested`→Allow(Microphone) handler written (`commands/webview_permissions.rs`, `with_webview` + `webview2-com`; no-op off-Windows) + wired in `enter_presentation` + Cargo deps. **⚠️ `#[cfg(windows)]` body UNVERIFIED — not compiled by the Linux gate; needs a Windows build (align webview2-com/windows versions).**
 - ⏳ **C1** rig verification (mic actually exits TV-2 HDMI; autoplay gesture; sane delay default) — **your Windows 3-display hardware only.**
 
-Gate after Slice C primitives: **tsc, 353 vitest (+11) green; Rust 235 + clippy unchanged.**
+**SLICE D — settings/i18n.** ✅ per-output audio settings store (`output.<id>.audio` JSON: micEnabled/micDelayMs/cameraUnmuted/micDevice/outputDevice) + `MicAudioSettings` UI (device pickers, grant button, capability check) + full pt-BR/en-US i18n. (D3 polish/status-strip still optional.)
 
-**Genuine handoff point:** the remaining Slice C work needs (1) the native mic-permission handler verified on a Windows build, and (2) real-hardware confirmation of the audio path. Slices A+B also still want a two-monitor `tauri dev` validation pass.
+**FULL FEATURE IMPLEMENTED.** Gate: **tsc, 357 vitest, 235 Rust + clippy — all green** (the cfg(windows) C2 body excluded from the Linux gate by design).
+
+**Remaining = verification only (hardware), not implementation:**
+1. **C2 Windows build** — compile the mic-permission handler, fix any webview2-com/windows version/type mismatches, confirm no mic prompt.
+2. **C1 rig** — mic audibly exits TV-2's HDMI; dial the delay; autoplay-gesture (R-2) — add the one-tap "Ativar áudio" affordance only if the rig shows it's needed.
+3. **A+B two-monitor `tauri dev` smoke-test** — independent sets per screen, switcher, per-output countdown.
+Optional polish: operator status-strip for the unfocused output; device replug fallback already supported by `resolveDeviceId` (not yet used at read time — currently reads stored deviceId directly).
 
 **A6 simplification:** both windows load the same `presentation.html` (label differentiates them), so no `presentation-2.html`/Vite/tauri.conf changes are needed — A6 was pure Rust.
 

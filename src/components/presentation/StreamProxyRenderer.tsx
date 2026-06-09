@@ -6,6 +6,17 @@ import type { StreamSource } from "../../types";
 
 interface Props {
   source: StreamSource;
+  /**
+   * Mute the camera's own audio track. Default true — a church camera's audio
+   * normally comes from the sound desk, and muting also satisfies autoplay
+   * policy. Set false to hear the stream's embedded audio.
+   */
+  muted?: boolean;
+  /**
+   * Audio output device id (e.g. the TV's HDMI endpoint) to route the camera's
+   * audio to via `HTMLMediaElement.setSinkId`. Only applies when not muted.
+   */
+  sinkId?: string;
 }
 
 const MAX_ATTEMPTS = 5;
@@ -22,7 +33,7 @@ const RETRY_DELAY_MS = 1500;
  * is muted (a church camera's audio comes from the sound desk, not the stream)
  * which also satisfies autoplay policy.
  */
-export const StreamProxyRenderer: React.FC<Props> = ({ source }) => {
+export const StreamProxyRenderer: React.FC<Props> = ({ source, muted = true, sinkId }) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,12 +95,24 @@ export const StreamProxyRenderer: React.FC<Props> = ({ source }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceKey, t]);
 
+  // Route the camera's audio to a specific output device (e.g. the TV's HDMI)
+  // when un-muted. setSinkId is Chromium/WebView2; guarded for absence.
+  useEffect(() => {
+    const video = videoRef.current as
+      | (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> })
+      | null;
+    if (!video || muted || !sinkId || typeof video.setSinkId !== "function") return;
+    video.setSinkId(sinkId).catch((err) =>
+      console.error("camera setSinkId failed:", err),
+    );
+  }, [sinkId, muted]);
+
   return (
     <div className="h-screen bg-black flex items-center justify-center">
       <video
         ref={videoRef}
         autoPlay
-        muted
+        muted={muted}
         playsInline
         className="max-w-full max-h-full w-full h-full object-contain"
       />

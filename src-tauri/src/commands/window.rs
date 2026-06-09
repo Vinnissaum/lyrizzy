@@ -1,6 +1,8 @@
 use crate::domain::countdown::{CountdownMode, CountdownPosition};
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
+use crate::domain::events::{CountdownTickPayload, StateChangedPayload};
+use crate::domain::output::OutputId;
 use crate::state::AppState;
 use serde::Serialize;
 use tauri::{
@@ -96,12 +98,35 @@ pub fn resolve_target_index(
     primary_xy: Option<(i32, i32)>,
     all_xy: &[(i32, i32)],
 ) -> Option<usize> {
+    resolve_output_monitor(override_index, primary_xy, all_xy, None)
+}
+
+/// Like [`resolve_target_index`] but also avoids `exclude` — the monitor already
+/// occupied by the *other* output — so two auto-placed outputs never collide on
+/// the same screen. A manual `override_index` still wins. Returns the first
+/// non-primary, non-excluded monitor, or `None` when only the primary (or
+/// excluded monitors) remain — matching the single-monitor semantics where the
+/// OS handles placement. Pure for testability.
+pub fn resolve_output_monitor(
+    override_index: Option<usize>,
+    primary_xy: Option<(i32, i32)>,
+    all_xy: &[(i32, i32)],
+    exclude: Option<usize>,
+) -> Option<usize> {
     if let Some(idx) = override_index {
         if idx < all_xy.len() {
             return Some(idx);
         }
     }
-    pick_secondary_index(primary_xy, all_xy)
+    for (i, &xy) in all_xy.iter().enumerate() {
+        if Some(i) == exclude {
+            continue;
+        }
+        if primary_xy != Some(xy) {
+            return Some(i);
+        }
+    }
+    None
 }
 
 /// Apply monitor-based positioning to a window builder. If `monitor_index` is
@@ -126,8 +151,12 @@ fn apply_monitor<'a, R: Runtime, M: Manager<R>>(
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 struct PresentationLifecyclePayload {
     phase: &'static str,
+    /// Which output this lifecycle event refers to. Additive — pre-dual-output
+    /// listeners that only read `phase` ignore it.
+    output: OutputId,
 }
 
 /// Linux: fullscreen the window directly onto the GTK/GDK monitor that contains
@@ -216,16 +245,19 @@ fn presentation_set_is_empty(state: &PresentationState) -> bool {
 pub async fn enter_presentation(
     app: AppHandle,
     state: State<'_, AppState>,
+    output: Option<OutputId>,
     monitor_index: Option<usize>,
 ) -> Result<(), ErrorPayload> {
+    let output = output.unwrap_or_default();
+    let label = output.window_label();
     {
-        let pres = state.presentation.read().await;
+        let pres = state.output(output).presentation.read().await;
         if presentation_set_is_empty(&pres) {
             return Err(ErrorPayload::new("presentation.empty_set"));
         }
     }
 
-    if let Some(existing) = app.get_webview_window("presentation") {
+    if let Some(existing) = app.get_webview_window(label) {
         existing.set_focus().map_err(|e| {
             ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
         })?;
@@ -253,17 +285,33 @@ pub async fn enter_presentation(
         (p.x, p.y)
     }).collect();
 
-    // Manual picker (monitor_index) wins; otherwise auto-detect the secondary.
-    let target_idx = resolve_target_index(monitor_index, primary_xy, &all_xy);
+    // Avoid the monitor already used by the other output (best-effort; the
+    // manual picker is the reliable path on multi-TV installs — plan R-3).
+    let other_label = output.other().window_label();
+    let exclude = app
+        .get_webview_window(other_label)
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .map(|m| {
+            let p = m.position();
+            (p.x, p.y)
+        })
+        .and_then(|xy| all_xy.iter().position(|&o| o == xy));
+
+    // Manual picker (monitor_index) wins; otherwise auto-detect a free monitor.
+    let target_idx = resolve_output_monitor(monitor_index, primary_xy, &all_xy, exclude);
 
     let pin_on_top = should_pin_on_top(monitors.len());
 
+    let title = match output {
+        OutputId::One => "Lyrizzy — Presentation",
+        OutputId::Two => "Lyrizzy — Presentation 2",
+    };
     let base = WebviewWindowBuilder::new(
         &app,
-        "presentation",
+        label,
         WebviewUrl::App("presentation.html".into()),
     )
-    .title("Lyrizzy — Presentation")
+    .title(title)
     .inner_size(1280.0, 720.0);
 
     let builder = apply_monitor(base, &monitors, target_idx);
@@ -277,6 +325,10 @@ pub async fn enter_presentation(
     let window = builder.build().map_err(|e| {
         ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
     })?;
+
+    // Auto-grant the microphone permission for this presentation window so the
+    // per-screen mic feature works without a prompt (Windows-only; no-op else).
+    crate::commands::webview_permissions::auto_grant_microphone(&window);
 
     // On Linux, try the compositor-honored monitor-targeted fullscreen first.
     let mut placed_fullscreen = false;
@@ -314,7 +366,7 @@ pub async fn enter_presentation(
         }
     }
 
-    app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "entered" })
+    app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "entered", output })
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     tracing::info!("enter_presentation: emit lifecycle entered");
 
@@ -337,14 +389,17 @@ fn is_already_exited(mode: &PresentationMode, window_exists: bool) -> bool {
 pub async fn exit_presentation(
     app: AppHandle,
     state: State<'_, AppState>,
+    output: Option<OutputId>,
 ) -> Result<(), ErrorPayload> {
+    let output = output.unwrap_or_default();
+    let label = output.window_label();
     // Esc fires in BOTH the operator and presentation windows, so two
     // `exit_presentation` invokes can race. Serialize the whole exit under the
     // write lock and short-circuit the loser: hold the lock, decide, and mutate
     // in one critical section so the second caller sees Idle and no-ops.
     let state_snapshot = {
-        let mut pres = state.presentation.write().await;
-        let window_exists = app.get_webview_window("presentation").is_some();
+        let mut pres = state.output(output).presentation.write().await;
+        let window_exists = app.get_webview_window(label).is_some();
         if is_already_exited(&pres.mode, window_exists) {
             return Ok(());
         }
@@ -359,15 +414,15 @@ pub async fn exit_presentation(
     // (or the lingering floating widget) re-seizes the screen. Only an actually
     // engaged takeover is cleared; a merely-Scheduled (armed-for-later) countdown
     // is left alone so exiting a presentation doesn't silently disarm it.
-    if state.countdown.read().await.takeover {
+    if state.output(output).countdown.read().await.takeover {
         {
-            let mut task = state.countdown_task.lock().await;
+            let mut task = state.output(output).countdown_task.lock().await;
             if let Some(handle) = task.take() {
                 handle.abort();
             }
         }
         let cd_snapshot = {
-            let mut cd = state.countdown.write().await;
+            let mut cd = state.output(output).countdown.write().await;
             cd.remaining_ms = cd.duration_ms;
             cd.mode = CountdownMode::Idle;
             cd.target_epoch_ms = None;
@@ -377,23 +432,29 @@ pub async fn exit_presentation(
             cd.background_media_id = None;
             cd.clone()
         };
-        let _ = app.emit("countdown_tick", &cd_snapshot);
+        let _ = app.emit(
+            "countdown_tick",
+            CountdownTickPayload::new(output, cd_snapshot),
+        );
     }
 
     // Emit BEFORE closing so the operator can react while the presentation
     // window still exists.
-    app.emit("state_changed", &state_snapshot)
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    app.emit(
+        "state_changed",
+        StateChangedPayload::new(output, state_snapshot),
+    )
+    .map_err(|e| ErrorPayload::from(e.to_string()))?;
 
     // The window may already be tearing down (the racing call closed it, or the
     // user hit the OS close button) — ignore close errors, they are not fatal.
-    if let Some(w) = app.get_webview_window("presentation") {
+    if let Some(w) = app.get_webview_window(label) {
         if let Err(e) = w.close() {
             tracing::warn!(error = %e, "exit_presentation: window close failed (ignored)");
         }
     }
 
-    app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "exited" })
+    app.emit("presentation_lifecycle", PresentationLifecyclePayload { phase: "exited", output })
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
 
     tracing::info!("exit_presentation: completed");
@@ -544,6 +605,48 @@ mod tests {
     fn resolve_target_single_monitor_no_override_returns_none() {
         let all = [(0_i32, 0_i32)];
         assert_eq!(resolve_target_index(None, Some((0, 0)), &all), None);
+    }
+
+    // ── resolve_output_monitor (multi-output exclusion) ───────────────────────
+
+    #[test]
+    fn resolve_output_excludes_other_outputs_monitor() {
+        // 3 monitors: primary at 0, output One on monitor 1 (excluded) → Two gets 2.
+        let all = [(0_i32, 0_i32), (1920, 0), (3840, 0)];
+        assert_eq!(
+            resolve_output_monitor(None, Some((0, 0)), &all, Some(1)),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn resolve_output_override_wins_over_exclude() {
+        let all = [(0_i32, 0_i32), (1920, 0), (3840, 0)];
+        assert_eq!(
+            resolve_output_monitor(Some(1), Some((0, 0)), &all, Some(1)),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn resolve_output_none_when_only_primary_left() {
+        // 2 monitors: primary 0, the other output took monitor 1 → no free
+        // non-primary monitor, so return None (OS handles placement; we never
+        // forcibly fullscreen over the operator's primary screen).
+        let all = [(0_i32, 0_i32), (1920, 0)];
+        assert_eq!(
+            resolve_output_monitor(None, Some((0, 0)), &all, Some(1)),
+            None
+        );
+    }
+
+    #[test]
+    fn resolve_output_no_exclude_matches_secondary_pick() {
+        let all = [(0_i32, 0_i32), (1920, 0)];
+        assert_eq!(
+            resolve_output_monitor(None, Some((0, 0)), &all, None),
+            Some(1)
+        );
     }
 
     // ── filter_real_monitors ──────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
 import { KeyBindingsScreen } from "./KeyBindingsScreen";
 import { MonitorPicker } from "./MonitorPicker";
+import { MicAudioSettings } from "./MicAudioSettings";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { UpdateCheckButton } from "../system/UpdateCheckButton";
 import { useSettingsStore } from "../../stores/settings";
@@ -291,6 +292,12 @@ export const SettingsScreen: React.FC = () => {
                 value={s.blackoutAfterSong}
                 onChange={s.setBlackoutAfterSong}
               />
+              <BoolToggle
+                label={t("settings.multiScreen")}
+                value={s.multiScreenEnabled}
+                onChange={s.setMultiScreenEnabled}
+              />
+              {s.multiScreenEnabled && <MicAudioSettings />}
             </div>
           )}
 

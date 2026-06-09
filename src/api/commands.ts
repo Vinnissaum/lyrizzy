@@ -14,6 +14,7 @@ import type {
   MediaKind,
   MediaReferences,
   MonitorInfo,
+  OutputId,
   PresentationMode,
   PresentationState,
   ScheduledStart,
@@ -41,8 +42,16 @@ export function normalizeError(err: unknown): ErrorPayload {
 
 // ─── Window management ──────────────────────────────────────────────────────
 
-/** Settings key for the operator's saved presentation-monitor choice. */
+/** Settings key for the operator's saved presentation-monitor choice (output One). */
 export const PRESENTATION_MONITOR_KEY = "presentation.monitor_index";
+/** Settings key for output Two's saved monitor choice. */
+export const OUTPUT2_MONITOR_KEY = "output2.monitor_index";
+/** Settings key remembering the last set presented on output Two. */
+export const OUTPUT2_LAST_SET_KEY = "output2.last_set_id";
+
+/** Map a window label to its output id, or null for non-presentation windows. */
+export const outputFromWindowLabel = (label: string): OutputId | null =>
+  label === "presentation" ? "one" : label === "presentation-2" ? "two" : null;
 
 /**
  * Enter presentation mode. Pass `monitorIndex` to force a specific monitor.
@@ -50,11 +59,15 @@ export const PRESENTATION_MONITOR_KEY = "presentation.monitor_index";
  * is used; if that's unset/"auto", the backend auto-detects the secondary
  * monitor. This means every existing call site honours the monitor picker.
  */
-export const enterPresentation = async (monitorIndex?: number): Promise<void> => {
+export const enterPresentation = async (
+  output: OutputId = "one",
+  monitorIndex?: number,
+): Promise<void> => {
   let idx = monitorIndex;
   if (idx === undefined) {
     try {
-      const stored = await getSetting(PRESENTATION_MONITOR_KEY);
+      const key = output === "two" ? OUTPUT2_MONITOR_KEY : PRESENTATION_MONITOR_KEY;
+      const stored = await getSetting(key);
       if (stored && stored !== "auto") {
         const n = parseInt(stored, 10);
         if (!Number.isNaN(n)) idx = n;
@@ -63,27 +76,29 @@ export const enterPresentation = async (monitorIndex?: number): Promise<void> =>
       // Setting missing → auto-detect.
     }
   }
-  return invoke<void>("enter_presentation", { monitorIndex: idx ?? null });
+  return invoke<void>("enter_presentation", { output, monitorIndex: idx ?? null });
 };
 
 /** Kept for any ActionId bindings that still reference the old name. */
 export const openPresentationWindow = () => enterPresentation();
 
-let exitInflight: Promise<void> | null = null;
-export const exitPresentation = (): Promise<void> => {
-  if (exitInflight) return exitInflight;
-  exitInflight = invoke<void>("exit_presentation").finally(() => {
-    exitInflight = null;
+const exitInflight: Partial<Record<OutputId, Promise<void>>> = {};
+export const exitPresentation = (output: OutputId = "one"): Promise<void> => {
+  const pending = exitInflight[output];
+  if (pending) return pending;
+  const p = invoke<void>("exit_presentation", { output }).finally(() => {
+    exitInflight[output] = undefined;
   });
-  return exitInflight;
+  exitInflight[output] = p;
+  return p;
 };
 
 export const onPresentationLifecycle = (
-  cb: (phase: "entered" | "exited") => void
+  cb: (phase: "entered" | "exited", output: OutputId) => void
 ) =>
-  listen<{ phase: "entered" | "exited" }>(
+  listen<{ phase: "entered" | "exited"; output: OutputId }>(
     "presentation_lifecycle",
-    (e) => cb(e.payload.phase)
+    (e) => cb(e.payload.phase, e.payload.output)
   );
 
 export const listMonitors = () =>
@@ -266,23 +281,23 @@ export const duplicateSetItem = (itemId: string) =>
 
 // ─── Presentation control ────────────────────────────────────────────────────
 
-export const loadSetForPresentation = (setId: string) =>
-  invoke<PresentationState>("load_set_for_presentation", { setId });
+export const loadSetForPresentation = (setId: string, output?: OutputId) =>
+  invoke<PresentationState>("load_set_for_presentation", { setId, output: output ?? null });
 
-export const nextSlide = () =>
-  invoke<PresentationState>("next_slide");
+export const nextSlide = (output?: OutputId) =>
+  invoke<PresentationState>("next_slide", { output: output ?? null });
 
-export const prevSlide = () =>
-  invoke<PresentationState>("prev_slide");
+export const prevSlide = (output?: OutputId) =>
+  invoke<PresentationState>("prev_slide", { output: output ?? null });
 
-export const goToItem = (itemIndex: number, slideIndex?: number) =>
-  invoke<PresentationState>("go_to_item", { itemIndex, slideIndex });
+export const goToItem = (itemIndex: number, slideIndex?: number, output?: OutputId) =>
+  invoke<PresentationState>("go_to_item", { itemIndex, slideIndex, output: output ?? null });
 
-export const setPresentationMode = (mode: PresentationMode) =>
-  invoke<PresentationState>("set_presentation_mode", { mode });
+export const setPresentationMode = (mode: PresentationMode, output?: OutputId) =>
+  invoke<PresentationState>("set_presentation_mode", { mode, output: output ?? null });
 
-export const getPresentationState = () =>
-  invoke<PresentationState>("get_presentation_state");
+export const getPresentationState = (output?: OutputId) =>
+  invoke<PresentationState>("get_presentation_state", { output: output ?? null });
 
 // ─── Media library ───────────────────────────────────────────────────────────
 
@@ -341,8 +356,8 @@ export const onMediaLibraryChanged = (cb: () => void) =>
 
 // ─── Countdown timer ─────────────────────────────────────────────────────────
 
-export const setCountdownDuration = (durationMs: number) =>
-  invoke<CountdownState>("set_countdown_duration", { durationMs });
+export const setCountdownDuration = (durationMs: number, output?: OutputId) =>
+  invoke<CountdownState>("set_countdown_duration", { durationMs, output: output ?? null });
 
 export interface StartCountdownParams {
   target?: CountdownTarget;
@@ -358,8 +373,8 @@ export interface StartCountdownParams {
   [key: string]: unknown;
 }
 
-export const startCountdown = (params?: StartCountdownParams) =>
-  invoke<CountdownState>("start_countdown", params ?? {});
+export const startCountdown = (params?: StartCountdownParams, output?: OutputId) =>
+  invoke<CountdownState>("start_countdown", { ...(params ?? {}), output: output ?? null });
 
 export interface ArmCountdownParams {
   scheduledStart: ScheduledStart;
@@ -377,17 +392,17 @@ export interface ArmCountdownParams {
   [key: string]: unknown;
 }
 
-export const armCountdown = (params: ArmCountdownParams) =>
-  invoke<CountdownState>("arm_countdown", params);
+export const armCountdown = (params: ArmCountdownParams, output?: OutputId) =>
+  invoke<CountdownState>("arm_countdown", { ...params, output: output ?? null });
 
-export const pauseCountdown = () =>
-  invoke<CountdownState>("pause_countdown");
+export const pauseCountdown = (output?: OutputId) =>
+  invoke<CountdownState>("pause_countdown", { output: output ?? null });
 
-export const resetCountdown = () =>
-  invoke<CountdownState>("reset_countdown");
+export const resetCountdown = (output?: OutputId) =>
+  invoke<CountdownState>("reset_countdown", { output: output ?? null });
 
-export const getCountdownState = () =>
-  invoke<CountdownState>("get_countdown_state");
+export const getCountdownState = (output?: OutputId) =>
+  invoke<CountdownState>("get_countdown_state", { output: output ?? null });
 
 // ─── Backup / restore ────────────────────────────────────────────────────────
 
@@ -526,11 +541,21 @@ export const onSongsChanged = (cb: () => void) =>
 export const onSetChanged = (cb: () => void) =>
   listen<void>("set_changed", () => cb());
 
-export const onStateChanged = (cb: (state: PresentationState) => void) =>
-  listen<PresentationState>("state_changed", (e) => cb(e.payload));
+export const onStateChanged = (
+  cb: (state: PresentationState) => void,
+  output: OutputId = "one",
+) =>
+  listen<{ output: OutputId; state: PresentationState }>("state_changed", (e) => {
+    if (e.payload.output === output) cb(e.payload.state);
+  });
 
-export const onCountdownTick = (cb: (state: CountdownState) => void) =>
-  listen<CountdownState>("countdown_tick", (e) => cb(e.payload));
+export const onCountdownTick = (
+  cb: (state: CountdownState) => void,
+  output: OutputId = "one",
+) =>
+  listen<{ output: OutputId; state: CountdownState }>("countdown_tick", (e) => {
+    if (e.payload.output === output) cb(e.payload.state);
+  });
 
 export const onCountdownTriggered = (cb: (payload: CountdownTriggeredPayload) => void) =>
   listen<CountdownTriggeredPayload>("countdown_triggered", (e) => cb(e.payload));
@@ -581,14 +606,14 @@ export const applyUpdateAndRestart = () =>
 
 // ─── Overlay ─────────────────────────────────────────────────────────────────
 
-export const setAnnouncementOverlay = (text: string) =>
-  invoke<void>("set_announcement_overlay", { text });
+export const setAnnouncementOverlay = (text: string, output?: OutputId) =>
+  invoke<void>("set_announcement_overlay", { text, output: output ?? null });
 
-export const setMediaOverlay = (mediaId: string) =>
-  invoke<void>("set_media_overlay", { mediaId });
+export const setMediaOverlay = (mediaId: string, output?: OutputId) =>
+  invoke<void>("set_media_overlay", { mediaId, output: output ?? null });
 
-export const setWebviewOverlay = (url: string) =>
-  invoke<void>("set_webview_overlay", { url });
+export const setWebviewOverlay = (url: string, output?: OutputId) =>
+  invoke<void>("set_webview_overlay", { url, output: output ?? null });
 
-export const clearOverlay = () =>
-  invoke<void>("clear_overlay");
+export const clearOverlay = (output?: OutputId) =>
+  invoke<void>("clear_overlay", { output: output ?? null });

@@ -105,9 +105,30 @@ const makePresentationState = (
   ...overrides,
 });
 
+const AUDIO_DEFAULT = {
+  micEnabled: false,
+  micDelayMs: 0,
+  cameraUnmuted: false,
+  micDevice: null,
+  outputDevice: null,
+};
+
+function mockSettingsSelector() {
+  vi.mocked(useSettingsStore).mockImplementation((selector?: any) => {
+    const s = {
+      multiScreenEnabled: false,
+      audio: { one: AUDIO_DEFAULT, two: AUDIO_DEFAULT },
+      setOutputAudio: vi.fn(),
+      cameraUrl: "",
+      loadCameraUrl: vi.fn(),
+    };
+    return selector ? selector(s) : s;
+  });
+}
+
 function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
   const state = makePresentationState(stateOverrides);
-  const storeShape = { state };
+  const storeShape = { state, focusedOutput: "one" as const };
   vi.mocked(usePresentationStore).mockImplementation((selector: any) =>
     selector ? selector(storeShape) : storeShape,
   );
@@ -132,10 +153,7 @@ function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
     media: [],
     refresh: vi.fn(),
   } as unknown as ReturnType<typeof useMediaStore>);
-  vi.mocked(useSettingsStore).mockReturnValue({
-    cameraUrl: "",
-    loadCameraUrl: vi.fn(),
-  } as unknown as ReturnType<typeof useSettingsStore>);
+  mockSettingsSelector();
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -175,7 +193,9 @@ describe("OperatorPresentationLayout", () => {
 
   it("renders empty-state placeholder when state has no set", () => {
     vi.mocked(usePresentationStore).mockImplementation((selector: any) =>
-      selector ? selector({ state: null }) : { state: null },
+      selector
+        ? selector({ state: null, focusedOutput: "one" })
+        : { state: null, focusedOutput: "one" },
     );
     vi.mocked(useLibraryStore).mockReturnValue({
       songs: [],
@@ -187,10 +207,7 @@ describe("OperatorPresentationLayout", () => {
       media: [],
       refresh: vi.fn(),
     } as unknown as ReturnType<typeof useMediaStore>);
-    vi.mocked(useSettingsStore).mockReturnValue({
-      cameraUrl: "",
-      loadCameraUrl: vi.fn(),
-    } as unknown as ReturnType<typeof useSettingsStore>);
+    mockSettingsSelector();
 
     render(<OperatorPresentationLayout />);
 

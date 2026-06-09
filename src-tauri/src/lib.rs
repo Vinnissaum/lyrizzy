@@ -95,15 +95,19 @@ pub fn run() {
                     // always-on-top fullscreen window the user cannot reach. The
                     // app then exits naturally once all windows are gone.
                     if should_close_presentation_on_destroy(&label) {
-                        if let Some(pres) = window.app_handle().get_webview_window("presentation") {
-                            if let Err(e) = pres.close() {
-                                // Already gone / tearing down — not fatal.
-                                tracing::warn!(
-                                    error = %e,
-                                    "failed to close presentation window after operator destroyed (ignored)"
-                                );
-                            } else {
-                                tracing::info!("closed presentation window after operator destroyed");
+                        let app_handle = window.app_handle();
+                        for out in crate::domain::output::OutputId::ALL {
+                            if let Some(pres) = app_handle.get_webview_window(out.window_label()) {
+                                if let Err(e) = pres.close() {
+                                    // Already gone / tearing down — not fatal.
+                                    tracing::warn!(
+                                        error = %e,
+                                        label = out.window_label(),
+                                        "failed to close presentation window after operator destroyed (ignored)"
+                                    );
+                                } else {
+                                    tracing::info!(label = out.window_label(), "closed presentation window after operator destroyed");
+                                }
                             }
                         }
                     }

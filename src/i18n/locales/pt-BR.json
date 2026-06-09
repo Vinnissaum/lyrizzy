@@ -193,6 +193,12 @@
       "strophes": "Estrofes",
       "live": "Ao vivo"
     },
+    "output": {
+      "tela": "Tela {{n}}",
+      "choosePrompt": "Escolha um conjunto para a Tela {{n}}",
+      "mic": "Microfone",
+      "delay": "Atraso"
+    },
     "action": {
       "present": "Apresentar",
       "stop": "Parar"
@@ -696,6 +702,20 @@
     },
     "announcementMargin": "Margem do aviso",
     "blackoutAfterSong": "Tela preta após cada música",
+    "multiScreen": "Segunda tela (multi-saída)",
+    "audio": {
+      "description": "Áudio da câmera e microfone por tela (a Tela 2 normalmente é a câmera).",
+      "grant": "Permitir microfone",
+      "permissionDenied": "Acesso ao microfone negado.",
+      "noOutputSelection": "Este sistema não permite escolher o dispositivo de saída de áudio.",
+      "enumerateFailed": "Falha ao listar dispositivos de áudio.",
+      "micEnabled": "Tocar microfone nesta tela",
+      "cameraUnmuted": "Áudio da câmera",
+      "micDelay": "Atraso do microfone (ms)",
+      "micDevice": "Microfone (entrada)",
+      "outputDevice": "Saída de áudio (TV/HDMI)",
+      "defaultDevice": "Padrão do sistema"
+    },
     "blackoutAfterSongDescription": "Inserir automaticamente uma tela preta após o último slide de cada música"
   },
   "reports": {

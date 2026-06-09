@@ -201,6 +201,9 @@ export interface ServiceSet {
 
 export type PresentationMode = 'idle' | 'live' | 'blank' | 'frozen';
 
+/** Identifies one of the two independent presentation outputs (screens / TVs). */
+export type OutputId = 'one' | 'two';
+
 export type BackgroundPreset = 'preto-branco' | 'branco-preto';
 export type FontFamily = 'sans' | 'serif' | 'mono';
 export type FontSize = 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
@@ -320,6 +323,7 @@ export interface CountdownState {
 export interface CountdownTriggeredPayload {
   setId?: string;
   itemIndex?: number;
+  output: OutputId;
 }
 
 // ── Window / monitor ─────────────────────────────────────────────────────────

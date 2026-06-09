@@ -10,7 +10,9 @@ import type {
   Margin,
   RepeatMode,
   ScreenPosition,
+  OutputId,
 } from "../types";
+import type { SavedAudioDevice } from "../utils/audioDevices";
 
 export const PRESENTATION_FONT_SIZE_KEY = "presentation.font_size";
 export const PRESENTATION_FONT_FAMILY_KEY = "presentation.font_family";
@@ -30,6 +32,44 @@ export const ANNOUNCEMENT_MARGIN_KEY = "announcement.margin";
 export const ANNOUNCEMENT_LINE_SPACING_KEY = "announcement.line_spacing";
 export const ANNOUNCEMENT_BOLD_LEVEL_KEY = "announcement.bold_level";
 export const BLACKOUT_AFTER_SONG_KEY = "presentation.blackout_after_song";
+/** When true, the operator exposes the second presentation output (Tela 2). */
+export const MULTI_SCREEN_ENABLED_KEY = "output.multi_screen_enabled";
+
+/** Per-output camera/mic audio settings, persisted as JSON under this key. */
+export const outputAudioKey = (o: OutputId) => `output.${o}.audio`;
+
+export interface OutputAudioSettings {
+  /** Play the computer mic on this screen (default off, remembered per screen). */
+  micEnabled: boolean;
+  /** Delay (ms) applied to the mic to line it up with the late camera image. */
+  micDelayMs: number;
+  /** Un-mute the camera stream's own audio on this screen. */
+  cameraUnmuted: boolean;
+  /** Chosen mic input device (replug-safe snapshot). */
+  micDevice: SavedAudioDevice | null;
+  /** Chosen audio output device (the TV's HDMI) for mic + camera audio. */
+  outputDevice: SavedAudioDevice | null;
+}
+
+export const DEFAULT_OUTPUT_AUDIO: OutputAudioSettings = {
+  micEnabled: false,
+  micDelayMs: 0,
+  cameraUnmuted: false,
+  micDevice: null,
+  outputDevice: null,
+};
+
+function parseOutputAudio(raw: string | null): OutputAudioSettings {
+  if (!raw) return { ...DEFAULT_OUTPUT_AUDIO };
+  try {
+    return {
+      ...DEFAULT_OUTPUT_AUDIO,
+      ...(JSON.parse(raw) as Partial<OutputAudioSettings>),
+    };
+  } catch {
+    return { ...DEFAULT_OUTPUT_AUDIO };
+  }
+}
 export const UI_THEME_KEY = "ui.theme";
 
 // Every settings key the presentation window must reload when it changes live.
@@ -112,6 +152,10 @@ interface SettingsStore {
   announcementLineSpacing: LineSpacing;
   announcementBoldLevel: BoldLevel;
   blackoutAfterSong: boolean;
+  /** Multi-screen mode: when on, the operator can drive a second output (Tela 2). */
+  multiScreenEnabled: boolean;
+  /** Per-output camera/mic audio settings. */
+  audio: Record<OutputId, OutputAudioSettings>;
 
   setLocale: (locale: string) => void;
   loadLocale: () => Promise<void>;
@@ -138,6 +182,13 @@ interface SettingsStore {
   setAnnouncementLineSpacing: (spacing: LineSpacing) => void;
   setAnnouncementBoldLevel: (level: BoldLevel) => void;
   setBlackoutAfterSong: (value: boolean) => void;
+  setMultiScreenEnabled: (value: boolean) => void;
+  /** Merge a patch into one output's audio settings and persist it. */
+  setOutputAudio: (output: OutputId, patch: Partial<OutputAudioSettings>) => void;
+  /** Load both outputs' persisted audio settings. */
+  loadOutputAudio: () => Promise<void>;
+  /** Apply an `output.<id>.audio` setting_changed event into the store. */
+  applyOutputAudioSetting: (key: string, value: string) => void;
 
   /** Loads every persisted presentation/announcement appearance setting. */
   loadPresentationSettings: () => Promise<void>;
@@ -184,6 +235,11 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   announcementLineSpacing: DEFAULT_LINE_SPACING,
   announcementBoldLevel: DEFAULT_BOLD_LEVEL,
   blackoutAfterSong: true,
+  multiScreenEnabled: false,
+  audio: {
+    one: { ...DEFAULT_OUTPUT_AUDIO },
+    two: { ...DEFAULT_OUTPUT_AUDIO },
+  },
 
   setLocale: (locale) => set({ locale }),
   loadLocale: async () => {
@@ -292,6 +348,34 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ blackoutAfterSong: value });
     setSetting(BLACKOUT_AFTER_SONG_KEY, String(value)).catch(() => {});
   },
+  setMultiScreenEnabled: (value) => {
+    set({ multiScreenEnabled: value });
+    setSetting(MULTI_SCREEN_ENABLED_KEY, String(value)).catch(() => {});
+  },
+  setOutputAudio: (output, patch) =>
+    set((s) => {
+      const next = { ...s.audio[output], ...patch };
+      setSetting(outputAudioKey(output), JSON.stringify(next)).catch(() => {});
+      return { audio: { ...s.audio, [output]: next } };
+    }),
+  loadOutputAudio: async () => {
+    const [one, two] = await Promise.all([
+      getSetting(outputAudioKey("one")).catch(() => null),
+      getSetting(outputAudioKey("two")).catch(() => null),
+    ]);
+    set({ audio: { one: parseOutputAudio(one), two: parseOutputAudio(two) } });
+  },
+  applyOutputAudioSetting: (key, value) =>
+    set((s) => {
+      const out: OutputId | null =
+        key === outputAudioKey("one")
+          ? "one"
+          : key === outputAudioKey("two")
+            ? "two"
+            : null;
+      if (!out) return s;
+      return { audio: { ...s.audio, [out]: parseOutputAudio(value) } };
+    }),
 
   loadPresentationSettings: async () => {
     const [
@@ -299,6 +383,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       showTitle, authorParens,
       annFamily, annSize, annPreset, annPosition, annMargin, annLineSpacing, annBoldLevel,
       blackoutAfterSong,
+      multiScreenEnabled,
     ] = await Promise.all([
       readSetting(PRESENTATION_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_FONT_SIZE),
       readSetting(PRESENTATION_FONT_FAMILY_KEY, FONT_FAMILY_VALUES, DEFAULT_FONT_FAMILY),
@@ -318,6 +403,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readSetting(ANNOUNCEMENT_LINE_SPACING_KEY, LINE_SPACING_VALUES, DEFAULT_LINE_SPACING),
       readSetting(ANNOUNCEMENT_BOLD_LEVEL_KEY, BOLD_LEVEL_VALUES, DEFAULT_BOLD_LEVEL),
       readBool(BLACKOUT_AFTER_SONG_KEY, true),
+      readBool(MULTI_SCREEN_ENABLED_KEY, false),
     ]);
     set({
       presentationFontSize: fontSize,
@@ -338,6 +424,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       announcementLineSpacing: annLineSpacing,
       announcementBoldLevel: annBoldLevel,
       blackoutAfterSong,
+      multiScreenEnabled,
     });
   },
 }));

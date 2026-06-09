@@ -331,6 +331,8 @@ pub async fn enter_presentation(
     crate::commands::webview_permissions::auto_grant_microphone(&window);
 
     // On Linux, try the compositor-honored monitor-targeted fullscreen first.
+    // `mut` is only used by the Linux block below; harmless elsewhere.
+    #[allow(unused_mut)]
     let mut placed_fullscreen = false;
     #[cfg(target_os = "linux")]
     {

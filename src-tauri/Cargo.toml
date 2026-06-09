@@ -43,13 +43,14 @@ gtk = "0.18"
 
 # Windows-only: auto-grant the microphone permission on the presentation
 # WebView2 (see commands/webview_permissions.rs). These MUST match the
-# webview2-com/windows that Tauri 2 pulls transitively (Tauri uses
-# windows-core 0.58 → webview2-com 0.33), otherwise `with_webview` hands back COM
-# types from a different windows-core and the trait bounds don't line up. If a
+# webview2-com/windows that Tauri 2 pulls transitively, or `with_webview` hands
+# back COM types from a different windows-core and the trait bounds don't line
+# up. This Tauri uses webview2-com-sys 0.38.2 → windows-core 0.61.2; webview2-com
+# is version-synced with -sys, so pin webview2-com 0.38 + windows 0.61. If a
 # future Tauri bump changes these, run `cargo tree -i windows-core` and realign.
 [target.'cfg(windows)'.dependencies]
-webview2-com = "0.33"
-windows = { version = "0.58", features = ["Win32_Foundation"] }
+webview2-com = "0.38"
+windows = { version = "0.61", features = ["Win32_Foundation"] }
 
 [dev-dependencies]
 tempfile = "3"

@@ -326,6 +326,10 @@ pub async fn enter_presentation(
         ErrorPayload::new("window.build_error").with_param("detail", e.to_string())
     })?;
 
+    // Auto-grant the microphone permission for this presentation window so the
+    // per-screen mic feature works without a prompt (Windows-only; no-op else).
+    crate::commands::webview_permissions::auto_grant_microphone(&window);
+
     // On Linux, try the compositor-honored monitor-targeted fullscreen first.
     let mut placed_fullscreen = false;
     #[cfg(target_os = "linux")]

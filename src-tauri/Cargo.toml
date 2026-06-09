@@ -41,5 +41,13 @@ tracing-subscriber = "0.3"
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
 
+# Windows-only: auto-grant the microphone permission on the presentation
+# WebView2 (see commands/webview_permissions.rs). These versions must align with
+# the webview2-com/windows that Tauri 2 pulls transitively — verify on the first
+# Windows build (a mismatch causes incompatible COM types from `with_webview`).
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.34"
+windows = { version = "0.60", features = ["Win32_Foundation"] }
+
 [dev-dependencies]
 tempfile = "3"

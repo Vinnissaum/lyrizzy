@@ -13,4 +13,5 @@ pub mod set;
 pub mod settings;
 pub mod song;
 pub mod updates;
+pub mod webview_permissions;
 pub mod window;

@@ -118,6 +118,11 @@ vi.mock("../../stores/settings", () => {
     announcementLineSpacing: "normal",
     announcementBoldLevel: "medium",
     loadPresentationSettings: vi.fn(),
+    loadOutputAudio: vi.fn(),
+    audio: {
+      one: { micEnabled: false, micDelayMs: 0, cameraUnmuted: false, micDevice: null, outputDevice: null },
+      two: { micEnabled: false, micDelayMs: 0, cameraUnmuted: false, micDevice: null, outputDevice: null },
+    },
   };
   return {
     PRESENTATION_FONT_SIZE_KEY: "presentation.font_size",

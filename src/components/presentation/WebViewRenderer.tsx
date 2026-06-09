@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { isUrlAllowed } from "../../utils/urlAllowlist";
 import { iframeCropStyle, withBasicAuth } from "../../utils/webview";
 import { StreamProxyRenderer } from "./StreamProxyRenderer";
+import { useOutputId } from "./outputContext";
+import { useSettingsStore } from "../../stores/settings";
 import type { StreamSource, WebViewConfig } from "../../types";
 
 interface Props {
@@ -37,6 +39,8 @@ function buildStreamSource(config: WebViewConfig): StreamSource | null {
 
 export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   const { mode, url, basicAuthUser, basicAuthPass, crop } = config;
+  const output = useOutputId();
+  const cameraAudio = useSettingsStore((s) => s.audio[output]);
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -135,7 +139,13 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
         </div>
       );
     }
-    return <StreamProxyRenderer source={source} />;
+    return (
+      <StreamProxyRenderer
+        source={source}
+        muted={!cameraAudio.cameraUnmuted}
+        sinkId={cameraAudio.outputDevice?.deviceId}
+      />
+    );
   }
 
   // MJPEG mode — inject basic-auth credentials into the URL if provided.

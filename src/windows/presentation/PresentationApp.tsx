@@ -8,6 +8,8 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
+import { useMicAudio } from "../../hooks/useMicAudio";
+import { OutputContext } from "../../components/presentation/outputContext";
 import type { OutputId } from "../../types";
 import { PRESET_COLORS } from "../../components/presentation/layout";
 import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRenderer";
@@ -73,7 +75,20 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
     presentationLineSpacing,
     presentationBoldLevel,
     loadPresentationSettings,
+    audio,
+    loadOutputAudio,
   } = useSettingsStore();
+
+  // Per-output camera/mic audio for this window. The mic plays — delayed — on
+  // the chosen output device; the camera renderer reads cameraUnmuted/output
+  // device via OutputContext.
+  const myAudio = audio[output];
+  useMicAudio({
+    enabled: myAudio.micEnabled,
+    deviceId: myAudio.micDevice?.deviceId,
+    sinkId: myAudio.outputDevice?.deviceId,
+    delayMs: myAudio.micDelayMs,
+  });
 
   const appearance: Appearance = {
     fontFamily: presentationFontFamily,
@@ -98,8 +113,12 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
       if (key.startsWith("presentation.") || key.startsWith("announcement.")) {
         loadPresentationSettings();
       }
+      if (key.startsWith("output.") && key.endsWith(".audio")) {
+        loadOutputAudio();
+      }
     });
     loadPresentationSettings();
+    loadOutputAudio();
     loadLocale();
     refreshMedia();
 
@@ -368,13 +387,15 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
   }
 
   return (
-    <div className="h-screen overflow-hidden">
-      <TransitionStage
-        contentKey={transitionKey}
-        durationMs={reduceMotion ? 0 : transitionMs}
-      >
-        {content}
-      </TransitionStage>
-    </div>
+    <OutputContext.Provider value={output}>
+      <div className="h-screen overflow-hidden">
+        <TransitionStage
+          contentKey={transitionKey}
+          durationMs={reduceMotion ? 0 : transitionMs}
+        >
+          {content}
+        </TransitionStage>
+      </div>
+    </OutputContext.Provider>
   );
 };

@@ -29,9 +29,10 @@ export const OutputSwitcher: React.FC = () => {
   const onToggleMirror = () => {
     const next = !mirrorEnabled;
     setMirrorEnabled(next);
-    // Engaging mirror copies Screen 1 (master) onto Screen 2 and opens it.
+    // Engaging mirror copies the focused screen's content onto the others and
+    // presents on ALL screens.
     if (next) {
-      engageMirror().catch((err) =>
+      engageMirror(focusedOutput).catch((err) =>
         console.error("engage mirror failed:", err),
       );
     }

@@ -100,23 +100,57 @@ describe("reducePresentingOutputs", () => {
 describe("engageMirror", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("copies output One's set + position onto Two and opens it", async () => {
+  it("copies the master's set + position onto the others and presents ALL screens", async () => {
     vi.mocked(getPresentationState).mockResolvedValue({
       set: { id: "set-9" },
       currentItemIndex: 2,
       currentSlideIndex: 3,
     } as any);
 
-    await engageMirror();
+    await engageMirror("one");
 
+    // Master "one" content copied onto "two".
     expect(loadSetForPresentation).toHaveBeenCalledWith("set-9", "two");
     expect(goToItem).toHaveBeenCalledWith(2, 3, "two");
+    // Presents on BOTH screens, not just the mirror target.
+    expect(enterPresentation).toHaveBeenCalledWith("one");
     expect(enterPresentation).toHaveBeenCalledWith("two");
   });
 
-  it("is a no-op when output One has no set", async () => {
+  it("uses the focused output as master (mirrors Tela 2 onto Tela 1)", async () => {
+    vi.mocked(getPresentationState).mockResolvedValue({
+      set: { id: "set-2" },
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+    } as any);
+
+    await engageMirror("two");
+
+    expect(loadSetForPresentation).toHaveBeenCalledWith("set-2", "one");
+    expect(enterPresentation).toHaveBeenCalledWith("one");
+    expect(enterPresentation).toHaveBeenCalledWith("two");
+  });
+
+  it("falls back to another output's set when the master has none", async () => {
+    vi.mocked(getPresentationState).mockImplementation((o: any) =>
+      Promise.resolve(
+        o === "two"
+          ? ({ set: { id: "set-x" }, currentItemIndex: 1, currentSlideIndex: 0 } as any)
+          : ({ set: null } as any),
+      ),
+    );
+
+    await engageMirror("one");
+
+    // Master "one" empty → source is "two"; copy onto "one".
+    expect(loadSetForPresentation).toHaveBeenCalledWith("set-x", "one");
+    expect(enterPresentation).toHaveBeenCalledWith("one");
+    expect(enterPresentation).toHaveBeenCalledWith("two");
+  });
+
+  it("is a no-op when no output has a set", async () => {
     vi.mocked(getPresentationState).mockResolvedValue({ set: null } as any);
-    await engageMirror();
+    await engageMirror("one");
     expect(loadSetForPresentation).not.toHaveBeenCalled();
     expect(enterPresentation).not.toHaveBeenCalled();
   });

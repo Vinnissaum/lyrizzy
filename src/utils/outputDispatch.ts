@@ -59,18 +59,37 @@ export function reducePresentingOutputs(
 }
 
 /**
- * Engage mirror mode: make Screen 2 (Tela 2) show exactly what Screen 1 — the
- * master — currently shows. Copies output One's set + current position onto
- * output Two and opens its window. No-op when One has no set loaded.
+ * Engage mirror mode: make EVERY screen show exactly what the master is showing,
+ * and **present on all of them**. The master is `master`'s current set + position
+ * (defaults to Tela 1); if it has no set loaded, falls back to any other output
+ * that does. Copies that content onto every other output, then opens/focuses the
+ * presentation window on all outputs. No-op only when no output has a set at all.
  */
-export async function engageMirror(): Promise<void> {
-  const master = await getPresentationState("one");
-  if (!master?.set) return;
-  await loadSetForPresentation(master.set.id, "two");
-  await goToItem(
-    master.currentItemIndex ?? 0,
-    master.currentSlideIndex ?? 0,
-    "two",
-  );
-  await enterPresentation("two");
+export async function engageMirror(master: OutputId = "one"): Promise<void> {
+  let srcOutput = master;
+  let src = await getPresentationState(master);
+  if (!src?.set) {
+    for (const o of ALL_OUTPUTS) {
+      if (o === master) continue;
+      const s = await getPresentationState(o);
+      if (s?.set) {
+        src = s;
+        srcOutput = o;
+        break;
+      }
+    }
+  }
+  if (!src?.set) return; // nothing loaded anywhere → nothing to mirror
+
+  // Copy the master's set + position onto every other output.
+  for (const o of ALL_OUTPUTS) {
+    if (o === srcOutput) continue;
+    await loadSetForPresentation(src.set.id, o);
+    await goToItem(src.currentItemIndex ?? 0, src.currentSlideIndex ?? 0, o);
+  }
+
+  // Present on ALL screens (idempotent: focuses an already-open window).
+  for (const o of ALL_OUTPUTS) {
+    await enterPresentation(o).catch(() => {});
+  }
 }

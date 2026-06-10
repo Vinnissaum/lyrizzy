@@ -47,26 +47,26 @@ describe("MicSwitch", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("renders nothing when multi-screen is off", () => {
-    mockStores({ enabled: false });
+    mockStores({ enabled: false, micEnabled: true });
     render(<MicSwitch />);
     expect(screen.queryByTestId("mic-switch")).toBeNull();
   });
 
-  it("toggles the mic for the focused output", () => {
+  it("renders nothing when the mic is not active in the config", () => {
     mockStores({ enabled: true, micEnabled: false });
     render(<MicSwitch />);
-    fireEvent.click(screen.getByText("Microfone"));
-    expect(setOutputAudio).toHaveBeenCalledWith("one", { micEnabled: true });
+    expect(screen.queryByTestId("mic-switch")).toBeNull();
   });
 
-  it("reflects enabled state via aria-pressed", () => {
+  it("shows the live controls when the mic is active in the config", () => {
     mockStores({ enabled: true, micEnabled: true });
     render(<MicSwitch />);
-    expect(screen.getByText("Microfone").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("mic-switch")).toBeInTheDocument();
+    expect(screen.getByText("Microfone ativo")).toBeInTheDocument();
   });
 
-  it("updates the delay", () => {
-    mockStores({ enabled: true, delay: 0 });
+  it("updates the delay (live tuning)", () => {
+    mockStores({ enabled: true, micEnabled: true, delay: 0 });
     render(<MicSwitch />);
     fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "500" } });
     expect(setOutputAudio).toHaveBeenCalledWith("one", { micDelayMs: 500 });

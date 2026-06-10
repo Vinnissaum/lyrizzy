@@ -8,15 +8,28 @@ vi.mock("../../stores/presentation", () => ({
 vi.mock("../../stores/settings", () => ({
   useSettingsStore: vi.fn(),
 }));
+vi.mock("../../utils/outputDispatch", () => ({
+  engageMirror: vi.fn().mockResolvedValue(undefined),
+}));
 
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
+import { engageMirror } from "../../utils/outputDispatch";
 
 const setFocusedOutput = vi.fn();
+const setMirrorEnabled = vi.fn();
 
-function mockStores(opts: { enabled: boolean; focused?: "one" | "two" }) {
+function mockStores(opts: {
+  enabled: boolean;
+  focused?: "one" | "two";
+  mirror?: boolean;
+}) {
   vi.mocked(useSettingsStore).mockImplementation((sel: any) =>
-    sel({ multiScreenEnabled: opts.enabled }),
+    sel({
+      multiScreenEnabled: opts.enabled,
+      mirrorEnabled: opts.mirror ?? false,
+      setMirrorEnabled,
+    }),
   );
   vi.mocked(usePresentationStore).mockImplementation((sel: any) =>
     sel({ focusedOutput: opts.focused ?? "one", setFocusedOutput }),
@@ -35,13 +48,13 @@ describe("OutputSwitcher", () => {
   it("renders both screen tabs when enabled and marks the focused one", () => {
     mockStores({ enabled: true, focused: "two" });
     render(<OutputSwitcher />);
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(2);
     expect(screen.getByText("Tela 1")).toBeInTheDocument();
     expect(screen.getByText("Tela 2")).toBeInTheDocument();
     // Tela 2 is focused → aria-current true; Tela 1 not.
-    expect(buttons[1].getAttribute("aria-current")).toBe("true");
-    expect(buttons[0].getAttribute("aria-current")).toBe("false");
+    expect(screen.getByText("Tela 2").getAttribute("aria-current")).toBe("true");
+    expect(screen.getByText("Tela 1").getAttribute("aria-current")).toBe(
+      "false",
+    );
   });
 
   it("switches focus to the clicked output", () => {
@@ -49,5 +62,24 @@ describe("OutputSwitcher", () => {
     render(<OutputSwitcher />);
     fireEvent.click(screen.getByText("Tela 2"));
     expect(setFocusedOutput).toHaveBeenCalledWith("two");
+  });
+
+  it("enabling Simultânea sets mirror on and engages the mirror", () => {
+    mockStores({ enabled: true, mirror: false });
+    render(<OutputSwitcher />);
+    fireEvent.click(screen.getByTestId("mirror-toggle"));
+    expect(setMirrorEnabled).toHaveBeenCalledWith(true);
+    expect(engageMirror).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the per-screen tabs and does not re-engage when mirror is on", () => {
+    mockStores({ enabled: true, mirror: true });
+    render(<OutputSwitcher />);
+    // Tabs hidden under mirror; only the toggle remains.
+    expect(screen.queryByText("Tela 1")).toBeNull();
+    expect(screen.queryByText("Tela 2")).toBeNull();
+    fireEvent.click(screen.getByTestId("mirror-toggle"));
+    expect(setMirrorEnabled).toHaveBeenCalledWith(false);
+    expect(engageMirror).not.toHaveBeenCalled();
   });
 });

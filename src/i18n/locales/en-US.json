@@ -196,8 +196,11 @@
     "output": {
       "tela": "Screen {{n}}",
       "choosePrompt": "Choose a set for Screen {{n}}",
+      "choosePromptBoth": "Choose a set (both screens)",
       "mic": "Mic",
-      "delay": "Delay"
+      "delay": "Delay",
+      "simultaneous": "Simultaneous",
+      "simultaneousHint": "Present the same content on both screens"
     },
     "action": {
       "present": "Present",
@@ -650,6 +653,7 @@
         "xxl": "Giant"
       },
       "monitorLabel": "Presentation monitor",
+      "monitorScreen": "Screen {{n}} monitor",
       "monitorHelp": "Which screen to open the presentation on. Auto picks the extended monitor.",
       "monitorOption": "Monitor {{index}}"
     },

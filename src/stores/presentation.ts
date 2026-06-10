@@ -8,6 +8,7 @@ import {
   setPresentationMode,
 } from "../api/commands";
 import type { OutputId, PresentationMode, PresentationState } from "../types";
+import { fanOutToMirror } from "../utils/outputDispatch";
 
 /**
  * Reconcile an incoming state payload with the slides we already hold.
@@ -102,50 +103,61 @@ export const usePresentationStore = create<PresentationStore>((set, get) => ({
   },
 
   next: async () => {
+    const output = get().output;
     try {
-      const newState = await nextSlide(get().output);
+      const newState = await nextSlide(output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao avançar slide:", err);
     }
+    // Mirror (Simultânea): drive the other output identically.
+    fanOutToMirror(output, (o) => nextSlide(o));
   },
 
   prev: async () => {
+    const output = get().output;
     try {
-      const newState = await prevSlide(get().output);
+      const newState = await prevSlide(output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao voltar slide:", err);
     }
+    fanOutToMirror(output, (o) => prevSlide(o));
   },
 
   jumpToItem: async (itemIndex: number) => {
+    const output = get().output;
     try {
-      const newState = await goToItem(itemIndex, 0, get().output);
+      const newState = await goToItem(itemIndex, 0, output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao ir para item:", err);
     }
+    fanOutToMirror(output, (o) => goToItem(itemIndex, 0, o));
   },
 
   selectSlide: async (itemIndex: number, slideIndex: number) => {
+    const output = get().output;
     // Optimistic: highlight the target immediately, before the round-trip.
     set({ pendingSelection: { itemIndex, slideIndex } });
     try {
-      const newState = await goToItem(itemIndex, slideIndex, get().output);
+      const newState = await goToItem(itemIndex, slideIndex, output);
       set((s) => ({ state: reconcileSlides(s.state, newState), pendingSelection: null }));
     } catch (err) {
       set({ pendingSelection: null });
       console.error("Falha ao selecionar slide:", err);
     }
+    fanOutToMirror(output, (o) => goToItem(itemIndex, slideIndex, o));
   },
 
   setMode: async (mode: PresentationMode) => {
+    const output = get().output;
     try {
-      const newState = await setPresentationMode(mode, get().output);
+      const newState = await setPresentationMode(mode, output);
       set((s) => ({ state: reconcileSlides(s.state, newState) }));
     } catch (err) {
       console.error("Falha ao alterar modo:", err);
     }
+    fanOutToMirror(output, (o) => setPresentationMode(mode, o));
   },
 }));

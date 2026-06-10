@@ -196,8 +196,11 @@
     "output": {
       "tela": "Tela {{n}}",
       "choosePrompt": "Escolha um conjunto para a Tela {{n}}",
+      "choosePromptBoth": "Escolha um conjunto (as duas telas)",
       "mic": "Microfone",
-      "delay": "Atraso"
+      "delay": "Atraso",
+      "simultaneous": "Simultânea",
+      "simultaneousHint": "Apresentar o mesmo conteúdo nas duas telas"
     },
     "action": {
       "present": "Apresentar",
@@ -650,6 +653,7 @@
         "xxl": "Gigante"
       },
       "monitorLabel": "Monitor da apresentação",
+      "monitorScreen": "Monitor da Tela {{n}}",
       "monitorHelp": "Em qual tela abrir a apresentação. Automático escolhe o monitor estendido.",
       "monitorOption": "Monitor {{index}}"
     },

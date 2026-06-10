@@ -197,7 +197,9 @@
       "tela": "Tela {{n}}",
       "choosePrompt": "Escolha um conjunto para a Tela {{n}}",
       "mic": "Microfone",
-      "delay": "Atraso"
+      "delay": "Atraso",
+      "simultaneous": "Simultânea",
+      "simultaneousHint": "Apresentar o mesmo conteúdo nas duas telas"
     },
     "action": {
       "present": "Apresentar",

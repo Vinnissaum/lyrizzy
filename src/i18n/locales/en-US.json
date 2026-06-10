@@ -197,7 +197,9 @@
       "tela": "Screen {{n}}",
       "choosePrompt": "Choose a set for Screen {{n}}",
       "mic": "Mic",
-      "delay": "Delay"
+      "delay": "Delay",
+      "simultaneous": "Simultaneous",
+      "simultaneousHint": "Present the same content on both screens"
     },
     "action": {
       "present": "Present",

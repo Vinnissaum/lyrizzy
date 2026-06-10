@@ -34,6 +34,8 @@ export const ANNOUNCEMENT_BOLD_LEVEL_KEY = "announcement.bold_level";
 export const BLACKOUT_AFTER_SONG_KEY = "presentation.blackout_after_song";
 /** When true, the operator exposes the second presentation output (Tela 2). */
 export const MULTI_SCREEN_ENABLED_KEY = "output.multi_screen_enabled";
+/** When true (and multi-screen on), operator actions mirror onto BOTH outputs. */
+export const MIRROR_ENABLED_KEY = "output.mirror_enabled";
 
 /** Per-output camera/mic audio settings, persisted as JSON under this key. */
 export const outputAudioKey = (o: OutputId) => `output.${o}.audio`;
@@ -154,6 +156,8 @@ interface SettingsStore {
   blackoutAfterSong: boolean;
   /** Multi-screen mode: when on, the operator can drive a second output (Tela 2). */
   multiScreenEnabled: boolean;
+  /** Mirror mode: when on, operator actions drive BOTH outputs identically. */
+  mirrorEnabled: boolean;
   /** Per-output camera/mic audio settings. */
   audio: Record<OutputId, OutputAudioSettings>;
 
@@ -183,6 +187,7 @@ interface SettingsStore {
   setAnnouncementBoldLevel: (level: BoldLevel) => void;
   setBlackoutAfterSong: (value: boolean) => void;
   setMultiScreenEnabled: (value: boolean) => void;
+  setMirrorEnabled: (value: boolean) => void;
   /** Merge a patch into one output's audio settings and persist it. */
   setOutputAudio: (output: OutputId, patch: Partial<OutputAudioSettings>) => void;
   /** Load both outputs' persisted audio settings. */
@@ -236,6 +241,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   announcementBoldLevel: DEFAULT_BOLD_LEVEL,
   blackoutAfterSong: true,
   multiScreenEnabled: false,
+  mirrorEnabled: false,
   audio: {
     one: { ...DEFAULT_OUTPUT_AUDIO },
     two: { ...DEFAULT_OUTPUT_AUDIO },
@@ -352,6 +358,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ multiScreenEnabled: value });
     setSetting(MULTI_SCREEN_ENABLED_KEY, String(value)).catch(() => {});
   },
+  setMirrorEnabled: (value) => {
+    set({ mirrorEnabled: value });
+    setSetting(MIRROR_ENABLED_KEY, String(value)).catch(() => {});
+  },
   setOutputAudio: (output, patch) =>
     set((s) => {
       const next = { ...s.audio[output], ...patch };
@@ -384,6 +394,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       annFamily, annSize, annPreset, annPosition, annMargin, annLineSpacing, annBoldLevel,
       blackoutAfterSong,
       multiScreenEnabled,
+      mirrorEnabled,
     ] = await Promise.all([
       readSetting(PRESENTATION_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_FONT_SIZE),
       readSetting(PRESENTATION_FONT_FAMILY_KEY, FONT_FAMILY_VALUES, DEFAULT_FONT_FAMILY),
@@ -404,6 +415,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readSetting(ANNOUNCEMENT_BOLD_LEVEL_KEY, BOLD_LEVEL_VALUES, DEFAULT_BOLD_LEVEL),
       readBool(BLACKOUT_AFTER_SONG_KEY, true),
       readBool(MULTI_SCREEN_ENABLED_KEY, false),
+      readBool(MIRROR_ENABLED_KEY, false),
     ]);
     set({
       presentationFontSize: fontSize,
@@ -425,6 +437,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       announcementBoldLevel: annBoldLevel,
       blackoutAfterSong,
       multiScreenEnabled,
+      mirrorEnabled,
     });
   },
 }));

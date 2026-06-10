@@ -1,8 +1,10 @@
 # Plan & Spec — Dual-output follow-ups: mirror mode, per-screen monitor picker, ad-hoc per-screen presenting, camera/mic on both, fix Screen-2
 
-Status: **Slice 1 (FIX Screen-2) implemented** — code + tests green (236 Rust + 358 vitest +
-clippy + tsc); T1.4 rig smoke-test pending hardware. Slices 2–5 not started. · Date: 2026-06-10
-· Branch target: feature branch off `main`
+Status: **Slices 1 + 3 implemented** on `feat/dual-output-followups` — gates green (236 Rust +
+clippy + tsc + 367 vitest). Slice 1 (FIX Screen-2) done; Slice 3 (mirror/Simultânea: flag,
+`fanOutToMirror` dispatch, `engageMirror`, toggle UI) done — incl. SEL-03 tab-hiding pulled
+forward. Manual rig items (T1.4) pending hardware. Slices 2 (monitor picker), 4 (ad-hoc
+isolation tests), 5 (camera verify) not started. · Date: 2026-06-10 · Branch: feat/dual-output-followups
 Baseline: builds on the implemented dual-output feature — see
 `dual-output-presentation-camera-mic-audio.md` (Slices A–D + C2) for the output model
 (`OutputId`, tagged events, per-output windows/state).

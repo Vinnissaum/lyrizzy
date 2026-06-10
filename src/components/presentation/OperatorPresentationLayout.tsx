@@ -20,6 +20,7 @@ import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
+import { fanOutToMirror } from "../../utils/outputDispatch";
 import { OutputSwitcher } from "./OutputSwitcher";
 import { MicSwitch } from "./MicSwitch";
 import { mediaUrl } from "../../api/assets";
@@ -120,6 +121,7 @@ export const OperatorPresentationLayout: React.FC = () => {
     } catch (err) {
       console.error("set media overlay failed:", err);
     }
+    fanOutToMirror(focusedOutput, (o) => setMediaOverlay(mediaId, o));
   };
 
   const handleAvisoClick = () => {
@@ -139,6 +141,7 @@ export const OperatorPresentationLayout: React.FC = () => {
     } catch (err) {
       console.error("set announcement overlay failed:", err);
     }
+    fanOutToMirror(focusedOutput, (o) => setAnnouncementOverlay(text, o));
   };
 
   const handleClearOverlay = async () => {
@@ -147,6 +150,7 @@ export const OperatorPresentationLayout: React.FC = () => {
     } catch (err) {
       console.error("clear overlay failed:", err);
     }
+    fanOutToMirror(focusedOutput, (o) => clearOverlay(o));
   };
 
   // Toggle blackout (blank mode) — same behavior as the F10 shortcut.
@@ -160,6 +164,8 @@ export const OperatorPresentationLayout: React.FC = () => {
     exitPresentation(focusedOutput).catch((err) =>
       console.error("exit presentation failed:", err),
     );
+    // Mirror (Simultânea): Stop exits BOTH screens.
+    fanOutToMirror(focusedOutput, (o) => exitPresentation(o));
   };
 
   const handleImportPresentation = async () => {

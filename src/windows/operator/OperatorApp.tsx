@@ -39,6 +39,7 @@ import {
 import { CountdownScheduleModal } from "../../components/set/CountdownScheduleModal";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
+import { fanOutToMirror } from "../../utils/outputDispatch";
 import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
@@ -200,8 +201,11 @@ export const OperatorApp: React.FC = () => {
       const output = usePresentationStore.getState().focusedOutput;
       if (usePresentationStore.getState().state?.overlay) {
         clearOverlay(output).catch(console.error);
+        fanOutToMirror(output, (o) => clearOverlay(o));
       } else {
         exitPresentation(output).catch(console.error);
+        // Mirror (Simultânea): Esc/Stop exits BOTH screens.
+        fanOutToMirror(output, (o) => exitPresentation(o));
       }
     };
 

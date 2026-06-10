@@ -43,6 +43,22 @@ export function fanOutToMirror(
 }
 
 /**
+ * Update the set of outputs that currently have a presentation window open,
+ * from a `presentation_lifecycle` phase. Used by the operator to stay in the
+ * presentation layout while ANY screen presents. Pure for testability.
+ */
+export function reducePresentingOutputs(
+  prev: ReadonlySet<OutputId>,
+  phase: "entered" | "exited",
+  output: OutputId,
+): Set<OutputId> {
+  const next = new Set(prev);
+  if (phase === "entered") next.add(output);
+  else next.delete(output);
+  return next;
+}
+
+/**
  * Engage mirror mode: make Screen 2 (Tela 2) show exactly what Screen 1 — the
  * master — currently shows. Copies output One's set + current position onto
  * output Two and opens its window. No-op when One has no set loaded.

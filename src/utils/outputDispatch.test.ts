@@ -15,6 +15,7 @@ import {
   mirrorTargets,
   fanOutToMirror,
   engageMirror,
+  reducePresentingOutputs,
 } from "./outputDispatch";
 import { useSettingsStore } from "../stores/settings";
 import {
@@ -69,6 +70,30 @@ describe("fanOutToMirror", () => {
     const call = vi.fn().mockRejectedValue(new Error("boom"));
     expect(() => fanOutToMirror("two", call)).not.toThrow();
     expect(call).toHaveBeenCalledWith("one");
+  });
+});
+
+describe("reducePresentingOutputs", () => {
+  it("adds an output on 'entered' and removes it on 'exited'", () => {
+    let s = new Set<"one" | "two">();
+    s = reducePresentingOutputs(s, "entered", "one");
+    expect([...s]).toEqual(["one"]);
+    s = reducePresentingOutputs(s, "entered", "two");
+    expect(s.size).toBe(2);
+    s = reducePresentingOutputs(s, "exited", "one");
+    expect([...s]).toEqual(["two"]);
+  });
+
+  it("keeps the other screen tracked when one exits (operator stays presenting)", () => {
+    const both = new Set<"one" | "two">(["one", "two"]);
+    const afterOneExits = reducePresentingOutputs(both, "exited", "one");
+    expect(afterOneExits.size).toBe(1); // > 0 → operator stays in the layout
+  });
+
+  it("does not mutate the input set", () => {
+    const prev = new Set<"one" | "two">(["one"]);
+    reducePresentingOutputs(prev, "entered", "two");
+    expect([...prev]).toEqual(["one"]);
   });
 });
 

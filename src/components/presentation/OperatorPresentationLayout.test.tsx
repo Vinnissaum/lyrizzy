@@ -32,6 +32,7 @@ vi.mock("../../api/commands", () => ({
   loadSetForPresentation: vi.fn().mockResolvedValue(undefined),
   getSetting: vi.fn().mockResolvedValue(null),
   setSetting: vi.fn().mockResolvedValue(undefined),
+  getPresentationState: vi.fn().mockResolvedValue({ set: null }),
   OUTPUT2_LAST_SET_KEY: "output2.last_set_id",
 }));
 
@@ -77,6 +78,7 @@ import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
 import {
   enterPresentation,
+  getPresentationState,
   loadSetForPresentation,
 } from "../../api/commands";
 import { fanOutToMirror } from "../../utils/outputDispatch";
@@ -310,6 +312,48 @@ describe("OperatorPresentationLayout", () => {
     expect(enterPresentation).not.toHaveBeenCalledWith("one");
     // The mirror hook is invoked for the focused output (it no-ops when off).
     expect(fanOutToMirror).toHaveBeenCalledWith("two", expect.any(Function));
+  });
+
+  it("defaults Tela 2 to Tela 1's set when Tela 2 has none", async () => {
+    vi.mocked(getPresentationState).mockResolvedValue({
+      set: { id: "set-1" },
+    } as any);
+    const storeShape = { state: null, focusedOutput: "two" as const };
+    vi.mocked(usePresentationStore).mockImplementation((selector: any) =>
+      selector ? selector(storeShape) : storeShape,
+    );
+    vi.mocked(useLibraryStore).mockReturnValue({
+      songs: [],
+      fixedSetId: null,
+      setView: vi.fn(),
+      refresh: vi.fn(),
+    } as unknown as ReturnType<typeof useLibraryStore>);
+    vi.mocked(useMediaStore).mockReturnValue({
+      media: [],
+      refresh: vi.fn(),
+    } as unknown as ReturnType<typeof useMediaStore>);
+    mockSetsSelector([{ id: "set-1", name: "Culto" }]);
+    vi.mocked(useSettingsStore).mockImplementation((selector?: any) => {
+      const s = {
+        multiScreenEnabled: true,
+        audio: { one: AUDIO_DEFAULT, two: AUDIO_DEFAULT },
+        setOutputAudio: vi.fn(),
+        cameraUrl: "",
+        loadCameraUrl: vi.fn(),
+      };
+      return selector ? selector(s) : s;
+    });
+
+    render(<OperatorPresentationLayout />);
+
+    // Tela 1's set is copied onto Tela 2 (operator view only — no Present yet).
+    await waitFor(() =>
+      expect(getPresentationState).toHaveBeenCalledWith("one"),
+    );
+    await waitFor(() =>
+      expect(loadSetForPresentation).toHaveBeenCalledWith("set-1", "two"),
+    );
+    expect(enterPresentation).not.toHaveBeenCalled();
   });
 
   it("renders OverlayActionBar without Apresentar button", () => {

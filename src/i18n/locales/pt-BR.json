@@ -197,6 +197,7 @@
       "tela": "Tela {{n}}",
       "choosePrompt": "Escolha um conjunto para a Tela {{n}}",
       "choosePromptBoth": "Escolha um conjunto (as duas telas)",
+      "changeSet": "Trocar conjunto",
       "mic": "Microfone",
       "delay": "Atraso",
       "simultaneous": "Simultânea",

@@ -197,6 +197,7 @@
       "tela": "Screen {{n}}",
       "choosePrompt": "Choose a set for Screen {{n}}",
       "choosePromptBoth": "Choose a set (both screens)",
+      "changeSet": "Change set",
       "mic": "Mic",
       "delay": "Delay",
       "simultaneous": "Simultaneous",

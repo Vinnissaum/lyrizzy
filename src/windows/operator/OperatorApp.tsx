@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   checkForUpdates,
@@ -39,14 +39,14 @@ import {
 import { CountdownScheduleModal } from "../../components/set/CountdownScheduleModal";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
-import { fanOutToMirror } from "../../utils/outputDispatch";
+import { fanOutToMirror, reducePresentingOutputs } from "../../utils/outputDispatch";
 import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
 import { useKeyBindingsStore } from "../../stores/keyBindings";
 import { installKeyboardDispatcher, isPresentationActive } from "../../runtime/keyboard";
 import { findUpcomingScheduledCountdown } from "../../runtime/scheduledCountdown";
-import type { SetItem, Song, UpdateInfo } from "../../types";
+import type { OutputId, SetItem, Song, UpdateInfo } from "../../types";
 
 export const OperatorApp: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -76,6 +76,15 @@ export const OperatorApp: React.FC = () => {
     itemIndex: number;
   } | null>(null);
 
+  // Which outputs currently have a presentation window open. Tracked from the
+  // per-output `presentation_lifecycle` events so the operator stays in the
+  // presentation layout while ANY screen presents — switching focus to an idle
+  // Tela 2 must NOT unmount the operator (presState is only the focused output).
+  const [presentingOutputs, setPresentingOutputs] = useState<Set<OutputId>>(
+    new Set(),
+  );
+  const presentingOutputsRef = useRef<Set<OutputId>>(new Set());
+
   useEffect(() => {
     const unlistenSongs = onSongsChanged(() => {
       useLibraryStore.getState().refresh();
@@ -87,8 +96,17 @@ export const OperatorApp: React.FC = () => {
       i18n.changeLanguage(locale);
       setLocale(locale);
     });
-    const unlistenLifecycle = onPresentationLifecycle((phase) => {
-      if (phase === "exited") {
+    const unlistenLifecycle = onPresentationLifecycle((phase, output) => {
+      const next = reducePresentingOutputs(
+        presentingOutputsRef.current,
+        phase,
+        output,
+      );
+      presentingOutputsRef.current = next;
+      setPresentingOutputs(next);
+      // Return to home only once EVERY output has exited — otherwise stopping
+      // one screen while the other still presents would kick the operator out.
+      if (phase === "exited" && next.size === 0) {
         useLibraryStore.getState().setView("home");
       }
     });
@@ -322,7 +340,10 @@ export const OperatorApp: React.FC = () => {
     presState?.mode === "live" ||
     presState?.mode === "blank" ||
     presState?.mode === "frozen" ||
-    countdownActive;
+    countdownActive ||
+    // Stay in the presentation layout while any screen presents, so focusing an
+    // idle Tela 2 (whose state is Idle) doesn't unmount the operator UI.
+    presentingOutputs.size > 0;
 
   return (
     <div className="h-screen bg-bg text-inherit flex flex-col">

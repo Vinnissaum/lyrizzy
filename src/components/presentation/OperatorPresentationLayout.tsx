@@ -6,6 +6,7 @@ import {
   clearOverlay,
   enterPresentation,
   exitPresentation,
+  getPresentationState,
   getSetting,
   importPresentation,
   loadSetForPresentation,
@@ -46,6 +47,9 @@ export const OperatorPresentationLayout: React.FC = () => {
   const [announcementText, setAnnouncementText] = useState("");
 
   const [showMediaPicker, setShowMediaPicker] = useState(false);
+  // Force the set picker open even when a set is already loaded (the "change
+  // set" button), so Tela 2 can be pointed at a different service if needed.
+  const [showSetPicker, setShowSetPicker] = useState(false);
 
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
 
@@ -65,6 +69,7 @@ export const OperatorPresentationLayout: React.FC = () => {
 
   // Load a chosen set onto the focused output and open its window (multi-screen).
   const handlePickSet = async (setId: string) => {
+    setShowSetPicker(false);
     try {
       await loadSetForPresentation(setId, focusedOutput);
       if (focusedOutput === "two") {
@@ -80,9 +85,11 @@ export const OperatorPresentationLayout: React.FC = () => {
     );
   };
 
-  // TV-2 remembers its last set: when the operator focuses Tela 2 and it has no
-  // set yet, auto-load the last set it presented into the operator view (without
-  // opening the window — the operator presses Present when ready).
+  // When the operator focuses Tela 2 and it has no set yet, default it to the
+  // SAME service set as Tela 1 so its item list (sub-sections) is immediately
+  // there to choose from — the operator can still load a different set via the
+  // "change set" button. Falls back to Tela 2's last-presented set if Tela 1 has
+  // none. Loads into the operator view only (no window open until Present).
   useEffect(() => {
     if (!multiScreenEnabled || focusedOutput !== "two") {
       autoLoadedTwoRef.current = false;
@@ -90,9 +97,12 @@ export const OperatorPresentationLayout: React.FC = () => {
     }
     if (state?.set || autoLoadedTwoRef.current) return;
     autoLoadedTwoRef.current = true;
-    getSetting(OUTPUT2_LAST_SET_KEY)
-      .then((setId) => {
-        if (setId) loadSetForPresentation(setId, "two").catch(() => {});
+    getPresentationState("one")
+      .then((one) => {
+        if (one?.set) return loadSetForPresentation(one.set.id, "two");
+        return getSetting(OUTPUT2_LAST_SET_KEY).then((setId) => {
+          if (setId) return loadSetForPresentation(setId, "two");
+        });
       })
       .catch(() => {});
   }, [multiScreenEnabled, focusedOutput, state?.set]);
@@ -259,8 +269,20 @@ export const OperatorPresentationLayout: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-[1fr] md:grid-cols-[240px_1fr] lg:grid-cols-[240px_1fr_320px] gap-2 flex-1 overflow-hidden">
         {/* Set pane */}
         <div className="flex flex-col overflow-hidden">
-          <header className="text-xs text-muted px-2 py-1">
-            {t("presentation.pane.set")}
+          <header className="flex items-center justify-between text-xs text-muted px-2 py-1">
+            <span>{t("presentation.pane.set")}</span>
+            {multiScreenEnabled && (
+              <button
+                type="button"
+                onClick={() => {
+                  refreshSets();
+                  setShowSetPicker(true);
+                }}
+                className="text-xs text-primary hover:underline"
+              >
+                {t("presentation.output.changeSet")}
+              </button>
+            )}
           </header>
           <div className="flex-1 overflow-hidden">
             <SetItemList />
@@ -327,6 +349,46 @@ export const OperatorPresentationLayout: React.FC = () => {
               >
                 {t("home.overlay.confirm")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set picker (change which set the focused screen presents) */}
+      {showSetPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-surface rounded-xl shadow-2xl w-[520px] max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold">
+                {t("presentation.output.choosePrompt", {
+                  n: focusedOutput === "one" ? 1 : 2,
+                })}
+              </h3>
+              <button
+                onClick={() => setShowSetPicker(false)}
+                className="text-muted hover:text-inherit"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {sets.length === 0 ? (
+                <p className="col-span-2 text-center text-muted py-8 text-sm">
+                  {t("presentation.empty")}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {sets.map((st) => (
+                    <button
+                      key={st.id}
+                      onClick={() => handlePickSet(st.id)}
+                      className="px-3 py-2 text-sm text-left rounded-lg bg-surface-2 hover:bg-border transition-colors truncate"
+                    >
+                      {st.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

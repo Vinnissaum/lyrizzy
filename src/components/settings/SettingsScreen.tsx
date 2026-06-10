@@ -7,6 +7,7 @@ import { MicAudioSettings } from "./MicAudioSettings";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { UpdateCheckButton } from "../system/UpdateCheckButton";
 import { useSettingsStore } from "../../stores/settings";
+import { OUTPUT2_MONITOR_KEY } from "../../api/commands";
 import type {
   BackgroundPreset,
   BoldLevel,
@@ -213,7 +214,19 @@ export const SettingsScreen: React.FC = () => {
                 <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                   {t("settings.windows.title")}
                 </h3>
-                <MonitorPicker />
+                <MonitorPicker
+                  label={
+                    s.multiScreenEnabled
+                      ? t("settings.windows.monitorScreen", { n: 1 })
+                      : undefined
+                  }
+                />
+                {s.multiScreenEnabled && (
+                  <MonitorPicker
+                    settingKey={OUTPUT2_MONITOR_KEY}
+                    label={t("settings.windows.monitorScreen", { n: 2 })}
+                  />
+                )}
               </div>
             </>
           )}

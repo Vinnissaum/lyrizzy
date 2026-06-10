@@ -1,10 +1,11 @@
 # Plan & Spec — Dual-output follow-ups: mirror mode, per-screen monitor picker, ad-hoc per-screen presenting, camera/mic on both, fix Screen-2
 
-Status: **Slices 1 + 3 implemented** on `feat/dual-output-followups` — gates green (236 Rust +
-clippy + tsc + 367 vitest). Slice 1 (FIX Screen-2) done; Slice 3 (mirror/Simultânea: flag,
-`fanOutToMirror` dispatch, `engageMirror`, toggle UI) done — incl. SEL-03 tab-hiding pulled
-forward. Manual rig items (T1.4) pending hardware. Slices 2 (monitor picker), 4 (ad-hoc
-isolation tests), 5 (camera verify) not started. · Date: 2026-06-10 · Branch: feat/dual-output-followups
+Status: **Slices 1 + 2 + 3 implemented** on `feat/dual-output-followups` — gates green (236 Rust +
+clippy + tsc + 369 vitest). Slice 1 (FIX Screen-2) done; Slice 2 (per-screen monitor picker:
+`MonitorPicker` parameterized by `settingKey`, second picker for Tela 2 → `OUTPUT2_MONITOR_KEY`)
+done; Slice 3 (mirror/Simultânea) done — incl. SEL-03 tab-hiding pulled forward. Manual rig items
+(T1.4) pending hardware. Slice 4 (ad-hoc isolation tests + hide set-picker under mirror), Slice 5
+(camera verify) not started. · Date: 2026-06-10 · Branch: feat/dual-output-followups
 Baseline: builds on the implemented dual-output feature — see
 `dual-output-presentation-camera-mic-audio.md` (Slices A–D + C2) for the output model
 (`OutputId`, tagged events, per-output windows/state).

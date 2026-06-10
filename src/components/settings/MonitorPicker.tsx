@@ -8,13 +8,24 @@ import {
 } from "../../api/commands";
 import type { MonitorInfo } from "../../types";
 
+interface MonitorPickerProps {
+  /** Which persisted setting key this picker reads/writes. Defaults to output One. */
+  settingKey?: string;
+  /** Optional label override (e.g. "Monitor da Tela 2"). Defaults to the generic label. */
+  label?: string;
+}
+
 /**
- * Lets the operator choose which monitor the presentation opens on. The choice
- * is persisted in settings (`presentation.monitor_index`); `enterPresentation`
- * reads it automatically, so every "enter presentation" path honours it. This
- * is the reliable fallback on Wayland, where auto-placement may land wrong.
+ * Lets the operator choose which monitor a presentation output opens on. The
+ * choice is persisted under `settingKey` (default `presentation.monitor_index`
+ * for output One; `output2.monitor_index` for Tela 2); `enterPresentation` reads
+ * the matching key automatically, so every "enter presentation" path honours it.
+ * This is the reliable fallback on Wayland, where auto-placement may land wrong.
  */
-export const MonitorPicker: React.FC = () => {
+export const MonitorPicker: React.FC<MonitorPickerProps> = ({
+  settingKey = PRESENTATION_MONITOR_KEY,
+  label,
+}) => {
   const { t } = useTranslation();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [value, setValue] = useState<string>("auto");
@@ -23,20 +34,20 @@ export const MonitorPicker: React.FC = () => {
     listMonitors()
       .then(setMonitors)
       .catch(() => setMonitors([]));
-    getSetting(PRESENTATION_MONITOR_KEY)
+    getSetting(settingKey)
       .then((v) => setValue(v && v !== "auto" ? v : "auto"))
       .catch(() => setValue("auto"));
-  }, []);
+  }, [settingKey]);
 
   const onChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value;
     setValue(v);
-    setSetting(PRESENTATION_MONITOR_KEY, v).catch(() => {});
+    setSetting(settingKey, v).catch(() => {});
   };
 
   return (
     <div className="space-y-1">
-      <p className="text-sm font-medium">{t("settings.windows.monitorLabel")}</p>
+      <p className="text-sm font-medium">{label ?? t("settings.windows.monitorLabel")}</p>
       <select
         value={value}
         onChange={onChange}

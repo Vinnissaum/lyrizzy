@@ -652,6 +652,7 @@
         "xxl": "Giant"
       },
       "monitorLabel": "Presentation monitor",
+      "monitorScreen": "Screen {{n}} monitor",
       "monitorHelp": "Which screen to open the presentation on. Auto picks the extended monitor.",
       "monitorOption": "Monitor {{index}}"
     },

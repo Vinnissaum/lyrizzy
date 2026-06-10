@@ -221,6 +221,17 @@ pub(crate) fn should_pin_on_top(monitor_count: usize) -> bool {
     monitor_count == 1
 }
 
+/// Whether to show a windowed (non-fullscreen), focusable window instead of
+/// fullscreening, because the *secondary* output (`Two`) resolved to no free
+/// monitor of its own. Fullscreening it would cover the primary screen — where
+/// the operator and output One live — so on a single-display setup the second
+/// presentation would silently hide behind/over them. Output One keeps its
+/// original behaviour (always fullscreen, even with one monitor) so the
+/// single-screen workflow is unchanged. Pure for testability.
+pub(crate) fn use_windowed_fallback(output: OutputId, target_idx: Option<usize>) -> bool {
+    output == OutputId::Two && target_idx.is_none()
+}
+
 /// Returns true if destroying the window with the given `label` should also
 /// close the presentation window.
 ///
@@ -363,7 +374,14 @@ pub async fn enter_presentation(
                 }
             }
         }
-        if let Err(e) = window.set_fullscreen(true) {
+        if use_windowed_fallback(output, target_idx) {
+            // Secondary output with no free monitor: don't fullscreen over the
+            // primary (operator) screen. Show a normal, focusable window so the
+            // operator can still see/verify it — e.g. a single-display smoke test.
+            if let Err(e) = window.set_focus() {
+                tracing::warn!(error = %e, "enter_presentation: set_focus failed (ignored)");
+            }
+        } else if let Err(e) = window.set_fullscreen(true) {
             tracing::warn!(error = %e, "enter_presentation: set_fullscreen failed (ignored)");
         }
     }
@@ -518,6 +536,17 @@ mod tests {
     #[test]
     fn should_pin_on_top_three_monitors() {
         assert!(!should_pin_on_top(3));
+    }
+
+    #[test]
+    fn windowed_fallback_only_for_secondary_without_target() {
+        // Secondary output, no free monitor → windowed + focus (don't cover primary).
+        assert!(use_windowed_fallback(OutputId::Two, None));
+        // Secondary output with a dedicated monitor → fullscreen as normal.
+        assert!(!use_windowed_fallback(OutputId::Two, Some(1)));
+        // Primary output keeps original single-screen behaviour (always fullscreen).
+        assert!(!use_windowed_fallback(OutputId::One, None));
+        assert!(!use_windowed_fallback(OutputId::One, Some(0)));
     }
 
     #[test]

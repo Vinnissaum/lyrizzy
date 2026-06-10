@@ -85,6 +85,7 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
   const myAudio = audio[output];
   useMicAudio({
     enabled: myAudio.micEnabled,
+    muted: myAudio.micMuted,
     deviceId: myAudio.micDevice?.deviceId,
     sinkId: myAudio.outputDevice?.deviceId,
     delayMs: myAudio.micDelayMs,

@@ -200,6 +200,7 @@
       "changeSet": "Change set",
       "mic": "Mic",
       "micActive": "Mic on",
+      "micMuted": "Mic muted",
       "delay": "Delay",
       "simultaneous": "Simultaneous",
       "simultaneousHint": "Present the same content on both screens"

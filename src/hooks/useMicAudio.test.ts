@@ -7,6 +7,8 @@ const close = vi.fn().mockResolvedValue(undefined);
 const stop = vi.fn();
 const getUserMedia = vi.fn();
 
+let track: { stop: typeof stop; enabled: boolean };
+
 let ctxInstances: FakeAudioContext[] = [];
 
 class FakeAudioContext {
@@ -29,7 +31,11 @@ class FakeAudioContext {
 beforeEach(() => {
   ctxInstances = [];
   vi.clearAllMocks();
-  getUserMedia.mockResolvedValue({ getTracks: () => [{ stop }] });
+  track = { stop, enabled: true };
+  getUserMedia.mockResolvedValue({
+    getTracks: () => [track],
+    getAudioTracks: () => [track],
+  });
   (globalThis as { AudioContext?: unknown }).AudioContext = FakeAudioContext;
   Object.defineProperty(navigator, "mediaDevices", {
     value: { getUserMedia },
@@ -63,6 +69,26 @@ describe("useMicAudio", () => {
     unmount();
     await waitFor(() => expect(close).toHaveBeenCalled());
     expect(stop).toHaveBeenCalled();
+  });
+
+  it("mutes the captured track when started muted", async () => {
+    renderHook(() => useMicAudio({ enabled: true, muted: true, delayMs: 0 }));
+    await waitFor(() => expect(ctxInstances.length).toBe(1));
+    expect(track.enabled).toBe(false);
+  });
+
+  it("live-mutes/unmutes without rebuilding the graph", async () => {
+    const { rerender } = renderHook(
+      ({ m }: { m: boolean }) => useMicAudio({ enabled: true, muted: m, delayMs: 0 }),
+      { initialProps: { m: false } },
+    );
+    await waitFor(() => expect(ctxInstances.length).toBe(1));
+    expect(track.enabled).toBe(true);
+    rerender({ m: true });
+    await waitFor(() => expect(track.enabled).toBe(false));
+    rerender({ m: false });
+    await waitFor(() => expect(track.enabled).toBe(true));
+    expect(ctxInstances.length).toBe(1); // no rebuild
   });
 
   it("live-adjusts the delay without rebuilding the graph", async () => {

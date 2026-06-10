@@ -200,6 +200,7 @@
       "changeSet": "Trocar conjunto",
       "mic": "Microfone",
       "micActive": "Microfone ativo",
+      "micMuted": "Microfone mudo",
       "delay": "Atraso",
       "simultaneous": "Simultânea",
       "simultaneousHint": "Apresentar o mesmo conteúdo nas duas telas"

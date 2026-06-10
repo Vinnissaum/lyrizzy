@@ -7,6 +7,10 @@ export const MAX_DELAY_SECONDS = 5;
 export interface MicAudioOptions {
   /** Master on/off — when false the mic is fully released. */
   enabled: boolean;
+  /** Live mute — silences the mic instantly WITHOUT releasing it (track.enabled).
+   *  Kept separate from `enabled` so the operator can mute mid-service without a
+   *  capture/permission round-trip. */
+  muted?: boolean;
   /** Mic input device id (from enumerateDevices); omit for the default mic. */
   deviceId?: string;
   /** Output device id (the TV's HDMI) to route the mic to via AudioContext. */
@@ -25,7 +29,7 @@ export interface MicAudioOptions {
  * disabled; the graph is fully torn down on disable/unmount and rebuilt when the
  * device/sink changes. The delay is adjusted live without a rebuild.
  */
-export function useMicAudio({ enabled, deviceId, sinkId, delayMs }: MicAudioOptions): void {
+export function useMicAudio({ enabled, muted = false, deviceId, sinkId, delayMs }: MicAudioOptions): void {
   const ctxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const delayRef = useRef<DelayNode | null>(null);
@@ -43,6 +47,9 @@ export function useMicAudio({ enabled, deviceId, sinkId, delayMs }: MicAudioOpti
           stream.getTracks().forEach((tr) => tr.stop());
           return;
         }
+        // Apply the current mute state to the freshly-captured tracks (a rebuild
+        // — device/sink change — must not unmute a muted mic).
+        stream.getAudioTracks().forEach((tr) => (tr.enabled = !muted));
         const ctx = new AudioContext();
         const withSink = ctx as AudioContext & {
           setSinkId?: (id: string) => Promise<void>;
@@ -84,6 +91,11 @@ export function useMicAudio({ enabled, deviceId, sinkId, delayMs }: MicAudioOpti
   useEffect(() => {
     if (delayRef.current) delayRef.current.delayTime.value = clampDelay(delayMs);
   }, [delayMs]);
+
+  // Live mute/unmute without rebuilding the graph or re-prompting for the mic.
+  useEffect(() => {
+    streamRef.current?.getAudioTracks().forEach((tr) => (tr.enabled = !muted));
+  }, [muted]);
 }
 
 function clampDelay(delayMs: number): number {

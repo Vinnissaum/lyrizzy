@@ -43,6 +43,8 @@ export const outputAudioKey = (o: OutputId) => `output.${o}.audio`;
 export interface OutputAudioSettings {
   /** Play the computer mic on this screen (default off, remembered per screen). */
   micEnabled: boolean;
+  /** Live mute — silences an active mic without deactivating it (operator strip). */
+  micMuted: boolean;
   /** Delay (ms) applied to the mic to line it up with the late camera image. */
   micDelayMs: number;
   /** Un-mute the camera stream's own audio on this screen. */
@@ -55,6 +57,7 @@ export interface OutputAudioSettings {
 
 export const DEFAULT_OUTPUT_AUDIO: OutputAudioSettings = {
   micEnabled: false,
+  micMuted: false,
   micDelayMs: 0,
   cameraUnmuted: false,
   micDevice: null,

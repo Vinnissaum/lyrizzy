@@ -13,6 +13,7 @@ const setOutputAudio = vi.fn();
 function mockStores(opts: {
   enabled: boolean;
   micEnabled?: boolean;
+  micMuted?: boolean;
   delay?: number;
   focused?: "one" | "two";
 }) {
@@ -26,6 +27,7 @@ function mockStores(opts: {
       audio: {
         one: {
           micEnabled: opts.micEnabled ?? false,
+          micMuted: opts.micMuted ?? false,
           micDelayMs: opts.delay ?? 0,
           cameraUnmuted: false,
           micDevice: null,
@@ -33,6 +35,7 @@ function mockStores(opts: {
         },
         two: {
           micEnabled: false,
+          micMuted: false,
           micDelayMs: 0,
           cameraUnmuted: false,
           micDevice: null,
@@ -58,11 +61,26 @@ describe("MicSwitch", () => {
     expect(screen.queryByTestId("mic-switch")).toBeNull();
   });
 
-  it("shows the live controls when the mic is active in the config", () => {
+  it("shows the live controls (active, not muted) when the mic is active", () => {
     mockStores({ enabled: true, micEnabled: true });
     render(<MicSwitch />);
     expect(screen.getByTestId("mic-switch")).toBeInTheDocument();
     expect(screen.getByText("Microfone ativo")).toBeInTheDocument();
+  });
+
+  it("live-mutes the mic without deactivating it", () => {
+    mockStores({ enabled: true, micEnabled: true, micMuted: false });
+    render(<MicSwitch />);
+    fireEvent.click(screen.getByText("Microfone ativo"));
+    expect(setOutputAudio).toHaveBeenCalledWith("one", { micMuted: true });
+  });
+
+  it("shows a muted label and unmutes on click when muted", () => {
+    mockStores({ enabled: true, micEnabled: true, micMuted: true });
+    render(<MicSwitch />);
+    expect(screen.getByText("Microfone mudo")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Microfone mudo"));
+    expect(setOutputAudio).toHaveBeenCalledWith("one", { micMuted: false });
   });
 
   it("updates the delay (live tuning)", () => {

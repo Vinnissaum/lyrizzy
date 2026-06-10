@@ -35,6 +35,7 @@ export const OperatorPresentationLayout: React.FC = () => {
   const state = usePresentationStore((s) => s.state);
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
   const multiScreenEnabled = useSettingsStore((s) => s.multiScreenEnabled);
+  const mirrorEnabled = useSettingsStore((s) => s.mirrorEnabled);
   const sets = useSetsStore((s) => s.sets);
   const refreshSets = useSetsStore((s) => s.refresh);
   const { songs, refresh: refreshSongs } = useLibraryStore();
@@ -73,6 +74,10 @@ export const OperatorPresentationLayout: React.FC = () => {
     } catch (err) {
       console.error("load set for output failed:", err);
     }
+    // Mirror (Simultânea): the chosen set also drives the other screen.
+    fanOutToMirror(focusedOutput, (o) =>
+      loadSetForPresentation(setId, o).then(() => enterPresentation(o)),
+    );
   };
 
   // TV-2 remembers its last set: when the operator focuses Tela 2 and it has no
@@ -199,9 +204,11 @@ export const OperatorPresentationLayout: React.FC = () => {
         {multiScreenEnabled ? (
           <div className="flex-1 overflow-y-auto p-3">
             <p className="text-xs text-muted mb-2">
-              {t("presentation.output.choosePrompt", {
-                n: focusedOutput === "one" ? 1 : 2,
-              })}
+              {mirrorEnabled
+                ? t("presentation.output.choosePromptBoth")
+                : t("presentation.output.choosePrompt", {
+                    n: focusedOutput === "one" ? 1 : 2,
+                  })}
             </p>
             {sets.length === 0 ? (
               <p className="text-center text-muted py-8 text-sm">

@@ -39,6 +39,11 @@ vi.mock("../../stores/sets", () => ({
   useSetsStore: vi.fn(),
 }));
 
+vi.mock("../../utils/outputDispatch", () => ({
+  fanOutToMirror: vi.fn(),
+  engageMirror: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn().mockResolvedValue(null),
 }));
@@ -74,6 +79,7 @@ import {
   enterPresentation,
   loadSetForPresentation,
 } from "../../api/commands";
+import { fanOutToMirror } from "../../utils/outputDispatch";
 import type { PresentationState, ServiceSet } from "../../types";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
@@ -296,6 +302,14 @@ describe("OperatorPresentationLayout", () => {
       expect(loadSetForPresentation).toHaveBeenCalledWith("set-2", "two"),
     );
     expect(enterPresentation).toHaveBeenCalledWith("two");
+
+    // Isolation (SEL-01/02): the focused output is targeted directly; the other
+    // output is NOT loaded/presented except via mirror fan-out (which is a no-op
+    // here because mirror is off — fanOutToMirror decides per the live flag).
+    expect(loadSetForPresentation).not.toHaveBeenCalledWith("set-2", "one");
+    expect(enterPresentation).not.toHaveBeenCalledWith("one");
+    // The mirror hook is invoked for the focused output (it no-ops when off).
+    expect(fanOutToMirror).toHaveBeenCalledWith("two", expect.any(Function));
   });
 
   it("renders OverlayActionBar without Apresentar button", () => {

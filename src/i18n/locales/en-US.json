@@ -196,6 +196,7 @@
     "output": {
       "tela": "Screen {{n}}",
       "choosePrompt": "Choose a set for Screen {{n}}",
+      "choosePromptBoth": "Choose a set (both screens)",
       "mic": "Mic",
       "delay": "Delay",
       "simultaneous": "Simultaneous",

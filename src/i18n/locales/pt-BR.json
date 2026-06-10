@@ -196,6 +196,7 @@
     "output": {
       "tela": "Tela {{n}}",
       "choosePrompt": "Escolha um conjunto para a Tela {{n}}",
+      "choosePromptBoth": "Escolha um conjunto (as duas telas)",
       "mic": "Microfone",
       "delay": "Atraso",
       "simultaneous": "Simultânea",

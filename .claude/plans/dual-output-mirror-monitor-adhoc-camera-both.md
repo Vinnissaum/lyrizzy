@@ -1,11 +1,11 @@
 # Plan & Spec — Dual-output follow-ups: mirror mode, per-screen monitor picker, ad-hoc per-screen presenting, camera/mic on both, fix Screen-2
 
-Status: **Slices 1–4 implemented** on `feat/dual-output-followups` — gates green (236 Rust + clippy
-+ tsc + 369 vitest). Slice 1 (FIX Screen-2), Slice 2 (per-screen monitor picker), Slice 3
-(mirror/Simultânea), Slice 4 (mirror-aware set pick + generic prompt under mirror; SEL-01/02
-isolation regression test) all done. Only **Slice 5 (camera verify on Screen 1)** + manual
-3-display rig smoke (T1.4) remain — both verification-only, need hardware. · Date: 2026-06-10 ·
-Branch: feat/dual-output-followups
+Status: **ALL CODE COMPLETE** (Slices 1–4 built; Slice 5 camera/mic was already per-output in
+code) on `feat/dual-output-followups` — full gate green: **277 Rust** (236 lib + integration) +
+clippy + tsc + **369 vitest**. Slice 1 (FIX Screen-2), Slice 2 (per-screen monitor picker), Slice 3
+(mirror/Simultânea), Slice 4 (mirror-aware set pick + SEL isolation test). **Remaining = hardware
+verification only** — see "Rig verification checklist" below (T1.4 + T5.1; needs operator + 2 TVs).
+· Date: 2026-06-10 · Branch: feat/dual-output-followups
 Baseline: builds on the implemented dual-output feature — see
 `dual-output-presentation-camera-mic-audio.md` (Slices A–D + C2) for the output model
 (`OutputId`, tagged events, per-output windows/state).
@@ -324,3 +324,48 @@ globally.
 3. **MIR**: mirror flag + Simultânea/Independente toggle + mutation fan-out + Esc/Stop both.
 4. **SEL**: confirm/finish ad-hoc per-screen item presenting; disable under mirror.
 5. **CAM**: verify camera + mic on Screen 1; discoverability tweaks only if needed.
+
+---
+
+## Rig verification checklist (hardware-gated — T1.4, T5.1)
+
+All code slices (1–4) are implemented and green; camera/mic (Slice 5) was already
+per-output in code (`MicAudioSettings` exposes Tela 1 + Tela 2). What is left can only be
+confirmed on the real 3-display rig (operator + TV-1 + TV-2, each TV on its own HDMI).
+Run with **multi-screen enabled** in Settings.
+
+**Setup**
+- [ ] Settings → enable "Segunda tela (multi-saída)".
+- [ ] Settings → Janelas: set **Monitor da Tela 1** and **Monitor da Tela 2** to the two TVs.
+
+**FIX — Screen 2 presents (T1.4 / FIX-01,02,03)**
+- [ ] Focus Tela 2, pick a set, Present → `presentation-2` opens **on TV-2** and shows slides
+      (not black — this is the capability fix).
+- [ ] Navigate Tela 2 (click slides / arrows) → TV-2 advances; Tela 1 unaffected.
+- [ ] Single-display fallback: with only one external display, Present Tela 2 → a **visible,
+      focusable window** appears (does not fullscreen-cover the operator).
+
+**SEL — Independent content per screen (SEL-01/02)**
+- [ ] Independente mode: send Song A to Tela 1, switch focus to Tela 2, send Song B → TV-1
+      shows A, TV-2 shows B, each navigates separately.
+
+**MIR — Simultânea / mirror (MIR-01..04)**
+- [ ] Toggle **Simultânea** ON → TV-2 immediately matches TV-1 (same slide); Tela tabs hide.
+- [ ] Navigate / blackout / overlay (Oferta/Aviso) → **both** TVs change together.
+- [ ] Esc / Stop → **both** screens exit.
+- [ ] Toggle OFF → screens decouple, each keeps its last frame.
+
+**MON — Monitor assignment (MON-01,02,03)**
+- [ ] Change Tela 2's monitor in Settings → next Present opens TV-2 on the chosen monitor;
+      persists across app restart.
+- [ ] Pick an out-of-range / unplugged monitor → falls back to auto-placement, no error.
+
+**CAM — Camera + mic on both (CAM-01,02)**
+- [ ] Settings → Áudio: enable mic for Tela 1 and Tela 2 with **different HDMI output
+      devices**; click Grant once if device labels are blank.
+- [ ] Present the camera (WebView/RTSP item) on each screen → each TV plays the camera with
+      mic audio out **its** HDMI; both can play at once. Dial `micDelayMs` to lip-sync.
+- [ ] (Windows) confirm **no microphone permission prompt** appears (auto-grant, C2).
+
+Record pass/fail in this section and flip the status line to "verified" when done. If CAM
+surfaces a discoverability gap, that is the trigger for the optional T5.2 labels/help tweak.

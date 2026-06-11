@@ -108,6 +108,11 @@ export const OperatorApp: React.FC = () => {
       // one screen while the other still presents would kick the operator out.
       if (phase === "exited" && next.size === 0) {
         useLibraryStore.getState().setView("home");
+        // Reset operator focus to Tela 1. A presentation always starts on
+        // screen 1, so leaving focus on Tela 2 (where the operator may have
+        // been driving the mirror / second screen) makes the next present land
+        // with the now-idle Tela 2 selected in the panes and switcher.
+        usePresentationStore.getState().setFocusedOutput("one");
         // Reset Simultânea (mirror) on a full stop. It persists otherwise, but
         // re-presenting does NOT re-engage the mirror (engageMirror only runs
         // when the toggle is flipped on), so a stale-on flag would leave the

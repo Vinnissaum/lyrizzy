@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Play } from "lucide-react";
 import {
+  getPresentationState,
+  getSetting,
   loadSetForPresentation,
   setSetting,
   OUTPUT2_LAST_SET_KEY,
@@ -44,6 +46,8 @@ export const OutputLaunchModal: React.FC<{
   // Sub-view: pick a different set before choosing the start item.
   const [changingSet, setChangingSet] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Re-syncing the screen-2 set to the current source on open (see effect).
+  const [syncing, setSyncing] = useState(output === "two");
 
   const setName = state?.set?.name;
   const items = state?.set?.items ?? [];
@@ -56,7 +60,38 @@ export const OutputLaunchModal: React.FC<{
       if (e.key === "Escape") onClose(false);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    // Re-sync the target screen to the *current* source set each time the modal
+    // opens. The backend keeps whatever set was loaded for this output during
+    // the previous presentation, so after stopping and changing the set the
+    // modal would otherwise list the stale items until launch reloaded them.
+    // Source = Tela 1's current set, falling back to this screen's last-used set
+    // (same resolution as the operator's auto-load), so the operator can still
+    // override it via "Trocar conjunto".
+    let cancelled = false;
+    if (output === "two") {
+      (async () => {
+        try {
+          const one = await getPresentationState("one");
+          let sourceSetId = one?.set?.id;
+          if (!sourceSetId) {
+            sourceSetId = (await getSetting(OUTPUT2_LAST_SET_KEY)) ?? undefined;
+          }
+          if (sourceSetId && !cancelled) {
+            await loadSetForPresentation(sourceSetId, "two");
+          }
+        } catch (err) {
+          console.error("resync screen 2 set failed:", err);
+        } finally {
+          if (!cancelled) setSyncing(false);
+        }
+      })();
+    }
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("keydown", onKey);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -151,7 +186,9 @@ export const OutputLaunchModal: React.FC<{
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
-              {items.length === 0 ? (
+              {syncing ? (
+                <p className="text-center text-muted py-8 text-sm">…</p>
+              ) : items.length === 0 ? (
                 <p className="text-center text-muted py-8 text-sm">
                   {t("presentation.empty")}
                 </p>

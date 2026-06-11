@@ -15,6 +15,7 @@ import {
   mirrorTargets,
   fanOutToMirror,
   engageMirror,
+  launchOutputAt,
   reducePresentingOutputs,
 } from "./outputDispatch";
 import { useSettingsStore } from "../stores/settings";
@@ -94,6 +95,55 @@ describe("reducePresentingOutputs", () => {
     const prev = new Set<"one" | "two">(["one"]);
     reducePresentingOutputs(prev, "entered", "two");
     expect([...prev]).toEqual(["one"]);
+  });
+});
+
+describe("launchOutputAt", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("loads the set, opens the window, then jumps to the chosen item — in order", async () => {
+    setMirror(false);
+    const order: string[] = [];
+    vi.mocked(loadSetForPresentation).mockImplementation(async () => {
+      order.push("load");
+      return undefined as any;
+    });
+    vi.mocked(enterPresentation).mockImplementation(async () => {
+      order.push("enter");
+    });
+    vi.mocked(goToItem).mockImplementation(async () => {
+      order.push("goto");
+      return undefined as any;
+    });
+
+    await launchOutputAt("set-7", 3, "two");
+
+    expect(loadSetForPresentation).toHaveBeenCalledWith("set-7", "two");
+    expect(enterPresentation).toHaveBeenCalledWith("two");
+    expect(goToItem).toHaveBeenCalledWith(3, 0, "two");
+    expect(order).toEqual(["load", "enter", "goto"]);
+  });
+
+  it("fans the same set + item out to the other screen when mirroring", async () => {
+    setMirror(true);
+    vi.mocked(loadSetForPresentation).mockResolvedValue(undefined as any);
+    vi.mocked(enterPresentation).mockResolvedValue(undefined);
+    vi.mocked(goToItem).mockResolvedValue(undefined as any);
+    await launchOutputAt("set-7", 1, "two");
+    // Let the mirror target's load → enter → goto promise chain settle.
+    await new Promise((r) => setTimeout(r, 0));
+    // The focused output (two) is driven directly; the mirror target (one)
+    // gets the same load → enter → goto.
+    expect(loadSetForPresentation).toHaveBeenCalledWith("set-7", "two");
+    expect(loadSetForPresentation).toHaveBeenCalledWith("set-7", "one");
+    expect(enterPresentation).toHaveBeenCalledWith("one");
+    expect(goToItem).toHaveBeenCalledWith(1, 0, "one");
+  });
+
+  it("does not fan out when mirror is off", async () => {
+    setMirror(false);
+    await launchOutputAt("set-7", 0, "two");
+    expect(loadSetForPresentation).not.toHaveBeenCalledWith("set-7", "one");
   });
 });
 

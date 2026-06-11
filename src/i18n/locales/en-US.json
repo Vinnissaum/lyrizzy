@@ -198,6 +198,8 @@
       "choosePrompt": "Choose a set for Screen {{n}}",
       "choosePromptBoth": "Choose a set (both screens)",
       "changeSet": "Change set",
+      "launchTitle": "Present on Screen {{n}}",
+      "launchPrompt": "Choose where to start",
       "mic": "Mic",
       "micActive": "Mic on",
       "micMuted": "Mic muted",

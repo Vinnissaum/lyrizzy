@@ -15,8 +15,16 @@ const OUTPUTS: OutputId[] = ["one", "two"];
  *
  * While mirror is ON the operator drives a single set and both screens render it
  * identically (see `fanOutToMirror`), so the per-screen focus tabs are hidden.
+ *
+ * Clicking a tab whose output is not yet presenting (`onRequestLaunch` provided
+ * and the output is absent from `presentingOutputs`) asks the host to open the
+ * launch modal, so picking that screen actually starts a presentation on it
+ * instead of only switching the operator's focus.
  */
-export const OutputSwitcher: React.FC = () => {
+export const OutputSwitcher: React.FC<{
+  presentingOutputs?: ReadonlySet<OutputId>;
+  onRequestLaunch?: (output: OutputId) => void;
+}> = ({ presentingOutputs, onRequestLaunch }) => {
   const { t } = useTranslation();
   const multiScreenEnabled = useSettingsStore((s) => s.multiScreenEnabled);
   const mirrorEnabled = useSettingsStore((s) => s.mirrorEnabled);
@@ -25,6 +33,13 @@ export const OutputSwitcher: React.FC = () => {
   const setFocusedOutput = usePresentationStore((s) => s.setFocusedOutput);
 
   if (!multiScreenEnabled) return null;
+
+  const onTabClick = (o: OutputId) => {
+    setFocusedOutput(o);
+    if (onRequestLaunch && !presentingOutputs?.has(o)) {
+      onRequestLaunch(o);
+    }
+  };
 
   const onToggleMirror = () => {
     const next = !mirrorEnabled;
@@ -48,7 +63,7 @@ export const OutputSwitcher: React.FC = () => {
           <button
             key={o}
             type="button"
-            onClick={() => setFocusedOutput(o)}
+            onClick={() => onTabClick(o)}
             aria-current={focusedOutput === o}
             className={`px-3 py-1 text-xs rounded-lg transition-colors ${
               focusedOutput === o

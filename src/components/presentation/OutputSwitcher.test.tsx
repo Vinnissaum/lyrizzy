@@ -64,6 +64,34 @@ describe("OutputSwitcher", () => {
     expect(setFocusedOutput).toHaveBeenCalledWith("two");
   });
 
+  it("requests launch when clicking a tab whose output is not presenting", () => {
+    mockStores({ enabled: true, focused: "one" });
+    const onRequestLaunch = vi.fn();
+    render(
+      <OutputSwitcher
+        presentingOutputs={new Set(["one"])}
+        onRequestLaunch={onRequestLaunch}
+      />,
+    );
+    fireEvent.click(screen.getByText("Tela 2"));
+    expect(setFocusedOutput).toHaveBeenCalledWith("two");
+    expect(onRequestLaunch).toHaveBeenCalledWith("two");
+  });
+
+  it("does not request launch when the clicked output is already presenting", () => {
+    mockStores({ enabled: true, focused: "one" });
+    const onRequestLaunch = vi.fn();
+    render(
+      <OutputSwitcher
+        presentingOutputs={new Set(["one", "two"])}
+        onRequestLaunch={onRequestLaunch}
+      />,
+    );
+    fireEvent.click(screen.getByText("Tela 2"));
+    expect(setFocusedOutput).toHaveBeenCalledWith("two");
+    expect(onRequestLaunch).not.toHaveBeenCalled();
+  });
+
   it("enabling Simultânea sets mirror on and engages the mirror", () => {
     mockStores({ enabled: true, mirror: false });
     render(<OutputSwitcher />);

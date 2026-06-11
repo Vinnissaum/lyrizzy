@@ -454,7 +454,7 @@ export const OperatorApp: React.FC = () => {
       {/* Main content */}
       <main className="flex-1 min-h-0">
         {isPresenting ? (
-          <OperatorPresentationLayout />
+          <OperatorPresentationLayout presentingOutputs={presentingOutputs} />
         ) : (
           <>
             {currentView === "home" && <HomeSetBuilder />}

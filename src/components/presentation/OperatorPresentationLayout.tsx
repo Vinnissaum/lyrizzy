@@ -23,6 +23,7 @@ import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
 import { fanOutToMirror } from "../../utils/outputDispatch";
 import { OutputSwitcher } from "./OutputSwitcher";
+import { OutputLaunchModal } from "./OutputLaunchModal";
 import { MicSwitch } from "./MicSwitch";
 import { mediaUrl } from "../../api/assets";
 import { OverlayActionBar } from "./OverlayActionBar";
@@ -30,8 +31,13 @@ import { itemLabel, songArtist } from "./itemMeta";
 import { SetItemList } from "./SetItemList";
 import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
+import type { OutputId } from "../../types";
 
-export const OperatorPresentationLayout: React.FC = () => {
+export const OperatorPresentationLayout: React.FC<{
+  /** Outputs that currently have a live presentation window (from OperatorApp).
+   *  Drives whether clicking a screen tab opens the launch modal. */
+  presentingOutputs?: ReadonlySet<OutputId>;
+}> = ({ presentingOutputs }) => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
@@ -52,6 +58,10 @@ export const OperatorPresentationLayout: React.FC = () => {
   const [showSetPicker, setShowSetPicker] = useState(false);
 
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
+
+  // Which output the launch modal is confirming, if any. Opened from an
+  // OutputSwitcher tab whose screen is not presenting yet.
+  const [launchOutput, setLaunchOutput] = useState<OutputId | null>(null);
 
   const announcementRef = useRef<HTMLTextAreaElement>(null);
   const autoLoadedTwoRef = useRef(false);
@@ -209,7 +219,10 @@ export const OperatorPresentationLayout: React.FC = () => {
   if (!state?.set || state.set.items.length === 0) {
     return (
       <div data-testid="operator-presentation-layout" className="flex flex-col h-full">
-        <OutputSwitcher />
+        <OutputSwitcher
+          presentingOutputs={presentingOutputs}
+          onRequestLaunch={setLaunchOutput}
+        />
         <MicSwitch />
         {multiScreenEnabled ? (
           <div className="flex-1 overflow-y-auto p-3">
@@ -242,6 +255,12 @@ export const OperatorPresentationLayout: React.FC = () => {
           <div className="flex-1 flex items-center justify-center text-muted text-sm">
             {t("presentation.empty")}
           </div>
+        )}
+        {launchOutput && (
+          <OutputLaunchModal
+            output={launchOutput}
+            onClose={() => setLaunchOutput(null)}
+          />
         )}
       </div>
     );
@@ -438,6 +457,13 @@ export const OperatorPresentationLayout: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {launchOutput && (
+        <OutputLaunchModal
+          output={launchOutput}
+          onClose={() => setLaunchOutput(null)}
+        />
       )}
     </div>
   );

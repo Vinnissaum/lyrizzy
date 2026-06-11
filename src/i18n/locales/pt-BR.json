@@ -198,6 +198,8 @@
       "choosePrompt": "Escolha um conjunto para a Tela {{n}}",
       "choosePromptBoth": "Escolha um conjunto (as duas telas)",
       "changeSet": "Trocar conjunto",
+      "launchTitle": "Apresentar na Tela {{n}}",
+      "launchPrompt": "Escolha por onde começar",
       "mic": "Microfone",
       "micActive": "Microfone ativo",
       "micMuted": "Microfone mudo",

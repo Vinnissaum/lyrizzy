@@ -59,6 +59,34 @@ export function reducePresentingOutputs(
 }
 
 /**
+ * Launch a presentation on `output` starting at a chosen set item, in the order
+ * that both opens the window AND propagates set state to an already-open one:
+ *
+ *   1. `loadSetForPresentation` — re-computes slides, sets the output Live, and
+ *      re-emits the FULL set to every window (so a screen-2 window that was
+ *      already open updates to the new set).
+ *   2. `enterPresentation` — opens the window (or focuses an existing one).
+ *   3. `goToItem` — navigates to the chosen start item and emits it.
+ *
+ * Mirror (Simultânea): the same set + start item is fanned out to the other
+ * screen, best-effort. Used by the Screen 2 launch modal.
+ */
+export async function launchOutputAt(
+  setId: string,
+  itemIndex: number,
+  output: OutputId,
+): Promise<void> {
+  await loadSetForPresentation(setId, output);
+  await enterPresentation(output);
+  await goToItem(itemIndex, 0, output);
+  fanOutToMirror(output, (o) =>
+    loadSetForPresentation(setId, o)
+      .then(() => enterPresentation(o))
+      .then(() => goToItem(itemIndex, 0, o)),
+  );
+}
+
+/**
  * Engage mirror mode: make EVERY screen show exactly what the master is showing,
  * and **present on all of them**. The master is `master`'s current set + position
  * (defaults to Tela 1); if it has no set loaded, falls back to any other output

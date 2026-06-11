@@ -108,6 +108,14 @@ export const OperatorApp: React.FC = () => {
       // one screen while the other still presents would kick the operator out.
       if (phase === "exited" && next.size === 0) {
         useLibraryStore.getState().setView("home");
+        // Reset Simultânea (mirror) on a full stop. It persists otherwise, but
+        // re-presenting does NOT re-engage the mirror (engageMirror only runs
+        // when the toggle is flipped on), so a stale-on flag would leave the
+        // second screen blank. Clearing it means the operator re-enables mirror
+        // for the next service, which re-engages it on both screens.
+        if (useSettingsStore.getState().mirrorEnabled) {
+          useSettingsStore.getState().setMirrorEnabled(false);
+        }
       }
     });
     // When a scheduled countdown reaches its start time, make sure the

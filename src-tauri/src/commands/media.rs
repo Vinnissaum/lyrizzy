@@ -353,8 +353,8 @@ pub async fn import_presentation(
         },
     );
 
-    // Run LibreOffice conversion
-    let slides = match libreoffice::convert_to_png(&soffice, &dest, &out_dir).await {
+    // Convert to per-slide PNGs (LibreOffice → PDF → pdfium rasterization).
+    let slides = match libreoffice::convert_to_slides(&soffice, resource_dir.clone(), &dest, &out_dir).await {
         Ok(s) => s,
         Err(e) => {
             let _ = std::fs::remove_file(&dest);

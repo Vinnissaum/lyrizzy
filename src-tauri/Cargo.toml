@@ -31,6 +31,11 @@ uuid = { version = "1", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["clock"] }
 http = "1"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
+# Rasterizes the multi-page PDF produced by LibreOffice into one PNG per slide.
+# LibreOffice's own `--convert-to png` exports only the first page, so we go
+# source → PDF (LibreOffice) → per-page PNG (pdfium). Dynamically binds to a
+# bundled/ system `pdfium` library at runtime; ships the `image` 0.25 interop.
+pdfium-render = "0.8"
 zip = "2"
 tracing = "0.1"
 tracing-subscriber = "0.3"

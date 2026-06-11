@@ -92,20 +92,66 @@ fn well_known_install_paths() -> Vec<PathBuf> {
     }
 }
 
-/// Convert a presentation file (PPTX, PDF, etc.) to PNG slides using LibreOffice headless.
+/// Convert a presentation file (PPTX, PDF, ODP, …) to one PNG per slide.
 ///
-/// Spawns `soffice --headless --convert-to png --outdir <out_dir> <src>`, then renames
-/// all produced PNG files to the canonical `slide_000.png`, `slide_001.png`, … form.
-/// Returns the sorted, renamed paths.
+/// LibreOffice's `--convert-to png` only ever exports the **first** page of a
+/// multi-page document, so a single CLI call can't produce a full slideshow.
+/// We instead go through PDF, which LibreOffice exports faithfully (all pages):
+///   1. `src` → PDF via `soffice --headless --convert-to pdf` (skipped when
+///      `src` is already a PDF).
+///   2. PDF → `slide_000.png`, `slide_001.png`, … via pdfium (one image per page).
 ///
-/// Errors: spawn failure, non-zero exit code, no PNGs produced.
-pub async fn convert_to_png(
+/// `resource_dir` is the Tauri resource directory, used to locate a bundled
+/// pdfium library; rasterization falls back to a system pdfium otherwise.
+/// Returns the slide PNG paths in page order.
+///
+/// Errors: spawn failure, non-zero soffice exit, missing PDF, pdfium load/render
+/// failure, or a document with no pages.
+pub async fn convert_to_slides(
     soffice: &Path,
+    resource_dir: Option<PathBuf>,
     src: &Path,
     out_dir: &Path,
 ) -> Result<Vec<PathBuf>, String> {
+    let is_pdf = src
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("pdf"))
+        .unwrap_or(false);
+
+    // 1. Obtain a multi-page PDF. For PDF input we render the source directly;
+    //    otherwise LibreOffice produces an intermediate PDF inside `out_dir`.
+    let (pdf_path, intermediate) = if is_pdf {
+        (src.to_path_buf(), false)
+    } else {
+        (convert_to_pdf(soffice, src, out_dir).await?, true)
+    };
+
+    // 2. Rasterize page-by-page. pdfium is synchronous and CPU-bound, and its
+    //    handles are not `Send`, so bind + render entirely inside a blocking
+    //    task (only `Send` paths cross the await boundary).
+    let pdf_for_task = pdf_path.clone();
+    let out_for_task = out_dir.to_path_buf();
+    let result =
+        tokio::task::spawn_blocking(move || {
+            rasterize_pdf(resource_dir.as_deref(), &pdf_for_task, &out_for_task)
+        })
+        .await
+        .map_err(|e| format!("rasterization task failed: {e}"))?;
+
+    // Drop the throwaway PDF; keep the original when the source itself was a PDF.
+    if intermediate {
+        let _ = std::fs::remove_file(&pdf_path);
+    }
+
+    result
+}
+
+/// Convert `src` to a PDF inside `out_dir` via LibreOffice headless, returning
+/// the produced PDF path. LibreOffice names the output `<src_stem>.pdf`.
+async fn convert_to_pdf(soffice: &Path, src: &Path, out_dir: &Path) -> Result<PathBuf, String> {
     let output = tokio::process::Command::new(soffice)
-        .args(["--headless", "--convert-to", "png", "--outdir"])
+        .args(["--headless", "--convert-to", "pdf", "--outdir"])
         .arg(out_dir)
         .arg(src)
         .output()
@@ -117,33 +163,81 @@ pub async fn convert_to_png(
         return Err(format!("soffice exited with error: {stderr}"));
     }
 
-    let mut pngs: Vec<PathBuf> = std::fs::read_dir(out_dir)
-        .map_err(|e| format!("failed to read output dir: {e}"))?
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| {
-            p.extension()
-                .and_then(|e| e.to_str())
-                .map(|e| e.eq_ignore_ascii_case("png"))
-                .unwrap_or(false)
-        })
-        .collect();
-
-    if pngs.is_empty() {
-        return Err("soffice produced no PNG output".to_string());
+    let stem = src
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| "source file has no usable stem".to_string())?;
+    let pdf = out_dir.join(format!("{stem}.pdf"));
+    if !pdf.exists() {
+        return Err("soffice produced no PDF output".to_string());
     }
+    Ok(pdf)
+}
 
-    pngs.sort();
+/// Render every page of `pdf` to `slide_000.png`, `slide_001.png`, … in `out_dir`.
+/// Synchronous (pdfium is blocking); call from a blocking context.
+fn rasterize_pdf(
+    resource_dir: Option<&Path>,
+    pdf: &Path,
+    out_dir: &Path,
+) -> Result<Vec<PathBuf>, String> {
+    use pdfium_render::prelude::*;
 
-    let mut renamed = Vec::with_capacity(pngs.len());
-    for (i, src_png) in pngs.iter().enumerate() {
+    let pdfium = bind_pdfium(resource_dir)?;
+    let document = pdfium
+        .load_pdf_from_file(pdf, None)
+        .map_err(|e| format!("failed to open pdf: {e}"))?;
+
+    // Render at a fixed long-edge target so slides are crisp on a 1080p output
+    // without ballooning file size; aspect ratio is preserved by pdfium.
+    let config = PdfRenderConfig::new()
+        .set_target_width(1920)
+        .set_maximum_height(1920);
+
+    let mut slides = Vec::new();
+    for (i, page) in document.pages().iter().enumerate() {
+        let bitmap = page
+            .render_with_config(&config)
+            .map_err(|e| format!("failed to render page {i}: {e}"))?;
         let dest = out_dir.join(format!("slide_{i:03}.png"));
-        std::fs::rename(src_png, &dest)
-            .map_err(|e| format!("failed to rename slide {i}: {e}"))?;
-        renamed.push(dest);
+        bitmap
+            .as_image()
+            .save_with_format(&dest, image::ImageFormat::Png)
+            .map_err(|e| format!("failed to write slide {i}: {e}"))?;
+        slides.push(dest);
     }
 
-    Ok(renamed)
+    if slides.is_empty() {
+        return Err("pdf has no pages".to_string());
+    }
+    Ok(slides)
+}
+
+/// Bind to a pdfium dynamic library. Tries, in order: bundled next to the Tauri
+/// resources (and a `pdfium/` subdir), a `PDFIUM_LIB_DIR` override (handy for
+/// `tauri dev`), then a system-installed pdfium.
+fn bind_pdfium(resource_dir: Option<&Path>) -> Result<pdfium_render::prelude::Pdfium, String> {
+    use pdfium_render::prelude::*;
+
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    if let Some(res) = resource_dir {
+        dirs.push(res.to_path_buf());
+        dirs.push(res.join("pdfium"));
+    }
+    if let Ok(dir) = std::env::var("PDFIUM_LIB_DIR") {
+        dirs.push(PathBuf::from(dir));
+    }
+
+    for dir in &dirs {
+        let lib = Pdfium::pdfium_platform_library_name_at_path(dir);
+        if let Ok(bindings) = Pdfium::bind_to_library(&lib) {
+            return Ok(Pdfium::new(bindings));
+        }
+    }
+
+    Pdfium::bind_to_system_library()
+        .map(Pdfium::new)
+        .map_err(|e| format!("could not load pdfium library: {e}"))
 }
 
 #[cfg(test)]

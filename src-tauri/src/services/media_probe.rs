@@ -46,8 +46,14 @@ pub fn mime_for_ext(ext: &str) -> &'static str {
 /// Probe a media file for dimensions, duration, MIME type, and byte size.
 ///
 /// Image probing reads only the file header (no full pixel decode).
-/// Video probing spawns `ffprobe`; returns ToolMissing if it's not in PATH.
-pub fn probe(path: &Path, kind: MediaKind) -> Result<MediaMetadata, ProbeError> {
+/// Video probing spawns `ffprobe`, resolved the same way LibreOffice/MediaMTX
+/// are (bundled → `FFPROBE_PATH` → PATH → well-known locations); returns
+/// ToolMissing when it can't be found.
+pub fn probe(
+    path: &Path,
+    kind: MediaKind,
+    resource_dir: Option<&Path>,
+) -> Result<MediaMetadata, ProbeError> {
     let byte_size = std::fs::metadata(path)
         .map_err(ProbeError::Io)?
         .len() as i64;
@@ -69,8 +75,10 @@ pub fn probe(path: &Path, kind: MediaKind) -> Result<MediaMetadata, ProbeError> 
             })
         }
         MediaKind::Video => {
-            let ffprobe = std::env::var("FFPROBE_PATH").unwrap_or_else(|_| "ffprobe".to_string());
-            let (width, height, duration_ms) = probe_video_with_cmd(path, &ffprobe)?;
+            let ffprobe = crate::services::ffmpeg::ffprobe_path(resource_dir)
+                .ok_or(ProbeError::ToolMissing)?;
+            let (width, height, duration_ms) =
+                probe_video_with_cmd(path, &ffprobe.to_string_lossy())?;
             Ok(MediaMetadata {
                 width,
                 height,
@@ -175,7 +183,7 @@ mod tests {
         let path = dir.path().join("test.png");
         make_png(&path, 800, 600);
 
-        let meta = probe(&path, MediaKind::Image).unwrap();
+        let meta = probe(&path, MediaKind::Image, None).unwrap();
         assert_eq!(meta.width, Some(800));
         assert_eq!(meta.height, Some(600));
         assert!(meta.duration_ms.is_none());
@@ -189,7 +197,7 @@ mod tests {
         let path = dir.path().join("test.jpg");
         make_jpeg(&path, 1920, 1080);
 
-        let meta = probe(&path, MediaKind::Image).unwrap();
+        let meta = probe(&path, MediaKind::Image, None).unwrap();
         assert_eq!(meta.width, Some(1920));
         assert_eq!(meta.height, Some(1080));
         assert_eq!(meta.mime_type, "image/jpeg");

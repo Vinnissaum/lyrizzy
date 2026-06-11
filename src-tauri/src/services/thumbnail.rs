@@ -17,11 +17,18 @@ impl std::fmt::Display for ThumbnailError {
 
 /// Extract a 200×113 JPEG thumbnail at the 1-second mark of a video file.
 ///
-/// Falls back gracefully when ffmpeg is missing — callers should treat
-/// `ThumbnailError::ToolMissing` as a non-fatal condition.
-pub async fn generate(input: &Path, output: &Path) -> Result<(), ThumbnailError> {
-    let cmd = std::env::var("FFMPEG_PATH").unwrap_or_else(|_| "ffmpeg".to_string());
-    generate_with_cmd(input, output, &cmd).await
+/// Resolves the `ffmpeg` binary the same way LibreOffice/MediaMTX are resolved
+/// (bundled → `FFMPEG_PATH` → PATH → well-known locations); see
+/// `services::ffmpeg`. Falls back gracefully when ffmpeg is missing — callers
+/// should treat `ThumbnailError::ToolMissing` as a non-fatal condition.
+pub async fn generate(
+    input: &Path,
+    output: &Path,
+    resource_dir: Option<&Path>,
+) -> Result<(), ThumbnailError> {
+    let cmd = crate::services::ffmpeg::ffmpeg_path(resource_dir)
+        .ok_or(ThumbnailError::ToolMissing)?;
+    generate_with_cmd(input, output, &cmd.to_string_lossy()).await
 }
 
 /// Testable variant — accepts the ffmpeg binary path directly.
@@ -90,7 +97,7 @@ mod tests {
         }
         let output = dir.path().join("thumb.jpg");
 
-        generate(&input, &output).await.unwrap();
+        generate(&input, &output, None).await.unwrap();
 
         assert!(output.exists(), "thumbnail file must exist");
         let magic = std::fs::read(&output).unwrap();

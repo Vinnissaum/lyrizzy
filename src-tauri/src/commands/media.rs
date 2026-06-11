@@ -98,6 +98,7 @@ pub async fn import_media(
         .path()
         .app_data_dir()
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    let resource_dir = app.path().resource_dir().ok();
     let media_dir = asset::media_dir(&data_dir);
     let pool = state.db.get().expect("db must be initialized");
 
@@ -110,7 +111,7 @@ pub async fn import_media(
         .map_err(|e| ErrorPayload::new("media.copy_error").with_param("detail", e.to_string()))?;
 
     // Probe — non-fatal; fall back to sensible defaults
-    let meta = match media_probe::probe(&dest, kind.clone()) {
+    let meta = match media_probe::probe(&dest, kind.clone(), resource_dir.as_deref()) {
         Ok(m) => m,
         Err(e) => {
             eprintln!("[trinity] media probe failed ({file_name}): {e}");
@@ -136,7 +137,7 @@ pub async fn import_media(
     let thumbnail_file = if kind == MediaKind::Video {
         let thumb_name = format!("{uuid}.thumb.jpg");
         let thumb_path = media_dir.join(&thumb_name);
-        match thumbnail::generate(&dest, &thumb_path).await {
+        match thumbnail::generate(&dest, &thumb_path, resource_dir.as_deref()).await {
             Ok(_) => Some(thumb_name),
             Err(e) => {
                 eprintln!("[trinity] thumbnail failed ({file_name}): {e}");
@@ -268,13 +269,9 @@ pub async fn delete_media(
 }
 
 #[tauri::command]
-pub fn check_ffprobe() -> bool {
-    let cmd = std::env::var("FFPROBE_PATH").unwrap_or_else(|_| "ffprobe".to_string());
-    std::process::Command::new(cmd)
-        .arg("-version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+pub fn check_ffprobe(app: AppHandle) -> bool {
+    let resource_dir = app.path().resource_dir().ok();
+    crate::services::ffmpeg::ffprobe_path(resource_dir.as_deref()).is_some()
 }
 
 #[tauri::command]

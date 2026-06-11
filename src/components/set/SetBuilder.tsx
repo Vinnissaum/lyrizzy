@@ -222,12 +222,22 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   const handleAddMedia = async (mediaItem: Media) => {
     if (!serviceSet) return;
     try {
-      const item = await addSetItem({
-        setId: serviceSet.id,
-        itemType: "media",
-        mediaId: mediaItem.id,
-        mediaOptions: { loop: false, mute: false, autoAdvanceOnEnd: true },
-      });
+      // A presentation (PPTX/PDF) was converted to PNG slides at import, so it
+      // must enter the set as a slide_show item to present those slides. Adding
+      // it as a plain "media" item would yield a single, unrenderable slide.
+      const item =
+        mediaItem.kind === "presentation"
+          ? await addSetItem({
+              setId: serviceSet.id,
+              itemType: "slide_show",
+              mediaId: mediaItem.id,
+            })
+          : await addSetItem({
+              setId: serviceSet.id,
+              itemType: "media",
+              mediaId: mediaItem.id,
+              mediaOptions: { loop: false, mute: false, autoAdvanceOnEnd: true },
+            });
       setShowMediaPicker(false);
       if (mediaItem.kind === "video") setExpandedItemId(item.id);
     } catch (err) {

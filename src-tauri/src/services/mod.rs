@@ -2,6 +2,7 @@
 pub mod archive;
 pub mod artifact;
 pub mod background;
+pub mod ffmpeg;
 pub mod fts_query;
 pub mod holyrics_parser;
 pub mod libreoffice;

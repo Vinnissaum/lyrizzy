@@ -270,7 +270,10 @@ export const OperatorPresentationLayout: React.FC<{
 
   return (
     <div data-testid="operator-presentation-layout" className="flex flex-col h-full">
-      <OutputSwitcher />
+      <OutputSwitcher
+        presentingOutputs={presentingOutputs}
+        onRequestLaunch={setLaunchOutput}
+      />
       <MicSwitch />
       <OverlayActionBar
         showApresentarButton={false}

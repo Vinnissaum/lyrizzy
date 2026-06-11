@@ -41,6 +41,7 @@ export const OperatorPresentationLayout: React.FC<{
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
+  const setFocusedOutput = usePresentationStore((s) => s.setFocusedOutput);
   const multiScreenEnabled = useSettingsStore((s) => s.multiScreenEnabled);
   const mirrorEnabled = useSettingsStore((s) => s.mirrorEnabled);
   const sets = useSetsStore((s) => s.sets);
@@ -62,6 +63,14 @@ export const OperatorPresentationLayout: React.FC<{
   // Which output the launch modal is confirming, if any. Opened from an
   // OutputSwitcher tab whose screen is not presenting yet.
   const [launchOutput, setLaunchOutput] = useState<OutputId | null>(null);
+
+  // Close the launch modal. On cancel (no presentation started) return focus to
+  // Tela 1, since opening the modal had switched focus to the target screen. On
+  // a successful launch keep focus on that screen so the operator can drive it.
+  const closeLaunchModal = (launched?: boolean) => {
+    setLaunchOutput(null);
+    if (!launched) setFocusedOutput("one");
+  };
 
   const announcementRef = useRef<HTMLTextAreaElement>(null);
   const autoLoadedTwoRef = useRef(false);
@@ -257,10 +266,7 @@ export const OperatorPresentationLayout: React.FC<{
           </div>
         )}
         {launchOutput && (
-          <OutputLaunchModal
-            output={launchOutput}
-            onClose={() => setLaunchOutput(null)}
-          />
+          <OutputLaunchModal output={launchOutput} onClose={closeLaunchModal} />
         )}
       </div>
     );
@@ -463,10 +469,7 @@ export const OperatorPresentationLayout: React.FC<{
       )}
 
       {launchOutput && (
-        <OutputLaunchModal
-          output={launchOutput}
-          onClose={() => setLaunchOutput(null)}
-        />
+        <OutputLaunchModal output={launchOutput} onClose={closeLaunchModal} />
       )}
     </div>
   );

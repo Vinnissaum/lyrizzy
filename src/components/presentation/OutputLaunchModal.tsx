@@ -30,7 +30,9 @@ import type { OutputId } from "../../types";
  */
 export const OutputLaunchModal: React.FC<{
   output: OutputId;
-  onClose: () => void;
+  /** `launched` is true only when the modal closed because a presentation was
+   *  started; cancel/X/Esc pass it falsy so the host can return focus to Tela 1. */
+  onClose: (launched?: boolean) => void;
 }> = ({ output, onClose }) => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
@@ -49,9 +51,9 @@ export const OutputLaunchModal: React.FC<{
 
   useEffect(() => {
     refreshSets();
-    // Close on Esc.
+    // Close on Esc (cancel — host returns focus to Tela 1).
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onClose(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -67,7 +69,7 @@ export const OutputLaunchModal: React.FC<{
       if (output === "two") {
         setSetting(OUTPUT2_LAST_SET_KEY, setId).catch(() => {});
       }
-      onClose();
+      onClose(true);
     } catch (err) {
       console.error("launch output failed:", err);
       setBusy(false);
@@ -99,7 +101,7 @@ export const OutputLaunchModal: React.FC<{
             {t("presentation.output.launchTitle", { n })}
           </h3>
           <button
-            onClick={onClose}
+            onClick={() => onClose(false)}
             className="text-muted hover:text-inherit"
             aria-label={t("home.overlay.cancel")}
           >
@@ -181,7 +183,7 @@ export const OutputLaunchModal: React.FC<{
 
         <div className="px-4 py-3 border-t border-border flex justify-end">
           <button
-            onClick={onClose}
+            onClick={() => onClose(false)}
             className="px-4 py-2 text-sm rounded-lg bg-surface-2 hover:bg-border transition-colors"
           >
             {t("home.overlay.cancel")}

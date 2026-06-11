@@ -45,7 +45,8 @@
       "Bash(git ls-files *)",
       "Bash(npx vite *)",
       "Bash(git push *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

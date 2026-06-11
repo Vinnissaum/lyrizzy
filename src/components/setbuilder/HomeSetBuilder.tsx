@@ -175,6 +175,9 @@ export const HomeSetBuilder: React.FC = () => {
       });
     } catch (err) {
       console.error("import presentation failed:", err);
+      const payload = err as { code?: string; params?: Record<string, string> };
+      setErrorToast(t(`error.${payload.code ?? "unknown"}`, payload.params));
+      setTimeout(() => setErrorToast(null), 6000);
     } finally {
       setIsImportingPresentation(false);
     }

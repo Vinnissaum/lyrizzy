@@ -214,8 +214,9 @@ fn rasterize_pdf(
 }
 
 /// Bind to a pdfium dynamic library. Tries, in order: bundled next to the Tauri
-/// resources (and a `pdfium/` subdir), a `PDFIUM_LIB_DIR` override (handy for
-/// `tauri dev`), then a system-installed pdfium.
+/// resources (and a `pdfium/` subdir), a `PDFIUM_LIB_DIR` override, the in-repo
+/// `resources/pdfium` dir during `tauri dev` (debug builds only), then a
+/// system-installed pdfium.
 fn bind_pdfium(resource_dir: Option<&Path>) -> Result<pdfium_render::prelude::Pdfium, String> {
     use pdfium_render::prelude::*;
 
@@ -227,6 +228,11 @@ fn bind_pdfium(resource_dir: Option<&Path>) -> Result<pdfium_render::prelude::Pd
     if let Ok(dir) = std::env::var("PDFIUM_LIB_DIR") {
         dirs.push(PathBuf::from(dir));
     }
+    // `tauri dev` doesn't stage bundled resources, so resource_dir won't hold the
+    // library. Fall back to the checked-in copy in the source tree. Debug-only so
+    // release builds rely solely on the bundled/ system library.
+    #[cfg(debug_assertions)]
+    dirs.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("pdfium"));
 
     for dir in &dirs {
         let lib = Pdfium::pdfium_platform_library_name_at_path(dir);
@@ -244,6 +250,21 @@ fn bind_pdfium(resource_dir: Option<&Path>) -> Result<pdfium_render::prelude::Pd
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    /// The checked-in pdfium library (used by `tauri dev`) must be loadable on
+    /// the current platform — guards against a missing/corrupt/wrong-arch binary.
+    #[test]
+    fn checked_in_pdfium_library_loads() {
+        use pdfium_render::prelude::*;
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources")
+            .join("pdfium");
+        let lib = Pdfium::pdfium_platform_library_name_at_path(&dir);
+        assert!(
+            Pdfium::bind_to_library(&lib).is_ok(),
+            "failed to load checked-in pdfium at {lib:?}"
+        );
+    }
 
     #[test]
     fn soffice_path_bundled_takes_priority() {

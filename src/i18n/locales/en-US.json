@@ -788,6 +788,14 @@
       "no_monitors": "No monitor detected",
       "empty_set": "Add items to the set before presenting"
     },
+    "media": {
+      "no_extension": "Unsupported file: the file has no extension",
+      "unsupported_container": "Unsupported file type: .{{ext}}",
+      "libreoffice_not_found": "LibreOffice was not found. Install LibreOffice to import PDF/PPT files.",
+      "conversion_failed": "Could not convert the presentation: {{detail}}",
+      "copy_error": "Could not copy the file: {{detail}}",
+      "db_error": "Database error: {{detail}}"
+    },
     "unknown": "Failed to start presentation"
   },
   "errors": {

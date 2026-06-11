@@ -788,6 +788,14 @@
       "no_monitors": "Nenhum monitor detectado",
       "empty_set": "Adicione itens ao conjunto antes de apresentar"
     },
+    "media": {
+      "no_extension": "Arquivo não suportado: o arquivo não tem extensão",
+      "unsupported_container": "Tipo de arquivo não suportado: .{{ext}}",
+      "libreoffice_not_found": "LibreOffice não encontrado. Instale o LibreOffice para importar arquivos PDF/PPT.",
+      "conversion_failed": "Não foi possível converter a apresentação: {{detail}}",
+      "copy_error": "Não foi possível copiar o arquivo: {{detail}}",
+      "db_error": "Erro no banco de dados: {{detail}}"
+    },
     "unknown": "Erro ao iniciar apresentação"
   },
   "errors": {

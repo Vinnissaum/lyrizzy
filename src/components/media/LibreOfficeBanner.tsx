@@ -25,6 +25,7 @@ export const LibreOfficeBanner: React.FC = () => {
       <div className="flex-1 min-w-0">
         <p className="font-medium text-warning">{t("media.libreofficeBanner.title")}</p>
         <p className="text-warning mt-0.5">{t("media.libreofficeBanner.body")}</p>
+        <p className="text-warning/80 mt-1 text-xs">{t("media.libreofficeBanner.hint")}</p>
       </div>
       <button
         onClick={() => setDismissed(true)}

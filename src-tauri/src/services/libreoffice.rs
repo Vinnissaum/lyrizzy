@@ -15,6 +15,8 @@ const BUNDLED_SOFFICE_BIN: &str = "soffice";
 /// 2. `SOFFICE_PATH` environment variable
 /// 3. `soffice` on PATH (probed via `--version`)
 /// 4. `libreoffice` on PATH (common on Debian/Ubuntu, where `soffice` may be absent)
+/// 5. Well-known install locations (the Windows/macOS installers don't add
+///    LibreOffice to PATH, so a default install is otherwise undetectable).
 pub fn soffice_path(resource_dir: Option<&Path>) -> Option<PathBuf> {
     // 1. Bundled binary
     if let Some(res) = resource_dir {
@@ -47,7 +49,47 @@ pub fn soffice_path(resource_dir: Option<&Path>) -> Option<PathBuf> {
         }
     }
 
-    None
+    // 5. Well-known install locations not on PATH.
+    well_known_install_paths().into_iter().find(|p| p.exists())
+}
+
+/// Default install locations of the `soffice` executable, per platform.
+/// On Windows the installer writes to `Program Files` but does not modify PATH;
+/// on macOS the app bundle ships the binary under `Contents/MacOS`.
+fn well_known_install_paths() -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        // Honour ProgramFiles / ProgramFiles(x86) when set, with hard-coded
+        // fallbacks for the typical English-locale install roots.
+        let mut roots: Vec<PathBuf> = Vec::new();
+        for var in ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"] {
+            if let Ok(val) = std::env::var(var) {
+                roots.push(PathBuf::from(val));
+            }
+        }
+        roots.push(PathBuf::from(r"C:\Program Files"));
+        roots.push(PathBuf::from(r"C:\Program Files (x86)"));
+        roots
+            .into_iter()
+            .map(|r| r.join("LibreOffice").join("program").join("soffice.exe"))
+            .collect()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        vec![PathBuf::from(
+            "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        )]
+    }
+    #[cfg(all(not(windows), not(target_os = "macos")))]
+    {
+        // Common Linux locations for the off-PATH case (e.g. Flatpak, /opt).
+        vec![
+            PathBuf::from("/usr/bin/soffice"),
+            PathBuf::from("/usr/local/bin/soffice"),
+            PathBuf::from("/opt/libreoffice/program/soffice"),
+            PathBuf::from("/snap/bin/libreoffice"),
+        ]
+    }
 }
 
 /// Convert a presentation file (PPTX, PDF, etc.) to PNG slides using LibreOffice headless.
@@ -141,6 +183,20 @@ mod tests {
         std::env::remove_var("SOFFICE_PATH");
 
         assert_eq!(result, Some(exe));
+    }
+
+    #[test]
+    fn well_known_install_paths_target_soffice_binary() {
+        let paths = well_known_install_paths();
+        assert!(!paths.is_empty());
+        // Every candidate must point at a soffice executable, not a directory.
+        for p in paths {
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            assert!(
+                name == "soffice" || name == "soffice.exe" || name == "libreoffice",
+                "unexpected candidate file name: {name}"
+            );
+        }
     }
 
     #[test]

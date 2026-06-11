@@ -446,6 +446,7 @@
     "libreofficeBanner": {
       "title": "LibreOffice not found",
       "body": "PPTX/PDF presentation import requires LibreOffice. Download it at libreoffice.org and restart the app.",
+      "hint": "Already installed in a custom location? Set the SOFFICE_PATH environment variable to your soffice executable and restart the app.",
       "dismiss": "Dismiss"
     },
     "slideshow": {

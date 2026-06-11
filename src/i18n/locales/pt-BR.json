@@ -446,6 +446,7 @@
     "libreofficeBanner": {
       "title": "LibreOffice não encontrado",
       "body": "A importação de apresentações PPTX/PDF precisa do LibreOffice. Baixe em libreoffice.org e reinicie o app.",
+      "hint": "Já está instalado em um local personalizado? Defina a variável de ambiente SOFFICE_PATH apontando para o executável soffice e reinicie o app.",
       "dismiss": "Fechar"
     },
     "slideshow": {

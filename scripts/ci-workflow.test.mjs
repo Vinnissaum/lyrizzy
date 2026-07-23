@@ -40,10 +40,10 @@ describe("ci workflow — pinned toolchains, never latest (CI-02)", () => {
     expect(node.with["node-version"]).toBe("24.18.0");
   });
 
-  it("pins the Rust toolchain to 1.82.0", () => {
+  it("pins the Rust toolchain to 1.96.0", () => {
     const rust = usesStep("dtolnay/rust-toolchain");
     expect(rust).toBeDefined();
-    expect(rust.uses).toBe("dtolnay/rust-toolchain@1.82.0");
+    expect(rust.uses).toBe("dtolnay/rust-toolchain@1.96.0");
   });
 
   it("pins runs-on to ubuntu-24.04", () => {

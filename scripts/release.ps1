@@ -1,15 +1,21 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Build, sign, and emit latest.json for a Trinity Lyrics v2 release.
+    Local emergency fallback: build, sign, and emit latest.json for a Lyrizzy
+    release on Windows only, without GitHub Actions.
 
 .DESCRIPTION
-    Runs npm run tauri build, signs the NSIS installer, and writes
-    dist/latest.json in the format expected by tauri-plugin-updater.
+    The primary release path is pushing a v* git tag, which runs
+    .github/workflows/release.yml (builds + signs both Windows and Linux,
+    stages a draft GitHub Release). Use this script only when GitHub Actions
+    is unavailable and a release cannot wait — see docs/release.md
+    "Local Emergency Fallback". It runs npm run tauri build, signs the NSIS
+    installer, and writes dist/latest.json in the format expected by
+    tauri-plugin-updater, for Windows only.
 
 .PARAMETER PrivateKeyPath
     Path to the Tauri signing private key.
-    Defaults to $env:TAURI_PRIVATE_KEY_PATH, then ~/.trinity-tauri-private-key.
+    Defaults to $env:TAURI_SIGNING_PRIVATE_KEY_PATH, then ~/.trinity-tauri-private-key.
 
 .PARAMETER Version
     Version string for this release (e.g. "1.2.0").
@@ -17,18 +23,18 @@
 
 .PARAMETER RepoUrl
     GitHub repository base URL (without trailing slash).
-    E.g. "https://github.com/owner/trinity-lyrics"
+    E.g. "https://github.com/Vinnissaum/triade"
 
 .PARAMETER ReleaseNotes
     Short release notes text included in latest.json.
 
 .EXAMPLE
-    .\scripts\release.ps1 -Version "1.2.0" -RepoUrl "https://github.com/owner/trinity-lyrics"
+    .\scripts\release.ps1 -Version "1.2.0" -RepoUrl "https://github.com/Vinnissaum/triade"
 #>
 param(
     [string]$PrivateKeyPath = "",
     [string]$Version        = "",
-    [string]$RepoUrl        = "https://github.com/owner/trinity-lyrics",
+    [string]$RepoUrl        = "https://github.com/Vinnissaum/triade",
     [string]$ReleaseNotes   = "See GitHub Release for full changelog."
 )
 
@@ -38,7 +44,7 @@ $ErrorActionPreference = "Stop"
 # ── Resolve private key path ─────────────────────────────────────────────────
 
 if (-not $PrivateKeyPath) {
-    $PrivateKeyPath = $env:TAURI_PRIVATE_KEY_PATH
+    $PrivateKeyPath = $env:TAURI_SIGNING_PRIVATE_KEY_PATH
 }
 if (-not $PrivateKeyPath) {
     $PrivateKeyPath = Join-Path $env:USERPROFILE ".trinity-tauri-private-key"
@@ -74,8 +80,8 @@ Write-Host "Installer: $installer" -ForegroundColor Green
 # ── Sign ──────────────────────────────────────────────────────────────────────
 
 Write-Host "Signing installer..." -ForegroundColor Cyan
-$env:TAURI_PRIVATE_KEY = (Get-Content $PrivateKeyPath -Raw).Trim()
-$env:TAURI_KEY_PASSWORD = if ($env:TAURI_KEY_PASSWORD) { $env:TAURI_KEY_PASSWORD } else { "" }
+$env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $PrivateKeyPath -Raw).Trim()
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = if ($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) { $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD } else { "" }
 
 npx tauri signer sign -k $PrivateKeyPath -- $installer
 if ($LASTEXITCODE -ne 0) { throw "tauri signer sign failed (exit $LASTEXITCODE)" }
@@ -111,10 +117,13 @@ $manifest | ConvertTo-Json -Depth 4 | Out-File -FilePath $manifestPath -Encoding
 Write-Host ""
 Write-Host "latest.json written to: $manifestPath" -ForegroundColor Green
 Write-Host ""
+Write-Host "This is the Windows-only local emergency fallback (see docs/release.md)." -ForegroundColor Yellow
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "  1. Create a GitHub Release for tag v$Version"
 Write-Host "  2. Upload: $installer"
 Write-Host "  3. Upload: $manifestPath"
 Write-Host "  4. Publish the release"
+Write-Host "  5. Follow up with a normal 'git tag v$Version && git push origin v$Version' once"
+Write-Host "     GitHub Actions is available again, to get a matching Linux build"
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green

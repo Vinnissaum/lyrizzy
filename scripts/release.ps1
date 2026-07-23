@@ -23,18 +23,18 @@
 
 .PARAMETER RepoUrl
     GitHub repository base URL (without trailing slash).
-    E.g. "https://github.com/Vinnissaum/triade"
+    E.g. "https://github.com/Vinnissaum/lyrizzy"
 
 .PARAMETER ReleaseNotes
     Short release notes text included in latest.json.
 
 .EXAMPLE
-    .\scripts\release.ps1 -Version "1.2.0" -RepoUrl "https://github.com/Vinnissaum/triade"
+    .\scripts\release.ps1 -Version "1.2.0" -RepoUrl "https://github.com/Vinnissaum/lyrizzy"
 #>
 param(
     [string]$PrivateKeyPath = "",
     [string]$Version        = "",
-    [string]$RepoUrl        = "https://github.com/Vinnissaum/triade",
+    [string]$RepoUrl        = "https://github.com/Vinnissaum/lyrizzy",
     [string]$ReleaseNotes   = "See GitHub Release for full changelog."
 )
 

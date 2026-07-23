@@ -1,11 +1,11 @@
 # Project Structure
 
-**Root:** `C:\git\triade`
+**Root:** `C:\git\lyrizzy`
 
 ## Directory Tree
 
 ```
-triade/
+lyrizzy/
 ├── src/                        ← React frontend
 │   ├── main.tsx                ← Entry: branches by window label
 │   ├── App.tsx                 ← Scaffold placeholder (not used by main.tsx)

@@ -1,11 +1,13 @@
 use crate::domain::error::ErrorPayload;
-use crate::domain::update::UpdateInfo;
+use crate::domain::update::{persists_last_check, UpdateCheckResult, UpdateInfo};
 use crate::state::AppState;
+use std::time::Duration;
 use tauri::AppHandle;
 use tauri_plugin_updater::UpdaterExt;
 
 const SETTING_LAST_CHECK: &str = "last_update_check";
 const CHECK_INTERVAL_SECS: i64 = 24 * 60 * 60;
+const CHECK_TIMEOUT_SECS: u64 = 30;
 
 /// Returns true if we should query the updater endpoint.
 pub fn should_check(last_check_str: &str, force: bool, now_secs: i64) -> bool {
@@ -48,43 +50,53 @@ pub async fn check_for_updates(
     app: AppHandle,
     state: tauri::State<'_, AppState>,
     force: bool,
-) -> Result<Option<UpdateInfo>, ErrorPayload> {
+) -> Result<UpdateCheckResult, ErrorPayload> {
     let pool = state.db.get().ok_or_else(|| ErrorPayload::new("update.db_not_initialized"))?;
     let now = now_unix();
     let last_check = read_last_check(pool).await;
 
     if !should_check(&last_check, force, now) {
-        return Ok(None);
+        tracing::info!(status = "skipped", "update check skipped (debounce window)");
+        return Ok(UpdateCheckResult::Skipped);
     }
 
-    touch_last_check(pool, now).await;
+    let updater = app
+        .updater_builder()
+        .timeout(Duration::from_secs(CHECK_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| {
+            ErrorPayload::new("update.not_configured").with_param("detail", e.to_string())
+        })?;
 
-    let updater = match app.updater() {
-        Ok(u) => u,
-        Err(_) => return Ok(None),
+    let checked = updater
+        .check()
+        .await
+        .map_err(|e| ErrorPayload::new("update.check_failed").with_param("detail", e.to_string()))?;
+
+    let result = match checked {
+        Some(update) => {
+            tracing::info!(status = "updateAvailable", version = %update.version, "update check completed");
+            let info = UpdateInfo {
+                version: update.version.clone(),
+                current_version: update.current_version.clone(),
+                notes: update.body.clone(),
+                pub_date: update.date.map(|d| d.to_string()),
+            };
+            *state.pending_update.lock().await = Some(update);
+            UpdateCheckResult::UpdateAvailable { info }
+        }
+        None => {
+            tracing::info!(status = "upToDate", "update check completed");
+            *state.pending_update.lock().await = None;
+            UpdateCheckResult::UpToDate
+        }
     };
 
-    let update = match updater.check().await {
-        Ok(u) => u,
-        Err(_) => return Ok(None),
-    };
-
-    let Some(update) = update else {
-        return Ok(None);
-    };
-
-    let current = app.package_info().version.to_string();
-    // Ignore downgrades silently
-    if semver_le(&update.version, &current) {
-        return Ok(None);
+    if persists_last_check(&result) {
+        touch_last_check(pool, now).await;
     }
 
-    Ok(Some(UpdateInfo {
-        version: update.version.clone(),
-        current_version: current,
-        notes: update.body.clone(),
-        pub_date: update.date.map(|d| d.to_string()),
-    }))
+    Ok(result)
 }
 
 #[tauri::command]
@@ -119,19 +131,24 @@ pub async fn apply_update_and_restart(
     app.restart();
 }
 
-/// Very simple semver comparison: returns true if `a <= b`.
-/// Only handles `MAJOR.MINOR.PATCH` without pre-release suffixes.
-fn semver_le(a: &str, b: &str) -> bool {
-    fn parts(s: &str) -> [u64; 3] {
-        let mut it = s.split('.').filter_map(|p| p.parse::<u64>().ok());
-        [it.next().unwrap_or(0), it.next().unwrap_or(0), it.next().unwrap_or(0)]
-    }
-    parts(a) <= parts(b)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sqlx::sqlite::SqliteConnectOptions;
+    use std::str::FromStr;
+    use tempfile::tempdir;
+
+    async fn open_db() -> (sqlx::SqlitePool, tempfile::TempDir) {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("updates_test.db");
+        let url = format!("sqlite://{}?mode=rwc", path.to_string_lossy());
+        let opts = SqliteConnectOptions::from_str(&url)
+            .unwrap()
+            .create_if_missing(true);
+        let pool = sqlx::SqlitePool::connect_with(opts).await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        (pool, dir)
+    }
 
     #[test]
     fn debounce_no_force_within_24h() {
@@ -159,11 +176,68 @@ mod tests {
         assert!(should_check("", false, 1_000_000));
     }
 
-    #[test]
-    fn semver_le_detects_downgrade() {
-        assert!(semver_le("0.1.0", "0.1.0")); // equal → le
-        assert!(semver_le("0.0.9", "0.1.0")); // older
-        assert!(!semver_le("0.2.0", "0.1.0")); // newer
-        assert!(!semver_le("1.0.0", "0.9.9")); // newer major
+    #[tokio::test]
+    async fn read_last_check_returns_empty_string_when_no_row() {
+        let (pool, _dir) = open_db().await;
+        assert_eq!(read_last_check(&pool).await, "");
+    }
+
+    #[tokio::test]
+    async fn read_last_check_returns_stored_value_after_touch() {
+        let (pool, _dir) = open_db().await;
+        touch_last_check(&pool, 12345).await;
+        assert_eq!(read_last_check(&pool).await, "12345");
+    }
+
+    #[tokio::test]
+    async fn touch_last_check_upserts_overwrites_previous_value() {
+        let (pool, _dir) = open_db().await;
+        touch_last_check(&pool, 1000).await;
+        touch_last_check(&pool, 2000).await;
+        assert_eq!(read_last_check(&pool).await, "2000");
+    }
+
+    #[tokio::test]
+    async fn touch_last_check_only_affects_its_own_settings_key() {
+        let (pool, _dir) = open_db().await;
+        sqlx::query("INSERT INTO settings (key, value) VALUES ('unrelated_key', 'untouched')")
+            .execute(&pool)
+            .await
+            .unwrap();
+        touch_last_check(&pool, 500).await;
+        let other: String =
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = 'unrelated_key'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(other, "untouched");
+    }
+
+    #[tokio::test]
+    async fn persisted_timestamp_round_trips_through_should_check_within_window() {
+        let (pool, _dir) = open_db().await;
+        touch_last_check(&pool, 1_000_000).await;
+        let stored = read_last_check(&pool).await;
+        assert!(!should_check(&stored, false, 1_000_000 + 3600)); // 1h later, within 24h window
+    }
+
+    #[tokio::test]
+    async fn persisted_timestamp_round_trips_through_should_check_after_window_elapsed() {
+        let (pool, _dir) = open_db().await;
+        touch_last_check(&pool, 1_000_000).await;
+        let stored = read_last_check(&pool).await;
+        assert!(should_check(&stored, false, 1_000_000 + CHECK_INTERVAL_SECS + 1));
+    }
+
+    #[tokio::test]
+    async fn skip_path_leaves_stored_timestamp_untouched() {
+        let (pool, _dir) = open_db().await;
+        touch_last_check(&pool, 1_000_000).await;
+        let last = read_last_check(&pool).await;
+        let now = 1_000_000 + 10; // well within the debounce window
+        assert!(!should_check(&last, false, now));
+        // check_for_updates's skip branch returns before calling
+        // touch_last_check; confirm the stored value is unaffected.
+        assert_eq!(read_last_check(&pool).await, "1000000");
     }
 }

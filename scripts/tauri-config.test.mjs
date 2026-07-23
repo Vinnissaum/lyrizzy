@@ -14,9 +14,9 @@ describe("tauri.conf.json — updater artifacts", () => {
 });
 
 describe("tauri.conf.json — updater endpoint", () => {
-  it("points at the real Vinnissaum/triade GitHub Releases latest.json", () => {
+  it("points at the real Vinnissaum/lyrizzy GitHub Releases latest.json", () => {
     expect(conf.plugins.updater.endpoints).toEqual([
-      "https://github.com/Vinnissaum/triade/releases/latest/download/latest.json",
+      "https://github.com/Vinnissaum/lyrizzy/releases/latest/download/latest.json",
     ]);
   });
 

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use sqlx::SqlitePool;
 use tokio::sync::{Mutex, OnceCell, RwLock};
@@ -58,6 +59,13 @@ pub struct AppState {
     /// proxied. The child is spawned with `kill_on_drop` so it dies with the app.
     /// Global (not per-output): only one camera is proxied at a time.
     pub stream_proxy: Arc<Mutex<Option<StreamProxy>>>,
+
+    /// Last Update handed back by a successful check, cached so apply
+    /// doesn't re-fetch the manifest. Cleared on UpToDate.
+    pub pending_update: Arc<Mutex<Option<tauri_plugin_updater::Update>>>,
+
+    /// Set while a download/install is in flight (single-flight guard).
+    pub update_in_progress: Arc<AtomicBool>,
 }
 
 impl AppState {
@@ -87,6 +95,8 @@ impl Default for AppState {
             db: OnceCell::new(),
             outputs,
             stream_proxy: Arc::new(Mutex::new(None)),
+            pending_update: Arc::new(Mutex::new(None)),
+            update_in_progress: Arc::new(AtomicBool::new(false)),
         }
     }
 }

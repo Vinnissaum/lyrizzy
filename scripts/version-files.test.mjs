@@ -111,7 +111,7 @@ describe("setCargoTomlVersion / readVersionFromCargoToml", () => {
       .map((l, i) => (l !== updatedLines[i] ? i : -1))
       .filter((i) => i !== -1);
     expect(diffIndices).toHaveLength(1);
-    expect(originalLines[diffIndices[0]]).toBe('version = "0.1.0"');
+    expect(originalLines[diffIndices[0]]).toBe(`version = "${readVersionFromCargoToml(original)}"`);
     expect(updatedLines[diffIndices[0]]).toBe('version = "9.9.9"');
   });
 });
@@ -148,16 +148,22 @@ describe("setCargoLockVersion / readVersionFromCargoLock", () => {
     expect(() => setCargoLockVersion(fragment, "9.9.9", "does-not-exist")).toThrow();
   });
 
-  it("reads the real Cargo.lock tauri-app version", () => {
+  it("reads the real Cargo.lock tauri-app version, consistent with package.json", () => {
     const original = readFileSync(path.join(repoRoot, "src-tauri/Cargo.lock"), "utf8");
-    expect(readVersionFromCargoLock(original, "tauri-app")).toBe("0.1.0");
+    const pkg = readFileSync(path.join(repoRoot, "package.json"), "utf8");
+    // Cross-file consistency (survives version bumps): the Cargo.lock tauri-app
+    // entry must match package.json rather than a hardcoded literal.
+    expect(readVersionFromCargoLock(original, "tauri-app")).toBe(readVersionFromPackageJson(pkg));
   });
 });
 
 describe("readVersionFromPackageJson", () => {
-  it("reads the version field", () => {
+  it("reads the version field, consistent with Cargo.toml", () => {
     const text = readFileSync(path.join(repoRoot, "package.json"), "utf8");
-    expect(readVersionFromPackageJson(text)).toBe("0.1.0");
+    const cargoToml = readFileSync(path.join(repoRoot, "src-tauri/Cargo.toml"), "utf8");
+    // Cross-file consistency (survives version bumps): package.json must match
+    // the Cargo.toml [package] version rather than a hardcoded literal.
+    expect(readVersionFromPackageJson(text)).toBe(readVersionFromCargoToml(cargoToml));
   });
 });
 

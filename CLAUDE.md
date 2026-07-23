@@ -15,8 +15,8 @@
 ## IPC Contract
 - All Tauri commands declared in commands/ and registered in lib.rs invoke_handler![]
 - All frontend calls go through src/api/commands.ts — never raw invoke() outside this file
-- Events emitted by Rust: "state_changed" (PresentationState), "media_library_changed", "countdown_tick"
-- Both windows listen to ALL events
+- Events emitted by Rust: "state_changed" (PresentationState), "media_library_changed", "countdown_tick", "update_progress" (UpdateProgress)
+- Both windows listen to ALL events, but only the operator window subscribes to "update_progress" — the presentation window has no update UI
 
 ## Two-Window Pattern
 - Operator window: label "operator", full UI, all commands

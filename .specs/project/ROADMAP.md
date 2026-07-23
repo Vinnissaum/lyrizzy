@@ -257,4 +257,46 @@
 | P11-04 | Memoized `SlideCard` (stable `appearance`/`onSelect`) so the full strophe grid does not re-render per state change | Done |
 | P11-05 | Strophe preview cards crop tightly to 16:9 (aspect-ratio on outer button + grid `items-start`), no empty space below | Done |
 
+---
+
+## Phase 13: Auto-Update & Release Pipeline — DONE
+
+**Goal:** Fix the auto-updater actively reporting "up to date" when the check silently failed (placeholder pubkey + `OWNER/REPO` endpoint), replace the v1-era manual sign/upload release ritual with a tag-push → GitHub Actions → signed draft release pipeline, and give the About panel a real button with visible download progress instead of a muted text link and a frozen-looking install.
+**Completed:** 2026-07-23.
+**Spec:** `.specs/features/phase13-auto-update-release/spec.md` (29 requirements P13-01..P13-29). Verified independently per phase — see `.specs/features/phase13-auto-update-release/validation.md` for the Phase 3 (frontend) report.
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| P13-01 | `bundle.createUpdaterArtifacts: true` so `tauri build` emits `.sig` files | Done |
+| P13-02 | Real `plugins.updater.endpoints` + generated `pubkey` (placeholder removed) | Done |
+| P13-03 | `plugins.updater.windows.installMode: "passive"` | Done |
+| P13-04 | `scripts/bump-version.mjs` writes all 5 version sources, touches no dependency pin | Done |
+| P13-05 | `bump-version.mjs` rejects a malformed version, writes nothing | Done |
+| P13-06 | `verify-version` CI job fails before any build if tag and the 4 files disagree | Done |
+| P13-07 | `tauri-apps/tauri-action@v1` on `windows-latest` + `ubuntu-24.04`, `releaseDraft`/`uploadUpdaterJson`/`updaterJsonPreferNsis` | Done |
+| P13-08 | `permissions: contents: write`, per-tag `concurrency` group, no `pull_request` trigger | Done |
+| P13-09 | Draft release contains both signed bundles + two-platform `latest.json` | Manual verification in progress (throwaway `v0.1.1` tag pushed 2026-07-23; see `tasks.md` §Manual Verification) |
+| P13-10 | `check_for_updates` returns discriminated `UpdateCheckResult`, never maps a failure to success | Done |
+| P13-11 | Builder/check errors map to `update.not_configured` / `update.check_failed` with detail | Done |
+| P13-12 | `last_update_check` written only on a completed check, never on failure | Done |
+| P13-13 | Manual check error → About panel shows the error code with `text-danger` | Done |
+| P13-14 | Launch check error/skipped → no banner, dialog, toast, or error anywhere | Done |
+| P13-15 | 30s check timeout, surfaces as `update.check_failed` | Done |
+| P13-16 | About tab shows `Lyrizzy` + running version via `get_app_version` | Done |
+| P13-17 | Update control is a real bordered button, not a muted text link | Done |
+| P13-18 | In-flight manual check: disabled + spinner + "Checking…"; settles → re-enabled | Done |
+| P13-19 | `upToDate` renders inline; the `fixed top-4 right-4` floating toast removed | Done |
+| P13-20 | `updateAvailable` opens `UpdateDialog` with the returned info | Done |
+| P13-21 | Every new string added to both `en-US` and `pt-BR`, parity-guarded by a test | Done |
+| P13-22 | `apply_update_and_restart` emits `update_progress` on first chunk, throttled ≤250ms, plus a final emit | Done |
+| P13-23 | Determinate bar + integer % when `total` known; indeterminate, never `NaN`, when unknown | Done |
+| P13-24 | Download-complete → installing state (UI half); full install+restart | UI verified; end-to-end install+restart pending manual verification |
+| P13-25 | Concurrent apply → `update.already_in_progress`, no second download started | Done |
+| P13-26 | Download/install failure → error shown, both buttons re-enabled, `signature_invalid` stays distinct | Done |
+| P13-27 | `docs/release.md` documents the tag-push flow, v2 env var names, both secrets, D-50 fork-PR reasoning | Done |
+| P13-28 | `scripts/release.ps1` updated to v2 env names, re-scoped as an explicit local emergency fallback | Done |
+| P13-29 | `tracing` records check outcome + install failure code; `update_progress` documented in `CLAUDE.md` | Done |
+
+**Deliverable:** Pushing a `v*` tag builds, signs, and stages a draft two-platform release with no manual signing step; "Check for updates" never claims to be up to date when the check actually failed; the About panel has a real button with inline results; a multi-minute install shows a live progress bar instead of looking frozen. P13-09 and the full P13-24 end-to-end leg close on the manual checklist in `tasks.md`, not by local gate.
+
 **Deliverable:** Operator shows/hides an Aviso over a blacked-out projector without ever toggling blackout (clearing restores black); strophe/set-item highlight moves the instant you click; strophe cards are tight 16:9 rectangles, pixel-faithful to projection.

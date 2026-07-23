@@ -28,3 +28,6 @@ dist-ssr
 *.tauri-private-key
 *trinity-tauri-private-key*
 *.key
+
+# Local MSVC toolchain overrides — machine-specific absolute paths, breaks CI/other machines
+.cargo/config.toml

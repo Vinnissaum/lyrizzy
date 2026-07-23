@@ -870,7 +870,15 @@
     "applyFailed": "Install failed: {{detail}}",
     "checkManual": "Check for updates",
     "upToDate": "You are already on the latest version.",
-    "checkFailed": "Could not check for updates."
+    "checkFailed": "Could not check for updates.",
+    "checking": "Checking…",
+    "checkErrorWithCode": "Could not check for updates: {{code}}",
+    "downloading": "Downloading… {{percent}}%",
+    "downloadingUnknown": "Downloading…",
+    "alreadyInProgress": "An update is already being installed."
+  },
+  "about": {
+    "version": "Version {{version}}"
   },
   "common": {
     "on": "On",

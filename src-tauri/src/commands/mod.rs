@@ -1,4 +1,5 @@
 // Commands module — Tauri command handlers
+pub mod app_info;
 pub mod artifact;
 pub mod backup;
 pub mod countdown;

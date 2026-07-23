@@ -5,6 +5,7 @@ mod protocol;
 pub mod services;
 mod state;
 
+use commands::app_info::get_app_version;
 use commands::artifact::{
     export_set, export_settings_profile, export_songs, import_artifact, plan_artifact_import,
 };
@@ -244,6 +245,7 @@ pub fn run() {
             clear_overlay,
             check_for_updates,
             apply_update_and_restart,
+            get_app_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

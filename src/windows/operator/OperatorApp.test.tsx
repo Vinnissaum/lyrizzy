@@ -260,6 +260,18 @@ describe("OperatorApp", () => {
   });
 
   describe("silent re-arm at launch", () => {
+    // These tests derive schedules from the current wall clock (now ± 2h). Pin
+    // it to midday so the offsets never cross midnight and flip "later today" /
+    // "earlier today". Only Date is faked, so waitFor and the async invoke
+    // mocks keep running on real timers.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2024, 0, 15, 12, 0, 0, 0));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it("arms a later-today scheduled countdown silently (no prompt)", async () => {
       // Pick a trigger time ~2h in the future so it's 'later today' and not
       // close to midnight rollover.

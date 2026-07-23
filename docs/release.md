@@ -83,7 +83,7 @@ the private key in CI secrets is safe here.
    Smoke-test the installer if this is a meaningful release.
 
 5. **Publish.** Only after publishing does
-   `https://github.com/Vinnissaum/triade/releases/latest/download/latest.json`
+   `https://github.com/Vinnissaum/lyrizzy/releases/latest/download/latest.json`
    start returning 200 — **while the release is a draft, that URL 404s, and the
    app's "Check for updates" reports `update.check_failed`, never "up to date".**
    This is intentional: it is the safety gate that stops a broken build from
@@ -127,7 +127,7 @@ when GitHub Actions is unavailable and a release cannot wait. It requires the sa
 `$env:TAURI_SIGNING_PRIVATE_KEY_PATH` pointing elsewhere):
 
 ```powershell
-.\scripts\release.ps1 -Version "1.2.0" -RepoUrl "https://github.com/Vinnissaum/triade"
+.\scripts\release.ps1 -Version "1.2.0" -RepoUrl "https://github.com/Vinnissaum/lyrizzy"
 ```
 
 It writes `dist/latest.json` and prints the manual steps to create the GitHub

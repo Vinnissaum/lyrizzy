@@ -176,7 +176,9 @@ export const OperatorApp: React.FC = () => {
     checkRestoreInProgress().then((v) => setRestoreInProgress(v)).catch(() => {});
 
     checkForUpdates(false)
-      .then((info) => { if (info) setPendingUpdate(info); })
+      .then((result) => {
+        if (result.status === "updateAvailable") setPendingUpdate(result.info);
+      })
       .catch(() => {});
 
     loadFixedSet();

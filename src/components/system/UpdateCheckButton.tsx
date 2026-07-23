@@ -18,9 +18,9 @@ export const UpdateCheckButton: React.FC = () => {
   const handleCheck = async () => {
     setChecking(true);
     try {
-      const info = await checkForUpdates(true);
-      if (info) {
-        setUpdate(info);
+      const result = await checkForUpdates(true);
+      if (result.status === "updateAvailable") {
+        setUpdate(result.info);
       } else {
         showToast(t("updates.upToDate"));
       }

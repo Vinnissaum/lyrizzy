@@ -28,8 +28,8 @@ vi.mock("../reports/CCLIReportScreen", () => ({
   CCLIReportScreen: () => <div data-testid="ccli-report-screen" />,
 }));
 
-vi.mock("../system/UpdateCheckButton", () => ({
-  UpdateCheckButton: () => <div data-testid="update-check-button" />,
+vi.mock("./AboutPanel", () => ({
+  AboutPanel: () => <div data-testid="about-panel" />,
 }));
 
 import { SettingsScreen } from "./SettingsScreen";

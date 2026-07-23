@@ -5,7 +5,7 @@ import { KeyBindingsScreen } from "./KeyBindingsScreen";
 import { MonitorPicker } from "./MonitorPicker";
 import { MicAudioSettings } from "./MicAudioSettings";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
-import { UpdateCheckButton } from "../system/UpdateCheckButton";
+import { AboutPanel } from "./AboutPanel";
 import { useSettingsStore } from "../../stores/settings";
 import { OUTPUT2_MONITOR_KEY } from "../../api/commands";
 import type {
@@ -392,7 +392,7 @@ export const SettingsScreen: React.FC = () => {
               <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                 {t("settings.about")}
               </h3>
-              <UpdateCheckButton />
+              <AboutPanel />
             </div>
           )}
         </div>

@@ -1,24 +1,48 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
-import { applyUpdateAndRestart } from "../../api/commands";
-import type { UpdateInfo } from "../../types";
+import { applyUpdateAndRestart, onUpdateProgress } from "../../api/commands";
+import { formatProgress } from "./progress";
+import type { UpdateInfo, UpdateProgress } from "../../types";
 
 interface Props {
   update: UpdateInfo;
   onClose: () => void;
 }
 
+type Phase = "idle" | "downloading" | "installing" | "error";
+
 export const UpdateDialog: React.FC<Props> = ({ update, onClose }) => {
   const { t } = useTranslation();
-  const [applying, setApplying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [progress, setProgress] = useState<UpdateProgress | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const applying = phase === "downloading" || phase === "installing";
+
+  // Subscribe only for the lifetime of an apply — never while idle/error — and
+  // always unsubscribe, so a dialog left open (or closed mid-apply) never
+  // leaks a listener.
+  useEffect(() => {
+    if (!applying) return;
+    const unlistenPromise = onUpdateProgress((p) => {
+      setProgress(p);
+      if (p.total !== null && p.downloaded >= p.total) {
+        setPhase("installing");
+      }
+    });
+    return () => {
+      unlistenPromise.then((u) => u());
+    };
+  }, [applying]);
 
   const handleApply = async () => {
-    setApplying(true);
-    setError(null);
+    setPhase("downloading");
+    setProgress(null);
+    setErrorMsg(null);
     try {
       await applyUpdateAndRestart();
+      // On success the app restarts before this ever resolves; nothing to do.
     } catch (err: unknown) {
       const code =
         err !== null &&
@@ -27,13 +51,17 @@ export const UpdateDialog: React.FC<Props> = ({ update, onClose }) => {
           ? String((err as { code: unknown }).code)
           : String(err);
       if (code === "update.signature_invalid") {
-        setError(t("updates.signatureInvalid"));
+        setErrorMsg(t("updates.signatureInvalid"));
+      } else if (code === "update.already_in_progress") {
+        setErrorMsg(t("updates.alreadyInProgress"));
       } else {
-        setError(t("updates.applyFailed", { detail: code }));
+        setErrorMsg(t("updates.applyFailed", { detail: code }));
       }
-      setApplying(false);
+      setPhase("error");
     }
   };
+
+  const { percent, determinate } = formatProgress(progress);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -43,6 +71,7 @@ export const UpdateDialog: React.FC<Props> = ({ update, onClose }) => {
             {t("updates.dialogTitle", { version: update.version })}
           </h2>
           <button
+            data-testid="dialog-close"
             onClick={onClose}
             disabled={applying}
             className="text-muted hover:text-inherit leading-none disabled:opacity-50"
@@ -65,11 +94,37 @@ export const UpdateDialog: React.FC<Props> = ({ update, onClose }) => {
               {t("updates.noNotes")}
             </p>
           )}
+
+          {phase === "downloading" && (
+            <div className="mt-4 space-y-1">
+              <div className="h-2 w-full bg-surface-2 rounded-full overflow-hidden">
+                {determinate ? (
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${percent}%` }}
+                  />
+                ) : (
+                  <div className="h-full bg-primary animate-pulse w-1/3" />
+                )}
+              </div>
+              <p className="text-xs text-muted">
+                {determinate
+                  ? t("updates.downloading", { percent: String(percent) })
+                  : t("updates.downloadingUnknown")}
+              </p>
+            </div>
+          )}
+
+          {phase === "installing" && (
+            <p data-testid="installing-status" className="mt-4 text-sm text-muted">
+              {t("updates.applying")}
+            </p>
+          )}
         </div>
 
-        {error && (
+        {phase === "error" && errorMsg && (
           <div className="px-5 pb-2">
-            <p className="text-sm text-danger">{error}</p>
+            <p className="text-sm text-danger">{errorMsg}</p>
           </div>
         )}
 

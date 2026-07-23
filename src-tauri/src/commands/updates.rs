@@ -1,13 +1,16 @@
 use crate::domain::error::ErrorPayload;
-use crate::domain::update::{persists_last_check, UpdateCheckResult, UpdateInfo};
+use crate::domain::update::{persists_last_check, UpdateCheckResult, UpdateInfo, UpdateProgress};
 use crate::state::AppState;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 
 const SETTING_LAST_CHECK: &str = "last_update_check";
 const CHECK_INTERVAL_SECS: i64 = 24 * 60 * 60;
 const CHECK_TIMEOUT_SECS: u64 = 30;
+const PROGRESS_THROTTLE_MS: u64 = 250;
 
 /// Returns true if we should query the updater endpoint.
 pub fn should_check(last_check_str: &str, force: bool, now_secs: i64) -> bool {
@@ -43,6 +46,61 @@ async fn read_last_check(pool: &sqlx::SqlitePool) -> String {
         .ok()
         .flatten()
         .unwrap_or_default()
+}
+
+fn now_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Classifies a `download_and_install` failure by message content — the
+/// plugin's `Error` enum is `#[non_exhaustive]`, so callers can't match on
+/// its variants and must classify by call site / message instead.
+pub fn classify_install_error(msg: &str) -> &'static str {
+    let lower = msg.to_lowercase();
+    if lower.contains("signature") || lower.contains("public key") {
+        "update.signature_invalid"
+    } else {
+        "update.download_failed"
+    }
+}
+
+/// Attempts to acquire a single-flight flag: `true` once, `false` while
+/// already held.
+pub fn try_acquire(flag: &AtomicBool) -> bool {
+    flag.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+}
+
+/// RAII guard pairing with [`try_acquire`]: releases the flag on drop, so
+/// every early `?` return in the command frees it for the next attempt.
+struct InProgressGuard(Arc<AtomicBool>);
+
+impl InProgressGuard {
+    fn acquire(flag: Arc<AtomicBool>) -> Option<Self> {
+        try_acquire(&flag).then(|| InProgressGuard(flag))
+    }
+}
+
+impl Drop for InProgressGuard {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
+/// Decides whether a progress event should be emitted now: the first chunk
+/// always emits, a finished download always emits, and everything else is
+/// throttled to at most once per [`PROGRESS_THROTTLE_MS`].
+pub fn should_emit_progress(last_emit_ms: Option<u64>, now_ms: u64, finished: bool) -> bool {
+    if finished {
+        return true;
+    }
+    match last_emit_ms {
+        None => true,
+        Some(last) => now_ms.saturating_sub(last) >= PROGRESS_THROTTLE_MS,
+    }
 }
 
 #[tauri::command]
@@ -106,26 +164,64 @@ pub async fn apply_update_and_restart(
 ) -> Result<(), ErrorPayload> {
     let _pool = state.db.get().ok_or_else(|| ErrorPayload::new("update.db_not_initialized"))?;
 
-    let updater = app
-        .updater()
-        .map_err(|e| ErrorPayload::new("update.not_configured").with_param("detail", e.to_string()))?;
+    let _guard = InProgressGuard::acquire(state.update_in_progress.clone())
+        .ok_or_else(|| ErrorPayload::new("update.already_in_progress"))?;
 
-    let update = updater
-        .check()
-        .await
-        .map_err(|e| ErrorPayload::new("update.check_failed").with_param("detail", e.to_string()))?
-        .ok_or_else(|| ErrorPayload::new("update.no_update_available"))?;
+    let cached = state.pending_update.lock().await.take();
+    let update = match cached {
+        Some(update) => update,
+        None => {
+            let updater = app
+                .updater_builder()
+                .timeout(Duration::from_secs(CHECK_TIMEOUT_SECS))
+                .build()
+                .map_err(|e| {
+                    ErrorPayload::new("update.not_configured").with_param("detail", e.to_string())
+                })?;
+            updater
+                .check()
+                .await
+                .map_err(|e| {
+                    ErrorPayload::new("update.check_failed").with_param("detail", e.to_string())
+                })?
+                .ok_or_else(|| ErrorPayload::new("update.no_update_available"))?
+        }
+    };
+
+    let progress = Arc::new(std::sync::Mutex::new(UpdateProgress { downloaded: 0, total: None }));
+    let progress_for_chunk = progress.clone();
+    let app_for_chunk = app.clone();
+    let mut last_emit_ms: Option<u64> = None;
+
+    let progress_for_finish = progress.clone();
+    let app_for_finish = app.clone();
 
     update
-        .download_and_install(|_chunk, _total| {}, || {})
+        .download_and_install(
+            move |chunk, total| {
+                let snapshot = {
+                    let mut p = progress_for_chunk.lock().unwrap();
+                    p.downloaded += chunk as u64;
+                    p.total = total;
+                    p.clone()
+                };
+                let now = now_millis();
+                if should_emit_progress(last_emit_ms, now, false) {
+                    last_emit_ms = Some(now);
+                    let _ = app_for_chunk.emit("update_progress", snapshot);
+                }
+            },
+            move || {
+                let snapshot = progress_for_finish.lock().unwrap().clone();
+                let _ = app_for_finish.emit("update_progress", snapshot);
+            },
+        )
         .await
         .map_err(|e| {
             let msg = e.to_string();
-            if msg.to_lowercase().contains("signature") || msg.to_lowercase().contains("public key") {
-                ErrorPayload::new("update.signature_invalid").with_param("detail", msg)
-            } else {
-                ErrorPayload::new("update.download_failed").with_param("detail", msg)
-            }
+            let code = classify_install_error(&msg);
+            tracing::error!(code = %code, "update install failed");
+            ErrorPayload::new(code).with_param("detail", msg)
         })?;
 
     app.restart();
@@ -239,5 +335,69 @@ mod tests {
         // check_for_updates's skip branch returns before calling
         // touch_last_check; confirm the stored value is unaffected.
         assert_eq!(read_last_check(&pool).await, "1000000");
+    }
+
+    #[test]
+    fn classify_install_error_detects_signature_failure() {
+        assert_eq!(classify_install_error("Signature mismatch"), "update.signature_invalid");
+    }
+
+    #[test]
+    fn classify_install_error_detects_public_key_failure() {
+        assert_eq!(classify_install_error("invalid public key"), "update.signature_invalid");
+    }
+
+    #[test]
+    fn classify_install_error_is_case_insensitive() {
+        assert_eq!(classify_install_error("SIGNATURE verification failed"), "update.signature_invalid");
+    }
+
+    #[test]
+    fn classify_install_error_falls_back_to_download_failed() {
+        assert_eq!(classify_install_error("connection reset by peer"), "update.download_failed");
+    }
+
+    #[test]
+    fn try_acquire_returns_true_once_then_false() {
+        let flag = AtomicBool::new(false);
+        assert!(try_acquire(&flag));
+        assert!(!try_acquire(&flag));
+    }
+
+    #[test]
+    fn in_progress_guard_releases_flag_on_drop() {
+        let flag = Arc::new(AtomicBool::new(false));
+        {
+            let _guard = InProgressGuard::acquire(flag.clone()).unwrap();
+            assert!(flag.load(Ordering::SeqCst));
+        }
+        assert!(!flag.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn in_progress_guard_acquire_fails_when_already_held() {
+        let flag = Arc::new(AtomicBool::new(false));
+        let _guard = InProgressGuard::acquire(flag.clone()).unwrap();
+        assert!(InProgressGuard::acquire(flag.clone()).is_none());
+    }
+
+    #[test]
+    fn should_emit_progress_first_chunk_always_emits() {
+        assert!(should_emit_progress(None, 0, false));
+    }
+
+    #[test]
+    fn should_emit_progress_before_throttle_window_does_not_emit() {
+        assert!(!should_emit_progress(Some(1000), 1249, false)); // 249ms later
+    }
+
+    #[test]
+    fn should_emit_progress_at_throttle_window_emits() {
+        assert!(should_emit_progress(Some(1000), 1250, false)); // 250ms later
+    }
+
+    #[test]
+    fn should_emit_progress_finished_always_emits_even_within_window() {
+        assert!(should_emit_progress(Some(1000), 1000, true)); // no time passed, but finished
     }
 }

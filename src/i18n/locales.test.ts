@@ -33,6 +33,15 @@ describe("locale key parity", () => {
     expect(problems, problems.join("\n")).toEqual([]);
   });
 
+  it("both locales define the about open-source and contribute keys with non-empty values", () => {
+    const enObj = enUS as unknown as { about: Record<string, string> };
+    const ptObj = ptBR as unknown as { about: Record<string, string> };
+    for (const key of ["openSource", "contribute"] as const) {
+      expect(enObj.about[key], `en-US about.${key}`).toBeTruthy();
+      expect(ptObj.about[key], `pt-BR about.${key}`).toBeTruthy();
+    }
+  });
+
   it("both locales define the new Phase 13 update/about keys", () => {
     const required = [
       "updates.checking",

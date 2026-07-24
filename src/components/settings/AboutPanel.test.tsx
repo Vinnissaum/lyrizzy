@@ -11,6 +11,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("../../api/commands", () => ({
   getAppVersion: vi.fn(),
   checkForUpdates: vi.fn(),
+  openExternalUrl: vi.fn(),
 }));
 
 vi.mock("../system/UpdateDialog", () => ({
@@ -20,7 +21,7 @@ vi.mock("../system/UpdateDialog", () => ({
 }));
 
 import { AboutPanel } from "./AboutPanel";
-import { getAppVersion, checkForUpdates } from "../../api/commands";
+import { getAppVersion, checkForUpdates, openExternalUrl } from "../../api/commands";
 import type { UpdateCheckResult } from "../../types";
 
 describe("AboutPanel", () => {
@@ -109,6 +110,40 @@ describe("AboutPanel", () => {
       expect(error).toBeInTheDocument();
       expect(error.className).toContain("text-danger");
     });
+  });
+
+  it("renders the open-source blurb (ABOUT-01)", async () => {
+    render(<AboutPanel />);
+    await waitFor(() => expect(getAppVersion).toHaveBeenCalled());
+    expect(screen.getByText("about.openSource")).toBeInTheDocument();
+  });
+
+  it("renders a contribute link labeled from about.contribute (ABOUT-02)", async () => {
+    render(<AboutPanel />);
+    await waitFor(() => expect(getAppVersion).toHaveBeenCalled());
+    expect(
+      screen.getByRole("link", { name: /about\.contribute/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the exact repository URL in the system browser when contribute is activated (ABOUT-03)", async () => {
+    vi.mocked(openExternalUrl).mockResolvedValue();
+    render(<AboutPanel />);
+    fireEvent.click(screen.getByRole("link", { name: /about\.contribute/ }));
+    await waitFor(() =>
+      expect(openExternalUrl).toHaveBeenCalledWith(
+        "https://github.com/Vinnissaum/lyrizzy",
+      ),
+    );
+  });
+
+  it("keeps the panel functional with no error UI when opening the URL rejects (ABOUT-04)", async () => {
+    vi.mocked(openExternalUrl).mockRejectedValue(new Error("boom"));
+    const { container } = render(<AboutPanel />);
+    fireEvent.click(screen.getByRole("link", { name: /about\.contribute/ }));
+    await waitFor(() => expect(openExternalUrl).toHaveBeenCalled());
+    expect(screen.getByText("about.openSource")).toBeInTheDocument();
+    expect(container.querySelector(".text-danger")).toBeNull();
   });
 
   it("opens UpdateDialog with the returned info when an update is available", async () => {

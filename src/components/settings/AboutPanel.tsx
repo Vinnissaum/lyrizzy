@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshCw } from "lucide-react";
-import { checkForUpdates, getAppVersion } from "../../api/commands";
+import { RefreshCw, ExternalLink } from "lucide-react";
+import { checkForUpdates, getAppVersion, openExternalUrl } from "../../api/commands";
 import { UpdateDialog } from "../system/UpdateDialog";
 import type { UpdateInfo } from "../../types";
 
 type CheckState = "idle" | "checking" | "upToDate" | { error: string };
+
+const REPO_URL = "https://github.com/Vinnissaum/lyrizzy";
 
 export const AboutPanel: React.FC = () => {
   const { t } = useTranslation();
@@ -78,6 +80,21 @@ export const AboutPanel: React.FC = () => {
       {available && (
         <UpdateDialog update={available} onClose={() => setAvailable(null)} />
       )}
+
+      <div className="pt-3 border-t border-border space-y-2">
+        <p className="text-sm text-muted">{t("about.openSource")}</p>
+        <a
+          href={REPO_URL}
+          onClick={(e) => {
+            e.preventDefault();
+            openExternalUrl(REPO_URL).catch(() => {});
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border bg-surface hover:bg-surface-2 transition-colors"
+        >
+          <ExternalLink size={16} />
+          {t("about.contribute")}
+        </a>
+      </div>
     </div>
   );
 };

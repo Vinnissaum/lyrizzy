@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
   CountdownConfig,
   CountdownEndBehavior,
@@ -610,6 +611,11 @@ export const getAppVersion = () =>
 
 export const onUpdateProgress = (cb: (p: UpdateProgress) => void) =>
   listen<UpdateProgress>("update_progress", (e) => cb(e.payload));
+
+// ─── External links ─────────────────────────────────────────────────────────
+
+/** Open an external URL in the user's default system browser. */
+export const openExternalUrl = (url: string): Promise<void> => openUrl(url);
 
 // ─── Overlay ─────────────────────────────────────────────────────────────────
 

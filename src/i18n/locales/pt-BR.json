@@ -883,7 +883,9 @@
     "alreadyInProgress": "Uma atualização já está sendo instalada."
   },
   "about": {
-    "version": "Versão {{version}}"
+    "version": "Versão {{version}}",
+    "openSource": "O Lyrizzy é open source. Contribuições são bem-vindas!",
+    "contribute": "Contribuir no GitHub"
   },
   "common": {
     "on": "Ligado",

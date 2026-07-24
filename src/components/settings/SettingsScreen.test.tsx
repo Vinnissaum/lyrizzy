@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("../../stores/settings", () => ({
   useSettingsStore: vi.fn(),
+  MAX_CAMERA_JITTER_BUFFER_MS: 1000,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -57,6 +58,8 @@ const makeStore = (overrides: Partial<ReturnType<typeof useSettingsStore>> = {})
     setAuthorInParens: vi.fn(),
     blackoutAfterSong: true,
     setBlackoutAfterSong: vi.fn(),
+    cameraJitterBufferMs: 0,
+    setCameraJitterBufferMs: vi.fn(),
     announcementFontFamily: "sans" as const,
     setAnnouncementFontFamily: vi.fn(),
     announcementFontSize: "lg" as const,

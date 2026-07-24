@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { startStreamProxy } from "../../api/commands";
-import { connectWhep } from "../../utils/whep";
+import { connectWhep, setReceiverPlayoutLatency } from "../../utils/whep";
 import type { StreamSource } from "../../types";
 
 interface Props {
@@ -17,6 +17,12 @@ interface Props {
    * audio to via `HTMLMediaElement.setSinkId`. Only applies when not muted.
    */
   sinkId?: string;
+  /**
+   * Target playout-buffer depth (ms) for the WebRTC receivers. 0 (default) asks
+   * the browser for the shallowest buffer — closest to real time. Applied live,
+   * so changing it re-tunes the running stream without reconnecting.
+   */
+  jitterBufferTargetMs?: number;
 }
 
 const MAX_ATTEMPTS = 5;
@@ -33,9 +39,19 @@ const RETRY_DELAY_MS = 1500;
  * is muted (a church camera's audio comes from the sound desk, not the stream)
  * which also satisfies autoplay policy.
  */
-export const StreamProxyRenderer: React.FC<Props> = ({ source, muted = true, sinkId }) => {
+export const StreamProxyRenderer: React.FC<Props> = ({
+  source,
+  muted = true,
+  sinkId,
+  jitterBufferTargetMs = 0,
+}) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  // Keep the latest target in a ref so the connect effect (which must NOT depend
+  // on it — changing latency shouldn't reconnect) reads the current value.
+  const jitterTargetRef = useRef(jitterBufferTargetMs);
+  jitterTargetRef.current = jitterBufferTargetMs;
   const [error, setError] = useState<string | null>(null);
   // Re-run the effect whenever the source meaningfully changes.
   const sourceKey = JSON.stringify(source);
@@ -69,7 +85,10 @@ export const StreamProxyRenderer: React.FC<Props> = ({ source, muted = true, sin
       const attempt = async (n: number): Promise<void> => {
         if (cancelled || !videoRef.current) return;
         try {
-          pc = await connectWhep(videoRef.current, whepUrl, abort.signal);
+          pc = await connectWhep(videoRef.current, whepUrl, abort.signal, {
+            jitterBufferTargetMs: jitterTargetRef.current,
+          });
+          pcRef.current = pc;
           if (!cancelled) setError(null);
         } catch (err) {
           if (cancelled) return;
@@ -91,9 +110,16 @@ export const StreamProxyRenderer: React.FC<Props> = ({ source, muted = true, sin
       abort.abort();
       if (retryTimer) clearTimeout(retryTimer);
       pc?.close();
+      pcRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceKey, t]);
+
+  // Re-tune the playout buffer live when the target changes, without tearing
+  // down the WHEP session. No-op until a connection exists.
+  useEffect(() => {
+    if (pcRef.current) setReceiverPlayoutLatency(pcRef.current, jitterBufferTargetMs);
+  }, [jitterBufferTargetMs]);
 
   // Route the camera's audio to a specific output device (e.g. the TV's HDMI)
   // when un-muted. setSinkId is Chromium/WebView2; guarded for absence.

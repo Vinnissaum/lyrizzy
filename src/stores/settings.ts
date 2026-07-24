@@ -32,6 +32,16 @@ export const ANNOUNCEMENT_MARGIN_KEY = "announcement.margin";
 export const ANNOUNCEMENT_LINE_SPACING_KEY = "announcement.line_spacing";
 export const ANNOUNCEMENT_BOLD_LEVEL_KEY = "announcement.bold_level";
 export const BLACKOUT_AFTER_SONG_KEY = "presentation.blackout_after_song";
+/**
+ * Target playout-buffer depth (ms) for camera streams played over WebRTC. 0 asks
+ * the browser's jitter buffer for the shallowest depth it can manage — closest to
+ * real time — at the cost of jitter-resilience. See `whep.ts`.
+ */
+export const CAMERA_JITTER_BUFFER_KEY = "camera.jitter_buffer_ms";
+/** Default camera jitter-buffer target (ms) — minimum latency. */
+export const DEFAULT_CAMERA_JITTER_BUFFER_MS = 0;
+/** Largest camera buffer the settings UI allows (ms). */
+export const MAX_CAMERA_JITTER_BUFFER_MS = 1000;
 /** When true, the operator exposes the second presentation output (Tela 2). */
 export const MULTI_SCREEN_ENABLED_KEY = "output.multi_screen_enabled";
 /** When true (and multi-screen on), operator actions mirror onto BOTH outputs. */
@@ -161,6 +171,8 @@ interface SettingsStore {
   multiScreenEnabled: boolean;
   /** Mirror mode: when on, operator actions drive BOTH outputs identically. */
   mirrorEnabled: boolean;
+  /** Target camera playout buffer (ms); 0 = minimum latency / closest to live. */
+  cameraJitterBufferMs: number;
   /** Per-output camera/mic audio settings. */
   audio: Record<OutputId, OutputAudioSettings>;
 
@@ -191,6 +203,7 @@ interface SettingsStore {
   setBlackoutAfterSong: (value: boolean) => void;
   setMultiScreenEnabled: (value: boolean) => void;
   setMirrorEnabled: (value: boolean) => void;
+  setCameraJitterBufferMs: (value: number) => void;
   /** Merge a patch into one output's audio settings and persist it. */
   setOutputAudio: (output: OutputId, patch: Partial<OutputAudioSettings>) => void;
   /** Load both outputs' persisted audio settings. */
@@ -214,6 +227,16 @@ async function readBool(key: string, fallback: boolean): Promise<boolean> {
   try {
     const v = await getSetting(key);
     return v === "true" ? true : v === "false" ? false : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function readNumber(key: string, fallback: number): Promise<number> {
+  try {
+    const v = await getSetting(key);
+    const n = v === null ? NaN : Number(v);
+    return Number.isFinite(n) ? n : fallback;
   } catch {
     return fallback;
   }
@@ -245,6 +268,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   blackoutAfterSong: true,
   multiScreenEnabled: false,
   mirrorEnabled: false,
+  cameraJitterBufferMs: DEFAULT_CAMERA_JITTER_BUFFER_MS,
   audio: {
     one: { ...DEFAULT_OUTPUT_AUDIO },
     two: { ...DEFAULT_OUTPUT_AUDIO },
@@ -365,6 +389,11 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ mirrorEnabled: value });
     setSetting(MIRROR_ENABLED_KEY, String(value)).catch(() => {});
   },
+  setCameraJitterBufferMs: (value) => {
+    const clamped = Math.max(0, Math.min(Math.round(value) || 0, MAX_CAMERA_JITTER_BUFFER_MS));
+    set({ cameraJitterBufferMs: clamped });
+    setSetting(CAMERA_JITTER_BUFFER_KEY, String(clamped)).catch(() => {});
+  },
   setOutputAudio: (output, patch) =>
     set((s) => {
       const next = { ...s.audio[output], ...patch };
@@ -398,6 +427,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       blackoutAfterSong,
       multiScreenEnabled,
       mirrorEnabled,
+      cameraJitterBufferMs,
     ] = await Promise.all([
       readSetting(PRESENTATION_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_FONT_SIZE),
       readSetting(PRESENTATION_FONT_FAMILY_KEY, FONT_FAMILY_VALUES, DEFAULT_FONT_FAMILY),
@@ -419,6 +449,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readBool(BLACKOUT_AFTER_SONG_KEY, true),
       readBool(MULTI_SCREEN_ENABLED_KEY, false),
       readBool(MIRROR_ENABLED_KEY, false),
+      readNumber(CAMERA_JITTER_BUFFER_KEY, DEFAULT_CAMERA_JITTER_BUFFER_MS),
     ]);
     set({
       presentationFontSize: fontSize,
@@ -441,6 +472,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       blackoutAfterSong,
       multiScreenEnabled,
       mirrorEnabled,
+      cameraJitterBufferMs,
     });
   },
 }));

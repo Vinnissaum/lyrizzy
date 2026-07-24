@@ -713,6 +713,11 @@
     "announcementMargin": "Margem do aviso",
     "blackoutAfterSong": "Tela preta após cada música",
     "multiScreen": "Segunda tela (multi-saída)",
+    "camera": {
+      "title": "Câmera",
+      "jitterBuffer": "Buffer alvo (ms)",
+      "jitterBufferHint": "Menor = mais próximo do tempo real. 0 pede o menor buffer; aumente (ex.: 50–150) se uma câmera instável travar. Aplica ao vivo."
+    },
     "audio": {
       "description": "Áudio da câmera e microfone por tela (a Tela 2 normalmente é a câmera).",
       "grant": "Permitir microfone",

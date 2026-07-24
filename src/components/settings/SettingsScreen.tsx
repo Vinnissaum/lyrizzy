@@ -6,7 +6,7 @@ import { MonitorPicker } from "./MonitorPicker";
 import { MicAudioSettings } from "./MicAudioSettings";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { AboutPanel } from "./AboutPanel";
-import { useSettingsStore } from "../../stores/settings";
+import { useSettingsStore, MAX_CAMERA_JITTER_BUFFER_MS } from "../../stores/settings";
 import { OUTPUT2_MONITOR_KEY } from "../../api/commands";
 import type {
   BackgroundPreset,
@@ -112,6 +112,42 @@ function BoolToggle({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium">{label}</span>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value) || 0)}
+          className="w-24 px-2 py-1 bg-surface border border-border rounded text-sm"
+        />
+      </div>
+      {hint && <p className="text-xs text-muted">{hint}</p>}
     </div>
   );
 }
@@ -227,6 +263,21 @@ export const SettingsScreen: React.FC = () => {
                     label={t("settings.windows.monitorScreen", { n: 2 })}
                   />
                 )}
+              </div>
+
+              <div className="bg-surface-2 rounded-xl p-4 space-y-4">
+                <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
+                  {t("settings.camera.title")}
+                </h3>
+                <NumberField
+                  label={t("settings.camera.jitterBuffer")}
+                  hint={t("settings.camera.jitterBufferHint")}
+                  value={s.cameraJitterBufferMs}
+                  min={0}
+                  max={MAX_CAMERA_JITTER_BUFFER_MS}
+                  step={10}
+                  onChange={s.setCameraJitterBufferMs}
+                />
               </div>
             </>
           )}

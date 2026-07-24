@@ -713,6 +713,11 @@
     "announcementMargin": "Warning margin",
     "blackoutAfterSong": "Black slide after each song",
     "multiScreen": "Second screen (multi-output)",
+    "camera": {
+      "title": "Camera",
+      "jitterBuffer": "Buffer target (ms)",
+      "jitterBufferHint": "Lower = closer to real time. 0 asks for the smallest buffer; raise it (e.g. 50–150) if a jittery camera stutters. Applies live."
+    },
     "audio": {
       "description": "Camera + microphone audio per screen (Tela 2 is usually the camera).",
       "grant": "Allow microphone",

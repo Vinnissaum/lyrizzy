@@ -111,7 +111,11 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
       setLocale(locale);
     });
     const unsubSetting = onSettingChanged((key) => {
-      if (key.startsWith("presentation.") || key.startsWith("announcement.")) {
+      if (
+        key.startsWith("presentation.") ||
+        key.startsWith("announcement.") ||
+        key.startsWith("camera.")
+      ) {
         loadPresentationSettings();
       }
       if (key.startsWith("output.") && key.endsWith(".audio")) {

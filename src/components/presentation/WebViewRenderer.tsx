@@ -41,6 +41,7 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   const { mode, url, basicAuthUser, basicAuthPass, crop } = config;
   const output = useOutputId();
   const cameraAudio = useSettingsStore((s) => s.audio[output]);
+  const cameraJitterBufferMs = useSettingsStore((s) => s.cameraJitterBufferMs);
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -144,6 +145,7 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
         source={source}
         muted={!cameraAudio.cameraUnmuted}
         sinkId={cameraAudio.outputDevice?.deviceId}
+        jitterBufferTargetMs={cameraJitterBufferMs}
       />
     );
   }

@@ -31,6 +31,7 @@ describe("StreamProxyRenderer", () => {
         expect.any(HTMLVideoElement),
         "http://127.0.0.1:8889/cam/whep",
         expect.any(AbortSignal),
+        expect.objectContaining({ jitterBufferTargetMs: expect.any(Number) }),
       )
     );
   });

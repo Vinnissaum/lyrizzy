@@ -23,7 +23,8 @@ import type {
   Song,
   StreamSource,
   TextCasing,
-  UpdateInfo,
+  UpdateCheckResult,
+  UpdateProgress,
   WebViewConfig,
 } from "../types";
 
@@ -599,10 +600,16 @@ export const onForwardKeydown = (cb: (sig: string) => void) =>
 // ─── Updates ──────────────────────────────────────────────────────────────────
 
 export const checkForUpdates = (force: boolean) =>
-  invoke<UpdateInfo | null>("check_for_updates", { force });
+  invoke<UpdateCheckResult>("check_for_updates", { force });
 
 export const applyUpdateAndRestart = () =>
   invoke<void>("apply_update_and_restart");
+
+export const getAppVersion = () =>
+  invoke<string>("get_app_version");
+
+export const onUpdateProgress = (cb: (p: UpdateProgress) => void) =>
+  listen<UpdateProgress>("update_progress", (e) => cb(e.payload));
 
 // ─── Overlay ─────────────────────────────────────────────────────────────────
 

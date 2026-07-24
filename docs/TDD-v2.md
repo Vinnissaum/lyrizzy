@@ -967,7 +967,7 @@ Files that gate all downstream work — build these first:
 ## Appendix A: Project Directory Structure
 
 ```
-c:\git\triade\
+c:\git\lyrizzy\
   Cargo.toml                      ← workspace root
   package.json                    ← Vite + React + Tauri dev dependencies
   vite.config.ts

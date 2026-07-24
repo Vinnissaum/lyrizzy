@@ -65,7 +65,7 @@ describe("OperatorApp", () => {
       if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
       if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
       if (cmd === "get_set") return Promise.resolve(defaultSet);
-      if (cmd === "check_for_updates") return Promise.resolve(null);
+      if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
       return Promise.resolve([]);
     });
     // Reset to pt-BR so locale-changing tests don't pollute subsequent tests
@@ -91,7 +91,7 @@ describe("OperatorApp", () => {
       if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
       if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
       if (cmd === "get_set") return Promise.resolve(defaultSet);
-      if (cmd === "check_for_updates") return Promise.resolve(null);
+      if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
       if (cmd === "list_songs") return Promise.resolve([
         mockSong("1", "Graça Infinita", "Artista A"),
         mockSong("2", "Santo Espírito"),
@@ -130,7 +130,7 @@ describe("OperatorApp", () => {
       }
       if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
       if (cmd === "get_set") return Promise.resolve(defaultSet);
-      if (cmd === "check_for_updates") return Promise.resolve(null);
+      if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
       return Promise.resolve([]);
     });
     render(<OperatorApp />);
@@ -188,7 +188,90 @@ describe("OperatorApp", () => {
     });
   });
 
+  describe("update check on launch", () => {
+    it("shows the update banner when the launch check returns updateAvailable", async () => {
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+        if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
+        if (cmd === "get_set") return Promise.resolve(defaultSet);
+        if (cmd === "check_for_updates") {
+          return Promise.resolve({
+            status: "updateAvailable",
+            info: { version: "9.9.9", currentVersion: "1.0.0" },
+          });
+        }
+        return Promise.resolve([]);
+      });
+
+      render(<OperatorApp />);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(i18n.t("updates.bannerMessage", { version: "9.9.9" })),
+        ).toBeInTheDocument(),
+      );
+    });
+
+    it("renders no banner, dialog, toast, or error text when the launch check returns skipped", async () => {
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+        if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
+        if (cmd === "get_set") return Promise.resolve(defaultSet);
+        if (cmd === "check_for_updates") return Promise.resolve({ status: "skipped" });
+        return Promise.resolve([]);
+      });
+
+      render(<OperatorApp />);
+
+      await waitFor(() =>
+        expect(vi.mocked(invoke)).toHaveBeenCalledWith("check_for_updates", { force: false }),
+      );
+      await act(async () => { await Promise.resolve(); });
+
+      expect(screen.queryByText(/Nova vers[aã]o dispon[ií]vel/)).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: i18n.t("updates.updateButton") }),
+      ).toBeNull();
+    });
+
+    it("renders no banner, dialog, toast, or error text when the launch check rejects", async () => {
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+        if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
+        if (cmd === "get_set") return Promise.resolve(defaultSet);
+        if (cmd === "check_for_updates") {
+          return Promise.reject({ code: "update.check_failed", params: {} });
+        }
+        return Promise.resolve([]);
+      });
+
+      render(<OperatorApp />);
+
+      await waitFor(() =>
+        expect(vi.mocked(invoke)).toHaveBeenCalledWith("check_for_updates", { force: false }),
+      );
+      await act(async () => { await Promise.resolve(); });
+
+      expect(screen.queryByText(/Nova vers[aã]o dispon[ií]vel/)).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: i18n.t("updates.updateButton") }),
+      ).toBeNull();
+    });
+  });
+
   describe("silent re-arm at launch", () => {
+    // These tests derive schedules from the current wall clock (now ± 2h). Pin
+    // it to midday so the offsets never cross midnight and flip "later today" /
+    // "earlier today". Only Date is faked, so waitFor and the async invoke
+    // mocks keep running on real timers.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2024, 0, 15, 12, 0, 0, 0));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it("arms a later-today scheduled countdown silently (no prompt)", async () => {
       // Pick a trigger time ~2h in the future so it's 'later today' and not
       // close to midnight rollover.
@@ -202,7 +285,7 @@ describe("OperatorApp", () => {
         if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
         if (cmd === "get_or_create_default_set") return Promise.resolve(set);
         if (cmd === "get_set") return Promise.resolve(set);
-        if (cmd === "check_for_updates") return Promise.resolve(null);
+        if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
         if (cmd === "arm_countdown") {
           return Promise.resolve({
             mode: "scheduled",
@@ -243,7 +326,7 @@ describe("OperatorApp", () => {
         if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
         if (cmd === "get_or_create_default_set") return Promise.resolve(set);
         if (cmd === "get_set") return Promise.resolve(set);
-        if (cmd === "check_for_updates") return Promise.resolve(null);
+        if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
         return Promise.resolve([]);
       });
 
@@ -289,7 +372,7 @@ describe("OperatorApp", () => {
         if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
         if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
         if (cmd === "get_set") return Promise.resolve(defaultSet);
-        if (cmd === "check_for_updates") return Promise.resolve(null);
+        if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
         if (cmd === "enter_presentation") { enterSpy(); return Promise.resolve(); }
         return Promise.resolve([]);
       });

@@ -870,7 +870,15 @@
     "applyFailed": "Falha ao instalar: {{detail}}",
     "checkManual": "Verificar atualizações",
     "upToDate": "Você já está na versão mais recente.",
-    "checkFailed": "Não foi possível verificar atualizações."
+    "checkFailed": "Não foi possível verificar atualizações.",
+    "checking": "Verificando…",
+    "checkErrorWithCode": "Não foi possível verificar atualizações: {{code}}",
+    "downloading": "Baixando… {{percent}}%",
+    "downloadingUnknown": "Baixando…",
+    "alreadyInProgress": "Uma atualização já está sendo instalada."
+  },
+  "about": {
+    "version": "Versão {{version}}"
   },
   "common": {
     "on": "Ligado",

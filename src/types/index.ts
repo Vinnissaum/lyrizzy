@@ -387,3 +387,13 @@ export interface UpdateInfo {
   notes?: string;
   pubDate?: string;
 }
+
+export type UpdateCheckResult =
+  | { status: 'updateAvailable'; info: UpdateInfo }
+  | { status: 'upToDate' }
+  | { status: 'skipped' };
+
+export interface UpdateProgress {
+  downloaded: number;
+  total: number | null;
+}

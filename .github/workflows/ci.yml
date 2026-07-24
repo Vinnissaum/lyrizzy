@@ -1,0 +1,54 @@
+name: ci
+
+# Runs on every branch push and every pull request. Test + compile only —
+# no bundling/installers (that is release.yml, gated on v* tags).
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-compile:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned toolchains (LTS / MSRV) — never floating "latest".
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: npm
+      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      # Linux system libraries required to compile the Tauri crate (webkit2gtk et al).
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev patchelf
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # ── Frontend: test, then compile ──────────────────────────────────────
+      - name: Frontend tests
+        run: npx vitest run
+      - name: Frontend compile
+        run: npm run build # produces ../dist, embedded by tauri-build below
+
+      # ── Rust: test, then compile ──────────────────────────────────────────
+      # These run AFTER `npm run build` because tauri-build embeds frontendDist
+      # (../dist), which must exist for the crate to compile.
+      - name: Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - name: Rust compile
+        run: cargo build --manifest-path src-tauri/Cargo.toml --locked

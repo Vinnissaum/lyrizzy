@@ -35,7 +35,7 @@ function setupInvokeMock() {
     if (cmd === "check_restore_in_progress") return Promise.resolve(false);
     if (cmd === "list_monitors") return Promise.resolve([]);
     if (cmd === "check_ffprobe") return Promise.resolve(true);
-    if (cmd === "check_for_updates") return Promise.resolve(null);
+    if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
     if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
     if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
     if (cmd === "get_set") return Promise.resolve(defaultSet);

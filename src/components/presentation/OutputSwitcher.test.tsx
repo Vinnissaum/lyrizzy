@@ -11,24 +11,12 @@ vi.mock("../../stores/settings", () => ({
 vi.mock("../../utils/outputDispatch", () => ({
   engageMirror: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("../../api/commands", () => ({
-  PRESENTATION_MONITOR_KEY: "presentation.monitor_index",
-  OUTPUT2_MONITOR_KEY: "output2.monitor_index",
-  getSetting: vi.fn().mockRejectedValue(new Error("no setting")),
-  listMonitors: vi.fn().mockResolvedValue([]),
-}));
-vi.mock("../../utils/monitorNames", async () => {
-  const actual = await vi.importActual<typeof import("../../utils/monitorNames")>(
-    "../../utils/monitorNames",
-  );
-  return { ...actual, loadMonitorNames: vi.fn().mockResolvedValue({}) };
-});
 
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
 import { engageMirror } from "../../utils/outputDispatch";
-import { getSetting, listMonitors } from "../../api/commands";
-import { loadMonitorNames } from "../../utils/monitorNames";
+import type { MonitorInfo, OutputId } from "../../types";
+import type { MonitorNameMap } from "../../utils/monitorNames";
 
 const setFocusedOutput = vi.fn();
 const setMirrorEnabled = vi.fn();
@@ -37,17 +25,25 @@ function mockStores(opts: {
   enabled: boolean;
   focused?: "one" | "two";
   mirror?: boolean;
+  monitors?: MonitorInfo[];
+  monitorNames?: MonitorNameMap;
+  outputMonitorIndex?: Record<OutputId, number | null>;
 }) {
+  const settingsState = {
+    multiScreenEnabled: opts.enabled,
+    mirrorEnabled: opts.mirror ?? false,
+    setMirrorEnabled,
+    monitors: opts.monitors ?? [],
+    monitorNames: opts.monitorNames ?? {},
+    outputMonitorIndex: opts.outputMonitorIndex ?? { one: null, two: null },
+  };
   vi.mocked(useSettingsStore).mockImplementation((sel: any) =>
-    sel({
-      multiScreenEnabled: opts.enabled,
-      mirrorEnabled: opts.mirror ?? false,
-      setMirrorEnabled,
-    }),
+    sel(settingsState),
   );
   vi.mocked(usePresentationStore).mockImplementation((sel: any) =>
     sel({ focusedOutput: opts.focused ?? "one", setFocusedOutput }),
   );
+  return settingsState;
 }
 
 describe("OutputSwitcher", () => {
@@ -125,32 +121,52 @@ describe("OutputSwitcher", () => {
     expect(engageMirror).not.toHaveBeenCalled();
   });
 
-  it("renders a stored monitor name for the assigned output", async () => {
-    mockStores({ enabled: true, focused: "one" });
-    vi.mocked(listMonitors).mockResolvedValueOnce([
-      { name: "HDMI-1", width: 1920, height: 1080, x: 0, y: 0, scaleFactor: 1 },
-    ]);
-    vi.mocked(getSetting)
-      .mockResolvedValueOnce("0")
-      .mockRejectedValueOnce(new Error("no setting"));
-    vi.mocked(loadMonitorNames).mockResolvedValueOnce({
-      "name:HDMI-1": "Projetor",
+  it("renders a stored monitor name for the assigned output", () => {
+    mockStores({
+      enabled: true,
+      focused: "one",
+      monitors: [
+        { name: "HDMI-1", width: 1920, height: 1080, x: 0, y: 0, scaleFactor: 1 },
+      ],
+      monitorNames: { "name:HDMI-1": "Projetor" },
+      outputMonitorIndex: { one: 0, two: null },
     });
 
     render(<OutputSwitcher />);
-    expect(await screen.findByText("Projetor")).toBeInTheDocument();
+    expect(screen.getByText("Projetor")).toBeInTheDocument();
   });
 
-  it("falls back to the generated label when no name is stored", async () => {
-    mockStores({ enabled: true, focused: "one" });
-    vi.mocked(listMonitors).mockResolvedValueOnce([]);
-    vi.mocked(getSetting)
-      .mockRejectedValueOnce(new Error("no setting"))
-      .mockRejectedValueOnce(new Error("no setting"));
-    vi.mocked(loadMonitorNames).mockResolvedValueOnce({});
+  it("falls back to the generated label when no name is stored", () => {
+    mockStores({
+      enabled: true,
+      focused: "one",
+      monitors: [],
+      monitorNames: {},
+      outputMonitorIndex: { one: null, two: null },
+    });
 
     render(<OutputSwitcher />);
-    expect(await screen.findByText("Tela 1")).toBeInTheDocument();
+    expect(screen.getByText("Tela 1")).toBeInTheDocument();
     expect(screen.getByText("Tela 2")).toBeInTheDocument();
+  });
+
+  it("updates the tab label when the store name changes, with no remount", () => {
+    const state = mockStores({
+      enabled: true,
+      focused: "one",
+      monitors: [
+        { name: "HDMI-1", width: 1920, height: 1080, x: 0, y: 0, scaleFactor: 1 },
+      ],
+      monitorNames: {},
+      outputMonitorIndex: { one: 0, two: null },
+    });
+
+    const { rerender } = render(<OutputSwitcher />);
+    expect(screen.getByText("HDMI-1")).toBeInTheDocument();
+
+    state.monitorNames = { "name:HDMI-1": "Projetor" };
+    rerender(<OutputSwitcher />);
+    expect(screen.queryByText("HDMI-1")).toBeNull();
+    expect(screen.getByText("Projetor")).toBeInTheDocument();
   });
 });

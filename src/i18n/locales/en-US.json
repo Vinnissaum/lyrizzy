@@ -46,24 +46,14 @@
       "es": "Español"
     },
     "background": "Background",
-    "sections": "Sections",
-    "addSection": "+ Add section",
+    "lyrics": "Lyrics",
+    "lyricsPlaceholder": "Paste or type the full lyrics. Leave a blank line between strophes.",
     "casing": {
       "title": "Text casing",
       "normal": "Normal",
       "upper": "UPPERCASE",
       "lower": "lowercase",
       "titleCase": "Title Case"
-    },
-    "paste": {
-      "button": "Paste full lyrics",
-      "dialogTitle": "Paste full lyrics",
-      "hint": "Paste the entire lyrics. Each block separated by a blank line becomes a strophe. This replaces all current sections.",
-      "placeholder": "Verse 1 line 1\nVerse 1 line 2\n\nChorus line 1\nChorus line 2",
-      "confirm": "Replace sections",
-      "cancel": "Cancel",
-      "applied": "{{count}} section(s) created",
-      "empty": "No sections found in the pasted text"
     },
     "bg": {
       "none": "None",

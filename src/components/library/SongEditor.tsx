@@ -1,34 +1,16 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Play, ChevronRight } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { createSong, updateSong, deleteSong, getSong, parsePlainTextImport } from "../../api/commands";
+import { createSong, updateSong, deleteSong, getSong } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { mediaUrl } from "../../api/assets";
-import { SectionCard, SectionDraft } from "./SectionCard";
+import { lyricsToBlocks, blocksToSectionPayloads, sectionsToLyrics } from "../../utils/lyricsText";
 import { ChipAppearance } from "../presentation/SlideChip";
 import { SongPreviewPane } from "../presentation/SongPreviewPane";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import type { BackgroundInfo, Media, SectionType, TextCasing } from "../../types";
-
-let dndCounter = 0;
-const nextDndId = () => `sec-${++dndCounter}`;
+import type { BackgroundInfo, Media, TextCasing } from "../../types";
 
 // ── BackgroundEditor (None | Media) for the song level ───────────────────────
 // Fonts, theme/preset, size, position and margin are configured globally in
@@ -174,16 +156,6 @@ const BackgroundEditor: React.FC<BackgroundEditorProps> = ({
   );
 };
 
-function newSection(type: SectionType = "verse", _sections?: SectionDraft[]): SectionDraft {
-  return {
-    dndId: nextDndId(),
-    label: "",
-    type,
-    body: "",
-    repeatCount: 1,
-  };
-}
-
 interface Toast {
   id: number;
   message: string;
@@ -222,25 +194,13 @@ export const SongEditor: React.FC = () => {
   const [backgroundMode, setBackgroundMode] = useState<string | undefined>();
   const [textCasing, setTextCasing] = useState<TextCasing | undefined>();
   const [rightsOpen, setRightsOpen] = useState(false);
-  const [showPaste, setShowPaste] = useState(false);
-  const [pasteText, setPasteText] = useState("");
-  const [pasteBusy, setPasteBusy] = useState(false);
-  const [sections, setSections] = useState<SectionDraft[]>([
-    newSection("verse", []),
-  ]);
+  const [lyrics, setLyrics] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [titleError, setTitleError] = useState("");
   const [bodyError, setBodyError] = useState("");
   const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   useEffect(() => {
     refreshMedia();
@@ -264,16 +224,8 @@ export const SongEditor: React.FC = () => {
         setTextCasing(song.textCasing);
         const hasRights = !!(song.author || song.copyright || song.ccliNumber);
         setRightsOpen(hasRights);
-        setSections(
-          song.sections.map((s) => ({
-            dndId: nextDndId(),
-            label: s.label,
-            type: s.type,
-            body: s.body,
-            repeatCount: s.repeatCount,
-            notes: s.notes,
-          }))
-        );
+        const sorted = [...song.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+        setLyrics(sectionsToLyrics(sorted));
       })
       .catch((err) => addToast(`${err}`, "error"))
       .finally(() => setIsLoading(false));
@@ -293,7 +245,7 @@ export const SongEditor: React.FC = () => {
     } else {
       setTitleError("");
     }
-    if (!sections.some((s) => s.body.trim())) {
+    if (lyricsToBlocks(lyrics).length === 0) {
       setBodyError(t("editor.validation.bodyRequired"));
       ok = false;
     } else {
@@ -318,14 +270,7 @@ export const SongEditor: React.FC = () => {
         scrimOpacity,
         backgroundMode: backgroundMode || undefined,
         textCasing: textCasing && textCasing !== "normal" ? textCasing : undefined,
-        sections: sections.map((s, i) => ({
-          label: s.label,
-          type: s.type,
-          body: s.body,
-          sortOrder: i,
-          repeatCount: s.repeatCount,
-          notes: s.notes || undefined,
-        })),
+        sections: blocksToSectionPayloads(lyricsToBlocks(lyrics)),
       };
 
       if (editingSongId) {
@@ -356,58 +301,6 @@ export const SongEditor: React.FC = () => {
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setSections((prev) => {
-      const oldIndex = prev.findIndex((s) => s.dndId === active.id);
-      const newIndex = prev.findIndex((s) => s.dndId === over.id);
-      return arrayMove(prev, oldIndex, newIndex);
-    });
-  };
-
-  const addSection = () => {
-    setSections((prev) => [...prev, newSection("verse", prev)]);
-  };
-
-  // Parse pasted full lyrics (blank line = new strophe) and REPLACE all sections.
-  const applyPaste = async () => {
-    const text = pasteText.trim();
-    if (!text) return;
-    setPasteBusy(true);
-    try {
-      const parsed = await parsePlainTextImport(text);
-      if (parsed.length === 0) {
-        addToast(t("editor.paste.empty"), "error");
-        return;
-      }
-      setSections(
-        parsed.map((p) => ({
-          dndId: nextDndId(),
-          label: p.label,
-          type: p.sectionType as SectionType,
-          body: p.body,
-          repeatCount: 1,
-        }))
-      );
-      setShowPaste(false);
-      setPasteText("");
-      addToast(t("editor.paste.applied", { count: parsed.length }), "success");
-    } catch (err) {
-      addToast(String(err), "error");
-    } finally {
-      setPasteBusy(false);
-    }
-  };
-
-  const updateSection = (idx: number, updated: SectionDraft) => {
-    setSections((prev) => prev.map((s, i) => (i === idx ? updated : s)));
-  };
-
-  const removeSection = (idx: number) => {
-    setSections((prev) => prev.filter((_, i) => i !== idx));
-  };
-
   const appearance: ChipAppearance = {
     fontFamily: presentationFontFamily,
     fontSize: presentationFontSize,
@@ -431,7 +324,9 @@ export const SongEditor: React.FC = () => {
     };
   }, [backgroundMode, backgroundId, scrimOpacity, media]);
 
-  const isValid = title.trim() && sections.some((s) => s.body.trim());
+  const blocks = React.useMemo(() => lyricsToBlocks(lyrics), [lyrics]);
+
+  const isValid = title.trim() && blocks.length > 0;
 
   if (isLoading) {
     return (
@@ -524,7 +419,7 @@ export const SongEditor: React.FC = () => {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={t("editor.notesPlaceholder")}
-            rows={2}
+            rows={6}
             className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-primary"
           />
         </div>
@@ -564,53 +459,21 @@ export const SongEditor: React.FC = () => {
           </select>
         </div>
 
-        {/* Sections */}
+        {/* Lyrics */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
-              {t("editor.sections")}
-            </h3>
-            <button
-              type="button"
-              onClick={() => { setPasteText(""); setShowPaste(true); }}
-              className="text-xs text-muted hover:text-inherit border border-border hover:border-muted rounded-lg px-2.5 py-1 transition-colors"
-            >
-              {t("editor.paste.button")}
-            </button>
-          </div>
+          <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
+            {t("editor.lyrics")}
+          </h3>
           {bodyError && (
             <p className="text-danger text-xs">{bodyError}</p>
           )}
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={sections.map((s) => s.dndId)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="space-y-2">
-                {sections.map((section, idx) => (
-                  <SectionCard
-                    key={section.dndId}
-                    section={section}
-                    onChange={(updated) => updateSection(idx, updated)}
-                    onRemove={() => removeSection(idx)}
-                    canRemove={sections.length > 1}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-
-          <button
-            onClick={addSection}
-            className="w-full py-2 text-sm text-muted hover:text-inherit border border-dashed border-border hover:border-muted rounded-lg transition-colors"
-          >
-            {t("editor.addSection")}
-          </button>
+          <textarea
+            value={lyrics}
+            onChange={(e) => setLyrics(e.target.value)}
+            placeholder={t("editor.lyricsPlaceholder")}
+            rows={20}
+            className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-primary font-mono"
+          />
         </div>
 
         {/* Rights / License panel */}
@@ -653,9 +516,9 @@ export const SongEditor: React.FC = () => {
         <SongPreviewPane
           title={title}
           credit={author || artist || undefined}
-          sections={sections.map((s) => ({ body: s.body }))}
+          sections={blocks.map((b) => ({ body: b }))}
           casing={textCasing ?? "normal"}
-          repeatCounts={sections.map((s) => s.repeatCount)}
+          repeatCounts={blocks.map(() => 1)}
           repeatMode={presentationRepeatMode}
           appearance={appearance}
           background={previewBackground}
@@ -677,41 +540,6 @@ export const SongEditor: React.FC = () => {
         }}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-
-      {/* Paste full lyrics — blank line separates strophes; replaces all sections */}
-      {showPaste && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg bg-surface border border-border rounded-xl shadow-xl p-4 space-y-3">
-            <h3 className="text-sm font-medium text-fg">{t("editor.paste.dialogTitle")}</h3>
-            <p className="text-xs text-muted">{t("editor.paste.hint")}</p>
-            <textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder={t("editor.paste.placeholder")}
-              rows={12}
-              autoFocus
-              className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:border-primary"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowPaste(false)}
-                className="px-3 py-1.5 text-sm text-muted hover:text-inherit rounded-lg transition-colors"
-              >
-                {t("editor.paste.cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={applyPaste}
-                disabled={!pasteText.trim() || pasteBusy}
-                className="px-4 py-1.5 text-sm bg-primary hover:bg-primary-hover disabled:bg-surface-2 disabled:text-muted disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-fg-on-primary"
-              >
-                {t("editor.paste.confirm")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

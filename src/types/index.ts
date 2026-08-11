@@ -154,6 +154,18 @@ export interface MulticastConfig {
   port: number;
 }
 
+/**
+ * A saved stream configuration a camera item can switch between without
+ * losing its other settings. `mode` stays item-level on `WebViewConfig` —
+ * a profile only carries the connection details for that mode.
+ */
+export interface StreamProfile {
+  id: string;
+  label: string;
+  url: string;
+  rtspTransport?: RtspTransport;
+}
+
 export interface WebViewConfig {
   mode: WebViewMode;
   url: string;
@@ -164,6 +176,8 @@ export interface WebViewConfig {
   multicastConfig?: MulticastConfig;
   /** RTSP lower-transport (rtsp mode reuses `url` for the rtsp:// address). */
   rtspTransport?: RtspTransport;
+  profiles?: StreamProfile[];
+  activeProfileId?: string;
 }
 
 /** Discriminated stream source sent to the `start_stream_proxy` command. */

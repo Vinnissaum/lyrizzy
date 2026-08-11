@@ -34,33 +34,41 @@ impl Slide {
 /// editing) even when the total number/order of slides changes.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SlideAnchor {
-    pub section_id: String,
-    /// The index of this slide among all slides sharing `section_id`
-    /// within the item (i.e. the Nth occurrence of that section).
+    /// The slide's content: each line trimmed, joined with `\n`.
+    pub key: String,
+    /// The index of this slide among all slides sharing `key`
+    /// within the item (i.e. the Nth occurrence of that content).
     pub ordinal: usize,
+}
+
+fn content_key(slide: &Slide) -> String {
+    slide
+        .lines
+        .iter()
+        .map(|l| l.trim())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Builds the anchor for the slide at `index`. Returns `None` if `index` is
 /// out of range for `slides`.
 pub fn anchor_of(slides: &[Slide], index: usize) -> Option<SlideAnchor> {
     let slide = slides.get(index)?;
+    let key = content_key(slide);
     let ordinal = slides[..index]
         .iter()
-        .filter(|s| s.section_id == slide.section_id)
+        .filter(|s| content_key(s) == key)
         .count();
-    Some(SlideAnchor {
-        section_id: slide.section_id.clone(),
-        ordinal,
-    })
+    Some(SlideAnchor { key, ordinal })
 }
 
 /// Resolves an anchor against a regenerated slide list, returning an index
 /// that is always valid for `new_slides` (or `0` if it is empty).
 ///
 /// Fallback chain:
-/// 1. Exact `(section_id, ordinal)` match.
-/// 2. The last slide carrying `section_id` (ordinal overflow / section shrank).
-/// 3. `old_index` clamped to `new_slides.len() - 1` (section removed entirely).
+/// 1. Exact `(key, ordinal)` match.
+/// 2. The last slide carrying `key` (ordinal overflow / content shrank).
+/// 3. `old_index` clamped to `new_slides.len() - 1` (content removed entirely).
 /// 4. `0` (e.g. `new_slides` is empty).
 pub fn resolve_anchor(
     new_slides: &[Slide],
@@ -75,7 +83,7 @@ pub fn resolve_anchor(
         let matching: Vec<usize> = new_slides
             .iter()
             .enumerate()
-            .filter(|(_, s)| s.section_id == anchor.section_id)
+            .filter(|(_, s)| content_key(s) == anchor.key)
             .map(|(i, _)| i)
             .collect();
 
@@ -173,11 +181,14 @@ mod tests {
         assert_eq!(RepeatMode::default(), RepeatMode::Duplicate);
     }
 
-    fn slide_with(section_id: &str) -> Slide {
+    /// Builds a slide whose content (and hence anchor key) is `content`.
+    /// `section_id` is left as an arbitrary, unused placeholder since
+    /// anchoring no longer keys off it.
+    fn slide_with(content: &str) -> Slide {
         Slide {
-            lines: vec!["line".into()],
+            lines: vec![content.into()],
             section_label: "Verse".into(),
-            section_id: section_id.into(),
+            section_id: "unused".into(),
         }
     }
 
@@ -188,6 +199,18 @@ mod tests {
     }
 
     #[test]
+    fn anchor_of_key_joins_trimmed_lines_with_newline() {
+        let slide = Slide {
+            lines: vec!["  Amazing grace  ".into(), "How sweet ".into()],
+            section_label: "Verse 1".into(),
+            section_id: "unused".into(),
+        };
+        let anchor = anchor_of(&[slide], 0).unwrap();
+        assert_eq!(anchor.key, "Amazing grace\nHow sweet");
+        assert_eq!(anchor.ordinal, 0);
+    }
+
+    #[test]
     fn resolve_anchor_exact_hit_on_unchanged_slides_returns_same_index() {
         let slides = vec![slide_with("s1"), slide_with("s2"), slide_with("s3")];
         let anchor = anchor_of(&slides, 1).unwrap();
@@ -195,14 +218,14 @@ mod tests {
     }
 
     #[test]
-    fn resolve_anchor_section_split_across_slides_resolves_by_ordinal() {
+    fn resolve_anchor_content_split_across_slides_resolves_by_ordinal() {
         let old_slides = vec![
             slide_with("s1"),
             slide_with("s2"),
             slide_with("s2"),
             slide_with("s2"),
         ];
-        // Third slide of section "s2" (ordinal 2).
+        // Third slide with content "s2" (ordinal 2).
         let anchor = anchor_of(&old_slides, 3).unwrap();
         assert_eq!(anchor.ordinal, 2);
 
@@ -216,8 +239,8 @@ mod tests {
     }
 
     #[test]
-    fn resolve_anchor_repeated_section_ids_disambiguated_by_ordinal() {
-        // Simulates RepeatMode::Duplicate: same section_id repeated.
+    fn resolve_anchor_repeated_content_disambiguated_by_ordinal() {
+        // Simulates RepeatMode::Duplicate: same content repeated.
         let slides = vec![slide_with("chorus"), slide_with("chorus")];
         let anchor_first = anchor_of(&slides, 0).unwrap();
         let anchor_second = anchor_of(&slides, 1).unwrap();
@@ -228,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_anchor_ordinal_overflow_falls_back_to_last_slide_of_section() {
+    fn resolve_anchor_ordinal_overflow_falls_back_to_last_slide_of_content() {
         let old_slides = vec![
             slide_with("s1"),
             slide_with("s2"),
@@ -237,17 +260,17 @@ mod tests {
         ];
         let anchor = anchor_of(&old_slides, 3).unwrap(); // ordinal 2
 
-        // Section "s2" shrank to a single slide.
+        // Content "s2" shrank to a single slide.
         let new_slides = vec![slide_with("s1"), slide_with("s2")];
         assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 3), 1);
     }
 
     #[test]
-    fn resolve_anchor_section_deleted_clamps_old_index_to_last_slide() {
+    fn resolve_anchor_content_deleted_clamps_old_index_to_last_slide() {
         let old_slides = vec![slide_with("s1"), slide_with("s2"), slide_with("s3")];
-        let anchor = anchor_of(&old_slides, 1).unwrap(); // section "s2"
+        let anchor = anchor_of(&old_slides, 1).unwrap(); // content "s2"
 
-        // Section "s2" removed entirely.
+        // Content "s2" removed entirely.
         let new_slides = vec![slide_with("s1"), slide_with("s3")];
         assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 1), 1);
     }
@@ -260,7 +283,7 @@ mod tests {
             slide_with("s3"),
             slide_with("s4"),
         ];
-        let anchor = anchor_of(&old_slides, 3).unwrap(); // section "s4"
+        let anchor = anchor_of(&old_slides, 3).unwrap(); // content "s4"
 
         let new_slides = vec![slide_with("s1"), slide_with("s2")];
         assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 3), 1);
@@ -282,15 +305,58 @@ mod tests {
             Slide::pseudo("__blackout__"),
         ];
         let anchor = anchor_of(&old_slides, 0).unwrap();
-        assert_eq!(anchor.section_id, "");
+        assert_eq!(anchor.key, "");
 
         let new_slides = vec![
             Slide::pseudo("__title__"),
             Slide::pseudo("__title__"),
             slide_with("s1"),
         ];
-        // section_id "" now has two slides; ordinal 0 should hit the first.
+        // key "" now has two slides; ordinal 0 should hit the first.
         assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 0), 0);
+    }
+
+    #[test]
+    fn resolve_anchor_strophe_inserted_above_shifts_anchor_forward() {
+        // Anchor sits on the second strophe ("verse2").
+        let old_slides = vec![slide_with("verse1"), slide_with("verse2"), slide_with("verse3")];
+        let anchor = anchor_of(&old_slides, 1).unwrap();
+
+        // A new strophe is inserted above "verse2".
+        let new_slides = vec![
+            slide_with("verse1"),
+            slide_with("inserted"),
+            slide_with("verse2"),
+            slide_with("verse3"),
+        ];
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 1), 2);
+    }
+
+    #[test]
+    fn resolve_anchor_strophe_deleted_above_shifts_anchor_backward() {
+        // Anchor sits on the third strophe ("verse3").
+        let old_slides = vec![
+            slide_with("verse1"),
+            slide_with("verse2"),
+            slide_with("verse3"),
+        ];
+        let anchor = anchor_of(&old_slides, 2).unwrap();
+
+        // The strophe above it ("verse1") is deleted.
+        let new_slides = vec![slide_with("verse2"), slide_with("verse3")];
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 2), 1);
+    }
+
+    #[test]
+    fn resolve_anchor_current_slide_text_edited_falls_back_to_clamped_old_index() {
+        // The current slide's own text changes, so its content key no
+        // longer exists anywhere in the regenerated list. Since the slide
+        // count is unchanged, the clamped old_index is still correct.
+        let old_slides = vec![slide_with("verse1"), slide_with("verse2"), slide_with("verse3")];
+        let anchor = anchor_of(&old_slides, 1).unwrap(); // key "verse2"
+
+        let new_slides = vec![slide_with("verse1"), slide_with("verse2 edited"), slide_with("verse3")];
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 1), 1);
     }
 
     #[test]

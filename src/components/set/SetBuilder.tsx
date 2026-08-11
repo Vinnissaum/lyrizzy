@@ -41,7 +41,6 @@ import { ItemTypeIcon } from "../presentation/itemMeta";
 import {
   addSetItem,
   duplicateSetItem,
-  enterPresentation,
   exportSet,
   getSet,
   importPresentation,
@@ -56,6 +55,7 @@ import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { listSongs } from "../../api/commands";
+import { useRequestPresentation } from "../presentation/PresentationLaunchProvider";
 import { CountdownScheduleModal } from "./CountdownScheduleModal";
 import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
 import { MediaSetItemEditor } from "./MediaSetItemEditor";
@@ -127,6 +127,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
   const { t } = useTranslation();
   const { setView, openEditor } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
+  const requestPresentation = useRequestPresentation();
   const [serviceSet, setServiceSet] = useState<ServiceSet | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [songSearch, setSongSearch] = useState("");
@@ -378,7 +379,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
     setIsLoading(true);
     try {
       await loadSetForPresentation(serviceSet.id);
-      await enterPresentation();
+      await requestPresentation(serviceSet.id);
     } catch (err) {
       const payload = err as { code?: string; params?: Record<string, string> };
       setLoadError(t(`error.${payload.code ?? "unknown"}`, payload.params));

@@ -4,7 +4,6 @@ import {
   checkForUpdates,
   checkRestoreInProgress,
   clearOverlay,
-  enterPresentation,
   exitPresentation,
   getOrCreateDefaultSet,
   loadSetForPresentation,
@@ -25,6 +24,10 @@ import { HomeSetBuilder } from "../../components/setbuilder/HomeSetBuilder";
 import { SetBuilder } from "../../components/set/SetBuilder";
 import { SetList } from "../../components/set/SetList";
 import { OperatorPresentationLayout } from "../../components/presentation/OperatorPresentationLayout";
+import {
+  PresentationLaunchProvider,
+  useRequestPresentation,
+} from "../../components/presentation/PresentationLaunchProvider";
 import { MediaLibrary } from "../../components/media/MediaLibrary";
 import { BackupScreen } from "../../components/backup/BackupScreen";
 import { SettingsScreen } from "../../components/settings/SettingsScreen";
@@ -48,7 +51,18 @@ import { installKeyboardDispatcher, isPresentationActive } from "../../runtime/k
 import { findUpcomingScheduledCountdown } from "../../runtime/scheduledCountdown";
 import type { OutputId, SetItem, Song, UpdateInfo } from "../../types";
 
-export const OperatorApp: React.FC = () => {
+/**
+ * Mounts `PresentationLaunchProvider` once for the whole operator tree, so
+ * every "Apresentar" call site below it (including this file's own countdown
+ * auto-launch) reaches `useRequestPresentation` — see T15/T16.
+ */
+export const OperatorApp: React.FC = () => (
+  <PresentationLaunchProvider>
+    <OperatorAppInner />
+  </PresentationLaunchProvider>
+);
+
+const OperatorAppInner: React.FC = () => {
   const { t, i18n } = useTranslation();
   const {
     currentView,
@@ -61,6 +75,7 @@ export const OperatorApp: React.FC = () => {
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
   const { subscribe: subscribeCountdown } = useCountdownStore();
+  const requestPresentation = useRequestPresentation();
   const countdownState = useCountdownStore((s) => s.state);
   const { setLocale, loadLocale, loadPresentationSettings, loadTheme } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
@@ -151,8 +166,8 @@ export const OperatorApp: React.FC = () => {
         const setId = armed?.setId ?? payload.setId;
         if (typeof setId === "string") {
           await loadSetForPresentation(setId);
+          await requestPresentation(setId);
         }
-        await enterPresentation();
         const itemIndex = armed?.itemIndex ?? payload.itemIndex;
         if (typeof itemIndex === "number") {
           await usePresentationStore.getState().jumpToItem(itemIndex);

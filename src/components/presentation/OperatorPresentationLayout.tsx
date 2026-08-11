@@ -141,6 +141,8 @@ export const OperatorPresentationLayout: React.FC<{
 
   const ensurePresentation = async () => {
     try {
+      // Direct enterPresentation here too: just makes sure the already-running
+      // output's window is open for an overlay, not a fresh launch — no policy.
       await enterPresentation(focusedOutput);
     } catch (err) {
       console.error("open presentation window failed:", err);

@@ -5,7 +5,6 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   addSetItem,
   clearOverlay,
-  enterPresentation,
   getSet,
   importPresentation,
   listSongs,
@@ -20,6 +19,7 @@ import { mediaUrl } from "../../api/assets";
 import { usePresentationStore } from "../../stores/presentation";
 import { SetBuilder } from "../set/SetBuilder";
 import { OverlayActionBar } from "../presentation/OverlayActionBar";
+import { useRequestPresentation } from "../presentation/PresentationLaunchProvider";
 import type { Song } from "../../types";
 
 export const HomeSetBuilder: React.FC = () => {
@@ -27,6 +27,7 @@ export const HomeSetBuilder: React.FC = () => {
   const { fixedSetId } = useLibraryStore();
   const { state: presState } = usePresentationStore();
   const { media, refresh: refreshMedia } = useMediaStore();
+  const requestPresentation = useRequestPresentation();
 
   const [showSidebar, setShowSidebar] = useState(true);
   const [sidebarSearch, setSidebarSearch] = useState("");
@@ -82,7 +83,7 @@ export const HomeSetBuilder: React.FC = () => {
         return;
       }
       await loadSetForPresentation(fixedSetId);
-      await enterPresentation();
+      await requestPresentation(fixedSetId);
     } catch (err) {
       const payload = err as { code?: string; params?: Record<string, string> };
       setErrorToast(t(`error.${payload.code ?? "unknown"}`, payload.params));
@@ -91,8 +92,9 @@ export const HomeSetBuilder: React.FC = () => {
   };
 
   const ensurePresentation = async () => {
+    if (!fixedSetId) return;
     try {
-      await enterPresentation();
+      await requestPresentation(fixedSetId);
     } catch (err) {
       console.error("open presentation window failed:", err);
     }

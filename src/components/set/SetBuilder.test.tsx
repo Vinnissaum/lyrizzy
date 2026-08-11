@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 
 vi.mock("../../stores/library", () => ({
   useLibraryStore: vi.fn(),
@@ -24,7 +24,11 @@ vi.mock("../../api/commands", () => ({
   updateSet: vi.fn(),
   importPresentation: vi.fn(),
   loadSetForPresentation: vi.fn().mockResolvedValue(undefined),
-  enterPresentation: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockRequestPresentation = vi.fn().mockResolvedValue(undefined);
+vi.mock("../presentation/PresentationLaunchProvider", () => ({
+  useRequestPresentation: () => mockRequestPresentation,
 }));
 
 vi.mock("../../api/assets", () => ({
@@ -50,7 +54,7 @@ import { SetBuilder, reorderIds } from "./SetBuilder";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { usePresentationStore } from "../../stores/presentation";
-import { getSet, reorderSetItems } from "../../api/commands";
+import { getSet, loadSetForPresentation, reorderSetItems } from "../../api/commands";
 import type { ServiceSet, SetItem } from "../../types";
 
 const baseSet: ServiceSet = {
@@ -64,6 +68,7 @@ const baseSet: ServiceSet = {
 describe("SetBuilder — hidePresentButton prop", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequestPresentation.mockReset().mockResolvedValue(undefined);
     vi.mocked(useLibraryStore).mockReturnValue({ setView: vi.fn() } as ReturnType<typeof useLibraryStore>);
     vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
     vi.mocked(usePresentationStore).mockReturnValue({ getState: vi.fn() } as unknown as ReturnType<typeof usePresentationStore>);
@@ -83,6 +88,22 @@ describe("SetBuilder — hidePresentButton prop", () => {
       expect(screen.getByText("Culto")).toBeInTheDocument()
     );
     expect(screen.queryByText("builder.present")).toBeNull();
+  });
+
+  it("clicking Apresentar loads the set then calls requestPresentation(setId) via the launch hook", async () => {
+    render(<SetBuilder setId="set-1" />);
+    await waitFor(() =>
+      expect(screen.getByText("builder.present")).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByText("builder.present"));
+
+    await waitFor(() =>
+      expect(loadSetForPresentation).toHaveBeenCalledWith("set-1")
+    );
+    await waitFor(() =>
+      expect(mockRequestPresentation).toHaveBeenCalledWith("set-1")
+    );
   });
 });
 
@@ -111,6 +132,7 @@ const countdownSet: ServiceSet = {
 describe("SetBuilder — countdown row", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequestPresentation.mockReset().mockResolvedValue(undefined);
     vi.mocked(useLibraryStore).mockReturnValue({ setView: vi.fn() } as ReturnType<typeof useLibraryStore>);
     vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
     vi.mocked(usePresentationStore).mockReturnValue({ getState: vi.fn() } as unknown as ReturnType<typeof usePresentationStore>);
@@ -185,6 +207,7 @@ const multiItemSet: ServiceSet = {
 describe("SetBuilder — drag-end reorder calls reorderSetItems", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequestPresentation.mockReset().mockResolvedValue(undefined);
     vi.mocked(useLibraryStore).mockReturnValue({ setView: vi.fn() } as ReturnType<typeof useLibraryStore>);
     vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
     vi.mocked(usePresentationStore).mockReturnValue({ getState: vi.fn() } as unknown as ReturnType<typeof usePresentationStore>);

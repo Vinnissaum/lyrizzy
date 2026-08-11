@@ -20,7 +20,6 @@ vi.mock("../../stores/settings", () => ({
 vi.mock("../../api/commands", () => ({
   listSongs: vi.fn().mockResolvedValue([]),
   onSongsChanged: vi.fn().mockResolvedValue(() => {}),
-  enterPresentation: vi.fn().mockResolvedValue(undefined),
   getSet: vi.fn(),
   loadSetForPresentation: vi.fn().mockResolvedValue({}),
   addSetItem: vi.fn(),
@@ -33,6 +32,11 @@ vi.mock("../../api/commands", () => ({
 
 vi.mock("../set/SetBuilder", () => ({
   SetBuilder: () => <div data-testid="set-builder" />,
+}));
+
+const mockRequestPresentation = vi.fn().mockResolvedValue(undefined);
+vi.mock("../presentation/PresentationLaunchProvider", () => ({
+  useRequestPresentation: () => mockRequestPresentation,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -51,7 +55,7 @@ import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
-import { enterPresentation, getSet, loadSetForPresentation } from "../../api/commands";
+import { getSet, loadSetForPresentation } from "../../api/commands";
 import type { ServiceSet } from "../../types";
 
 const baseLibraryStore = {
@@ -76,7 +80,7 @@ describe("HomeSetBuilder — Apresentar button", () => {
     vi.mocked(usePresentationStore).mockReturnValue({ state: null } as ReturnType<typeof usePresentationStore>);
     vi.mocked(useSettingsStore).mockReturnValue({ cameraUrl: undefined, loadCameraUrl: vi.fn() } as ReturnType<typeof useSettingsStore>);
     // Reset command mocks to their default resolved implementations
-    vi.mocked(enterPresentation).mockResolvedValue(undefined);
+    mockRequestPresentation.mockReset().mockResolvedValue(undefined);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(loadSetForPresentation).mockResolvedValue(undefined as any);
   });
@@ -87,7 +91,7 @@ describe("HomeSetBuilder — Apresentar button", () => {
     expect(screen.getByTestId("apresentar-button")).toBeInTheDocument();
   });
 
-  it("shows toast and does NOT call enterPresentation when set is empty", async () => {
+  it("shows toast and does NOT call requestPresentation when set is empty", async () => {
     vi.mocked(getSet).mockResolvedValue({ ...baseSet, items: [] });
 
     render(<HomeSetBuilder />);
@@ -96,16 +100,16 @@ describe("HomeSetBuilder — Apresentar button", () => {
     await waitFor(() => {
       expect(screen.getByText("error.presentation.empty_set")).toBeInTheDocument();
     });
-    expect(enterPresentation).not.toHaveBeenCalled();
+    expect(mockRequestPresentation).not.toHaveBeenCalled();
   });
 
-  it("shows no_monitors toast when enterPresentation rejects with presentation.no_monitors", async () => {
+  it("shows no_monitors toast when requestPresentation rejects with presentation.no_monitors", async () => {
     const setWithItems: ServiceSet = {
       ...baseSet,
       items: [{ id: "item-1", setId: "set-1", itemType: "song", sortOrder: 0 }],
     };
     vi.mocked(getSet).mockResolvedValue(setWithItems);
-    vi.mocked(enterPresentation).mockRejectedValue({ code: "presentation.no_monitors" });
+    mockRequestPresentation.mockRejectedValue({ code: "presentation.no_monitors" });
 
     render(<HomeSetBuilder />);
     fireEvent.click(screen.getByTestId("apresentar-button"));
@@ -115,7 +119,7 @@ describe("HomeSetBuilder — Apresentar button", () => {
     });
   });
 
-  it("does NOT call enterPresentation when loadSetForPresentation rejects", async () => {
+  it("does NOT call requestPresentation when loadSetForPresentation rejects", async () => {
     const setWithItems: ServiceSet = {
       ...baseSet,
       items: [{ id: "item-1", setId: "set-1", itemType: "song", sortOrder: 0 }],
@@ -129,10 +133,10 @@ describe("HomeSetBuilder — Apresentar button", () => {
     await waitFor(() => {
       expect(screen.getByText("error.some.error")).toBeInTheDocument();
     });
-    expect(enterPresentation).not.toHaveBeenCalled();
+    expect(mockRequestPresentation).not.toHaveBeenCalled();
   });
 
-  it("calls enterPresentation when set has items", async () => {
+  it("calls requestPresentation(setId) via the launch hook when set has items", async () => {
     const setWithItems: ServiceSet = {
       ...baseSet,
       items: [{ id: "item-1", setId: "set-1", itemType: "song", sortOrder: 0 }],
@@ -143,7 +147,7 @@ describe("HomeSetBuilder — Apresentar button", () => {
     fireEvent.click(screen.getByTestId("apresentar-button"));
 
     await waitFor(() => {
-      expect(enterPresentation).toHaveBeenCalled();
+      expect(mockRequestPresentation).toHaveBeenCalledWith("set-1");
     });
   });
 });

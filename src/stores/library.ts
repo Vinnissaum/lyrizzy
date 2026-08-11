@@ -22,11 +22,17 @@ interface LibraryStore {
   editingSetId: string | null;
   currentView: AppView;
   fixedSetId: string | null;
+  /** True while `editingSongId` was opened via `openLiveEditor` (editing over
+   *  the presentation layout). `closeEditor` checks this to avoid navigating
+   *  `currentView` away from the presentation layout on save/delete. */
+  isLiveEdit: boolean;
 
   setSearch: (search: string) => void;
   refresh: () => Promise<void>;
   openEditor: (id?: string) => void;
   closeEditor: () => void;
+  openLiveEditor: (id: string) => void;
+  closeLiveEditor: () => void;
   openSetBuilder: (id?: string) => void;
   setView: (view: AppView) => void;
   loadFixedSet: () => Promise<void>;
@@ -40,6 +46,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   editingSetId: null,
   currentView: "home",
   fixedSetId: null,
+  isLiveEdit: false,
 
   setSearch: (search) => {
     set({ search });
@@ -57,11 +64,25 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   },
 
   openEditor: (id?: string) => {
-    set({ editingSongId: id ?? null, currentView: "editor" });
+    set({ editingSongId: id ?? null, currentView: "editor", isLiveEdit: false });
   },
 
   closeEditor: () => {
+    // Editing over the presentation layout (see openLiveEditor): leave
+    // currentView untouched so the operator stays on the presentation layout.
+    if (get().isLiveEdit) {
+      set({ editingSongId: null, isLiveEdit: false });
+      return;
+    }
     set({ editingSongId: null, currentView: "library" });
+  },
+
+  openLiveEditor: (id: string) => {
+    set({ editingSongId: id, isLiveEdit: true });
+  },
+
+  closeLiveEditor: () => {
+    set({ editingSongId: null, isLiveEdit: false });
   },
 
   openSetBuilder: (id?: string) => {

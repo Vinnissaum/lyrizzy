@@ -211,6 +211,9 @@
       "label": "Profile",
       "switchFailed": "Failed to switch stream profile"
     },
+    "liveEdit": {
+      "title": "Edit song"
+    },
     "multiScreenLaunch": {
       "title": "Present on both screens?",
       "prompt": "Mirror this presentation to {{screen1}} and {{screen2}}, or start on {{screen1}} only?",

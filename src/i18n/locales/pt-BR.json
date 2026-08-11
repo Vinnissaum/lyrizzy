@@ -211,6 +211,9 @@
       "label": "Perfil",
       "switchFailed": "Falha ao trocar o perfil de transmissão"
     },
+    "liveEdit": {
+      "title": "Editar música"
+    },
     "multiScreenLaunch": {
       "title": "Apresentar nas duas telas?",
       "prompt": "Espelhar esta apresentação para a {{screen1}} e a {{screen2}}, ou iniciar apenas na {{screen1}}?",

@@ -1,37 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useTranslation } from "react-i18next";
-import { listMonitors } from "../../api/commands";
-import {
-  loadMonitorNames,
-  monitorIdentity,
-  resolveMonitorName,
-  saveMonitorName,
-  type MonitorNameMap,
-} from "../../utils/monitorNames";
-import type { MonitorInfo } from "../../types";
+import { monitorIdentity, resolveMonitorName } from "../../utils/monitorNames";
+import { useSettingsStore } from "../../stores/settings";
 
 /**
  * Editable per-monitor name list. Every detected monitor gets a row with its
  * resolution and a text field for an operator-chosen name, persisted by
- * identity (not array index) via `saveMonitorName`.
+ * identity (not array index) via the settings store.
  */
 export const MonitorNameSettings: React.FC = () => {
   const { t } = useTranslation();
-  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
-  const [names, setNames] = useState<MonitorNameMap>({});
-
-  useEffect(() => {
-    listMonitors()
-      .then(setMonitors)
-      .catch(() => setMonitors([]));
-    loadMonitorNames()
-      .then(setNames)
-      .catch(() => setNames({}));
-  }, []);
+  const monitors = useSettingsStore((s) => s.monitors);
+  const names = useSettingsStore((s) => s.monitorNames);
+  const setMonitorName = useSettingsStore((s) => s.setMonitorName);
 
   const onChange = (identity: string, value: string) => {
-    setNames((prev) => ({ ...prev, [identity]: value }));
-    saveMonitorName(identity, value).catch(() => {});
+    setMonitorName(identity, value).catch(() => {});
   };
 
   return (

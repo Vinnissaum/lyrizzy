@@ -21,6 +21,7 @@ import {
   DEFAULT_ANNOUNCEMENT_MARGIN,
   PRESENTATION_SETTING_KEYS,
   UI_THEME_KEY,
+  LAUNCH_POLICY_KEY,
 } from "./settings";
 
 const mockGetSetting = vi.mocked(getSetting);
@@ -215,6 +216,35 @@ describe("useSettingsStore — theme", () => {
 
     expect(useSettingsStore.getState().theme).toBe("black");
     expect(document.documentElement.dataset.theme).toBe("black");
+  });
+});
+
+describe("useSettingsStore — launchPolicy", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useSettingsStore.setState({ launchPolicy: "ask" });
+  });
+
+  it("defaults to 'ask' before any load", () => {
+    expect(useSettingsStore.getState().launchPolicy).toBe("ask");
+  });
+
+  it("setLaunchPolicy updates the store and persists via setSetting", () => {
+    useSettingsStore.getState().setLaunchPolicy("mirror_all");
+
+    expect(useSettingsStore.getState().launchPolicy).toBe("mirror_all");
+    expect(mockSetSetting).toHaveBeenCalledWith(LAUNCH_POLICY_KEY, "mirror_all");
+  });
+
+  it("falls back to 'ask' for a garbage persisted value on load", async () => {
+    mockGetSetting.mockImplementation((key: string) => {
+      if (key === LAUNCH_POLICY_KEY) return Promise.resolve("garbage");
+      return Promise.resolve("");
+    });
+
+    await useSettingsStore.getState().loadPresentationSettings();
+
+    expect(useSettingsStore.getState().launchPolicy).toBe("ask");
   });
 });
 

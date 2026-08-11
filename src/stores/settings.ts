@@ -46,6 +46,9 @@ export const MAX_CAMERA_JITTER_BUFFER_MS = 1000;
 export const MULTI_SCREEN_ENABLED_KEY = "output.multi_screen_enabled";
 /** When true (and multi-screen on), operator actions mirror onto BOTH outputs. */
 export const MIRROR_ENABLED_KEY = "output.mirror_enabled";
+/** Policy governing how the second output launches when multi-screen is enabled. */
+export type LaunchPolicy = "ask" | "mirror_all" | "main_only";
+export const LAUNCH_POLICY_KEY = "output.launch_policy";
 
 /** Per-output camera/mic audio settings, persisted as JSON under this key. */
 export const outputAudioKey = (o: OutputId) => `output.${o}.audio`;
@@ -115,6 +118,8 @@ const POSITION_VALUES: ScreenPosition[] = [
 ];
 const MARGIN_VALUES: Margin[] = ["none", "sm", "md", "lg", "xl"];
 const REPEAT_MODE_VALUES: RepeatMode[] = ["duplicate", "annotate"];
+const LAUNCH_POLICY_VALUES: LaunchPolicy[] = ["ask", "mirror_all", "main_only"];
+const DEFAULT_LAUNCH_POLICY: LaunchPolicy = "ask";
 type Theme = "light" | "dark" | "black";
 const THEME_VALUES: Theme[] = ["light", "dark", "black"];
 const DEFAULT_THEME: Theme = "dark";
@@ -171,6 +176,8 @@ interface SettingsStore {
   multiScreenEnabled: boolean;
   /** Mirror mode: when on, operator actions drive BOTH outputs identically. */
   mirrorEnabled: boolean;
+  /** Policy for how the second output launches when multi-screen is enabled. */
+  launchPolicy: LaunchPolicy;
   /** Target camera playout buffer (ms); 0 = minimum latency / closest to live. */
   cameraJitterBufferMs: number;
   /** Per-output camera/mic audio settings. */
@@ -203,6 +210,7 @@ interface SettingsStore {
   setBlackoutAfterSong: (value: boolean) => void;
   setMultiScreenEnabled: (value: boolean) => void;
   setMirrorEnabled: (value: boolean) => void;
+  setLaunchPolicy: (value: LaunchPolicy) => void;
   setCameraJitterBufferMs: (value: number) => void;
   /** Merge a patch into one output's audio settings and persist it. */
   setOutputAudio: (output: OutputId, patch: Partial<OutputAudioSettings>) => void;
@@ -268,6 +276,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   blackoutAfterSong: true,
   multiScreenEnabled: false,
   mirrorEnabled: false,
+  launchPolicy: DEFAULT_LAUNCH_POLICY,
   cameraJitterBufferMs: DEFAULT_CAMERA_JITTER_BUFFER_MS,
   audio: {
     one: { ...DEFAULT_OUTPUT_AUDIO },
@@ -389,6 +398,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     set({ mirrorEnabled: value });
     setSetting(MIRROR_ENABLED_KEY, String(value)).catch(() => {});
   },
+  setLaunchPolicy: (value) => {
+    set({ launchPolicy: value });
+    setSetting(LAUNCH_POLICY_KEY, value).catch(() => {});
+  },
   setCameraJitterBufferMs: (value) => {
     const clamped = Math.max(0, Math.min(Math.round(value) || 0, MAX_CAMERA_JITTER_BUFFER_MS));
     set({ cameraJitterBufferMs: clamped });
@@ -427,6 +440,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       blackoutAfterSong,
       multiScreenEnabled,
       mirrorEnabled,
+      launchPolicy,
       cameraJitterBufferMs,
     ] = await Promise.all([
       readSetting(PRESENTATION_FONT_SIZE_KEY, FONT_SIZE_VALUES, DEFAULT_FONT_SIZE),
@@ -449,6 +463,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       readBool(BLACKOUT_AFTER_SONG_KEY, true),
       readBool(MULTI_SCREEN_ENABLED_KEY, false),
       readBool(MIRROR_ENABLED_KEY, false),
+      readSetting(LAUNCH_POLICY_KEY, LAUNCH_POLICY_VALUES, DEFAULT_LAUNCH_POLICY),
       readNumber(CAMERA_JITTER_BUFFER_KEY, DEFAULT_CAMERA_JITTER_BUFFER_MS),
     ]);
     set({
@@ -472,6 +487,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       blackoutAfterSong,
       multiScreenEnabled,
       mirrorEnabled,
+      launchPolicy,
       cameraJitterBufferMs,
     });
   },

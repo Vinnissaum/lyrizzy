@@ -151,6 +151,9 @@ function mockSettingsSelector() {
       setOutputAudio: vi.fn(),
       cameraUrl: "",
       loadCameraUrl: vi.fn(),
+      monitors: [],
+      monitorNames: {},
+      outputMonitorIndex: { one: null, two: null },
     };
     return selector ? selector(s) : s;
   });
@@ -300,6 +303,9 @@ describe("OperatorPresentationLayout", () => {
         setOutputAudio: vi.fn(),
         cameraUrl: "",
         loadCameraUrl: vi.fn(),
+        monitors: [],
+        monitorNames: {},
+        outputMonitorIndex: { one: null, two: null },
       };
       return selector ? selector(s) : s;
     });
@@ -348,6 +354,9 @@ describe("OperatorPresentationLayout", () => {
         setOutputAudio: vi.fn(),
         cameraUrl: "",
         loadCameraUrl: vi.fn(),
+        monitors: [],
+        monitorNames: {},
+        outputMonitorIndex: { one: null, two: null },
       };
       return selector ? selector(s) : s;
     });

@@ -151,7 +151,7 @@ describe("OperatorNotesPanel", () => {
           {
             id: "item-1",
             setId: "set-1",
-            itemType: "announcement",
+            itemType: "media",
             notes: "Read slowly",
             sortOrder: 0,
           },

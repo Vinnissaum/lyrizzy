@@ -38,6 +38,9 @@ import { useSettingsStore } from "../../stores/settings";
 
 const makeStore = (overrides: Partial<ReturnType<typeof useSettingsStore>> = {}): ReturnType<typeof useSettingsStore> =>
   ({
+    monitors: [],
+    monitorNames: {},
+    outputMonitorIndex: { one: null, two: null },
     cameraUrl: "",
     setCameraUrl: vi.fn(),
     presentationFontSize: "lg" as const,
@@ -78,10 +81,20 @@ function gotoTab(tab: "general" | "projection" | "announcement") {
   fireEvent.click(screen.getByRole("tab", { name: `settings.tabs.${tab}` }));
 }
 
+// useSettingsStore is called both with a selector (e.g. MonitorPicker/MonitorNameSettings
+// `useSettingsStore((s) => s.monitors)`) and without one (SettingsScreen itself), so the
+// mock must apply the selector when one is passed rather than always returning the whole store.
+function setStore(overrides: Partial<ReturnType<typeof useSettingsStore>> = {}) {
+  const store = makeStore(overrides);
+  vi.mocked(useSettingsStore).mockImplementation((selector?: any) =>
+    selector ? selector(store) : store,
+  );
+}
+
 describe("SettingsScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useSettingsStore).mockReturnValue(makeStore());
+    setStore();
   });
 
   it("renders without crashing", () => {
@@ -105,7 +118,7 @@ describe("SettingsScreen", () => {
     });
 
     it("shows On button as pressed when blackoutAfterSong is true", () => {
-      vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: true }));
+      setStore({ blackoutAfterSong: true });
       render(<SettingsScreen />);
       gotoTab("projection");
 
@@ -120,7 +133,7 @@ describe("SettingsScreen", () => {
     });
 
     it("shows Off button as pressed when blackoutAfterSong is false", () => {
-      vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: false }));
+      setStore({ blackoutAfterSong: false });
       render(<SettingsScreen />);
       gotoTab("projection");
 
@@ -134,7 +147,7 @@ describe("SettingsScreen", () => {
 
     it("calls setBlackoutAfterSong(false) when Off is clicked", () => {
       const setBlackoutAfterSong = vi.fn();
-      vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: true, setBlackoutAfterSong }));
+      setStore({ blackoutAfterSong: true, setBlackoutAfterSong });
       render(<SettingsScreen />);
       gotoTab("projection");
 
@@ -151,7 +164,7 @@ describe("SettingsScreen", () => {
 
     it("calls setBlackoutAfterSong(true) when On is clicked", () => {
       const setBlackoutAfterSong = vi.fn();
-      vi.mocked(useSettingsStore).mockReturnValue(makeStore({ blackoutAfterSong: false, setBlackoutAfterSong }));
+      setStore({ blackoutAfterSong: false, setBlackoutAfterSong });
       render(<SettingsScreen />);
       gotoTab("projection");
 
@@ -175,7 +188,7 @@ describe("SettingsScreen", () => {
     });
 
     it("shows the current announcementMargin value as pressed", () => {
-      vi.mocked(useSettingsStore).mockReturnValue(makeStore({ announcementMargin: "sm" }));
+      setStore({ announcementMargin: "sm" });
       render(<SettingsScreen />);
       gotoTab("announcement");
 
@@ -189,9 +202,7 @@ describe("SettingsScreen", () => {
 
     it("calls setAnnouncementMargin when a margin option is clicked", () => {
       const setAnnouncementMargin = vi.fn();
-      vi.mocked(useSettingsStore).mockReturnValue(
-        makeStore({ announcementMargin: "lg", setAnnouncementMargin })
-      );
+      setStore({ announcementMargin: "lg", setAnnouncementMargin });
       render(<SettingsScreen />);
       gotoTab("announcement");
 

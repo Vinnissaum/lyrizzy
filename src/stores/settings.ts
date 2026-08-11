@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import { getSetting, setSetting } from "../api/commands";
+import {
+  getSetting,
+  setSetting,
+  listMonitors,
+  PRESENTATION_MONITOR_KEY,
+  OUTPUT2_MONITOR_KEY,
+} from "../api/commands";
 import i18next from "../i18n";
 import type {
   BackgroundPreset,
@@ -11,8 +17,10 @@ import type {
   RepeatMode,
   ScreenPosition,
   OutputId,
+  MonitorInfo,
 } from "../types";
 import type { SavedAudioDevice } from "../utils/audioDevices";
+import { loadMonitorNames, MONITOR_NAMES_KEY, type MonitorNameMap } from "../utils/monitorNames";
 
 export const PRESENTATION_FONT_SIZE_KEY = "presentation.font_size";
 export const PRESENTATION_FONT_FAMILY_KEY = "presentation.font_family";
@@ -88,6 +96,18 @@ function parseOutputAudio(raw: string | null): OutputAudioSettings {
     return { ...DEFAULT_OUTPUT_AUDIO };
   }
 }
+
+/** Parses a persisted `*.monitor_index` setting. "auto"/missing/non-numeric → null. */
+function parseMonitorIndex(raw: string | null | undefined): number | null {
+  if (!raw || raw === "auto") return null;
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+export const DEFAULT_OUTPUT_MONITOR_INDEX: Record<OutputId, number | null> = {
+  one: null,
+  two: null,
+};
 export const UI_THEME_KEY = "ui.theme";
 
 // Every settings key the presentation window must reload when it changes live.
@@ -182,6 +202,12 @@ interface SettingsStore {
   cameraJitterBufferMs: number;
   /** Per-output camera/mic audio settings. */
   audio: Record<OutputId, OutputAudioSettings>;
+  /** OS-reported monitors, as of the last `loadMonitorSetup()` call. */
+  monitors: MonitorInfo[];
+  /** Operator-chosen display names, keyed by monitor identity. */
+  monitorNames: MonitorNameMap;
+  /** Per-output saved monitor index; null means "auto-detect". */
+  outputMonitorIndex: Record<OutputId, number | null>;
 
   setLocale: (locale: string) => void;
   loadLocale: () => Promise<void>;
@@ -221,6 +247,13 @@ interface SettingsStore {
 
   /** Loads every persisted presentation/announcement appearance setting. */
   loadPresentationSettings: () => Promise<void>;
+
+  /** Loads monitors, saved names and per-output monitor index concurrently. */
+  loadMonitorSetup: () => Promise<void>;
+  /** Sets one monitor's name, preserving names for undetected monitors, and persists. */
+  setMonitorName: (identity: string, name: string) => Promise<void>;
+  /** Apply a `setting_changed` payload for monitor-names or a per-output monitor index. */
+  applyMonitorSetting: (key: string, value: string) => void;
 }
 
 async function readSetting<T extends string>(key: string, valid: T[], fallback: T): Promise<T> {
@@ -282,6 +315,9 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     one: { ...DEFAULT_OUTPUT_AUDIO },
     two: { ...DEFAULT_OUTPUT_AUDIO },
   },
+  monitors: [],
+  monitorNames: {},
+  outputMonitorIndex: { ...DEFAULT_OUTPUT_MONITOR_INDEX },
 
   setLocale: (locale) => set({ locale }),
   loadLocale: async () => {
@@ -491,4 +527,54 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       cameraJitterBufferMs,
     });
   },
+
+  loadMonitorSetup: async () => {
+    const [monitors, monitorNames, oneRaw, twoRaw] = await Promise.all([
+      listMonitors().catch(() => []),
+      loadMonitorNames().catch(() => ({})),
+      getSetting(PRESENTATION_MONITOR_KEY).catch(() => null),
+      getSetting(OUTPUT2_MONITOR_KEY).catch(() => null),
+    ]);
+    set({
+      monitors,
+      monitorNames,
+      outputMonitorIndex: {
+        one: parseMonitorIndex(oneRaw),
+        two: parseMonitorIndex(twoRaw),
+      },
+    });
+  },
+  setMonitorName: async (identity, name) => {
+    let merged: MonitorNameMap = {};
+    set((s) => {
+      merged = { ...s.monitorNames, [identity]: name };
+      return { monitorNames: merged };
+    });
+    await setSetting(MONITOR_NAMES_KEY, JSON.stringify(merged));
+  },
+  applyMonitorSetting: (key, value) =>
+    set((s) => {
+      if (key === MONITOR_NAMES_KEY) {
+        try {
+          const parsed = JSON.parse(value) as unknown;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            return { monitorNames: parsed as MonitorNameMap };
+          }
+        } catch {
+          // malformed payload — leave existing names untouched
+        }
+        return s;
+      }
+      if (key === PRESENTATION_MONITOR_KEY) {
+        return {
+          outputMonitorIndex: { ...s.outputMonitorIndex, one: parseMonitorIndex(value) },
+        };
+      }
+      if (key === OUTPUT2_MONITOR_KEY) {
+        return {
+          outputMonitorIndex: { ...s.outputMonitorIndex, two: parseMonitorIndex(value) },
+        };
+      }
+      return s;
+    }),
 }));

@@ -16,12 +16,7 @@ function useCurrentNotes(): string | null {
 
   if (item.itemType === "song" && item.songId) {
     const song = songs.find((s) => s.id === item.songId);
-    const sectionId = state.currentSlide?.sectionId;
-    if (song && sectionId) {
-      const section = song.sections.find((sec) => sec.id === sectionId);
-      return section?.notes ?? null;
-    }
-    return null;
+    return song?.notes ?? null;
   }
 
   return item.notes ?? null;

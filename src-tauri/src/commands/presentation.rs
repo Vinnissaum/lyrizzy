@@ -1,7 +1,7 @@
 use crate::commands::set::db_load_set;
 use crate::commands::song::load_sections;
 use crate::domain::error::ErrorPayload;
-use crate::domain::presentation::{PresentationMode, PresentationState};
+use crate::domain::presentation::{with_full_slides, PresentationMode, PresentationState};
 use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{anchor_of, resolve_anchor, RepeatMode, Slide, SlideConfig};
 use crate::services::{background, play_counter, slide_splitter};
@@ -541,7 +541,7 @@ pub(crate) async fn refresh_song_in_outputs(
                 pres.next_slide = resolve_next_slide(&all, &pres);
             }
 
-            pres.clone()
+            with_full_slides(&pres, &all)
         };
 
         emit_state(app, output, &snapshot).await?;

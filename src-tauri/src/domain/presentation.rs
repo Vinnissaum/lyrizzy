@@ -63,6 +63,19 @@ pub struct PresentationState {
     pub all_slides_per_item: Vec<Vec<Slide>>,
 }
 
+/// Produce an emit-ready `PresentationState` carrying every slide body for
+/// every set item, without mutating the (slim) stored state.
+///
+/// The stored `AppState.presentation` never holds `all_slides_per_item` for
+/// live-edit refreshes — only the emitted payload does, so the presentation
+/// window can re-render the regenerated song without a second round trip.
+pub fn with_full_slides(state: &PresentationState, all: &[Vec<Slide>]) -> PresentationState {
+    PresentationState {
+        all_slides_per_item: all.to_vec(),
+        ..state.clone()
+    }
+}
+
 impl Default for PresentationState {
     fn default() -> Self {
         Self {
@@ -175,6 +188,66 @@ mod tests {
         let json = r#"{"set":null,"currentItemIndex":0,"currentSlideIndex":0,"mode":"idle","frozenAt":null,"currentSlide":null,"nextSlide":null,"itemSlideCounts":[],"background":null,"overlay":null}"#;
         let state: PresentationState = serde_json::from_str(json).unwrap();
         assert!(state.all_slides_per_item.is_empty(), "should default to empty vec");
+    }
+
+    #[test]
+    fn with_full_slides_carries_every_slide_of_every_item() {
+        let state = PresentationState::default();
+        let all = vec![
+            vec![Slide { lines: vec!["a".into()], section_label: "Verse".into(), section_id: "s1".into() }],
+            vec![
+                Slide { lines: vec!["b".into()], section_label: "Chorus".into(), section_id: "s2".into() },
+                Slide { lines: vec!["c".into()], section_label: "Chorus".into(), section_id: "s3".into() },
+            ],
+        ];
+        let payload = with_full_slides(&state, &all);
+        assert_eq!(payload.all_slides_per_item, all);
+    }
+
+    #[test]
+    fn with_full_slides_does_not_mutate_input_state() {
+        let state = PresentationState::default();
+        let all = vec![vec![Slide {
+            lines: vec!["a".into()],
+            section_label: "Verse".into(),
+            section_id: "s1".into(),
+        }]];
+        let _payload = with_full_slides(&state, &all);
+        assert!(state.all_slides_per_item.is_empty());
+    }
+
+    #[test]
+    fn with_full_slides_empty_all_yields_empty_payload() {
+        let state = PresentationState::default();
+        let payload = with_full_slides(&state, &[]);
+        assert!(payload.all_slides_per_item.is_empty());
+    }
+
+    #[test]
+    fn with_full_slides_copies_other_fields_untouched() {
+        let state = PresentationState {
+            mode: PresentationMode::Frozen,
+            frozen_at: Some((1, 2)),
+            overlay: Some(OverlayState::Announcement { text: "Oferta".into() }),
+            current_slide: Some(Slide {
+                lines: vec!["x".into()],
+                section_label: "Verse".into(),
+                section_id: "cs".into(),
+            }),
+            item_slide_counts: vec![3, 5],
+            ..Default::default()
+        };
+        let all = vec![vec![Slide {
+            lines: vec!["y".into()],
+            section_label: "Verse".into(),
+            section_id: "s1".into(),
+        }]];
+        let payload = with_full_slides(&state, &all);
+        assert_eq!(payload.mode, PresentationMode::Frozen);
+        assert_eq!(payload.frozen_at, Some((1, 2)));
+        assert_eq!(payload.overlay, Some(OverlayState::Announcement { text: "Oferta".into() }));
+        assert_eq!(payload.current_slide, state.current_slide);
+        assert_eq!(payload.item_slide_counts, vec![3, 5]);
     }
 
     #[test]

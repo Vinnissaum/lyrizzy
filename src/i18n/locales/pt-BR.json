@@ -759,7 +759,8 @@
       "micDelay": "Atraso do microfone (ms)",
       "micDevice": "Microfone (entrada)",
       "outputDevice": "Saída de áudio (TV/HDMI)",
-      "defaultDevice": "Padrão do sistema"
+      "defaultDevice": "Padrão do sistema",
+      "screenNamed": "{{tela}} — {{name}}"
     },
     "blackoutAfterSongDescription": "Inserir automaticamente uma tela preta após o último slide de cada música"
   },

@@ -7,6 +7,7 @@ import {
   toSavedDevice,
   type AudioDevices,
 } from "../../utils/audioDevices";
+import { outputScreenName } from "../../utils/monitorNames";
 import type { OutputId } from "../../types";
 
 const OUTPUTS: OutputId[] = ["one", "two"];
@@ -20,6 +21,9 @@ export const MicAudioSettings: React.FC = () => {
   const { t } = useTranslation();
   const audio = useSettingsStore((s) => s.audio);
   const setOutputAudio = useSettingsStore((s) => s.setOutputAudio);
+  const monitors = useSettingsStore((s) => s.monitors);
+  const monitorNames = useSettingsStore((s) => s.monitorNames);
+  const outputMonitorIndex = useSettingsStore((s) => s.outputMonitorIndex);
   const [devices, setDevices] = useState<AudioDevices>({ inputs: [], outputs: [] });
   const [error, setError] = useState<string | null>(null);
 
@@ -69,11 +73,14 @@ export const MicAudioSettings: React.FC = () => {
 
       {OUTPUTS.map((o, i) => {
         const a = audio[o];
+        const tela = t("presentation.output.tela", { n: i + 1 });
+        const screenName = outputScreenName(monitors, monitorNames, outputMonitorIndex[o], "");
+        const heading = screenName
+          ? t("settings.audio.screenNamed", { tela, name: screenName })
+          : tela;
         return (
           <div key={o} className="rounded-lg border border-border p-3 space-y-2">
-            <h4 className="text-sm font-medium">
-              {t("presentation.output.tela", { n: i + 1 })}
-            </h4>
+            <h4 className="text-sm font-medium">{heading}</h4>
 
             <label className="flex items-center justify-between text-sm">
               <span>{t("settings.audio.micEnabled")}</span>

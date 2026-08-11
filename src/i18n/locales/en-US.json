@@ -759,7 +759,8 @@
       "micDelay": "Microphone delay (ms)",
       "micDevice": "Microphone (input)",
       "outputDevice": "Audio output (TV/HDMI)",
-      "defaultDevice": "System default"
+      "defaultDevice": "System default",
+      "screenNamed": "{{tela}} — {{name}}"
     },
     "blackoutAfterSongDescription": "Automatically insert a black slide after the last slide of every song"
   },

@@ -72,6 +72,11 @@ vi.mock("./LivePreview", () => ({
   LivePreview: () => <div data-testid="live-preview-stub" />,
 }));
 
+vi.mock("./LiveSongEditModal", () => ({
+  LiveSongEditModal: ({ songId }: { songId: string | null; onClose: () => void }) =>
+    songId ? <div data-testid="live-song-edit-modal-stub">{songId}</div> : null,
+}));
+
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { usePresentationStore } from "../../stores/presentation";
@@ -357,6 +362,51 @@ describe("OperatorPresentationLayout", () => {
       expect(loadSetForPresentation).toHaveBeenCalledWith("set-1", "two"),
     );
     expect(enterPresentation).not.toHaveBeenCalled();
+  });
+
+  it("enables the live-edit button on a Song item and disables it on a Media item", () => {
+    setupDefaultMocks();
+    const { unmount } = render(<OperatorPresentationLayout />);
+    // currentItemIndex 0 → item-1 is a song
+    expect(screen.getByTestId("live-edit-button")).not.toBeDisabled();
+    unmount();
+
+    const mediaSet: ServiceSet = {
+      id: "set-1",
+      name: "Culto",
+      createdAt: 0,
+      updatedAt: 0,
+      items: [
+        {
+          id: "item-media",
+          setId: "set-1",
+          itemType: "media",
+          mediaId: "media-1",
+          sortOrder: 0,
+        },
+      ],
+    };
+    setupDefaultMocks({
+      set: mediaSet,
+      currentItemIndex: 0,
+      itemSlideCounts: [1],
+      allSlidesPerItem: [[{ lines: [], sectionLabel: "", sectionId: "" }]],
+    });
+    render(<OperatorPresentationLayout />);
+    expect(screen.getByTestId("live-edit-button")).toBeDisabled();
+  });
+
+  it("clears the live editor when exiting presentation", () => {
+    setupDefaultMocks();
+    render(<OperatorPresentationLayout />);
+
+    fireEvent.click(screen.getByTestId("live-edit-button"));
+    expect(screen.getByTestId("live-song-edit-modal-stub")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("stop-button"));
+    expect(
+      screen.queryByTestId("live-song-edit-modal-stub"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders OverlayActionBar without Apresentar button", () => {

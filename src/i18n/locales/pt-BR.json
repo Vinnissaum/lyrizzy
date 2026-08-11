@@ -212,7 +212,8 @@
       "switchFailed": "Falha ao trocar o perfil de transmissão"
     },
     "liveEdit": {
-      "title": "Editar música"
+      "title": "Editar música",
+      "button": "Editar letra"
     },
     "multiScreenLaunch": {
       "title": "Apresentar nas duas telas?",

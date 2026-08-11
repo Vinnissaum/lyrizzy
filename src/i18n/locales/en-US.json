@@ -212,7 +212,8 @@
       "switchFailed": "Failed to switch stream profile"
     },
     "liveEdit": {
-      "title": "Edit song"
+      "title": "Edit song",
+      "button": "Edit lyrics"
     },
     "multiScreenLaunch": {
       "title": "Present on both screens?",

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
+import { X, Pencil } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   clearOverlay,
@@ -32,6 +32,7 @@ import { itemLabel, songArtist } from "./itemMeta";
 import { SetItemList } from "./SetItemList";
 import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
+import { LiveSongEditModal } from "./LiveSongEditModal";
 import type { OutputId } from "../../types";
 
 export const OperatorPresentationLayout: React.FC<{
@@ -60,6 +61,11 @@ export const OperatorPresentationLayout: React.FC<{
   const [showSetPicker, setShowSetPicker] = useState(false);
 
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
+
+  // Song id currently open in the live editor overlay, if any. Local to the
+  // operator layout — the presentation window is never involved (read-only
+  // invariant).
+  const [editingSongId, setEditingSongId] = useState<string | null>(null);
 
   // Which output the launch modal is confirming, if any. Opened from an
   // OutputSwitcher tab whose screen is not presenting yet.
@@ -207,6 +213,8 @@ export const OperatorPresentationLayout: React.FC<{
     );
     // Mirror (Simultânea): Stop exits BOTH screens.
     fanOutToMirror(focusedOutput, (o) => exitPresentation(o));
+    // Clear any open live editor so it doesn't survive as an orphaned overlay.
+    setEditingSongId(null);
   };
 
   const handleImportPresentation = async () => {
@@ -327,9 +335,26 @@ export const OperatorPresentationLayout: React.FC<{
 
         {/* Strophes pane */}
         <div className="flex flex-col overflow-hidden">
-          <header className="text-xs text-muted px-2 py-1">
-            {t("presentation.pane.strophes")} — {activeItemLabel}
-            {activeItemArtist ? ` — ${activeItemArtist}` : ""}
+          <header className="flex items-center justify-between text-xs text-muted px-2 py-1">
+            <span>
+              {t("presentation.pane.strophes")} — {activeItemLabel}
+              {activeItemArtist ? ` — ${activeItemArtist}` : ""}
+            </span>
+            <button
+              type="button"
+              data-testid="live-edit-button"
+              disabled={activeItem?.itemType !== "song"}
+              onClick={() => {
+                if (activeItem?.itemType === "song") {
+                  setEditingSongId(activeItem.songId);
+                }
+              }}
+              aria-label={t("presentation.liveEdit.button")}
+              title={t("presentation.liveEdit.button")}
+              className="text-muted hover:text-inherit disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Pencil size={14} />
+            </button>
           </header>
           <div className="flex-1 overflow-hidden">
             <StrophesGrid />
@@ -479,6 +504,11 @@ export const OperatorPresentationLayout: React.FC<{
       {launchOutput && (
         <OutputLaunchModal output={launchOutput} onClose={closeLaunchModal} />
       )}
+
+      <LiveSongEditModal
+        songId={editingSongId}
+        onClose={() => setEditingSongId(null)}
+      />
     </div>
   );
 };

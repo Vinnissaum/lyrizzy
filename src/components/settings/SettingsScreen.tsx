@@ -4,6 +4,7 @@ import { LanguagePicker } from "./LanguagePicker";
 import { KeyBindingsScreen } from "./KeyBindingsScreen";
 import { MonitorPicker } from "./MonitorPicker";
 import { MicAudioSettings } from "./MicAudioSettings";
+import { LaunchPolicySetting } from "./LaunchPolicySetting";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
 import { AboutPanel } from "./AboutPanel";
 import { useSettingsStore, MAX_CAMERA_JITTER_BUFFER_MS } from "../../stores/settings";
@@ -361,6 +362,7 @@ export const SettingsScreen: React.FC = () => {
                 value={s.multiScreenEnabled}
                 onChange={s.setMultiScreenEnabled}
               />
+              <LaunchPolicySetting />
               {s.multiScreenEnabled && <MicAudioSettings />}
             </div>
           )}

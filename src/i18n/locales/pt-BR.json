@@ -719,6 +719,13 @@
     "announcementMargin": "Margem do aviso",
     "blackoutAfterSong": "Tela preta após cada música",
     "multiScreen": "Segunda tela (multi-saída)",
+    "launchPolicy": {
+      "title": "Comportamento de início na segunda tela",
+      "ask": "Perguntar sempre",
+      "mirrorAll": "Sempre espelhar todas as telas",
+      "mainOnly": "Somente a tela principal",
+      "disabledHint": "Ative a segunda tela (multi-saída) acima para usar esta opção."
+    },
     "camera": {
       "title": "Câmera",
       "jitterBuffer": "Buffer alvo (ms)",

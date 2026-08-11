@@ -719,6 +719,13 @@
     "announcementMargin": "Warning margin",
     "blackoutAfterSong": "Black slide after each song",
     "multiScreen": "Second screen (multi-output)",
+    "launchPolicy": {
+      "title": "Second-screen launch behavior",
+      "ask": "Ask every time",
+      "mirrorAll": "Always mirror all screens",
+      "mainOnly": "Only the main screen",
+      "disabledHint": "Enable the second screen (multi-output) above to use this setting."
+    },
     "camera": {
       "title": "Camera",
       "jitterBuffer": "Buffer target (ms)",

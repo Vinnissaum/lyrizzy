@@ -207,6 +207,12 @@
       "simultaneous": "Simultânea",
       "simultaneousHint": "Apresentar o mesmo conteúdo nas duas telas"
     },
+    "multiScreenLaunch": {
+      "title": "Apresentar nas duas telas?",
+      "prompt": "Espelhar esta apresentação para a {{screen1}} e a {{screen2}}, ou iniciar apenas na {{screen1}}?",
+      "mainOnly": "Somente {{screen1}}",
+      "mirrorAll": "Espelhar as duas"
+    },
     "action": {
       "present": "Apresentar",
       "stop": "Parar"

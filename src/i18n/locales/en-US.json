@@ -207,6 +207,12 @@
       "simultaneous": "Simultaneous",
       "simultaneousHint": "Present the same content on both screens"
     },
+    "multiScreenLaunch": {
+      "title": "Present on both screens?",
+      "prompt": "Mirror this presentation to {{screen1}} and {{screen2}}, or start on {{screen1}} only?",
+      "mainOnly": "{{screen1}} only",
+      "mirrorAll": "Mirror both"
+    },
     "action": {
       "present": "Present",
       "stop": "Stop"

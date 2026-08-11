@@ -50,6 +50,7 @@ This was specified as "set the resolution on camera webview". **That framing doe
 - [ ] Each physical monitor carries an operator-chosen name that outputs inherit, so screens are identified by what they drive rather than by index
 - [ ] A lyric error is corrected and re-projected without leaving presentation mode and without losing position
 - [ ] The camera view can be switched between operator-defined stream profiles (e.g. 4K main / 1080p sub) at any time, with zero impact on the 4K feed OBS/YouTube consumes
+- [ ] The app icon evokes song and worship rather than a bare letter, from one committed vector source
 
 ## Out of Scope
 
@@ -178,6 +179,30 @@ This was specified as "set the resolution on camera webview". **That framing doe
 
 ---
 
+### 14D — Icon Rebranding
+
+#### P2: An icon that reads as song and worship
+
+**User Story**: As the church, we want the app icon to say "songs" at a glance instead of showing a bare letter, so the app is recognisable on the production PC's taskbar.
+
+**Why P2**: Cosmetic and fully isolated from the three functional slices — but cheap, and the current plain "L" carries no meaning to anyone but us.
+
+**Chosen concept** (decided 2026-08-11): the Lyrizzy **L whose vertical stroke doubles as a music-note stem**, with a filled notehead fused at the corner where the L turns. Keeps the existing letterform and palette (purple mark on a dark rounded square); adds the song reference without a denominational symbol.
+
+**Acceptance Criteria**:
+
+1. WHEN icon assets are generated THEN the system SHALL generate every one of them from a **single committed SVG** source, which is the only hand-edited icon artefact
+2. WHEN the mark is rendered at 32×32 THEN it SHALL remain legible as both an L and a music note, with no detail that collapses at that size
+3. WHEN the source SVG is authored THEN it SHALL bake in its own dark rounded-square background, because the generator preserves transparency and adds no backdrop of its own
+4. WHEN assets are regenerated THEN every path listed in `tauri.conf.json` `bundle.icon` SHALL be updated, along with the Windows Store, macOS `.icns`, Android and iOS variants the generator emits
+5. WHEN either window loads THEN its favicon SHALL show the new mark — `public/icons/` is a separate surface the generator does **not** write to, and SHALL be synced explicitly
+6. WHEN the app is packaged THEN the installer, taskbar and window icons SHALL all show the new mark
+7. WHEN the palette is chosen THEN it SHALL stay within the existing brand colours; this story SHALL NOT introduce a new brand palette
+
+**Independent Test**: Regenerate from the SVG, launch the app → taskbar, both window title bars and both browser-tab favicons show the L-note. Shrink the 32×32 asset on screen → still reads as an L and as a note.
+
+---
+
 ## Edge Cases
 
 **Multi-screen:**
@@ -208,38 +233,40 @@ This was specified as "set the resolution on camera webview". **That framing doe
 
 | ID | Story | Group | Phase | Status |
 |----|-------|-------|-------|--------|
-| P14-01 | P1: One-action multi-screen launch | 14A | Design | Pending |
-| P14-02 | P1: Mirror-all launches every output at item 1 | 14A | Design | Pending |
-| P14-03 | P1: Negative answer launches main output only | 14A | Design | Pending |
-| P14-04 | P1: Modal suppressed when multi-screen disabled | 14A | Design | Pending |
-| P14-05 | P1: Dismissal launches nothing, mutates nothing | 14A | Design | Pending |
-| P14-06 | P1: Empty-set guard honoured per output | 14A | Design | Pending |
-| P14-07 | P1: Launch policy setting with three values | 14A | Design | Pending |
-| P14-08 | P1: Policy defaults to ask every time | 14A | Design | Pending |
-| P14-09 | P1: Non-ask policies bypass the modal | 14A | Design | Pending |
-| P14-10 | P1: Policy persists and applies without restart | 14A | Design | Pending |
-| P14-11 | P2: Per-monitor editable names | 14A | Design | Pending |
-| P14-12 | P2: Outputs inherit assigned monitor's name | 14A | Design | Pending |
-| P14-13 | P2: Name fallback chain (custom → OS → generated) | 14A | Design | Pending |
-| P14-14 | P2: Names persist and re-associate across restart | 14A | Design | Pending |
-| P14-15 | P2: Names survive enumeration reordering and disconnection | 14A | Design | Pending |
-| P14-16 | P1: Open song editor without exiting presentation | 14B | Design | Pending |
-| P14-17 | P1: Save regenerates item slides and updates projection | 14B | Design | Pending |
-| P14-18 | P1: Position anchored to the projected section | 14B | Design | Pending |
-| P14-19 | P1: Clamp on shrink / missing section, never blank | 14B | Design | Pending |
-| P14-20 | P1: Editing a non-projected song leaves projection untouched | 14B | Design | Pending |
-| P14-21 | P1: Mirrored outputs receive regenerated slides | 14B | Design | Pending |
-| P14-22 | P1: Blank/frozen mode preserved across regeneration | 14B | Design | Pending |
-| P14-23 | P1: Cancel and save-failure leave projection intact | 14B | Design | Pending |
-| P14-24 | P1: Multiple named stream profiles per camera item | 14C | Design | Pending |
-| P14-25 | P1: Switch active profile from the operator UI | 14C | Design | Pending |
-| P14-26 | P1: Switching restarts the proxy and resumes playback | 14C | Design | Pending |
-| P14-27 | P1: Active profile persists per item | 14C | Design | Pending |
-| P14-28 | P1: Single-profile items behave as today | 14C | Design | Pending |
-| P14-29 | P1: Invalid URL and switch failure leave the stream intact | 14C | Design | Pending |
-| P14-30 | P1: Editor explains sub-stream rationale and OBS independence | 14C | Design | Pending |
+| P14-01 | P1: One-action multi-screen launch | 14A | Tasks | T13, T14, T15, T16 |
+| P14-02 | P1: Mirror-all launches every output at item 1 | 14A | Tasks | T13 |
+| P14-03 | P1: Negative answer launches main output only | 14A | Tasks | T13 |
+| P14-04 | P1: Modal suppressed when multi-screen disabled | 14A | Tasks | T13, T15 |
+| P14-05 | P1: Dismissal launches nothing, mutates nothing | 14A | Tasks | T14, T15 |
+| P14-06 | P1: Empty-set guard honoured per output | 14A | Tasks | T13, T16 |
+| P14-07 | P1: Launch policy setting with three values | 14A | Tasks | T12, T17 |
+| P14-08 | P1: Policy defaults to ask every time | 14A | Tasks | T12 |
+| P14-09 | P1: Non-ask policies bypass the modal | 14A | Tasks | T13, T15 |
+| P14-10 | P1: Policy persists and applies without restart | 14A | Tasks | T12, T17 |
+| P14-11 | P2: Per-monitor editable names | 14A | Tasks | T19 |
+| P14-12 | P2: Outputs inherit assigned monitor's name | 14A | Tasks | T20 |
+| P14-13 | P2: Name fallback chain (custom → OS → generated) | 14A | Tasks | T18, T20 |
+| P14-14 | P2: Names persist and re-associate across restart | 14A | Tasks | T18, T19 |
+| P14-15 | P2: Names survive enumeration reordering and disconnection | 14A | Tasks | T18 |
+| P14-16 | P1: Open song editor without exiting presentation | 14B | Tasks | T10, T11 |
+| P14-17 | P1: Save regenerates item slides and updates projection | 14B | Tasks | T8, T9 |
+| P14-18 | P1: Position anchored to the projected section | 14B | Tasks | T7, T9 |
+| P14-19 | P1: Clamp on shrink / missing section, never blank | 14B | Tasks | T7 |
+| P14-20 | P1: Editing a non-projected song leaves projection untouched | 14B | Tasks | T8 |
+| P14-21 | P1: Mirrored outputs receive regenerated slides | 14B | Tasks | T9 |
+| P14-22 | P1: Blank/frozen mode preserved across regeneration | 14B | Tasks | T9 |
+| P14-23 | P1: Cancel and save-failure leave projection intact | 14B | Tasks | T9, T10 |
+| P14-24 | P1: Multiple named stream profiles per camera item | 14C | Tasks | T1, T2, T4 |
+| P14-25 | P1: Switch active profile from the operator UI | 14C | Tasks | T5 |
+| P14-26 | P1: Switching restarts the proxy and resumes playback | 14C | Tasks | T3, T5, T6 |
+| P14-27 | P1: Active profile persists per item | 14C | Tasks | T1, T5 |
+| P14-28 | P1: Single-profile items behave as today | 14C | Tasks | T1, T2, T3, T5 |
+| P14-29 | P1: Invalid URL and switch failure leave the stream intact | 14C | Tasks | T5 |
+| P14-30 | P1: Editor explains sub-stream rationale and OBS independence | 14C | Tasks | T4 |
+| P14-31 | P2: Single committed SVG source, legible at 32×32 | 14D | Tasks | T22 |
+| P14-32 | P2: All platform assets + both favicon surfaces regenerated | 14D | Tasks | T22 |
 
-**Coverage:** 30 total, 0 mapped to tasks, 30 unmapped ⚠️ (Tasks phase pending)
+**Coverage:** 32 total, 32 mapped to tasks, 0 unmapped ✅ (see `tasks.md` § Requirement Coverage)
 
 ---
 

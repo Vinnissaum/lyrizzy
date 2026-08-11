@@ -714,11 +714,6 @@
       },
       "titleSlide": "Slide de título (título + autor)",
       "authorParens": "Autor entre parênteses",
-      "repeatMode": "Repetições",
-      "repeatModes": {
-        "duplicate": "Repetir slides",
-        "annotate": "Mostrar (Nx)"
-      },
       "lineSpacing": "Espaçamento entre linhas",
       "lineSpacings": {
         "tight": "Estreito",
@@ -735,7 +730,8 @@
       }
     },
     "announcement": {
-      "title": "Aviso"
+      "title": "Aviso",
+      "fontSize": "Tamanho do texto do aviso"
     },
     "announcementMargin": "Margem do aviso",
     "blackoutAfterSong": "Tela preta após cada música",

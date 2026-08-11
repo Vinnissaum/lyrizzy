@@ -714,11 +714,6 @@
       },
       "titleSlide": "Title slide (title + author)",
       "authorParens": "Author in parentheses",
-      "repeatMode": "Repetitions",
-      "repeatModes": {
-        "duplicate": "Repeat slides",
-        "annotate": "Show (Nx)"
-      },
       "lineSpacing": "Line spacing",
       "lineSpacings": {
         "tight": "Tight",
@@ -735,7 +730,8 @@
       }
     },
     "announcement": {
-      "title": "Announcement"
+      "title": "Announcement",
+      "fontSize": "Announcement text size"
     },
     "announcementMargin": "Warning margin",
     "blackoutAfterSong": "Black slide after each song",

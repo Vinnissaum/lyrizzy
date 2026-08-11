@@ -216,4 +216,28 @@ describe("SettingsScreen", () => {
       expect(buttons).toHaveLength(5);
     });
   });
+
+  describe("font size labels", () => {
+    it("renders the announcement-scoped font size label on the Aviso tab", () => {
+      render(<SettingsScreen />);
+      gotoTab("announcement");
+      expect(screen.getByText("settings.announcement.fontSize")).toBeInTheDocument();
+      expect(screen.queryByText("settings.windows.fontSize")).toBeNull();
+    });
+
+    it("renders the song font size label on the Projeção tab", () => {
+      render(<SettingsScreen />);
+      gotoTab("projection");
+      expect(screen.getByText("settings.windows.fontSize")).toBeInTheDocument();
+      expect(screen.queryByText("settings.announcement.fontSize")).toBeNull();
+    });
+  });
+
+  describe("repeat mode control removal", () => {
+    it("does not render a repeatMode control on the Projeção tab", () => {
+      render(<SettingsScreen />);
+      gotoTab("projection");
+      expect(screen.queryByText("settings.appearance.repeatMode")).toBeNull();
+    });
+  });
 });

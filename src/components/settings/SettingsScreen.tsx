@@ -17,7 +17,6 @@ import type {
   FontSize,
   LineSpacing,
   Margin,
-  RepeatMode,
   ScreenPosition,
 } from "../../types";
 
@@ -25,7 +24,6 @@ const FONT_SIZE_OPTIONS: FontSize[] = ["sm", "md", "lg", "xl", "xxl"];
 const FONT_FAMILY_OPTIONS: FontFamily[] = ["sans", "serif", "mono"];
 const PRESET_OPTIONS: BackgroundPreset[] = ["preto-branco", "branco-preto"];
 const MARGIN_OPTIONS: Margin[] = ["none", "sm", "md", "lg", "xl"];
-const REPEAT_MODE_OPTIONS: RepeatMode[] = ["duplicate", "annotate"];
 const LINE_SPACING_OPTIONS: LineSpacing[] = ["tight", "normal", "relaxed", "loose"];
 const BOLD_LEVEL_OPTIONS: BoldLevel[] = ["normal", "medium", "semibold", "bold"];
 const THEME_OPTIONS: ("light" | "dark" | "black")[] = ["light", "dark", "black"];
@@ -202,7 +200,6 @@ export const SettingsScreen: React.FC = () => {
   const presetLabel = (v: BackgroundPreset) =>
     t(`settings.appearance.themes.${v === "preto-branco" ? "dark" : "light"}`);
   const marginLabel = (v: Margin) => t(`settings.appearance.margins.${v}`);
-  const repeatModeLabel = (v: RepeatMode) => t(`settings.appearance.repeatModes.${v}`);
   const lineSpacingLabel = (v: LineSpacing) => t(`settings.appearance.lineSpacings.${v}`);
   const boldLevelLabel = (v: BoldLevel) => t(`settings.appearance.boldLevels.${v}`);
 
@@ -337,13 +334,6 @@ export const SettingsScreen: React.FC = () => {
                 optionLabel={marginLabel}
                 onChange={s.setPresentationMargin}
               />
-              <ButtonGroup
-                label={t("settings.appearance.repeatMode")}
-                value={s.presentationRepeatMode}
-                options={REPEAT_MODE_OPTIONS}
-                optionLabel={repeatModeLabel}
-                onChange={s.setPresentationRepeatMode}
-              />
               <BoolToggle
                 label={t("settings.appearance.titleSlide")}
                 value={s.showTitleSlide}
@@ -382,7 +372,7 @@ export const SettingsScreen: React.FC = () => {
                 onChange={s.setAnnouncementFontFamily}
               />
               <ButtonGroup
-                label={t("settings.windows.fontSize")}
+                label={t("settings.announcement.fontSize")}
                 value={s.announcementFontSize}
                 options={FONT_SIZE_OPTIONS}
                 optionLabel={fontSizeLabel}

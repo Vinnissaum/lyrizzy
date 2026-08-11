@@ -451,6 +451,29 @@ pub(crate) async fn append_item_to_live_presentation(
     emit_state(app, OutputId::One, &snapshot).await
 }
 
+/// Recompute slides for every set item referencing `song_id`, without touching
+/// Tauri state (no `AppHandle`/`AppState`). Pool-only core reused by the
+/// lock/emit shell in a later task. Returns `(item_index, new_slides)` pairs;
+/// a song appearing multiple times in the set yields one entry per occurrence.
+pub(crate) async fn regenerate_song_slides(
+    pool: &SqlitePool,
+    set: &crate::domain::set::ServiceSet,
+    song_id: &str,
+) -> Result<Vec<(usize, Vec<Slide>)>, ErrorPayload> {
+    let config = SlideConfig::default();
+    let settings = load_slide_gen_settings(pool).await;
+
+    let mut out = Vec::new();
+    for (idx, item) in set.items.iter().enumerate() {
+        if item.item_type != SetItemType::Song || item.song_id.as_deref() != Some(song_id) {
+            continue;
+        }
+        let slides = compute_item_slides(pool, item, &config, &settings).await?;
+        out.push((idx, slides));
+    }
+    Ok(out)
+}
+
 // ─── Tauri commands ──────────────────────────────────────────────────────────
 
 #[tauri::command]

@@ -1,6 +1,6 @@
 # Phase 14 — Multi-Screen Launch, Live Lyrics Editing, Camera Stream Quality
 
-**Status:** Specified (2026-08-11)
+**Status:** Implemented (2026-08-11)
 **Depends on:** Phase 7 (3-pane operator layout), D-47 (dual independent outputs), Phase 8 (WebView stream modes)
 
 ---
@@ -233,40 +233,40 @@ This was specified as "set the resolution on camera webview". **That framing doe
 
 | ID | Story | Group | Phase | Status |
 |----|-------|-------|-------|--------|
-| P14-01 | P1: One-action multi-screen launch | 14A | Tasks | T13, T14, T15, T16 |
-| P14-02 | P1: Mirror-all launches every output at item 1 | 14A | Tasks | T13 |
-| P14-03 | P1: Negative answer launches main output only | 14A | Tasks | T13 |
-| P14-04 | P1: Modal suppressed when multi-screen disabled | 14A | Tasks | T13, T15 |
-| P14-05 | P1: Dismissal launches nothing, mutates nothing | 14A | Tasks | T14, T15 |
-| P14-06 | P1: Empty-set guard honoured per output | 14A | Tasks | T13, T16 |
-| P14-07 | P1: Launch policy setting with three values | 14A | Tasks | T12, T17 |
-| P14-08 | P1: Policy defaults to ask every time | 14A | Tasks | T12 |
-| P14-09 | P1: Non-ask policies bypass the modal | 14A | Tasks | T13, T15 |
-| P14-10 | P1: Policy persists and applies without restart | 14A | Tasks | T12, T17 |
-| P14-11 | P2: Per-monitor editable names | 14A | Tasks | T19 |
-| P14-12 | P2: Outputs inherit assigned monitor's name | 14A | Tasks | T20 |
-| P14-13 | P2: Name fallback chain (custom → OS → generated) | 14A | Tasks | T18, T20 |
-| P14-14 | P2: Names persist and re-associate across restart | 14A | Tasks | T18, T19 |
-| P14-15 | P2: Names survive enumeration reordering and disconnection | 14A | Tasks | T18 |
-| P14-16 | P1: Open song editor without exiting presentation | 14B | Tasks | T10, T11 |
-| P14-17 | P1: Save regenerates item slides and updates projection | 14B | Tasks | T8, T9 |
-| P14-18 | P1: Position anchored to the projected section | 14B | Tasks | T7, T9 |
-| P14-19 | P1: Clamp on shrink / missing section, never blank | 14B | Tasks | T7 |
-| P14-20 | P1: Editing a non-projected song leaves projection untouched | 14B | Tasks | T8 |
-| P14-21 | P1: Mirrored outputs receive regenerated slides | 14B | Tasks | T9 |
-| P14-22 | P1: Blank/frozen mode preserved across regeneration | 14B | Tasks | T9 |
-| P14-23 | P1: Cancel and save-failure leave projection intact | 14B | Tasks | T9, T10 |
-| P14-24 | P1: Multiple named stream profiles per camera item | 14C | Tasks | T1, T2, T4 |
-| P14-25 | P1: Switch active profile from the operator UI | 14C | Tasks | T5 |
-| P14-26 | P1: Switching restarts the proxy and resumes playback | 14C | Tasks | T3, T5, T6 |
-| P14-27 | P1: Active profile persists per item | 14C | Tasks | T1, T5 |
-| P14-28 | P1: Single-profile items behave as today | 14C | Tasks | T1, T2, T3, T5 |
-| P14-29 | P1: Invalid URL and switch failure leave the stream intact | 14C | Tasks | T5 |
-| P14-30 | P1: Editor explains sub-stream rationale and OBS independence | 14C | Tasks | T4 |
-| P14-31 | P2: Single committed SVG source, legible at 32×32 | 14D | Tasks | T22 |
-| P14-32 | P2: All platform assets + both favicon surfaces regenerated | 14D | Tasks | T22 |
+| P14-01 | P1: One-action multi-screen launch | 14A | Implemented | T13, T14, T15, T16 |
+| P14-02 | P1: Mirror-all launches every output at item 1 | 14A | Implemented | T13 |
+| P14-03 | P1: Negative answer launches main output only | 14A | Implemented | T13 |
+| P14-04 | P1: Modal suppressed when multi-screen disabled | 14A | Implemented | T13, T15 |
+| P14-05 | P1: Dismissal launches nothing, mutates nothing | 14A | Implemented | T14, T15 |
+| P14-06 | P1: Empty-set guard honoured per output | 14A | Implemented | T13, T16 |
+| P14-07 | P1: Launch policy setting with three values | 14A | Implemented | T12, T17 |
+| P14-08 | P1: Policy defaults to ask every time | 14A | Implemented | T12 |
+| P14-09 | P1: Non-ask policies bypass the modal | 14A | Implemented | T13, T15 |
+| P14-10 | P1: Policy persists and applies without restart | 14A | Implemented | T12, T17 |
+| P14-11 | P2: Per-monitor editable names | 14A | Implemented | T19 |
+| P14-12 | P2: Outputs inherit assigned monitor's name | 14A | Implemented | T20 |
+| P14-13 | P2: Name fallback chain (custom → OS → generated) | 14A | Implemented | T18, T20 |
+| P14-14 | P2: Names persist and re-associate across restart | 14A | Implemented | T18, T19 |
+| P14-15 | P2: Names survive enumeration reordering and disconnection | 14A | Implemented | T18 |
+| P14-16 | P1: Open song editor without exiting presentation | 14B | Implemented | T10, T11 |
+| P14-17 | P1: Save regenerates item slides and updates projection | 14B | Implemented | T8, T9 |
+| P14-18 | P1: Position anchored to the projected section | 14B | Implemented | T7, T9 |
+| P14-19 | P1: Clamp on shrink / missing section, never blank | 14B | Implemented | T7 |
+| P14-20 | P1: Editing a non-projected song leaves projection untouched | 14B | Implemented | T8 |
+| P14-21 | P1: Mirrored outputs receive regenerated slides | 14B | Implemented | T9 |
+| P14-22 | P1: Blank/frozen mode preserved across regeneration | 14B | Implemented | T9 |
+| P14-23 | P1: Cancel and save-failure leave projection intact | 14B | Implemented | T9, T10 |
+| P14-24 | P1: Multiple named stream profiles per camera item | 14C | Implemented | T1, T2, T4 |
+| P14-25 | P1: Switch active profile from the operator UI | 14C | Implemented | T5 |
+| P14-26 | P1: Switching restarts the proxy and resumes playback | 14C | Implemented | T3, T5, T6 |
+| P14-27 | P1: Active profile persists per item | 14C | Implemented | T1, T5 |
+| P14-28 | P1: Single-profile items behave as today | 14C | Implemented | T1, T2, T3, T5 |
+| P14-29 | P1: Invalid URL and switch failure leave the stream intact | 14C | Implemented | T5 |
+| P14-30 | P1: Editor explains sub-stream rationale and OBS independence | 14C | Implemented | T4 |
+| P14-31 | P2: Single committed SVG source, legible at 32×32 | 14D | Implemented | T22 |
+| P14-32 | P2: All platform assets + both favicon surfaces regenerated | 14D | Implemented | T22 |
 
-**Coverage:** 32 total, 32 mapped to tasks, 0 unmapped ✅ (see `tasks.md` § Requirement Coverage)
+**Coverage:** 32 of 32 requirements implemented and verified by the Phase 14 gate (546 Vitest, 327 Rust, tsc clean, clippy clean). See `tasks.md` § Requirement Coverage for the task mapping.
 
 ---
 
@@ -286,9 +286,9 @@ Deferred to `design.md`, not blocking this spec:
 
 ## Success Criteria
 
-- [ ] Starting a two-screen service takes one click plus at most one modal answer, and zero clicks once a non-ask policy is set
-- [ ] The operator identifies each screen by name in the UI, with no reference to "Tela 1"/"Tela 2" indices
-- [ ] A lyric typo is corrected mid-song with no black frame and no loss of position
-- [ ] The camera view runs on a sub-stream while OBS continues pulling 4K, with stable (non-growing) latency across a full service
-- [ ] All new strings exist in both `en-US` and `pt-BR`, guarded by the existing parity test
-- [ ] Gate green: `tsc --noEmit` clean, Vitest suite passing, `cargo test` passing, `cargo clippy -D warnings` clean
+- [ ] Starting a two-screen service takes one click plus at most one modal answer, and zero clicks once a non-ask policy is set — **built, needs a hardware pass (see manual verification note in STATE.md)**
+- [ ] The operator identifies each screen by name in the UI, with no reference to "Tela 1"/"Tela 2" indices — **built, needs a hardware pass**
+- [ ] A lyric typo is corrected mid-song with no black frame and no loss of position — **built, needs a hardware pass**
+- [ ] The camera view runs on a sub-stream while OBS continues pulling 4K, with stable (non-growing) latency across a full service — **built, needs a hardware pass + the field actions in Root-Cause Analysis**
+- [x] All new strings exist in both `en-US` and `pt-BR`, guarded by the existing parity test
+- [x] Gate green: `tsc --noEmit` clean, Vitest suite passing, `cargo test` passing, `cargo clippy -D warnings` clean

@@ -2,7 +2,7 @@
 
 **Spec**: `.specs/features/phase14-multiscreen-liveedit-camera/spec.md` (P14-01..P14-32)
 **Design**: `.specs/features/phase14-multiscreen-liveedit-camera/design.md`
-**Status**: Draft
+**Status**: Complete (2026-08-11)
 **Date**: 2026-08-11
 
 22 tasks across four independent slices. Slice order follows design.md § Implementation Order (14C → 14B → 14A), with 14D (icon) added 2026-08-11 and orderable anywhere, but the slices share no files and can be run in any order or concurrently. Within a slice, backend precedes frontend.

@@ -1,23 +1,9 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings";
 import { resolveLaunchPlan, startPresentationPlan } from "../../utils/outputDispatch";
 import { MultiScreenLaunchModal } from "./MultiScreenLaunchModal";
-import {
-  OUTPUT2_MONITOR_KEY,
-  PRESENTATION_MONITOR_KEY,
-  getSetting,
-  listMonitors,
-} from "../../api/commands";
-import { loadMonitorNames, resolveMonitorName } from "../../utils/monitorNames";
-import type { MonitorInfo } from "../../types";
+import { outputScreenName } from "../../utils/monitorNames";
 
 type RequestPresentation = (setId: string) => Promise<void>;
 
@@ -31,47 +17,38 @@ const PresentationLaunchContext = createContext<RequestPresentation | null>(null
  *
  * Mount ONCE (a later task wires this into `OperatorApp`); every call site
  * reaches it through `useRequestPresentation`.
+ *
+ * Screen names are derived from `useSettingsStore` (`monitors`,
+ * `monitorNames`, `outputMonitorIndex`) on every render rather than fetched
+ * once into local state — this provider mounts once for the app's lifetime,
+ * so a boot-once cache would never reflect a monitor rename made later in
+ * the session.
  */
 export const PresentationLaunchProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { t } = useTranslation();
   const [pendingSetId, setPendingSetId] = useState<string | null>(null);
-  const [screenNames, setScreenNames] = useState<[string, string] | undefined>(
-    undefined,
-  );
   const resolveRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const parseIndex = (v: string | null) => {
-      if (!v || v === "auto") return null;
-      const n = parseInt(v, 10);
-      return Number.isNaN(n) ? null : n;
-    };
-    Promise.all([
-      listMonitors().catch(() => [] as MonitorInfo[]),
-      loadMonitorNames().catch(() => ({})),
-      getSetting(PRESENTATION_MONITOR_KEY).catch(() => null),
-      getSetting(OUTPUT2_MONITOR_KEY).catch(() => null),
-    ]).then(([monitors, names, one, two]) => {
-      if (cancelled) return;
-      const idxOne = parseIndex(one);
-      const idxTwo = parseIndex(two);
-      const mOne = idxOne != null ? monitors[idxOne] : undefined;
-      const mTwo = idxTwo != null ? monitors[idxTwo] : undefined;
-      const nameOne = mOne
-        ? resolveMonitorName(mOne, idxOne as number, names)
-        : t("presentation.output.tela", { n: 1 });
-      const nameTwo = mTwo
-        ? resolveMonitorName(mTwo, idxTwo as number, names)
-        : t("presentation.output.tela", { n: 2 });
-      setScreenNames([nameOne, nameTwo]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
+  const monitors = useSettingsStore((s) => s.monitors);
+  const monitorNames = useSettingsStore((s) => s.monitorNames);
+  const outputMonitorIndex = useSettingsStore((s) => s.outputMonitorIndex);
+
+  const screenNames: [string, string] = [
+    outputScreenName(
+      monitors,
+      monitorNames,
+      outputMonitorIndex.one,
+      t("presentation.output.tela", { n: 1 }),
+    ),
+    outputScreenName(
+      monitors,
+      monitorNames,
+      outputMonitorIndex.two,
+      t("presentation.output.tela", { n: 2 }),
+    ),
+  ];
 
   const requestPresentation = useCallback<RequestPresentation>((setId: string) => {
     const { launchPolicy, multiScreenEnabled } = useSettingsStore.getState();

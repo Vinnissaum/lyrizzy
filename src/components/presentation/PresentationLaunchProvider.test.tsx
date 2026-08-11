@@ -1,12 +1,13 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor, act } from "@testing-library/react";
 import {
   PresentationLaunchProvider,
   useRequestPresentation,
 } from "./PresentationLaunchProvider";
 import { useSettingsStore } from "../../stores/settings";
 import * as outputDispatch from "../../utils/outputDispatch";
+import type { MonitorInfo } from "../../types";
 
 vi.mock("../../utils/outputDispatch", async () => {
   const actual = await vi.importActual<typeof outputDispatch>("../../utils/outputDispatch");
@@ -115,5 +116,72 @@ describe("PresentationLaunchProvider", () => {
     );
     expect(startPresentationPlan).not.toHaveBeenCalled();
     expect(useSettingsStore.getState().mirrorEnabled).toBe(false);
+  });
+
+  it("shows the resolved monitor names in the launch modal", async () => {
+    const monitors: MonitorInfo[] = [
+      { name: "LG Ultrawide", width: 1920, height: 1080, x: 0, y: 0, scaleFactor: 1 },
+      { name: "Projector", width: 1280, height: 720, x: 1920, y: 0, scaleFactor: 1 },
+    ];
+    useSettingsStore.setState({
+      launchPolicy: "ask",
+      multiScreenEnabled: true,
+      monitors,
+      monitorNames: { "name:LG Ultrawide": "Palco", "name:Projector": "Telão" },
+      outputMonitorIndex: { one: 0, two: 1 },
+    });
+    renderHarness("set-6");
+
+    fireEvent.click(screen.getByText("request"));
+
+    const modal = await screen.findByTestId("multi-screen-launch-modal");
+    expect(modal.textContent).toContain("Palco");
+    expect(modal.textContent).toContain("Telão");
+  });
+
+  it("reflects a monitor rename applied after the initial render without remounting the provider", async () => {
+    const monitors: MonitorInfo[] = [
+      { name: "LG Ultrawide", width: 1920, height: 1080, x: 0, y: 0, scaleFactor: 1 },
+    ];
+    useSettingsStore.setState({
+      launchPolicy: "ask",
+      multiScreenEnabled: true,
+      monitors,
+      monitorNames: { "name:LG Ultrawide": "Palco" },
+      outputMonitorIndex: { one: 0, two: null },
+    });
+    renderHarness("set-7");
+
+    fireEvent.click(screen.getByText("request"));
+
+    const modalBefore = await screen.findByTestId("multi-screen-launch-modal");
+    expect(modalBefore.textContent).toContain("Palco");
+
+    act(() => {
+      useSettingsStore.setState({
+        monitorNames: { "name:LG Ultrawide": "Auditório" },
+      });
+    });
+
+    const modalAfter = await screen.findByTestId("multi-screen-launch-modal");
+    expect(modalAfter.textContent).toContain("Auditório");
+    expect(modalAfter.textContent).not.toContain("Palco");
+  });
+
+  it("falls back to 'Tela N' for outputs with no assigned/detected monitor", async () => {
+    useSettingsStore.setState({
+      launchPolicy: "ask",
+      multiScreenEnabled: true,
+      monitors: [],
+      monitorNames: {},
+      outputMonitorIndex: { one: null, two: null },
+    });
+    renderHarness("set-8");
+
+    fireEvent.click(screen.getByText("request"));
+
+    const modal = await screen.findByTestId("multi-screen-launch-modal");
+    expect(modal.textContent).toContain("Tela 1");
+    expect(modal.textContent).toContain("Tela 2");
   });
 });

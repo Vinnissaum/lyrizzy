@@ -21,6 +21,7 @@ vi.mock("react-i18next", () => ({
 
 import { MonitorPicker } from "./MonitorPicker";
 import { getSetting, setSetting } from "../../api/commands";
+import { MONITOR_NAMES_KEY } from "../../utils/monitorNames";
 
 describe("MonitorPicker", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -55,5 +56,18 @@ describe("MonitorPicker", () => {
       target: { value: "1" },
     });
     expect(setSetting).toHaveBeenCalledWith("output2.monitor_index", "1");
+  });
+
+  it("renders the operator name in preference to the OS name", async () => {
+    vi.mocked(getSetting).mockImplementation((key: string) =>
+      Promise.resolve(
+        key === MONITOR_NAMES_KEY
+          ? JSON.stringify({ "name:HDMI-2": "Projetor" })
+          : null,
+      ),
+    );
+    render(<MonitorPicker />);
+    expect(await screen.findByText("Projetor")).toBeInTheDocument();
+    expect(screen.queryByText(/^HDMI-2 /)).toBeNull();
   });
 });

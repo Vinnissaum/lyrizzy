@@ -6,6 +6,11 @@ import {
   listMonitors,
   setSetting,
 } from "../../api/commands";
+import {
+  loadMonitorNames,
+  resolveMonitorName,
+  type MonitorNameMap,
+} from "../../utils/monitorNames";
 import type { MonitorInfo } from "../../types";
 
 interface MonitorPickerProps {
@@ -28,12 +33,16 @@ export const MonitorPicker: React.FC<MonitorPickerProps> = ({
 }) => {
   const { t } = useTranslation();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
+  const [monitorNames, setMonitorNames] = useState<MonitorNameMap>({});
   const [value, setValue] = useState<string>("auto");
 
   useEffect(() => {
     listMonitors()
       .then(setMonitors)
       .catch(() => setMonitors([]));
+    loadMonitorNames()
+      .then(setMonitorNames)
+      .catch(() => setMonitorNames({}));
     getSetting(settingKey)
       .then((v) => setValue(v && v !== "auto" ? v : "auto"))
       .catch(() => setValue("auto"));
@@ -56,8 +65,7 @@ export const MonitorPicker: React.FC<MonitorPickerProps> = ({
         <option value="auto">{t("settings.windows.autoSelect")}</option>
         {monitors.map((m, i) => (
           <option key={i} value={String(i)}>
-            {(m.name ?? t("settings.windows.monitorOption", { index: i + 1 })) +
-              ` — ${m.width}×${m.height}`}
+            {resolveMonitorName(m, i, monitorNames)}
           </option>
         ))}
       </select>

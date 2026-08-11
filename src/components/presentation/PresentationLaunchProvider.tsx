@@ -1,7 +1,23 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings";
 import { resolveLaunchPlan, startPresentationPlan } from "../../utils/outputDispatch";
 import { MultiScreenLaunchModal } from "./MultiScreenLaunchModal";
+import {
+  OUTPUT2_MONITOR_KEY,
+  PRESENTATION_MONITOR_KEY,
+  getSetting,
+  listMonitors,
+} from "../../api/commands";
+import { loadMonitorNames, resolveMonitorName } from "../../utils/monitorNames";
+import type { MonitorInfo } from "../../types";
 
 type RequestPresentation = (setId: string) => Promise<void>;
 
@@ -19,8 +35,43 @@ const PresentationLaunchContext = createContext<RequestPresentation | null>(null
 export const PresentationLaunchProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { t } = useTranslation();
   const [pendingSetId, setPendingSetId] = useState<string | null>(null);
+  const [screenNames, setScreenNames] = useState<[string, string] | undefined>(
+    undefined,
+  );
   const resolveRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const parseIndex = (v: string | null) => {
+      if (!v || v === "auto") return null;
+      const n = parseInt(v, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+    Promise.all([
+      listMonitors().catch(() => [] as MonitorInfo[]),
+      loadMonitorNames().catch(() => ({})),
+      getSetting(PRESENTATION_MONITOR_KEY).catch(() => null),
+      getSetting(OUTPUT2_MONITOR_KEY).catch(() => null),
+    ]).then(([monitors, names, one, two]) => {
+      if (cancelled) return;
+      const idxOne = parseIndex(one);
+      const idxTwo = parseIndex(two);
+      const mOne = idxOne != null ? monitors[idxOne] : undefined;
+      const mTwo = idxTwo != null ? monitors[idxTwo] : undefined;
+      const nameOne = mOne
+        ? resolveMonitorName(mOne, idxOne as number, names)
+        : t("presentation.output.tela", { n: 1 });
+      const nameTwo = mTwo
+        ? resolveMonitorName(mTwo, idxTwo as number, names)
+        : t("presentation.output.tela", { n: 2 });
+      setScreenNames([nameOne, nameTwo]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   const requestPresentation = useCallback<RequestPresentation>((setId: string) => {
     const { launchPolicy, multiScreenEnabled } = useSettingsStore.getState();
@@ -67,7 +118,11 @@ export const PresentationLaunchProvider: React.FC<{ children: React.ReactNode }>
     <PresentationLaunchContext.Provider value={requestPresentation}>
       {children}
       {pendingSetId != null && (
-        <MultiScreenLaunchModal onAnswer={handleAnswer} onCancel={handleCancel} />
+        <MultiScreenLaunchModal
+          onAnswer={handleAnswer}
+          onCancel={handleCancel}
+          screenNames={screenNames}
+        />
       )}
     </PresentationLaunchContext.Provider>
   );

@@ -11,10 +11,24 @@ vi.mock("../../stores/settings", () => ({
 vi.mock("../../utils/outputDispatch", () => ({
   engageMirror: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("../../api/commands", () => ({
+  PRESENTATION_MONITOR_KEY: "presentation.monitor_index",
+  OUTPUT2_MONITOR_KEY: "output2.monitor_index",
+  getSetting: vi.fn().mockResolvedValue(null),
+  listMonitors: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("../../utils/monitorNames", async () => {
+  const actual = await vi.importActual<typeof import("../../utils/monitorNames")>(
+    "../../utils/monitorNames",
+  );
+  return { ...actual, loadMonitorNames: vi.fn().mockResolvedValue({}) };
+});
 
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
 import { engageMirror } from "../../utils/outputDispatch";
+import { getSetting, listMonitors } from "../../api/commands";
+import { loadMonitorNames } from "../../utils/monitorNames";
 
 const setFocusedOutput = vi.fn();
 const setMirrorEnabled = vi.fn();
@@ -109,5 +123,32 @@ describe("OutputSwitcher", () => {
     fireEvent.click(screen.getByTestId("mirror-toggle"));
     expect(setMirrorEnabled).toHaveBeenCalledWith(false);
     expect(engageMirror).not.toHaveBeenCalled();
+  });
+
+  it("renders a stored monitor name for the assigned output", async () => {
+    mockStores({ enabled: true, focused: "one" });
+    vi.mocked(listMonitors).mockResolvedValueOnce([
+      { name: "HDMI-1", width: 1920, height: 1080, x: 0, y: 0, scaleFactor: 1 },
+    ]);
+    vi.mocked(getSetting)
+      .mockResolvedValueOnce("0")
+      .mockResolvedValueOnce(null);
+    vi.mocked(loadMonitorNames).mockResolvedValueOnce({
+      "name:HDMI-1": "Projetor",
+    });
+
+    render(<OutputSwitcher />);
+    expect(await screen.findByText("Projetor")).toBeInTheDocument();
+  });
+
+  it("falls back to the generated label when no name is stored", async () => {
+    mockStores({ enabled: true, focused: "one" });
+    vi.mocked(listMonitors).mockResolvedValueOnce([]);
+    vi.mocked(getSetting).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    vi.mocked(loadMonitorNames).mockResolvedValueOnce({});
+
+    render(<OutputSwitcher />);
+    expect(await screen.findByText("Tela 1")).toBeInTheDocument();
+    expect(screen.getByText("Tela 2")).toBeInTheDocument();
   });
 });

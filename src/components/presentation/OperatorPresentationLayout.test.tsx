@@ -34,6 +34,9 @@ vi.mock("../../api/commands", () => ({
   setSetting: vi.fn().mockResolvedValue(undefined),
   getPresentationState: vi.fn().mockResolvedValue({ set: null }),
   OUTPUT2_LAST_SET_KEY: "output2.last_set_id",
+  PRESENTATION_MONITOR_KEY: "presentation.monitor_index",
+  OUTPUT2_MONITOR_KEY: "output2.monitor_index",
+  listMonitors: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("../../stores/sets", () => ({

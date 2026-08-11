@@ -1,10 +1,21 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
 import { engageMirror } from "../../utils/outputDispatch";
-import type { OutputId } from "../../types";
+import {
+  OUTPUT2_MONITOR_KEY,
+  PRESENTATION_MONITOR_KEY,
+  getSetting,
+  listMonitors,
+} from "../../api/commands";
+import {
+  loadMonitorNames,
+  resolveMonitorName,
+  type MonitorNameMap,
+} from "../../utils/monitorNames";
+import type { MonitorInfo, OutputId } from "../../types";
 
 const OUTPUTS: OutputId[] = ["one", "two"];
 
@@ -31,6 +42,39 @@ export const OutputSwitcher: React.FC<{
   const setMirrorEnabled = useSettingsStore((s) => s.setMirrorEnabled);
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
   const setFocusedOutput = usePresentationStore((s) => s.setFocusedOutput);
+
+  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
+  const [monitorNames, setMonitorNames] = useState<MonitorNameMap>({});
+  const [assignedIndex, setAssignedIndex] = useState<
+    Record<OutputId, number | null>
+  >({ one: null, two: null });
+
+  useEffect(() => {
+    listMonitors()
+      .then(setMonitors)
+      .catch(() => setMonitors([]));
+    loadMonitorNames()
+      .then(setMonitorNames)
+      .catch(() => setMonitorNames({}));
+    const parseIndex = (v: string | null) => {
+      if (!v || v === "auto") return null;
+      const n = parseInt(v, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+    Promise.all([
+      getSetting(PRESENTATION_MONITOR_KEY).catch(() => null),
+      getSetting(OUTPUT2_MONITOR_KEY).catch(() => null),
+    ]).then(([one, two]) => {
+      setAssignedIndex({ one: parseIndex(one), two: parseIndex(two) });
+    });
+  }, []);
+
+  const labelFor = (o: OutputId, i: number): string => {
+    const idx = assignedIndex[o];
+    const m = idx != null ? monitors[idx] : undefined;
+    if (m) return resolveMonitorName(m, idx as number, monitorNames);
+    return t("presentation.output.tela", { n: i + 1 });
+  };
 
   if (!multiScreenEnabled) return null;
 
@@ -71,7 +115,7 @@ export const OutputSwitcher: React.FC<{
                 : "bg-surface-2 text-muted hover:bg-border"
             }`}
           >
-            {t("presentation.output.tela", { n: i + 1 })}
+            {labelFor(o, i)}
           </button>
         ))}
 

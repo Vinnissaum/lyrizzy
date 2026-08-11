@@ -207,6 +207,10 @@
       "simultaneous": "Simultaneous",
       "simultaneousHint": "Present the same content on both screens"
     },
+    "streamProfile": {
+      "label": "Profile",
+      "switchFailed": "Failed to switch stream profile"
+    },
     "multiScreenLaunch": {
       "title": "Present on both screens?",
       "prompt": "Mirror this presentation to {{screen1}} and {{screen2}}, or start on {{screen1}} only?",

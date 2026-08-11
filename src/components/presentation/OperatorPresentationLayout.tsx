@@ -25,6 +25,7 @@ import { fanOutToMirror } from "../../utils/outputDispatch";
 import { OutputSwitcher } from "./OutputSwitcher";
 import { OutputLaunchModal } from "./OutputLaunchModal";
 import { MicSwitch } from "./MicSwitch";
+import { StreamProfileSwitcher } from "./StreamProfileSwitcher";
 import { mediaUrl } from "../../api/assets";
 import { OverlayActionBar } from "./OverlayActionBar";
 import { itemLabel, songArtist } from "./itemMeta";
@@ -94,11 +95,15 @@ export const OperatorPresentationLayout: React.FC<{
       if (focusedOutput === "two") {
         setSetting(OUTPUT2_LAST_SET_KEY, setId).catch(() => {});
       }
+      // Direct enterPresentation (not useRequestPresentation): this switches an
+      // already-open output to a chosen set, it does not launch a fresh
+      // presentation, so the multi-screen launch policy does not apply here.
       await enterPresentation(focusedOutput);
     } catch (err) {
       console.error("load set for output failed:", err);
     }
-    // Mirror (Simultânea): the chosen set also drives the other screen.
+    // Mirror (Simultânea): the chosen set also drives the other screen — again a
+    // mirror of an existing session, not a fresh launch, so no launch policy.
     fanOutToMirror(focusedOutput, (o) =>
       loadSetForPresentation(setId, o).then(() => enterPresentation(o)),
     );
@@ -233,6 +238,7 @@ export const OperatorPresentationLayout: React.FC<{
           onRequestLaunch={setLaunchOutput}
         />
         <MicSwitch />
+        <StreamProfileSwitcher />
         {multiScreenEnabled ? (
           <div className="flex-1 overflow-y-auto p-3">
             <p className="text-xs text-muted mb-2">

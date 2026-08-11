@@ -300,3 +300,21 @@
 **Deliverable:** Pushing a `v*` tag builds, signs, and stages a draft two-platform release with no manual signing step; "Check for updates" never claims to be up to date when the check actually failed; the About panel has a real button with inline results; a multi-minute install shows a live progress bar instead of looking frozen. P13-09 and the full P13-24 end-to-end leg close on the manual checklist in `tasks.md`, not by local gate.
 
 **Deliverable:** Operator shows/hides an Aviso over a blacked-out projector without ever toggling blackout (clearing restores black); strophe/set-item highlight moves the instant you click; strophe cards are tight 16:9 rectangles, pixel-faithful to projection.
+
+---
+
+## Phase 14: Multi-Screen Launch, Live Lyrics Editing & Camera Stream Quality — SPECIFIED
+
+**Goal:** Make a two-screen service start in one action with a configurable default and operator-named monitors; let a lyric error be corrected and re-projected without leaving presentation mode; and let the camera view pull an operator-defined lighter stream profile so the degraded LAN leg stops starving the feed — without touching the 4K stream OBS/YouTube consumes.
+**Specified:** 2026-08-11.
+**Spec:** `.specs/features/phase14-multiscreen-liveedit-camera/spec.md` (30 requirements P14-01..P14-30).
+
+| Group | Requirements | Scope |
+|-------|--------------|-------|
+| 14A — Multi-screen launch & naming | P14-01..P14-15 | Apresentar launch modal ("mirror all screens?"), three-value launch policy (ask / mirror-all / main-only, default ask), per-monitor names inherited by outputs |
+| 14B — Live lyrics editing | P14-16..P14-23 | Edit the projected song in place, regenerate that item's slides, anchor position by section, preserve blank/frozen, never blank the projector |
+| 14C — Camera stream profiles | P14-24..P14-30 | Two or more named stream profiles per camera item, operator-switchable mid-presentation, persisted per item |
+
+**Key finding (14C):** the original request — "set the resolution on camera webview" — was analysed and **rejected as ineffective**. Packet loss and the monotonically growing latency both occur on the camera→PC leg, before Lyrizzy sees the stream (confirmed by the same degradation in the camera's own HTTP viewer). MediaMTX remuxes rather than transcodes, so a resolution control would require FFmpeg, which D-6 deliberately does not bundle. The implementable remedy is pulling the camera's lighter **sub-stream** — independent of the 4K main stream, so live quality is preserved. See the Root-Cause Analysis section of the spec (F-1..F-8).
+
+**Deliverable:** One click starts every screen; each screen is identified by name; a typo is fixed mid-song with no black frame and no lost position; the camera runs on a sub-stream with stable latency while OBS keeps 4K.

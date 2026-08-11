@@ -1,3 +1,4 @@
+use crate::commands::presentation::refresh_song_in_outputs;
 use crate::domain::error::ErrorPayload;
 use crate::domain::song::{Song, SongSection, SectionType};
 use crate::services::fts_query::{self, FtsQuery};
@@ -616,6 +617,7 @@ pub async fn update_song(
     let song = db_update_song(pool, payload).await?;
     app.emit("songs_changed", SongsChangedEvent)
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    refresh_song_in_outputs(&app, &state, &song.id).await?;
     Ok(song)
 }
 

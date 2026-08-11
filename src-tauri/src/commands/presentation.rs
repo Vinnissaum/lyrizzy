@@ -3,7 +3,7 @@ use crate::commands::song::load_sections;
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::domain::set::{SetItem, SetItemType};
-use crate::domain::slide::{RepeatMode, Slide, SlideConfig};
+use crate::domain::slide::{anchor_of, resolve_anchor, RepeatMode, Slide, SlideConfig};
 use crate::services::{background, play_counter, slide_splitter};
 use crate::domain::events::StateChangedPayload;
 use crate::domain::output::OutputId;
@@ -472,6 +472,82 @@ pub(crate) async fn regenerate_song_slides(
         out.push((idx, slides));
     }
     Ok(out)
+}
+
+/// Re-project a song's slides into every output currently presenting it, after
+/// an edit is saved. Mirror outputs are covered by the `OutputId::ALL` loop, not
+/// special-cased. No-op for outputs with no set loaded or no occurrence of the
+/// song in the loaded set.
+pub(crate) async fn refresh_song_in_outputs(
+    app: &AppHandle,
+    state: &AppState,
+    song_id: &str,
+) -> Result<(), ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
+
+    for output in OutputId::ALL {
+        let out = state.output(output);
+
+        let (set, current_item_index, current_slide_index) = {
+            let pres = out.presentation.read().await;
+            (pres.set.clone(), pres.current_item_index, pres.current_slide_index)
+        };
+        let Some(set) = set else { continue };
+
+        let regenerated = regenerate_song_slides(pool, &set, song_id).await?;
+        if regenerated.is_empty() {
+            continue;
+        }
+
+        let current_item_regenerated =
+            regenerated.iter().any(|(idx, _)| *idx == current_item_index);
+
+        // Capture the anchor against the OLD slides, before the splice below.
+        let anchor = if current_item_regenerated {
+            let all = out.presentation_slides.read().await;
+            all.get(current_item_index)
+                .and_then(|s| anchor_of(s, current_slide_index))
+        } else {
+            None
+        };
+
+        {
+            let mut all = out.presentation_slides.write().await;
+            for (idx, new_slides) in &regenerated {
+                if *idx < all.len() {
+                    all[*idx] = new_slides.clone();
+                }
+            }
+        }
+
+        // Same lock order as `append_item_to_live_presentation` (slides read →
+        // presentation write) to avoid deadlocks. Drop both before emitting.
+        let snapshot = {
+            let all = out.presentation_slides.read().await;
+            let mut pres = out.presentation.write().await;
+
+            for (idx, new_slides) in &regenerated {
+                if let Some(count) = pres.item_slide_counts.get_mut(*idx) {
+                    *count = new_slides.len();
+                }
+            }
+
+            if current_item_regenerated {
+                let new_item_slides =
+                    all.get(current_item_index).map(Vec::as_slice).unwrap_or(&[]);
+                pres.current_slide_index =
+                    resolve_anchor(new_item_slides, anchor.as_ref(), current_slide_index);
+                pres.current_slide = resolve_current_slide(&all, &pres);
+                pres.next_slide = resolve_next_slide(&all, &pres);
+            }
+
+            pres.clone()
+        };
+
+        emit_state(app, output, &snapshot).await?;
+    }
+
+    Ok(())
 }
 
 // ─── Tauri commands ──────────────────────────────────────────────────────────

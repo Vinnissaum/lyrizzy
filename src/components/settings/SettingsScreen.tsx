@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
 import { KeyBindingsScreen } from "./KeyBindingsScreen";
 import { MonitorPicker } from "./MonitorPicker";
+import { MonitorNameSettings } from "./MonitorNameSettings";
 import { MicAudioSettings } from "./MicAudioSettings";
 import { LaunchPolicySetting } from "./LaunchPolicySetting";
 import { CCLIReportScreen } from "../reports/CCLIReportScreen";
@@ -264,6 +265,7 @@ export const SettingsScreen: React.FC = () => {
                     label={t("settings.windows.monitorScreen", { n: 2 })}
                   />
                 )}
+                <MonitorNameSettings />
               </div>
 
               <div className="bg-surface-2 rounded-xl p-4 space-y-4">

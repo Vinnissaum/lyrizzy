@@ -669,6 +669,10 @@
       "monitorHelp": "Which screen to open the presentation on. Auto picks the extended monitor.",
       "monitorOption": "Monitor {{index}}"
     },
+    "monitorNames": {
+      "title": "Monitor names",
+      "help": "Give each monitor a friendly name. Leave a field blank to fall back to its default name."
+    },
     "appearance": {
       "title": "Song appearance",
       "fontFamily": "Font",

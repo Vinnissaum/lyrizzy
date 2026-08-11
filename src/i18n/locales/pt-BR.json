@@ -669,6 +669,10 @@
       "monitorHelp": "Em qual tela abrir a apresentação. Automático escolhe o monitor estendido.",
       "monitorOption": "Monitor {{index}}"
     },
+    "monitorNames": {
+      "title": "Nomes dos monitores",
+      "help": "Dê um nome amigável a cada monitor. Deixe o campo em branco para usar o nome padrão."
+    },
     "appearance": {
       "title": "Aparência das músicas",
       "fontFamily": "Fonte",

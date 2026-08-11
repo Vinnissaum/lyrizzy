@@ -3,15 +3,10 @@ import { useTranslation } from "react-i18next";
 import {
   PRESENTATION_MONITOR_KEY,
   getSetting,
-  listMonitors,
   setSetting,
 } from "../../api/commands";
-import {
-  loadMonitorNames,
-  resolveMonitorName,
-  type MonitorNameMap,
-} from "../../utils/monitorNames";
-import type { MonitorInfo } from "../../types";
+import { resolveMonitorName } from "../../utils/monitorNames";
+import { useSettingsStore } from "../../stores/settings";
 
 interface MonitorPickerProps {
   /** Which persisted setting key this picker reads/writes. Defaults to output One. */
@@ -32,17 +27,11 @@ export const MonitorPicker: React.FC<MonitorPickerProps> = ({
   label,
 }) => {
   const { t } = useTranslation();
-  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
-  const [monitorNames, setMonitorNames] = useState<MonitorNameMap>({});
+  const monitors = useSettingsStore((s) => s.monitors);
+  const monitorNames = useSettingsStore((s) => s.monitorNames);
   const [value, setValue] = useState<string>("auto");
 
   useEffect(() => {
-    listMonitors()
-      .then(setMonitors)
-      .catch(() => setMonitors([]));
-    loadMonitorNames()
-      .then(setMonitorNames)
-      .catch(() => setMonitorNames({}));
     getSetting(settingKey)
       .then((v) => setValue(v && v !== "auto" ? v : "auto"))
       .catch(() => setValue("auto"));

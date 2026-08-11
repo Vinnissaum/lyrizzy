@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#34365c" />
+      <stop offset="55%" stop-color="#1c1d30" />
+      <stop offset="100%" stop-color="#0f0f18" />
+    </radialGradient>
+  </defs>
+
+  <!-- dark rounded-square background (brand backdrop) -->
+  <rect x="0" y="0" width="512" height="512" rx="90" ry="90" fill="url(#bg)" />
+
+  <!-- L-as-music-note mark: one continuous shape -
+       vertical stroke = L stem = note stem,
+       filled notehead fused at the elbow where the L turns,
+       horizontal stroke = L foot, growing out of the notehead. -->
+  <g fill="#7C74F5">
+    <path d="
+      M 186 132
+      L 226 132
+      L 226 340
+      L 336 340
+      L 336 380
+      L 186 380
+      Z
+    " />
+    <ellipse
+      cx="206" cy="362" rx="52" ry="42"
+      transform="rotate(-16 206 362)"
+    />
+  </g>
+</svg>

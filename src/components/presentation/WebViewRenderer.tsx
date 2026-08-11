@@ -4,6 +4,7 @@ import { iframeCropStyle, withBasicAuth } from "../../utils/webview";
 import { StreamProxyRenderer } from "./StreamProxyRenderer";
 import { useOutputId } from "./outputContext";
 import { useSettingsStore } from "../../stores/settings";
+import { resolveActiveSource } from "../../utils/streamProfile";
 import type { StreamSource, WebViewConfig } from "../../types";
 
 interface Props {
@@ -18,12 +19,16 @@ function isProxyMode(mode: WebViewConfig["mode"]): boolean {
 /** Build the proxy source payload from config, or null if it's incomplete. */
 function buildStreamSource(config: WebViewConfig): StreamSource | null {
   switch (config.mode) {
-    case "rtmp":
-      return config.url.trim() ? { kind: "rtmp", url: config.url.trim() } : null;
-    case "rtsp":
-      return config.url.trim()
-        ? { kind: "rtsp", url: config.url.trim(), transport: config.rtspTransport ?? "udp" }
+    case "rtmp": {
+      const { url } = resolveActiveSource(config);
+      return url.trim() ? { kind: "rtmp", url: url.trim() } : null;
+    }
+    case "rtsp": {
+      const { url, transport } = resolveActiveSource(config);
+      return url.trim()
+        ? { kind: "rtsp", url: url.trim(), transport: transport ?? "udp" }
         : null;
+    }
     case "srt":
       return config.srtConfig?.host.trim()
         ? { kind: "srt", config: config.srtConfig }

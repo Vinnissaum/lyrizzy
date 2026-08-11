@@ -17,6 +17,8 @@ import {
   engageMirror,
   launchOutputAt,
   reducePresentingOutputs,
+  resolveLaunchPlan,
+  startPresentationPlan,
 } from "./outputDispatch";
 import { useSettingsStore } from "../stores/settings";
 import {
@@ -29,6 +31,7 @@ import {
 function setMirror(value: boolean) {
   vi.mocked(useSettingsStore.getState).mockReturnValue({
     mirrorEnabled: value,
+    setMirrorEnabled: vi.fn(),
   } as any);
 }
 
@@ -203,5 +206,78 @@ describe("engageMirror", () => {
     await engageMirror("one");
     expect(loadSetForPresentation).not.toHaveBeenCalled();
     expect(enterPresentation).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveLaunchPlan", () => {
+  it("multi-screen off → always mainOnly, regardless of policy", () => {
+    expect(resolveLaunchPlan("ask", false)).toBe("mainOnly");
+    expect(resolveLaunchPlan("mirror_all", false)).toBe("mainOnly");
+    expect(resolveLaunchPlan("main_only", false)).toBe("mainOnly");
+  });
+
+  it("multi-screen on → policy 'ask' resolves to ask", () => {
+    expect(resolveLaunchPlan("ask", true)).toBe("ask");
+  });
+
+  it("multi-screen on → policy 'mirror_all' resolves to mirrorAll", () => {
+    expect(resolveLaunchPlan("mirror_all", true)).toBe("mirrorAll");
+  });
+
+  it("multi-screen on → policy 'main_only' resolves to mainOnly", () => {
+    expect(resolveLaunchPlan("main_only", true)).toBe("mainOnly");
+  });
+});
+
+describe("startPresentationPlan", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setMirror(false);
+  });
+
+  it("mainOnly: enters presentation on 'one' only, opens no window for 'two'", async () => {
+    await startPresentationPlan("mainOnly", "set-1");
+
+    expect(enterPresentation).toHaveBeenCalledTimes(1);
+    expect(enterPresentation).toHaveBeenCalledWith("one");
+    expect(enterPresentation).not.toHaveBeenCalledWith("two");
+    expect(loadSetForPresentation).not.toHaveBeenCalled();
+    expect(goToItem).not.toHaveBeenCalled();
+  });
+
+  it("mirrorAll: enables mirror, then loads/enters/goes-to-item(0,0) on both outputs", async () => {
+    const setMirrorEnabled = vi.fn();
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      mirrorEnabled: false,
+      setMirrorEnabled,
+    } as any);
+
+    await startPresentationPlan("mirrorAll", "set-1");
+
+    expect(setMirrorEnabled).toHaveBeenCalledWith(true);
+    for (const o of ["one", "two"] as const) {
+      expect(loadSetForPresentation).toHaveBeenCalledWith("set-1", o);
+      expect(enterPresentation).toHaveBeenCalledWith(o);
+      expect(goToItem).toHaveBeenCalledWith(0, 0, o);
+    }
+  });
+
+  it("mirrorAll: a rejected load for output two still lets output one complete, and the error propagates", async () => {
+    vi.mocked(loadSetForPresentation).mockImplementation(async (_setId, output) => {
+      if (output === "two") throw new Error("presentation.empty_set");
+      return undefined as any;
+    });
+
+    await expect(startPresentationPlan("mirrorAll", "set-1")).rejects.toThrow(
+      "presentation.empty_set",
+    );
+
+    // Output "one" ran its full sequence despite output "two" failing.
+    expect(loadSetForPresentation).toHaveBeenCalledWith("set-1", "one");
+    expect(enterPresentation).toHaveBeenCalledWith("one");
+    expect(goToItem).toHaveBeenCalledWith(0, 0, "one");
+    // Output "two" never opened a window or navigated after its load rejected.
+    expect(enterPresentation).not.toHaveBeenCalledWith("two");
+    expect(goToItem).not.toHaveBeenCalledWith(0, 0, "two");
   });
 });

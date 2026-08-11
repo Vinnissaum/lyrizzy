@@ -87,6 +87,62 @@ export async function launchOutputAt(
 }
 
 /**
+ * Decide how "Apresentar" should launch based on the saved launch policy and
+ * whether multi-screen is enabled at all. Pure — no store/API imports, no I/O.
+ *
+ * Multi-screen off always wins: with a single output there is nothing to ask
+ * about or mirror, so every policy resolves to `"mainOnly"`.
+ */
+export function resolveLaunchPlan(
+  policy: "ask" | "mirror_all" | "main_only",
+  multiScreenEnabled: boolean,
+): "ask" | "mirrorAll" | "mainOnly" {
+  if (!multiScreenEnabled) return "mainOnly";
+  if (policy === "mirror_all") return "mirrorAll";
+  if (policy === "main_only") return "mainOnly";
+  return "ask";
+}
+
+/**
+ * Execute a resolved launch plan for a fresh presentation start (item 0, slide
+ * 0) — unlike `engageMirror`, which continues from the master's current
+ * position, this always starts at the top.
+ *
+ * `"mainOnly"`: opens output "one" only; output "two" is left untouched (no
+ * window opened for it).
+ *
+ * `"mirrorAll"`: turns mirror mode on, then drives BOTH outputs independently
+ * — load → enter → goToItem(0, 0, output) each. The two outputs run
+ * concurrently and independently: a failure on one (e.g. its set load is
+ * rejected) does not stop the other from completing, but the failure is still
+ * surfaced by rejecting the returned promise once both have settled.
+ */
+export async function startPresentationPlan(
+  plan: "mirrorAll" | "mainOnly",
+  setId: string,
+): Promise<void> {
+  if (plan === "mainOnly") {
+    await enterPresentation("one");
+    return;
+  }
+
+  useSettingsStore.getState().setMirrorEnabled(true);
+
+  const results = await Promise.allSettled(
+    ALL_OUTPUTS.map(async (output) => {
+      await loadSetForPresentation(setId, output);
+      await enterPresentation(output);
+      await goToItem(0, 0, output);
+    }),
+  );
+
+  const rejected = results.find(
+    (r): r is PromiseRejectedResult => r.status === "rejected",
+  );
+  if (rejected) throw rejected.reason;
+}
+
+/**
  * Engage mirror mode: make EVERY screen show exactly what the master is showing,
  * and **present on all of them**. The master is `master`'s current set + position
  * (defaults to Tela 1); if it has no set loaded, falls back to any other output

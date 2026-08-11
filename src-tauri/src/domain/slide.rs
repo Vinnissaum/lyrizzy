@@ -29,6 +29,68 @@ impl Slide {
     }
 }
 
+/// A stable reference to a slide's position within an item's slide list,
+/// used to keep the projected slide stable across regeneration (e.g. live
+/// editing) even when the total number/order of slides changes.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SlideAnchor {
+    pub section_id: String,
+    /// The index of this slide among all slides sharing `section_id`
+    /// within the item (i.e. the Nth occurrence of that section).
+    pub ordinal: usize,
+}
+
+/// Builds the anchor for the slide at `index`. Returns `None` if `index` is
+/// out of range for `slides`.
+pub fn anchor_of(slides: &[Slide], index: usize) -> Option<SlideAnchor> {
+    let slide = slides.get(index)?;
+    let ordinal = slides[..index]
+        .iter()
+        .filter(|s| s.section_id == slide.section_id)
+        .count();
+    Some(SlideAnchor {
+        section_id: slide.section_id.clone(),
+        ordinal,
+    })
+}
+
+/// Resolves an anchor against a regenerated slide list, returning an index
+/// that is always valid for `new_slides` (or `0` if it is empty).
+///
+/// Fallback chain:
+/// 1. Exact `(section_id, ordinal)` match.
+/// 2. The last slide carrying `section_id` (ordinal overflow / section shrank).
+/// 3. `old_index` clamped to `new_slides.len() - 1` (section removed entirely).
+/// 4. `0` (e.g. `new_slides` is empty).
+pub fn resolve_anchor(
+    new_slides: &[Slide],
+    anchor: Option<&SlideAnchor>,
+    old_index: usize,
+) -> usize {
+    if new_slides.is_empty() {
+        return 0;
+    }
+
+    if let Some(anchor) = anchor {
+        let matching: Vec<usize> = new_slides
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.section_id == anchor.section_id)
+            .map(|(i, _)| i)
+            .collect();
+
+        if let Some(&exact) = matching.get(anchor.ordinal) {
+            return exact;
+        }
+
+        if let Some(&last) = matching.last() {
+            return last;
+        }
+    }
+
+    old_index.min(new_slides.len() - 1)
+}
+
 /// How a section's `repeat_count` is reflected in the generated slides.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -109,6 +171,126 @@ mod tests {
         assert_eq!(RepeatMode::from_opt(None), RepeatMode::Duplicate);
         assert_eq!(RepeatMode::from_opt(Some("bogus")), RepeatMode::Duplicate);
         assert_eq!(RepeatMode::default(), RepeatMode::Duplicate);
+    }
+
+    fn slide_with(section_id: &str) -> Slide {
+        Slide {
+            lines: vec!["line".into()],
+            section_label: "Verse".into(),
+            section_id: section_id.into(),
+        }
+    }
+
+    #[test]
+    fn anchor_of_returns_none_for_out_of_range_index() {
+        let slides = vec![slide_with("s1")];
+        assert_eq!(anchor_of(&slides, 5), None);
+    }
+
+    #[test]
+    fn resolve_anchor_exact_hit_on_unchanged_slides_returns_same_index() {
+        let slides = vec![slide_with("s1"), slide_with("s2"), slide_with("s3")];
+        let anchor = anchor_of(&slides, 1).unwrap();
+        assert_eq!(resolve_anchor(&slides, Some(&anchor), 1), 1);
+    }
+
+    #[test]
+    fn resolve_anchor_section_split_across_slides_resolves_by_ordinal() {
+        let old_slides = vec![
+            slide_with("s1"),
+            slide_with("s2"),
+            slide_with("s2"),
+            slide_with("s2"),
+        ];
+        // Third slide of section "s2" (ordinal 2).
+        let anchor = anchor_of(&old_slides, 3).unwrap();
+        assert_eq!(anchor.ordinal, 2);
+
+        let new_slides = vec![
+            slide_with("s1"),
+            slide_with("s2"),
+            slide_with("s2"),
+            slide_with("s2"),
+        ];
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 3), 3);
+    }
+
+    #[test]
+    fn resolve_anchor_repeated_section_ids_disambiguated_by_ordinal() {
+        // Simulates RepeatMode::Duplicate: same section_id repeated.
+        let slides = vec![slide_with("chorus"), slide_with("chorus")];
+        let anchor_first = anchor_of(&slides, 0).unwrap();
+        let anchor_second = anchor_of(&slides, 1).unwrap();
+        assert_eq!(anchor_first.ordinal, 0);
+        assert_eq!(anchor_second.ordinal, 1);
+        assert_eq!(resolve_anchor(&slides, Some(&anchor_second), 1), 1);
+        assert_eq!(resolve_anchor(&slides, Some(&anchor_first), 0), 0);
+    }
+
+    #[test]
+    fn resolve_anchor_ordinal_overflow_falls_back_to_last_slide_of_section() {
+        let old_slides = vec![
+            slide_with("s1"),
+            slide_with("s2"),
+            slide_with("s2"),
+            slide_with("s2"),
+        ];
+        let anchor = anchor_of(&old_slides, 3).unwrap(); // ordinal 2
+
+        // Section "s2" shrank to a single slide.
+        let new_slides = vec![slide_with("s1"), slide_with("s2")];
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 3), 1);
+    }
+
+    #[test]
+    fn resolve_anchor_section_deleted_clamps_old_index_to_last_slide() {
+        let old_slides = vec![slide_with("s1"), slide_with("s2"), slide_with("s3")];
+        let anchor = anchor_of(&old_slides, 1).unwrap(); // section "s2"
+
+        // Section "s2" removed entirely.
+        let new_slides = vec![slide_with("s1"), slide_with("s3")];
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 1), 1);
+    }
+
+    #[test]
+    fn resolve_anchor_shrink_below_old_index_returns_new_last_index() {
+        let old_slides = vec![
+            slide_with("s1"),
+            slide_with("s2"),
+            slide_with("s3"),
+            slide_with("s4"),
+        ];
+        let anchor = anchor_of(&old_slides, 3).unwrap(); // section "s4"
+
+        let new_slides = vec![slide_with("s1"), slide_with("s2")];
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 3), 1);
+    }
+
+    #[test]
+    fn resolve_anchor_empty_new_slides_returns_zero() {
+        let old_slides = vec![slide_with("s1")];
+        let anchor = anchor_of(&old_slides, 0).unwrap();
+        assert_eq!(resolve_anchor(&[], Some(&anchor), 0), 0);
+        assert_eq!(resolve_anchor(&[], None, 0), 0);
+    }
+
+    #[test]
+    fn resolve_anchor_sentinel_slides_use_same_rule() {
+        let old_slides = vec![
+            Slide::pseudo("__title__"),
+            slide_with("s1"),
+            Slide::pseudo("__blackout__"),
+        ];
+        let anchor = anchor_of(&old_slides, 0).unwrap();
+        assert_eq!(anchor.section_id, "");
+
+        let new_slides = vec![
+            Slide::pseudo("__title__"),
+            Slide::pseudo("__title__"),
+            slide_with("s1"),
+        ];
+        // section_id "" now has two slides; ordinal 0 should hit the first.
+        assert_eq!(resolve_anchor(&new_slides, Some(&anchor), 0), 0);
     }
 
     #[test]

@@ -321,3 +321,30 @@
 **Gate at completion:** 546 Vitest tests (73 files, baseline 480 + 66 new), 327 Rust tests (baseline 307 + 20 new), `tsc --noEmit` clean, `cargo clippy -D warnings` clean, locale parity test green.
 
 **Deliverable:** One click starts every screen; each screen is identified by name; a typo is fixed mid-song with no black frame and no lost position; the camera runs on a sub-stream with stable latency while OBS keeps 4K; the app icon reads as song and worship. See STATE.md Phase 14 completion summary for the manual-verification checklist still open (requires two monitors and a real camera).
+
+---
+
+## Phase 15: Free-Text Lyrics Editor, Live-Edit Refresh & Operator UX Fixes — DONE
+
+**Goal:** Close three Phase 14 field defects (the strophes list ignores a live edit, monitor names need an app restart, the Aviso tab mislabels its text-size control), name the screens in the audio/mic configuration, replace the rejected Phase 14 icon with a Trinity-and-music mark, and reduce song registration to a single free-text lyrics box that is also what the operator gets mid-presentation.
+**Completed:** 2026-08-11.
+**Spec:** `.specs/features/phase15-freetext-lyrics-ux-fixes/spec.md` (22 requirements P15-01..P15-22, 22/22 implemented). Tasks: `.specs/features/phase15-freetext-lyrics-ux-fixes/tasks.md` (18 tasks, T1-T18, executed via parallel/sequential sub-agents).
+
+| Group | Requirements | Scope |
+|-------|--------------|-------|
+| 15A — Live-edit strophes refresh | P15-01..P15-03 | `refresh_song_in_outputs` emits the regenerated `all_slides_per_item`; stored state stays slim; grid reflects add/remove/reorder across every occurrence |
+| 15B — Screen names | P15-04..P15-07 | Monitor names in shared store state, propagating to all five surfaces with no restart; names shown on the audio/mic blocks |
+| 15C — Aviso label | P15-08 | Announcement-scoped font-size label in both locales |
+| 15D — Icon rebrand | P15-09..P15-10 | Triquetra with noteheads, existing palette, single-SVG-sourced asset set |
+| 15E — Free-text lyrics editor | P15-11..P15-21 | One lyrics textarea, blank line = strophe, sections derived on save, exact round-trip, paste dialog + section controls removed, notes repointed to the song, content-keyed slide anchor (DD-1) |
+| 15F — Release | P15-22 | Version bumped to 1.2.0 across five sources; tag push → signed draft release |
+
+**Root causes traced before specifying** (spec § Root-Cause Analysis): RC-1 the emitted payload carries an empty `allSlidesPerItem` and the frontend reconciler carries the stale copy forward (`commands/presentation.rs:614-615`, `stores/presentation.ts:27-31`); RC-2 four consumers each cache names in a mount-time effect with no shared state or invalidation; RC-3 the Aviso tab reuses the Projeção translation key; RC-4 audio blocks are titled by index only. **F-1 (unreported):** `db_update_song` regenerates every section UUID on save, so the Phase 14 slide anchor never matches and position is held by index clamping — fixed by P15-19.
+
+**User decisions:** GA-1 sections removed from the UI only, derived on save (D-68); GA-2 operator Notes panel repointed to song-level notes; GA-3 repeat count dropped from the UI, schema retained (D-70); GA-4 triquetra-with-noteheads icon (D-71).
+
+**Design correction (DD-1):** the spec's proposed deterministic section-id anchor (`{song_id}-s{N}`) was rejected at design time — it mis-anchors on insertion, since every later id shifts down one. Shipped instead: a slide-content-keyed anchor (trimmed lines joined by `\n`, disambiguated by ordinal), which holds the right strophe on insert/delete and degrades safely to index clamping only when the current slide's own text changed.
+
+**Gate at completion:** 599 Vitest tests (76 files, baseline 546 + 53 new), 335 Rust tests (baseline 327 + 8 new, 1 ignored), `tsc --noEmit` clean, `cargo clippy -D warnings` clean, locale parity test green.
+
+**Deliverable:** A live-edit save refreshes the strophes grid everywhere the song is loaded, with position held by content even when strophes are inserted or removed above it; a monitor rename propagates to every surface (settings list, pickers, switcher, launch modal, audio blocks) with no restart; the Aviso tab has its own text-size label; song registration is one free-text lyrics box, blank-line-separated, exact round-trip on reopen; the app icon is a triquetra with noteheads. See STATE.md Phase 15 completion summary for the manual-verification checklist still open (requires two monitors, live presentation, and the `v1.2.0` tag push).

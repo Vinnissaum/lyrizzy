@@ -58,6 +58,7 @@
 | `src-tauri/src/lib.rs` | none (app wiring) | — | — |
 | `src-tauri/src/protocol/*.rs` | unit | Same file `#[cfg(test)]` | `cargo test --manifest-path src-tauri/Cargo.toml` |
 | `src/stores/*.ts` | unit | Co-located or `src/__tests__/` | `npx vitest run` |
+| `src/utils/*.ts` | unit | Co-located or `src/__tests__/` | `npx vitest run` |
 | `src/api/commands.ts` | none (thin wrappers) | — | — |
 | `src/windows/**/*.tsx` | component | Co-located | `npx vitest run` |
 | `src/components/**/*.tsx` | component | Co-located | `npx vitest run` |

@@ -379,6 +379,15 @@
       },
       "warnings": {
         "http": "HTTP connections may be blocked by the browser."
+      },
+      "profiles": {
+        "label": "Stream profiles",
+        "add": "Add profile",
+        "remove": "Remove",
+        "labelField": "Name",
+        "labelPlaceholder": "e.g. Main (4K) / Sub (1080p)",
+        "urlField": "URL",
+        "hint": "Profiles select which camera stream this app pulls — a lighter sub-stream reduces network load. This does not affect the main feed OBS or YouTube pull from the camera; those keep using whatever profile the camera exposes to them, independently of what is selected here."
       }
     },
     "stream": {

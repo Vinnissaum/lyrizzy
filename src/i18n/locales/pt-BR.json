@@ -379,6 +379,15 @@
       },
       "warnings": {
         "http": "Conexões http podem ser bloqueadas pelo navegador."
+      },
+      "profiles": {
+        "label": "Perfis de transmissão",
+        "add": "Adicionar perfil",
+        "remove": "Remover",
+        "labelField": "Nome",
+        "labelPlaceholder": "ex.: Principal (4K) / Reduzido (1080p)",
+        "urlField": "URL",
+        "hint": "Os perfis definem qual fluxo da câmera este app recebe — um sub-fluxo mais leve reduz a carga na rede. Isso não afeta o fluxo principal que o OBS ou o YouTube recebem da câmera; eles continuam usando o perfil que a câmera expõe a eles, de forma independente do que é selecionado aqui."
       }
     },
     "stream": {

@@ -4,12 +4,14 @@ import { updateSetItem } from "../../api/commands";
 import { isUrlAllowed } from "../../utils/urlAllowlist";
 import { iframeCropStyle, withBasicAuth } from "../../utils/webview";
 import { NotesField } from "../common/NotesField";
+import { StreamProfileEditor } from "./StreamProfileEditor";
 import type {
   MulticastConfig,
   RtspTransport,
   SetItem,
   SrtConfig,
   SrtMode,
+  StreamProfile,
   WebViewConfig,
   WebViewCrop,
   WebViewMode,
@@ -41,6 +43,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
   const [srt, setSrt] = useState<SrtConfig>(cfg?.srtConfig ?? DEFAULT_SRT);
   const [multicast, setMulticast] = useState<MulticastConfig>(cfg?.multicastConfig ?? DEFAULT_MULTICAST);
   const [rtspTransport, setRtspTransport] = useState<RtspTransport>(cfg?.rtspTransport ?? "udp");
+  const [profiles, setProfiles] = useState<StreamProfile[]>(cfg?.profiles ?? []);
   const [configError, setConfigError] = useState<string | null>(null);
   const [httpWarning, setHttpWarning] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -56,6 +59,7 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
     setSrt(cfg?.srtConfig ?? DEFAULT_SRT);
     setMulticast(cfg?.multicastConfig ?? DEFAULT_MULTICAST);
     setRtspTransport(cfg?.rtspTransport ?? "udp");
+    setProfiles(cfg?.profiles ?? []);
     setConfigError(null);
     setHttpWarning(false);
     setNotes(item.notes ?? "");
@@ -85,6 +89,8 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
           streamId: srt.streamId?.trim() || undefined,
           passphrase: srt.encrypted ? srt.passphrase || undefined : undefined,
         },
+        profiles: profiles.length > 0 ? profiles : undefined,
+        activeProfileId: cfg?.activeProfileId,
       };
     }
 
@@ -94,7 +100,13 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
         return null;
       }
       setConfigError(null);
-      return { mode, url: "", multicastConfig: { ...multicast, ip: multicast.ip.trim() } };
+      return {
+        mode,
+        url: "",
+        multicastConfig: { ...multicast, ip: multicast.ip.trim() },
+        profiles: profiles.length > 0 ? profiles : undefined,
+        activeProfileId: cfg?.activeProfileId,
+      };
     }
 
     // URL-based modes (iframe, mjpeg, rtmp).
@@ -120,6 +132,8 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
       crop: mode === "iframe" && !isIdentityCrop(crop) ? crop : undefined,
       // RTSP lower-transport (rtsp mode only).
       rtspTransport: mode === "rtsp" ? rtspTransport : undefined,
+      profiles: profiles.length > 0 ? profiles : undefined,
+      activeProfileId: cfg?.activeProfileId,
     };
   };
 
@@ -176,7 +190,14 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
   const selectRtspTransport = (tp: RtspTransport) => {
     setRtspTransport(tp);
     const trimmed = url.trim();
-    if (trimmed) persist({ mode: "rtsp", url: trimmed, rtspTransport: tp });
+    if (trimmed)
+      persist({
+        mode: "rtsp",
+        url: trimmed,
+        rtspTransport: tp,
+        profiles: profiles.length > 0 ? profiles : undefined,
+        activeProfileId: cfg?.activeProfileId,
+      });
   };
 
   const selectSrtMode = (m: SrtMode) => {
@@ -192,8 +213,29 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
           streamId: next.streamId?.trim() || undefined,
           passphrase: next.encrypted ? next.passphrase || undefined : undefined,
         },
+        profiles: profiles.length > 0 ? profiles : undefined,
+        activeProfileId: cfg?.activeProfileId,
       });
     }
+  };
+
+  // Profile CRUD persists immediately, independent of the primary form's
+  // validity — an operator can manage profiles even if the main URL field is
+  // mid-edit. Falls back to the last-known mode-specific fields untouched.
+  const persistProfiles = (next: StreamProfile[]) => {
+    setProfiles(next);
+    persist({
+      mode,
+      url: mode === "srt" || mode === "multicast" ? "" : url.trim(),
+      basicAuthUser: authUser && authPass ? authUser : undefined,
+      basicAuthPass: authUser && authPass ? authPass : undefined,
+      crop: mode === "iframe" && !isIdentityCrop(crop) ? crop : undefined,
+      rtspTransport: mode === "rtsp" ? rtspTransport : undefined,
+      srtConfig: mode === "srt" ? srt : undefined,
+      multicastConfig: mode === "multicast" ? multicast : undefined,
+      profiles: next.length > 0 ? next : undefined,
+      activeProfileId: cfg?.activeProfileId,
+    });
   };
 
   // Live preview only renders a real iframe when the URL is valid; otherwise the
@@ -435,6 +477,17 @@ export const WebViewSetItemEditor: React.FC<Props> = ({ item }) => {
           <p className="text-xs text-muted/70">{t("webview.editor.multicast.hint")}</p>
         </div>
       )}
+
+      {/* Stream profiles — named alternate sources (e.g. a lighter sub-stream)
+          the operator can switch between per item, independent of mode. */}
+      <StreamProfileEditor
+        itemId={item.id}
+        mode={mode}
+        profiles={profiles}
+        fallbackUrl={url}
+        fallbackRtspTransport={rtspTransport}
+        onChange={persistProfiles}
+      />
 
       {/* Basic auth — iframe (login-gated pages) and MJPEG (streams) only. */}
       {(mode === "iframe" || mode === "mjpeg") && (

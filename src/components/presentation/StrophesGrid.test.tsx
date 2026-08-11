@@ -401,6 +401,42 @@ describe("StrophesGrid", () => {
     expect(selectSlide).toHaveBeenCalledWith(0, 2);
   });
 
+  // ── Test 11 (P15-03 regression pin): grid refreshes on live-edit slide changes ──
+
+  it("re-renders its cards when the store's allSlidesPerItem for the active item changes, keeping aria-current on the active card", () => {
+    const initialSlides = makeSongSlides(3);
+    setStore({
+      state: makeState({ currentSlideIndex: 1 }, undefined, [initialSlides]),
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
+
+    const { rerender } = render(<StrophesGrid />);
+
+    let grid = screen.getByTestId("strophes-grid");
+    expect(grid.querySelectorAll("button")).toHaveLength(3);
+    let active = document.querySelectorAll('[aria-current="true"]');
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("Line 2");
+
+    // Simulate a live edit: a strophe was added, so the store's
+    // allSlidesPerItem for the active item now has more cards.
+    const updatedSlides = makeSongSlides(5);
+    setStore({
+      state: makeState({ currentSlideIndex: 1 }, undefined, [updatedSlides]),
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
+
+    rerender(<StrophesGrid />);
+
+    grid = screen.getByTestId("strophes-grid");
+    expect(grid.querySelectorAll("button")).toHaveLength(5);
+    active = document.querySelectorAll('[aria-current="true"]');
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("Line 2");
+  });
+
   // ── Test 10 (P11-05): grid crops cards to 16:9 with no bottom gap ───────
 
   it("renders a tight 16:9 grid (items-start container, padding-ratio cards)", () => {

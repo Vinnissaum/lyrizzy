@@ -135,4 +135,43 @@ describe("usePresentationStore — slide preservation across slim payloads", () 
     captured(withSet("set-2", []));
     expect(usePresentationStore.getState().state?.allSlidesPerItem).toEqual([]);
   });
+
+  // ── P15-03 regression pins: non-empty incoming allSlidesPerItem, same set id ──
+  //
+  // These pin the exact branch P15-03's live-edit refresh depends on: when the
+  // incoming payload for the SAME set carries a non-empty `allSlidesPerItem`,
+  // reconcileSlides takes it verbatim — the previous copy is discarded, not
+  // merged — so edits (adding/removing/reordering strophes) show up immediately.
+
+  it("takes a longer incoming slide list verbatim (strophe added) for the same set", () => {
+    const longerSlides = [
+      [
+        { lines: ["A"], sectionLabel: "Verse", sectionId: "s1" },
+        { lines: ["A2"], sectionLabel: "Verse 2", sectionId: "s1b" },
+      ],
+    ];
+    captured(withSet("set-1", longerSlides));
+    expect(usePresentationStore.getState().state?.allSlidesPerItem).toBe(longerSlides);
+  });
+
+  it("takes a shorter incoming slide list verbatim (strophe removed) for the same set", () => {
+    // Previous copy (hydrated in beforeEach) has 1 slide; incoming still has 1
+    // but with different content, proving it's not merged/padded from the prior copy.
+    const shorterSlides = [[{ lines: ["Only"], sectionLabel: "Chorus", sectionId: "s-only" }]];
+    captured(withSet("set-1", shorterSlides));
+    expect(usePresentationStore.getState().state?.allSlidesPerItem).toBe(shorterSlides);
+    expect(usePresentationStore.getState().state?.allSlidesPerItem).not.toBe(slides);
+  });
+
+  it("takes a reordered incoming slide list verbatim for the same set", () => {
+    const reorderedSlides = [
+      [
+        { lines: ["B"], sectionLabel: "Chorus", sectionId: "s2" },
+        { lines: ["A"], sectionLabel: "Verse", sectionId: "s1" },
+      ],
+    ];
+    captured(withSet("set-1", reorderedSlides));
+    expect(usePresentationStore.getState().state?.allSlidesPerItem).toBe(reorderedSlides);
+    expect(usePresentationStore.getState().state?.allSlidesPerItem?.[0][0].sectionId).toBe("s2");
+  });
 });

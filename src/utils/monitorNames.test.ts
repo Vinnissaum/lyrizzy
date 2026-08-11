@@ -4,6 +4,7 @@ import {
   resolveMonitorName,
   loadMonitorNames,
   saveMonitorName,
+  outputScreenName,
   MONITOR_NAMES_KEY,
 } from "./monitorNames";
 import type { MonitorInfo } from "../types";
@@ -55,6 +56,42 @@ describe("resolveMonitorName", () => {
   it("falls back to the positional default when both are absent", () => {
     const m = mon({ x: 0, y: 0 });
     expect(resolveMonitorName(m, 1, {})).toBe("Monitor 2 — 1920×1080");
+  });
+});
+
+describe("outputScreenName", () => {
+  it("returns the fallback when index is null", () => {
+    const monitors = [mon({ name: "HDMI TV" })];
+    expect(outputScreenName(monitors, {}, null, "No Screen")).toBe(
+      "No Screen",
+    );
+  });
+
+  it("returns the fallback when index is out of range (monitor unplugged)", () => {
+    const monitors = [mon({ name: "HDMI TV" })];
+    expect(() =>
+      outputScreenName(monitors, {}, 5, "No Screen"),
+    ).not.toThrow();
+    expect(outputScreenName(monitors, {}, 5, "No Screen")).toBe("No Screen");
+  });
+
+  it("returns the operator-chosen name for a valid index", () => {
+    const m = mon({ name: "HDMI TV" });
+    const monitors = [m];
+    const names = { [monitorIdentity(m)]: "Sanctuary Screen" };
+    expect(outputScreenName(monitors, names, 0, "No Screen")).toBe(
+      "Sanctuary Screen",
+    );
+  });
+
+  it("falls back through OS name, then Monitor N — W×H, when no chosen name exists", () => {
+    const named = mon({ name: "Projector" });
+    const unnamed = mon({ name: "", x: 1920 });
+    const monitors = [named, unnamed];
+    expect(outputScreenName(monitors, {}, 0, "No Screen")).toBe("Projector");
+    expect(outputScreenName(monitors, {}, 1, "No Screen")).toBe(
+      "Monitor 2 — 1920×1080",
+    );
   });
 });
 

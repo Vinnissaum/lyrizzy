@@ -43,6 +43,25 @@ export function resolveMonitorName(
 }
 
 /**
+ * Resolve the display name for an output's assigned monitor index.
+ *
+ * `index` may be `null` (no monitor assigned) or point at a monitor that is
+ * no longer present (unplugged) — in either case `fallback` is returned
+ * instead of throwing.
+ */
+export function outputScreenName(
+  monitors: MonitorInfo[],
+  names: MonitorNameMap,
+  index: number | null,
+  fallback: string,
+): string {
+  if (index === null || index < 0 || index >= monitors.length) {
+    return fallback;
+  }
+  return resolveMonitorName(monitors[index], index, names);
+}
+
+/**
  * Load the persisted name map. A missing or malformed settings row resolves
  * to an empty map rather than throwing.
  */

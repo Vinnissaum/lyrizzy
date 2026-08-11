@@ -438,28 +438,22 @@ pub async fn update_set_item(
     let item = db_load_set_item(pool, &payload.id).await?;
 
     // Keep the loaded-for-presentation snapshot in sync: if the edited item is
-    // part of the set currently loaded for presentation, patch it in place and
-    // re-emit state so a live presentation picks up the new config (e.g. a
-    // countdown's position/background) without a disruptive full reload.
-    let presentation_snapshot = {
-        let mut pres = state.output(OutputId::One).presentation.write().await;
-        let mut patched = false;
+    // part of the set currently loaded for presentation on any output, patch it
+    // in place and re-emit state so a live presentation picks up the new config
+    // (e.g. a countdown's position/background) without a disruptive full reload.
+    let mut snapshots = Vec::new();
+    for output_id in OutputId::ALL {
+        let mut pres = state.output(output_id).presentation.write().await;
         if let Some(set) = pres.set.as_mut() {
-            if let Some(slot) = set.items.iter_mut().find(|i| i.id == item.id) {
-                *slot = item.clone();
-                patched = true;
+            if patch_item_in_set(set, &item) {
+                snapshots.push((output_id, pres.clone()));
             }
         }
-        if patched {
-            Some(pres.clone())
-        } else {
-            None
-        }
-    };
-    if let Some(snapshot) = presentation_snapshot {
+    }
+    for (output_id, snapshot) in snapshots {
         app.emit(
             "state_changed",
-            crate::domain::events::StateChangedPayload::new(OutputId::One, snapshot),
+            crate::domain::events::StateChangedPayload::new(output_id, snapshot),
         )
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     }
@@ -467,6 +461,18 @@ pub async fn update_set_item(
     app.emit("set_changed", ())
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(item)
+}
+
+/// Replace the matching item in `set` in place. Returns `true` if a slot was
+/// replaced (i.e. `set` contained an item with the same id), `false` (and no
+/// mutation) otherwise.
+fn patch_item_in_set(set: &mut ServiceSet, item: &SetItem) -> bool {
+    if let Some(slot) = set.items.iter_mut().find(|i| i.id == item.id) {
+        *slot = item.clone();
+        true
+    } else {
+        false
+    }
 }
 
 #[tauri::command]
@@ -671,5 +677,56 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(count, 1, "should not create a second set");
+    }
+
+    fn make_item(id: &str, notes: Option<&str>) -> SetItem {
+        SetItem {
+            id: id.to_string(),
+            set_id: "set-1".to_string(),
+            item_type: SetItemType::Blank,
+            song_id: None,
+            media_id: None,
+            media_kind: None,
+            media_options: None,
+            countdown_config: None,
+            webview_config: None,
+            sort_order: 0,
+            notes: notes.map(|s| s.to_string()),
+        }
+    }
+
+    fn make_set(items: Vec<SetItem>) -> ServiceSet {
+        ServiceSet {
+            id: "set-1".to_string(),
+            name: "Test Set".to_string(),
+            service_date: None,
+            notes: None,
+            created_at: 0,
+            updated_at: 0,
+            items,
+        }
+    }
+
+    #[test]
+    fn patch_item_in_set_replaces_matching_item() {
+        let mut set = make_set(vec![make_item("a", Some("old")), make_item("b", None)]);
+        let updated = make_item("a", Some("new"));
+
+        let patched = patch_item_in_set(&mut set, &updated);
+
+        assert!(patched);
+        assert_eq!(set.items[0].notes.as_deref(), Some("new"));
+        assert_eq!(set.items[1].id, "b");
+    }
+
+    #[test]
+    fn patch_item_in_set_returns_false_when_no_match() {
+        let mut set = make_set(vec![make_item("a", Some("old"))]);
+        let unrelated = make_item("z", Some("new"));
+
+        let patched = patch_item_in_set(&mut set, &unrelated);
+
+        assert!(!patched);
+        assert_eq!(set.items[0].notes.as_deref(), Some("old"));
     }
 }

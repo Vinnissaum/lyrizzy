@@ -15,7 +15,10 @@ import {
   onSongsChanged,
   openPresentationWindow,
   updateSetItem,
+  PRESENTATION_MONITOR_KEY,
+  OUTPUT2_MONITOR_KEY,
 } from "../../api/commands";
+import { MONITOR_NAMES_KEY } from "../../utils/monitorNames";
 import { SongList } from "../../components/library/SongList";
 import { SongEditor } from "../../components/library/SongEditor";
 import { PlainTextImport } from "../../components/import/PlainTextImport";
@@ -77,7 +80,7 @@ const OperatorAppInner: React.FC = () => {
   const { subscribe: subscribeCountdown } = useCountdownStore();
   const requestPresentation = useRequestPresentation();
   const countdownState = useCountdownStore((s) => s.state);
-  const { setLocale, loadLocale, loadPresentationSettings, loadTheme } = useSettingsStore();
+  const { setLocale, loadLocale, loadPresentationSettings, loadTheme, loadMonitorSetup, applyMonitorSetting } = useSettingsStore();
   const { load: loadBindings, subscribe: subscribeBindings } = useKeyBindingsStore();
 
   const [showSplash, setShowSplash] = useState(true);
@@ -177,13 +180,20 @@ const OperatorAppInner: React.FC = () => {
       }
     });
     // Keep the operator's live preview in sync with global appearance changes.
-    const unlistenSetting = onSettingChanged((key) => {
-      if (key.startsWith("presentation.") || key.startsWith("announcement.")) {
+    const unlistenSetting = onSettingChanged((key, value) => {
+      if (
+        key === MONITOR_NAMES_KEY ||
+        key === PRESENTATION_MONITOR_KEY ||
+        key === OUTPUT2_MONITOR_KEY
+      ) {
+        applyMonitorSetting(key, value);
+      } else if (key.startsWith("presentation.") || key.startsWith("announcement.")) {
         loadPresentationSettings();
       }
     });
     loadBindings();
     loadPresentationSettings();
+    loadMonitorSetup();
     loadLocale();
     loadTheme();
     const unsubBindings = subscribeBindings();

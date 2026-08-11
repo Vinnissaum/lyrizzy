@@ -188,6 +188,38 @@ describe("OperatorApp", () => {
     });
   });
 
+  describe("monitor setup load + invalidation", () => {
+    it("calls list_monitors at boot to load the monitor setup", async () => {
+      render(<OperatorApp />);
+      await waitFor(() =>
+        expect(vi.mocked(invoke)).toHaveBeenCalledWith("list_monitors"),
+      );
+    });
+
+    it("routes a display.monitor_names setting_changed event into the store", async () => {
+      let settingCb: ((key: string, value: string) => void) | null = null;
+      vi.mocked(listen).mockImplementation((event: string, cb: any) => {
+        if (event === "setting_changed") {
+          settingCb = (key: string, value: string) => cb({ payload: { key, value } });
+        }
+        return Promise.resolve(() => {});
+      });
+
+      render(<OperatorApp />);
+      await waitFor(() => expect(settingCb).not.toBeNull());
+
+      await act(async () => {
+        settingCb!("display.monitor_names", JSON.stringify({ "mon-1": "Projetor" }));
+        await Promise.resolve();
+      });
+
+      const { useSettingsStore } = await import("../../stores/settings");
+      await waitFor(() =>
+        expect(useSettingsStore.getState().monitorNames).toEqual({ "mon-1": "Projetor" }),
+      );
+    });
+  });
+
   describe("update check on launch", () => {
     it("shows the update banner when the launch check returns updateAvailable", async () => {
       vi.mocked(invoke).mockImplementation((cmd) => {

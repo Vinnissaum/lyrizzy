@@ -14,7 +14,7 @@ vi.mock("../../utils/outputDispatch", () => ({
 vi.mock("../../api/commands", () => ({
   PRESENTATION_MONITOR_KEY: "presentation.monitor_index",
   OUTPUT2_MONITOR_KEY: "output2.monitor_index",
-  getSetting: vi.fn().mockResolvedValue(null),
+  getSetting: vi.fn().mockRejectedValue(new Error("no setting")),
   listMonitors: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("../../utils/monitorNames", async () => {
@@ -132,7 +132,7 @@ describe("OutputSwitcher", () => {
     ]);
     vi.mocked(getSetting)
       .mockResolvedValueOnce("0")
-      .mockResolvedValueOnce(null);
+      .mockRejectedValueOnce(new Error("no setting"));
     vi.mocked(loadMonitorNames).mockResolvedValueOnce({
       "name:HDMI-1": "Projetor",
     });
@@ -144,7 +144,9 @@ describe("OutputSwitcher", () => {
   it("falls back to the generated label when no name is stored", async () => {
     mockStores({ enabled: true, focused: "one" });
     vi.mocked(listMonitors).mockResolvedValueOnce([]);
-    vi.mocked(getSetting).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    vi.mocked(getSetting)
+      .mockRejectedValueOnce(new Error("no setting"))
+      .mockRejectedValueOnce(new Error("no setting"));
     vi.mocked(loadMonitorNames).mockResolvedValueOnce({});
 
     render(<OutputSwitcher />);

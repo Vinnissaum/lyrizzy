@@ -346,7 +346,7 @@ export const OperatorPresentationLayout: React.FC<{
               disabled={activeItem?.itemType !== "song"}
               onClick={() => {
                 if (activeItem?.itemType === "song") {
-                  setEditingSongId(activeItem.songId);
+                  setEditingSongId(activeItem.songId ?? null);
                 }
               }}
               aria-label={t("presentation.liveEdit.button")}

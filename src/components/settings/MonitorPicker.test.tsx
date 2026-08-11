@@ -63,7 +63,7 @@ describe("MonitorPicker", () => {
       Promise.resolve(
         key === MONITOR_NAMES_KEY
           ? JSON.stringify({ "name:HDMI-2": "Projetor" })
-          : null,
+          : "auto",
       ),
     );
     render(<MonitorPicker />);

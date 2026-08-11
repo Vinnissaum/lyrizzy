@@ -87,6 +87,19 @@ pub struct MulticastConfig {
     pub port: u16,
 }
 
+/// A saved stream configuration a camera item can switch between without
+/// losing its other settings. `mode` stays item-level on `WebViewConfig` —
+/// a profile only carries the connection details for that mode.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamProfile {
+    pub id: String,
+    pub label: String,
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rtsp_transport: Option<RtspTransport>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WebViewConfig {
@@ -103,6 +116,10 @@ pub struct WebViewConfig {
     /// RTSP lower-transport (rtsp mode reuses `url` for the rtsp:// address).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rtsp_transport: Option<RtspTransport>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub profiles: Vec<StreamProfile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_profile_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -247,6 +264,8 @@ mod tests {
                 srt_config: None,
                 multicast_config: None,
                 rtsp_transport: None,
+                profiles: Vec::new(),
+                active_profile_id: None,
             }),
             sort_order: 0,
             notes: None,
@@ -257,5 +276,63 @@ mod tests {
         assert!(json.contains("\"mjpeg\""), "{json}");
         let back: SetItem = serde_json::from_str(&json).unwrap();
         assert_eq!(back, item);
+    }
+
+    #[test]
+    fn legacy_webview_config_json_without_profiles_deserializes_with_defaults() {
+        let legacy_json = r#"{
+            "mode": "mjpeg",
+            "url": "http://192.168.1.10/stream",
+            "basicAuthUser": null,
+            "basicAuthPass": null
+        }"#;
+        let config: WebViewConfig = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(config.profiles, Vec::new());
+        assert_eq!(config.active_profile_id, None);
+    }
+
+    #[test]
+    fn stream_profile_round_trips_and_omits_none_rtsp_transport() {
+        let profile = StreamProfile {
+            id: "profile1".into(),
+            label: "Main Cam".into(),
+            url: "rtsp://192.168.1.20/stream".into(),
+            rtsp_transport: Some(RtspTransport::Tcp),
+        };
+        let json = serde_json::to_string(&profile).unwrap();
+        assert!(json.contains("\"rtspTransport\":\"tcp\""), "{json}");
+        let back: StreamProfile = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, profile);
+
+        let profile_no_transport = StreamProfile {
+            id: "profile2".into(),
+            label: "Backup Cam".into(),
+            url: "http://192.168.1.21/stream".into(),
+            rtsp_transport: None,
+        };
+        let json_no_transport = serde_json::to_string(&profile_no_transport).unwrap();
+        assert!(
+            !json_no_transport.contains("rtspTransport"),
+            "{json_no_transport}"
+        );
+    }
+
+    #[test]
+    fn webview_config_with_empty_profiles_omits_profiles_key() {
+        let config = WebViewConfig {
+            mode: WebViewMode::Mjpeg,
+            url: "http://192.168.1.10/stream".into(),
+            basic_auth_user: None,
+            basic_auth_pass: None,
+            crop: None,
+            srt_config: None,
+            multicast_config: None,
+            rtsp_transport: None,
+            profiles: Vec::new(),
+            active_profile_id: None,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(!json.contains("\"profiles\""), "{json}");
+        assert!(!json.contains("\"activeProfileId\""), "{json}");
     }
 }

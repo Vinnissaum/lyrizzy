@@ -49,10 +49,19 @@ three displays (operator + two outputs) and keep the operator screen primary.
 
 Open **Settings → General → Presentation monitor**.
 
-- **— Auto —** (default) picks the first extended monitor automatically. With two
-  outputs enabled, Lyrizzy places them on two *different* non-primary monitors so
-  they never collide.
-- Or choose a specific monitor from the list (shown by name and resolution).
+- **— Auto —** (default) picks the first extended monitor automatically. It never
+  targets the **main screen** (the one the operator window is on — on a laptop,
+  usually the built-in panel), and with two outputs enabled it places them on two
+  *different* monitors so they never collide.
+- Or choose a specific monitor from the list (shown by name and resolution). The
+  main screen is tagged as such in the list.
+
+The section shows how many screens are currently detected. Lyrizzy re-detects
+while Settings is open, so a TV connected — or woken — after launch shows up on
+its own within a few seconds; **Detect again** forces an immediate re-scan.
+
+If a screen you had chosen is no longer connected, the picker says so and falls
+back to Auto until you pick again.
 
 When multi-output is on you get two pickers: **Screen 1 monitor** and **Screen 2
 monitor**. Set each to the correct physical display.
@@ -107,6 +116,8 @@ a foyer TV at once.
 
 | Problem | Fix |
 | --- | --- |
+| A display you just connected isn't in the list | Open *Settings → General* — it re-detects every few seconds; **Detect again** forces a re-scan. |
+| Only some of your displays are listed | The OS must see them as separate **extended** displays; duplicated/mirrored screens count as one. |
 | Presentation opens on the wrong screen | Set the monitor explicitly in *Settings → General* instead of Auto. |
 | Both screens show the operator UI | Your displays are set to **Mirror**; switch the OS to **Extend**. |
 | Second screen tabs don't appear | Enable **Second screen (multi-output)** in *Settings → Projection*. |

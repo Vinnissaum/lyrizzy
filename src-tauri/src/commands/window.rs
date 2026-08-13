@@ -31,14 +31,25 @@ pub struct MonitorInfo {
     pub x: i32,
     pub y: i32,
     pub scale_factor: f64,
+    /// True for the OS primary monitor — on a laptop that is usually the
+    /// built-in panel, which is never an auto-detected presentation target.
+    pub is_primary: bool,
 }
 
+/// List the monitors the OS reports **right now**.
+///
+/// Queried live on every call (the OS enumerates displays each time), so the
+/// operator can plug a TV in — or wake one whose HDMI link had dropped — after
+/// launching and re-run this to see it. Phantom monitors are filtered with the
+/// same rule `enter_presentation` uses, so the index the operator picks in
+/// Settings is the index the presentation window is placed on.
 #[tauri::command]
 pub async fn list_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, ErrorPayload> {
-    let monitors = app
+    let raw_monitors = app
         .available_monitors()
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(monitors
+    let primary_xy = primary_position(&app);
+    Ok(filter_real_monitors(raw_monitors)
         .into_iter()
         .map(|m| {
             let size = m.size();
@@ -50,9 +61,44 @@ pub async fn list_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, ErrorPayl
                 x: pos.x,
                 y: pos.y,
                 scale_factor: m.scale_factor(),
+                is_primary: primary_xy == Some((pos.x, pos.y)),
             }
         })
         .collect())
+}
+
+/// Physical origin of the OS primary monitor, or `None` when unknown.
+fn primary_position(app: &AppHandle) -> Option<(i32, i32)> {
+    app.primary_monitor().ok().flatten().map(|m| {
+        let p = m.position();
+        (p.x, p.y)
+    })
+}
+
+/// Index into `all_xy` of the monitor the window `label` currently sits on.
+/// `None` when the window doesn't exist or its monitor isn't in the list.
+fn window_monitor_index(app: &AppHandle, label: &str, all_xy: &[(i32, i32)]) -> Option<usize> {
+    let xy = app
+        .get_webview_window(label)
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .map(|m| {
+            let p = m.position();
+            (p.x, p.y)
+        })?;
+    all_xy.iter().position(|&o| o == xy)
+}
+
+/// The monitor index the operator picked for `output` in Settings.
+/// `"auto"`, a missing row, a malformed value or an unavailable DB → `None`.
+async fn configured_monitor_index(state: &AppState, output: OutputId) -> Option<usize> {
+    let pool = state.db.get()?;
+    let raw: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE key = ?")
+        .bind(output.monitor_index_key())
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten();
+    raw?.trim().parse::<usize>().ok()
 }
 
 /// Convert physical monitor coordinates to logical (DPI-scaled) coordinates.
@@ -113,20 +159,52 @@ pub fn resolve_output_monitor(
     all_xy: &[(i32, i32)],
     exclude: Option<usize>,
 ) -> Option<usize> {
+    let mut blocked = primary_indices(primary_xy, all_xy);
+    blocked.extend(exclude);
+    resolve_monitor_for_output(override_index, all_xy.len(), &blocked, &[])
+}
+
+/// Indices in `all_xy` that sit at the primary monitor's origin.
+pub fn primary_indices(primary_xy: Option<(i32, i32)>, all_xy: &[(i32, i32)]) -> Vec<usize> {
+    if primary_xy.is_none() {
+        return Vec::new();
+    }
+    all_xy
+        .iter()
+        .enumerate()
+        .filter(|(_, &xy)| primary_xy == Some(xy))
+        .map(|(i, _)| i)
+        .collect()
+}
+
+/// Core auto-placement rule, expressed over monitor indices.
+///
+/// * `override_index` — the operator's explicit pick in Settings. Wins whenever
+///   it is in range: a manual choice is never second-guessed.
+/// * `blocked` — monitors auto-detection must never use: the OS primary screen,
+///   and the monitor the *other* output already has a window on.
+/// * `avoid` — monitors auto-detection skips **when it can**: the screen the
+///   operator window sits on, and the monitor the other output is configured
+///   for but hasn't opened yet. Soft, because on a two-display rig the only
+///   candidate may be one of these — and landing there is better than not
+///   placing the window at all (which is what pre-hotfix behaviour did).
+///
+/// Returns `None` only when every monitor is blocked, which keeps the existing
+/// single-display semantics (OS picks the position; output Two goes windowed).
+pub fn resolve_monitor_for_output(
+    override_index: Option<usize>,
+    monitor_count: usize,
+    blocked: &[usize],
+    avoid: &[usize],
+) -> Option<usize> {
     if let Some(idx) = override_index {
-        if idx < all_xy.len() {
+        if idx < monitor_count {
             return Some(idx);
         }
     }
-    for (i, &xy) in all_xy.iter().enumerate() {
-        if Some(i) == exclude {
-            continue;
-        }
-        if primary_xy != Some(xy) {
-            return Some(i);
-        }
-    }
-    None
+    (0..monitor_count)
+        .find(|i| !blocked.contains(i) && !avoid.contains(i))
+        .or_else(|| (0..monitor_count).find(|i| !blocked.contains(i)))
 }
 
 /// Apply monitor-based positioning to a window builder. If `monitor_index` is
@@ -285,31 +363,38 @@ pub async fn enter_presentation(
         return Err(ErrorPayload::new("presentation.no_monitors"));
     }
 
-    let primary_xy = app
-        .primary_monitor()
-        .ok()
-        .flatten()
-        .map(|m| { let p = m.position(); (p.x, p.y) });
+    let primary_xy = primary_position(&app);
 
     let all_xy: Vec<(i32, i32)> = monitors.iter().map(|m| {
         let p = m.position();
         (p.x, p.y)
     }).collect();
 
-    // Avoid the monitor already used by the other output (best-effort; the
-    // manual picker is the reliable path on multi-TV installs — plan R-3).
-    let other_label = output.other().window_label();
-    let exclude = app
-        .get_webview_window(other_label)
-        .and_then(|w| w.current_monitor().ok().flatten())
-        .map(|m| {
-            let p = m.position();
-            (p.x, p.y)
-        })
-        .and_then(|xy| all_xy.iter().position(|&o| o == xy));
+    // Never auto-target the primary screen, nor the monitor the other output
+    // already has a window on (best-effort; the manual picker is the reliable
+    // path on multi-TV installs — plan R-3).
+    let mut blocked = primary_indices(primary_xy, &all_xy);
+    let other = output.other();
+    if let Some(idx) = window_monitor_index(&app, other.window_label(), &all_xy) {
+        blocked.push(idx);
+    }
+
+    // Soft avoidance: the operator's own screen (the built-in laptop panel is
+    // frequently *not* the OS primary, so blocking only the primary would still
+    // put a presentation on the screen the operator is working on), plus the
+    // monitor the other output is configured for but hasn't opened yet.
+    let mut avoid: Vec<usize> = Vec::new();
+    if let Some(idx) = window_monitor_index(&app, "operator", &all_xy) {
+        avoid.push(idx);
+    }
+    if let Some(idx) = configured_monitor_index(&state, other).await {
+        if idx < monitors.len() {
+            avoid.push(idx);
+        }
+    }
 
     // Manual picker (monitor_index) wins; otherwise auto-detect a free monitor.
-    let target_idx = resolve_output_monitor(monitor_index, primary_xy, &all_xy, exclude);
+    let target_idx = resolve_monitor_for_output(monitor_index, monitors.len(), &blocked, &avoid);
 
     let pin_on_top = should_pin_on_top(monitors.len());
 
@@ -678,6 +763,60 @@ mod tests {
             resolve_output_monitor(None, Some((0, 0)), &all, None),
             Some(1)
         );
+    }
+
+    // ── resolve_monitor_for_output (blocked vs. avoided) ──────────────────────
+
+    #[test]
+    fn primary_indices_flags_every_monitor_at_the_primary_origin() {
+        let all = [(0_i32, 0_i32), (1920, 0), (3840, 0)];
+        assert_eq!(primary_indices(Some((0, 0)), &all), vec![0]);
+        assert_eq!(primary_indices(Some((1920, 0)), &all), vec![1]);
+        assert!(primary_indices(None, &all).is_empty());
+    }
+
+    #[test]
+    fn laptop_plus_two_tvs_gives_each_output_its_own_tv() {
+        // 0 = laptop panel (primary, operator window), 1 + 2 = the two TVs.
+        let blocked_one = vec![0_usize];
+        let one = resolve_monitor_for_output(None, 3, &blocked_one, &[0]).unwrap();
+        assert_eq!(one, 1);
+        // Output Two then blocks the monitor One landed on.
+        let two = resolve_monitor_for_output(None, 3, &[0, one], &[0]).unwrap();
+        assert_eq!(two, 2);
+    }
+
+    #[test]
+    fn operator_screen_is_avoided_even_when_it_is_not_the_primary() {
+        // A TV is the OS primary (index 0); the operator works on the laptop
+        // panel (index 1). Pre-hotfix this picked 1 — the operator's own screen.
+        assert_eq!(
+            resolve_monitor_for_output(None, 3, &[0], &[1]),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn avoided_monitor_is_still_used_when_it_is_the_only_candidate() {
+        // Two displays, operator on the primary: the single extended screen is
+        // both the other output's configured monitor and the only candidate.
+        assert_eq!(resolve_monitor_for_output(None, 2, &[0], &[0, 1]), Some(1));
+    }
+
+    #[test]
+    fn override_wins_over_blocked_and_avoided() {
+        assert_eq!(resolve_monitor_for_output(Some(0), 3, &[0], &[0]), Some(0));
+    }
+
+    #[test]
+    fn out_of_range_override_falls_back_to_auto_detection() {
+        assert_eq!(resolve_monitor_for_output(Some(9), 3, &[0], &[]), Some(1));
+    }
+
+    #[test]
+    fn everything_blocked_returns_none() {
+        assert_eq!(resolve_monitor_for_output(None, 2, &[0, 1], &[]), None);
+        assert_eq!(resolve_monitor_for_output(None, 0, &[], &[]), None);
     }
 
     // ── filter_real_monitors ──────────────────────────────────────────────────

@@ -674,7 +674,11 @@
       "monitorLabel": "Presentation monitor",
       "monitorScreen": "Screen {{n}} monitor",
       "monitorHelp": "Which screen to open the presentation on. Auto picks the extended monitor.",
-      "monitorOption": "Monitor {{index}}"
+      "monitorOption": "Monitor {{index}}",
+      "primaryTag": "main screen",
+      "detected": "{{n}} screen(s) detected",
+      "redetect": "Detect again",
+      "monitorMissing": "The saved screen is not connected — using Auto."
     },
     "monitorNames": {
       "title": "Monitor names",

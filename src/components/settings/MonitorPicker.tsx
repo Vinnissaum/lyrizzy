@@ -43,11 +43,20 @@ export const MonitorPicker: React.FC<MonitorPickerProps> = ({
     setSetting(settingKey, v).catch(() => {});
   };
 
+  // A saved index can outlive the display it pointed at (TV unplugged, screens
+  // re-enumerated). The backend falls back to auto in that case, so say so
+  // instead of showing an empty select that looks like nothing is configured.
+  const savedIndex = value === "auto" ? null : Number(value);
+  const staleSelection =
+    savedIndex !== null &&
+    monitors.length > 0 &&
+    (Number.isNaN(savedIndex) || savedIndex >= monitors.length);
+
   return (
     <div className="space-y-1">
       <p className="text-sm font-medium">{label ?? t("settings.windows.monitorLabel")}</p>
       <select
-        value={value}
+        value={staleSelection ? "auto" : value}
         onChange={onChange}
         className="w-full bg-surface border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-primary"
       >
@@ -55,9 +64,13 @@ export const MonitorPicker: React.FC<MonitorPickerProps> = ({
         {monitors.map((m, i) => (
           <option key={i} value={String(i)}>
             {resolveMonitorName(m, i, monitorNames)}
+            {m.isPrimary ? ` — ${t("settings.windows.primaryTag")}` : ""}
           </option>
         ))}
       </select>
+      {staleSelection && (
+        <p className="text-xs text-warning">{t("settings.windows.monitorMissing")}</p>
+      )}
       <p className="text-xs text-muted">{t("settings.windows.monitorHelp")}</p>
     </div>
   );

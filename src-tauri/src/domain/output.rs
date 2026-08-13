@@ -38,6 +38,16 @@ impl OutputId {
         }
     }
 
+    /// Settings key holding this output's operator-chosen monitor index
+    /// (`"auto"` or a stringified index). Mirrors `PRESENTATION_MONITOR_KEY` /
+    /// `OUTPUT2_MONITOR_KEY` in `src/api/commands.ts` — keep both sides in sync.
+    pub fn monitor_index_key(self) -> &'static str {
+        match self {
+            OutputId::One => "presentation.monitor_index",
+            OutputId::Two => "output2.monitor_index",
+        }
+    }
+
     /// The other output. Used to avoid placing two outputs on the same monitor.
     pub fn other(self) -> OutputId {
         match self {
@@ -83,6 +93,12 @@ mod tests {
     fn other_is_the_opposite_output() {
         assert_eq!(OutputId::One.other(), OutputId::Two);
         assert_eq!(OutputId::Two.other(), OutputId::One);
+    }
+
+    #[test]
+    fn monitor_index_keys_match_the_frontend_constants() {
+        assert_eq!(OutputId::One.monitor_index_key(), "presentation.monitor_index");
+        assert_eq!(OutputId::Two.monitor_index_key(), "output2.monitor_index");
     }
 
     #[test]

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
 import { KeyBindingsScreen } from "./KeyBindingsScreen";
 import { MonitorPicker } from "./MonitorPicker";
+import { MonitorDetection } from "./MonitorDetection";
 import { MonitorNameSettings } from "./MonitorNameSettings";
 import { MicAudioSettings } from "./MicAudioSettings";
 import { LaunchPolicySetting } from "./LaunchPolicySetting";
@@ -249,6 +250,7 @@ export const SettingsScreen: React.FC = () => {
                 <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                   {t("settings.windows.title")}
                 </h3>
+                <MonitorDetection />
                 <MonitorPicker
                   label={
                     s.multiScreenEnabled

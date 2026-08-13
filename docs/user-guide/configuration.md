@@ -31,8 +31,13 @@ The look of the **operator** window (not the audience screen):
 ### Presentation monitor
 Chooses which physical display the presentation window opens on.
 
-- **— Auto —** picks the first extended (non-primary) monitor automatically.
-- Or pick a specific monitor by name and resolution.
+- **— Auto —** picks the first extended monitor automatically, never the main
+  screen you operate on.
+- Or pick a specific monitor by name and resolution (the main screen is tagged).
+
+The detected-screen count and a **Detect again** button sit above the pickers:
+the list refreshes on its own while Settings is open, so displays connected after
+launch appear without restarting Lyrizzy.
 
 If you run two projection screens, a second picker (**Screen 2 monitor**) appears
 here once you enable multi-output. See [Multiple Screens](screens.md) for the

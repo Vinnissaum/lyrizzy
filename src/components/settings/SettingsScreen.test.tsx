@@ -25,6 +25,10 @@ vi.mock("./MonitorPicker", () => ({
   MonitorPicker: () => <div data-testid="monitor-picker" />,
 }));
 
+vi.mock("./MonitorDetection", () => ({
+  MonitorDetection: () => <div data-testid="monitor-detection" />,
+}));
+
 vi.mock("../reports/CCLIReportScreen", () => ({
   CCLIReportScreen: () => <div data-testid="ccli-report-screen" />,
 }));

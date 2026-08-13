@@ -349,6 +349,8 @@ export interface MonitorInfo {
   x: number;
   y: number;
   scaleFactor: number;
+  /** OS primary screen — usually the operator's own (laptop) display. */
+  isPrimary?: boolean;
 }
 
 // ── Phase 3 — Key bindings ────────────────────────────────────────────────────

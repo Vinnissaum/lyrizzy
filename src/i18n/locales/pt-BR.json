@@ -674,7 +674,11 @@
       "monitorLabel": "Monitor da apresentação",
       "monitorScreen": "Monitor da Tela {{n}}",
       "monitorHelp": "Em qual tela abrir a apresentação. Automático escolhe o monitor estendido.",
-      "monitorOption": "Monitor {{index}}"
+      "monitorOption": "Monitor {{index}}",
+      "primaryTag": "tela principal",
+      "detected": "{{n}} tela(s) detectada(s)",
+      "redetect": "Detectar novamente",
+      "monitorMissing": "A tela salva não está conectada — usando Automático."
     },
     "monitorNames": {
       "title": "Nomes dos monitores",

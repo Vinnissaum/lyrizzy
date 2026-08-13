@@ -29,6 +29,9 @@ const BASE_MONITORS = [
 describe("MonitorPicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks keeps implementations, so restore the "nothing saved yet"
+    // default explicitly — otherwise a saved-index test leaks into the next one.
+    vi.mocked(getSetting).mockResolvedValue(null as unknown as string);
     useSettingsStore.setState({ monitors: BASE_MONITORS, monitorNames: {} });
   });
 
@@ -72,6 +75,35 @@ describe("MonitorPicker", () => {
     render(<MonitorPicker />);
     expect(await screen.findByText("Projetor")).toBeInTheDocument();
     expect(screen.queryByText(/^HDMI-2 /)).toBeNull();
+  });
+
+  it("tags the primary monitor so the operator's own screen is recognisable", async () => {
+    useSettingsStore.setState({
+      monitors: [{ ...BASE_MONITORS[0], isPrimary: true }, BASE_MONITORS[1]],
+      monitorNames: {},
+    });
+    render(<MonitorPicker />);
+    const options = await screen.findAllByRole("option");
+    expect(options[1]).toHaveTextContent("settings.windows.primaryTag");
+    expect(options[2]).not.toHaveTextContent("settings.windows.primaryTag");
+  });
+
+  it("warns and falls back to auto when the saved monitor is gone", async () => {
+    vi.mocked(getSetting).mockResolvedValue("5");
+    render(<MonitorPicker />);
+
+    expect(
+      await screen.findByText("settings.windows.monitorMissing"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toHaveValue("auto");
+  });
+
+  it("keeps a saved index that still matches a connected monitor", async () => {
+    vi.mocked(getSetting).mockResolvedValue("1");
+    render(<MonitorPicker />);
+
+    await waitFor(() => expect(screen.getByRole("combobox")).toHaveValue("1"));
+    expect(screen.queryByText("settings.windows.monitorMissing")).toBeNull();
   });
 
   it("reflects a store name change in option labels without remounting", async () => {

@@ -97,6 +97,25 @@ function parseOutputAudio(raw: string | null): OutputAudioSettings {
   }
 }
 
+/** True when two monitor lists describe the same displays in the same order. */
+function sameMonitors(a: MonitorInfo[], b: MonitorInfo[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((m, i) => {
+      const o = b[i];
+      return (
+        m.name === o.name &&
+        m.width === o.width &&
+        m.height === o.height &&
+        m.x === o.x &&
+        m.y === o.y &&
+        m.scaleFactor === o.scaleFactor &&
+        m.isPrimary === o.isPrimary
+      );
+    })
+  );
+}
+
 /** Parses a persisted `*.monitor_index` setting. "auto"/missing/non-numeric → null. */
 function parseMonitorIndex(raw: string | null | undefined): number | null {
   if (!raw || raw === "auto") return null;
@@ -250,6 +269,11 @@ interface SettingsStore {
 
   /** Loads monitors, saved names and per-output monitor index concurrently. */
   loadMonitorSetup: () => Promise<void>;
+  /**
+   * Re-reads the OS monitor list only. Keeps the previous array identity when
+   * nothing changed, so a periodic re-detect doesn't re-render the pickers.
+   */
+  refreshMonitors: () => Promise<void>;
   /** Sets one monitor's name, preserving names for undetected monitors, and persists. */
   setMonitorName: (identity: string, name: string) => Promise<void>;
   /** Apply a `setting_changed` payload for monitor-names or a per-output monitor index. */
@@ -543,6 +567,11 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
         two: parseMonitorIndex(twoRaw),
       },
     });
+  },
+  refreshMonitors: async () => {
+    const monitors = await listMonitors().catch(() => null);
+    if (!monitors) return;
+    set((s) => (sameMonitors(s.monitors, monitors) ? s : { monitors }));
   },
   setMonitorName: async (identity, name) => {
     let merged: MonitorNameMap = {};

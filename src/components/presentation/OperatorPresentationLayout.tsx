@@ -335,8 +335,8 @@ export const OperatorPresentationLayout: React.FC<{
 
         {/* Strophes pane */}
         <div className="flex flex-col overflow-hidden">
-          <header className="flex items-center justify-between text-xs text-muted px-2 py-1">
-            <span>
+          <header className="flex items-center justify-between gap-2 text-xs text-muted px-2 py-1">
+            <span className="min-w-0 truncate">
               {t("presentation.pane.strophes")} — {activeItemLabel}
               {activeItemArtist ? ` — ${activeItemArtist}` : ""}
             </span>
@@ -351,9 +351,10 @@ export const OperatorPresentationLayout: React.FC<{
               }}
               aria-label={t("presentation.liveEdit.button")}
               title={t("presentation.liveEdit.button")}
-              className="text-muted hover:text-inherit disabled:opacity-30 disabled:cursor-not-allowed"
+              className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-fg-on-primary transition-colors disabled:bg-surface-2 disabled:text-muted disabled:cursor-not-allowed"
             >
               <Pencil size={14} />
+              {t("presentation.liveEdit.button")}
             </button>
           </header>
           <div className="flex-1 overflow-hidden">

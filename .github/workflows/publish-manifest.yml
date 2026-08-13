@@ -1,0 +1,78 @@
+name: publish-manifest
+
+# tauri-action builds the release as a draft, so the latest.json it uploads
+# addresses each installer through the GitHub REST API
+# (api.github.com/.../releases/assets/<id>) rather than the public release CDN.
+# Those URLs share the unauthenticated 60 req/hour/IP API limit: once a network
+# spends its budget the updater gets HTTP 403 instead of the installer and
+# reports `update.download_failed`.
+#
+# Publishing the draft is what makes the CDN URLs valid, so this rewrites the
+# manifest at exactly that moment.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-manifest-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  rewrite-updater-urls:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Rewrite latest.json to CDN download URLs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if ! gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx 'latest.json'; then
+            echo "Release $TAG has no latest.json asset — nothing to rewrite."
+            exit 0
+          fi
+
+          gh release download "$TAG" --pattern latest.json --output latest.json --clobber
+          node scripts/fix-updater-manifest.mjs latest.json "$TAG" --repo-url "$REPO_URL"
+
+          if grep -q 'api\.github\.com' latest.json; then
+            echo "::error::latest.json still contains an api.github.com URL after rewrite"
+            exit 1
+          fi
+
+          gh release upload "$TAG" latest.json --clobber
+          echo "Uploaded rewritten latest.json to $TAG"
+
+      - name: Verify every installer URL resolves
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --pattern latest.json --output published.json --clobber
+
+          failed=0
+          for url in $(node -e "
+            const m = require('./published.json');
+            console.log([...new Set(Object.values(m.platforms).map((p) => p.url))].join('\n'));
+          "); do
+            code=$(curl -sIL -o /dev/null -w '%{http_code}' "$url")
+            echo "$code  $url"
+            [ "$code" = "200" ] || failed=1
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::at least one updater URL did not return HTTP 200"
+            exit 1
+          fi

@@ -89,9 +89,50 @@ the private key in CI secrets is safe here.
    This is intentional: it is the safety gate that stops a broken build from
    reaching a running installation before you've verified it (D-51).
 
+6. **`publish-manifest.yml` fixes the download URLs.** Publishing fires a
+   `release: published` event, which triggers this workflow. It rewrites
+   `latest.json` so every platform points at the release CDN
+   (`.../releases/download/<tag>/<installer>`) instead of the REST API, then
+   re-checks that each URL answers HTTP 200. Confirm this run went green before
+   telling anyone to update — see the note below for why it matters.
+
 On the next launch (or a manual "Check for updates" click), the app compares its
 version against the published `latest.json` and, if newer, shows the update dialog
 with the download progress bar.
+
+### Why `latest.json` needs rewriting
+
+`tauri-action` stages the release as a draft, and a draft's assets have no usable
+`browser_download_url` yet. The `latest.json` it generates therefore addresses each
+installer through the REST API:
+
+```
+https://api.github.com/repos/Vinnissaum/lyrizzy/releases/assets/513540956
+```
+
+Those URLs keep working after publication, but they are served by the API and share
+its **unauthenticated limit of 60 requests/hour per IP**. A church that puts every
+machine behind one NAT address can exhaust that budget, and the updater then
+receives a `403` JSON body where it expected the installer. It surfaces as
+`update.download_failed` — and because the limit refills hourly, the same download
+succeeds later with no change to the release, which makes it look intermittent
+rather than broken.
+
+The CDN URLs have no such limit, so `publish-manifest.yml` swaps them in. It
+recovers each installer's filename from the `file:` field in the minisign trusted
+comment already embedded in the signature, so it needs no API lookup and cannot
+mismatch a signature to the wrong binary. The rewrite is idempotent — re-running it
+on an already-fixed manifest is a no-op.
+
+To repair a release by hand (the workflow was added in 1.2.2; anything older still
+carries API URLs):
+
+```bash
+gh release download v1.2.1 --pattern latest.json
+node scripts/fix-updater-manifest.mjs latest.json v1.2.1 \
+  --repo-url https://github.com/Vinnissaum/lyrizzy
+gh release upload v1.2.1 latest.json --clobber
+```
 
 ---
 

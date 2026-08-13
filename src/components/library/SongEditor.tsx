@@ -381,133 +381,141 @@ export const SongEditor: React.FC = () => {
 
       {/* Main area: left form + right preview */}
       <div className="flex-1 min-h-0 flex">
-      {/* Left: form */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="space-y-3">
-          <div>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t("editor.titlePlaceholder")}
-              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-lg font-medium text-fg focus:outline-none focus:border-primary"
-            />
-            {titleError && (
-              <p className="text-danger text-xs mt-1">{titleError}</p>
-            )}
-          </div>
-
-          <input
-            value={artist}
-            onChange={(e) => setArtist(e.target.value)}
-            placeholder={t("editor.artistPlaceholder")}
-            className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
-          />
-
-          <div className="flex gap-3">
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
-            >
-              <option value="pt">{t("editor.lang.pt")}</option>
-              <option value="en">{t("editor.lang.en")}</option>
-              <option value="es">{t("editor.lang.es")}</option>
-            </select>
-          </div>
-
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={t("editor.notesPlaceholder")}
-            rows={6}
-            className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-primary"
-          />
-        </div>
-
-        {/* Background */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
-            {t("editor.background")}
-          </h3>
-          <BackgroundEditor
-            backgroundMode={backgroundMode}
-            backgroundId={backgroundId}
-            scrimOpacity={scrimOpacity}
-            media={media}
-            onChange={(patch) => {
-              if ("backgroundMode" in patch) setBackgroundMode(patch.backgroundMode);
-              if ("backgroundId" in patch) setBackgroundId(patch.backgroundId);
-              if ("scrimOpacity" in patch && patch.scrimOpacity !== undefined) setScrimOpacity(patch.scrimOpacity);
-            }}
-          />
-        </div>
-
-        {/* Text casing */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
-            {t("editor.casing.title")}
-          </h3>
-          <select
-            value={textCasing ?? "normal"}
-            onChange={(e) => setTextCasing(e.target.value as TextCasing)}
-            className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
-          >
-            <option value="normal">{t("editor.casing.normal")}</option>
-            <option value="upper">{t("editor.casing.upper")}</option>
-            <option value="lower">{t("editor.casing.lower")}</option>
-            <option value="title">{t("editor.casing.titleCase")}</option>
-          </select>
-        </div>
-
-        {/* Lyrics */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
-            {t("editor.lyrics")}
-          </h3>
-          {bodyError && (
-            <p className="text-danger text-xs">{bodyError}</p>
-          )}
-          <textarea
-            value={lyrics}
-            onChange={(e) => setLyrics(e.target.value)}
-            placeholder={t("editor.lyricsPlaceholder")}
-            rows={20}
-            className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-primary font-mono"
-          />
-        </div>
-
-        {/* Rights / License panel */}
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setRightsOpen((o) => !o)}
-            className="flex items-center gap-2 text-sm font-medium text-muted uppercase tracking-wider hover:text-inherit transition-colors w-full text-left"
-          >
-            <ChevronRight size={14} className={`transition-transform ${rightsOpen ? "rotate-90" : ""}`} />
-            {t("editor.rights.title")}
-          </button>
-          {rightsOpen && (
-            <div className="space-y-2 pl-4">
+      {/* Left: form. Identity on top, then the lyrics box — the reason this
+          screen exists — taking every pixel the rest of the form doesn't need.
+          min-h-full lets it stretch when the form is short and lets the column
+          scroll normally once the panels below are expanded. */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-4">
+        <div className="flex flex-col gap-4 min-h-full">
+          <div className="space-y-3 shrink-0">
+            <div>
               <input
-                value={ccliNumber}
-                onChange={(e) => setCcliNumber(e.target.value)}
-                placeholder={t("editor.rights.ccliNumber")}
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t("editor.titlePlaceholder")}
+                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-lg font-medium text-fg focus:outline-none focus:border-primary"
               />
-              <input
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder={t("editor.rights.author")}
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
-              />
-              <input
-                value={copyright}
-                onChange={(e) => setCopyright(e.target.value)}
-                placeholder={t("editor.rights.copyright")}
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
-              />
+              {titleError && (
+                <p className="text-danger text-xs mt-1">{titleError}</p>
+              )}
             </div>
-          )}
+
+            <div className="flex gap-3">
+              <input
+                value={artist}
+                onChange={(e) => setArtist(e.target.value)}
+                placeholder={t("editor.artistPlaceholder")}
+                className="flex-1 min-w-0 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+              />
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+              >
+                <option value="pt">{t("editor.lang.pt")}</option>
+                <option value="en">{t("editor.lang.en")}</option>
+                <option value="es">{t("editor.lang.es")}</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Lyrics */}
+          <div className="flex-1 flex flex-col gap-2 min-h-[240px]">
+            <h3 className="text-sm font-medium text-muted uppercase tracking-wider shrink-0">
+              {t("editor.lyrics")}
+            </h3>
+            {bodyError && (
+              <p className="text-danger text-xs shrink-0">{bodyError}</p>
+            )}
+            <textarea
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              placeholder={t("editor.lyricsPlaceholder")}
+              className="flex-1 w-full min-h-[240px] bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary font-mono"
+            />
+          </div>
+
+          {/* Secondary metadata, kept compact below the lyrics */}
+          <div className="space-y-4 shrink-0">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t("editor.notesPlaceholder")}
+              rows={2}
+              className="w-full bg-surface-2 border border-border text-fg rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-primary"
+            />
+
+            <div className="grid grid-cols-2 gap-3 items-start">
+              {/* Background */}
+              <div className="space-y-2 min-w-0">
+                <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
+                  {t("editor.background")}
+                </h3>
+                <BackgroundEditor
+                  backgroundMode={backgroundMode}
+                  backgroundId={backgroundId}
+                  scrimOpacity={scrimOpacity}
+                  media={media}
+                  onChange={(patch) => {
+                    if ("backgroundMode" in patch) setBackgroundMode(patch.backgroundMode);
+                    if ("backgroundId" in patch) setBackgroundId(patch.backgroundId);
+                    if ("scrimOpacity" in patch && patch.scrimOpacity !== undefined) setScrimOpacity(patch.scrimOpacity);
+                  }}
+                />
+              </div>
+
+              {/* Text casing */}
+              <div className="space-y-2 min-w-0">
+                <h3 className="text-sm font-medium text-muted uppercase tracking-wider">
+                  {t("editor.casing.title")}
+                </h3>
+                <select
+                  value={textCasing ?? "normal"}
+                  onChange={(e) => setTextCasing(e.target.value as TextCasing)}
+                  className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+                >
+                  <option value="normal">{t("editor.casing.normal")}</option>
+                  <option value="upper">{t("editor.casing.upper")}</option>
+                  <option value="lower">{t("editor.casing.lower")}</option>
+                  <option value="title">{t("editor.casing.titleCase")}</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Rights / License panel */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setRightsOpen((o) => !o)}
+                className="flex items-center gap-2 text-sm font-medium text-muted uppercase tracking-wider hover:text-inherit transition-colors w-full text-left"
+              >
+                <ChevronRight size={14} className={`transition-transform ${rightsOpen ? "rotate-90" : ""}`} />
+                {t("editor.rights.title")}
+              </button>
+              {rightsOpen && (
+                <div className="space-y-2 pl-4">
+                  <input
+                    value={ccliNumber}
+                    onChange={(e) => setCcliNumber(e.target.value)}
+                    placeholder={t("editor.rights.ccliNumber")}
+                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+                  />
+                  <input
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    placeholder={t("editor.rights.author")}
+                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+                  />
+                  <input
+                    value={copyright}
+                    onChange={(e) => setCopyright(e.target.value)}
+                    placeholder={t("editor.rights.copyright")}
+                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:border-primary"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

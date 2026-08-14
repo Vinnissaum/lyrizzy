@@ -1,6 +1,6 @@
 [package]
 name = "tauri-app"
-version = "1.2.3"
+version = "1.2.4"
 description = "Lyrizzy — Church Lyrics Presentation"
 authors = ["vinicius.braz"]
 edition = "2021"

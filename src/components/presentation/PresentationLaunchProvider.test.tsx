@@ -1,12 +1,13 @@
 import React from "react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor, act, within } from "@testing-library/react";
 import {
   PresentationLaunchProvider,
   useRequestPresentation,
 } from "./PresentationLaunchProvider";
 import { useSettingsStore } from "../../stores/settings";
 import * as outputDispatch from "../../utils/outputDispatch";
+import * as commands from "../../api/commands";
 import type { MonitorInfo } from "../../types";
 
 vi.mock("../../utils/outputDispatch", async () => {
@@ -17,7 +18,16 @@ vi.mock("../../utils/outputDispatch", async () => {
   };
 });
 
+vi.mock("../../api/commands", async () => {
+  const actual = await vi.importActual<typeof commands>("../../api/commands");
+  return {
+    ...actual,
+    exitPresentation: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 const startPresentationPlan = vi.mocked(outputDispatch.startPresentationPlan);
+const exitPresentation = vi.mocked(commands.exitPresentation);
 
 const TestHarness: React.FC<{ setId?: string }> = ({ setId = "set-1" }) => {
   const requestPresentation = useRequestPresentation();
@@ -39,6 +49,7 @@ describe("PresentationLaunchProvider", () => {
 
   beforeEach(() => {
     startPresentationPlan.mockClear();
+    exitPresentation.mockClear();
   });
 
   afterEach(() => {
@@ -101,7 +112,7 @@ describe("PresentationLaunchProvider", () => {
     expect(screen.queryByTestId("multi-screen-launch-modal")).toBeNull();
   });
 
-  it("cancel: no plan executed and no store mutation", async () => {
+  it("cancel via Esc: no plan executed, no store mutation, and the staged launch is torn down", async () => {
     useSettingsStore.setState({ launchPolicy: "ask", multiScreenEnabled: true });
     renderHarness("set-5");
 
@@ -116,6 +127,42 @@ describe("PresentationLaunchProvider", () => {
     );
     expect(startPresentationPlan).not.toHaveBeenCalled();
     expect(useSettingsStore.getState().mirrorEnabled).toBe(false);
+    // The set was already loaded (→ output "one" Live) before the question was
+    // asked, so dismissing must stop it rather than leave the operator stranded
+    // in the presentation layout. Output "two" was never staged.
+    expect(exitPresentation).toHaveBeenCalledWith("one");
+    expect(exitPresentation).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancel via the close button stops the presentation too", async () => {
+    useSettingsStore.setState({ launchPolicy: "ask", multiScreenEnabled: true });
+    renderHarness("set-5b");
+
+    fireEvent.click(screen.getByText("request"));
+
+    const modal = await screen.findByTestId("multi-screen-launch-modal");
+    fireEvent.click(within(modal).getByLabelText("Cancelar"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("multi-screen-launch-modal")).toBeNull(),
+    );
+    expect(startPresentationPlan).not.toHaveBeenCalled();
+    expect(exitPresentation).toHaveBeenCalledWith("one");
+  });
+
+  it("answering does NOT tear down the launch", async () => {
+    useSettingsStore.setState({ launchPolicy: "ask", multiScreenEnabled: true });
+    renderHarness("set-5c");
+
+    fireEvent.click(screen.getByText("request"));
+    await screen.findByTestId("multi-screen-launch-modal");
+
+    fireEvent.click(screen.getByText("Espelhar as duas"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("multi-screen-launch-modal")).toBeNull(),
+    );
+    expect(exitPresentation).not.toHaveBeenCalled();
   });
 
   it("shows the resolved monitor names in the launch modal", async () => {

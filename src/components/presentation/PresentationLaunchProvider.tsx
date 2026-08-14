@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings";
+import { exitPresentation } from "../../api/commands";
 import { resolveLaunchPlan, startPresentationPlan } from "../../utils/outputDispatch";
 import { MultiScreenLaunchModal } from "./MultiScreenLaunchModal";
 import { outputScreenName } from "../../utils/monitorNames";
@@ -87,7 +88,26 @@ export const PresentationLaunchProvider: React.FC<{ children: React.ReactNode }>
     [pendingSetId, finish],
   );
 
+  /**
+   * Dismissing the modal (X / Esc) must abort the whole launch, not just hide
+   * the question. Every "Apresentar" call site loads the set into the navigator
+   * BEFORE asking, and `load_set_for_presentation` already puts the output in
+   * `Live` — which is what flips the operator into the presentation layout. So
+   * a plain close would strand the operator "presenting" with no projector
+   * window and the home view locked behind the nav guard.
+   *
+   * Only output "one" is torn down: the pre-load targets it alone, and the
+   * mirror plan hasn't run yet at cancel time, so "two" was never touched.
+   * `exit_presentation` is idempotent — an already-idle output with no window
+   * short-circuits in Rust, so this is a no-op when nothing was staged.
+   *
+   * Safe to do unconditionally: every call site is unreachable while a
+   * presentation is actually running (the operator swaps to
+   * `OperatorPresentationLayout`, and the countdown auto-launch returns early
+   * when already presenting), so this can never stop a live service.
+   */
   const handleCancel = useCallback(() => {
+    exitPresentation("one").catch(() => {});
     finish();
   }, [finish]);
 

@@ -1,0 +1,30 @@
+# Line-ending policy: LF everywhere, in the repository AND in the working tree.
+#
+# Without this file the result depends on each developer's `core.autocrlf`. On a
+# Windows checkout with autocrlf=true every text file lands as CRLF, and that
+# breaks things that are hard to attribute: vitest cannot even collect a `.mjs`
+# with CRLF (it fails with "SyntaxError: Invalid or unexpected token"), and
+# scripts/version-files.test.mjs compares Cargo.toml lines byte-for-byte. Those
+# failures never appear on CI, which runs on ubuntu, so they read as local
+# regressions when they are only line endings.
+#
+# `eol=lf` (not just `text=auto`) is the part that matters: `text=auto` alone
+# normalises what gets committed but still hands Windows a CRLF working tree.
+* text=auto eol=lf
+
+# Binary assets. `text=auto` already detects these by content, but declaring
+# them is what guarantees no future renormalisation can rewrite bytes inside an
+# icon, a font or a pdfium library.
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.svg   text eol=lf
+*.woff2 binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+*.mp4   binary
+*.webm  binary
+*.pdf   binary
+*.tlz   binary
+*.zip   binary

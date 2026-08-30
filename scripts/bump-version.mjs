@@ -8,6 +8,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { isMainModule } from "./is-main-module.mjs";
 import {
   parseVersion,
   setTauriConfVersion,
@@ -17,6 +18,33 @@ import {
 
 const CARGO_PKG_NAME = "tauri-app";
 
+const IS_WINDOWS = process.platform === "win32";
+
+/**
+ * Run `npm version <version>` in `cwd`, letting npm own package.json and both
+ * package-lock.json version fields.
+ *
+ * Windows needs its own path here. npm ships as `npm.cmd`, and `execFileSync`
+ * applies neither PATHEXT (so bare "npm" is ENOENT) nor — since the fix for
+ * CVE-2024-27980 in Node 18.20.2 / 20.12.0 — will it spawn a `.cmd` at all
+ * without a shell (EINVAL). So Windows goes through cmd.exe as a single command
+ * string; passing an args array alongside `shell: true` is what Node deprecated
+ * in DEP0190, because those args get concatenated rather than escaped.
+ *
+ * Interpolating into that string is safe only because `version` has already
+ * been through `parseVersion`, which accepts strict MAJOR.MINOR.PATCH digits
+ * and nothing else — no spaces, quotes or shell metacharacters can reach here.
+ * POSIX keeps the argument-array form, which needs no such reasoning.
+ */
+function npmSetVersion(version, cwd) {
+  const args = ["version", "--no-git-tag-version", "--allow-same-version", version];
+  if (IS_WINDOWS) {
+    execFileSync(`npm ${args.join(" ")}`, { cwd, stdio: "pipe", shell: true });
+  } else {
+    execFileSync("npm", args, { cwd, stdio: "pipe" });
+  }
+}
+
 export function run(rawVersion, root = process.cwd()) {
   const version = parseVersion(rawVersion);
   if (!version) {
@@ -24,11 +52,7 @@ export function run(rawVersion, root = process.cwd()) {
   }
 
   // npm owns package.json + both package-lock.json version fields.
-  execFileSync(
-    "npm",
-    ["version", "--no-git-tag-version", "--allow-same-version", version],
-    { cwd: root, stdio: "pipe" },
-  );
+  npmSetVersion(version, root);
 
   const tauriConfPath = path.join(root, "src-tauri", "tauri.conf.json");
   const cargoTomlPath = path.join(root, "src-tauri", "Cargo.toml");
@@ -45,7 +69,7 @@ export function run(rawVersion, root = process.cwd()) {
 }
 
 // Only run as a CLI when invoked directly (not when imported by tests).
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   const [, , rawVersion] = process.argv;
   try {
     const version = run(rawVersion);

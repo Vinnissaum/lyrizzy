@@ -19,6 +19,7 @@
 //     --repo-url https://github.com/Vinnissaum/lyrizzy
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { isMainModule } from "./is-main-module.mjs";
 
 const API_ASSET_URL = /^https:\/\/api\.github\.com\/repos\/[^/]+\/[^/]+\/releases\/assets\/\d+$/;
 
@@ -71,7 +72,7 @@ export function rewriteManifestUrls(manifest, { repoUrl, tag }) {
   return { manifest: { ...manifest, platforms: rewritten }, changes };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   const [, , manifestPath, tag, ...rest] = process.argv;
   const repoFlag = rest.indexOf("--repo-url");
   const repoUrl = repoFlag === -1 ? undefined : rest[repoFlag + 1];

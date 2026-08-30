@@ -8,6 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { isMainModule } from "./is-main-module.mjs";
 import {
   stripTagPrefix,
   readVersionFromPackageJson,
@@ -48,7 +49,7 @@ function printReport({ ok, rows }) {
   console.log(ok ? "\nAll version sources agree." : "\nVersion sources disagree — see MISMATCH rows above.");
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   const [, , tag] = process.argv;
   if (!tag) {
     console.error("usage: node scripts/check-version.mjs <git-tag>");

@@ -17,10 +17,12 @@ import {
   engageMirror,
   launchOutputAt,
   reducePresentingOutputs,
+  needsStopChoice,
   resolveLaunchPlan,
   startPresentationPlan,
 } from "./outputDispatch";
 import { useSettingsStore } from "../stores/settings";
+import type { OutputId } from "../types";
 import {
   enterPresentation,
   getPresentationState,
@@ -279,5 +281,29 @@ describe("startPresentationPlan", () => {
     // Output "two" never opened a window or navigated after its load rejected.
     expect(enterPresentation).not.toHaveBeenCalledWith("two");
     expect(goToItem).not.toHaveBeenCalledWith(0, 0, "two");
+  });
+});
+
+describe("needsStopChoice", () => {
+  const set = (...o: OutputId[]) => new Set<OutputId>(o);
+
+  it("is false when multi-screen is off, whatever else is true", () => {
+    // Only one output exists — there is nothing to choose between.
+    expect(needsStopChoice(false, false, set("one", "two"))).toBe(false);
+    expect(needsStopChoice(false, true, set("one", "two"))).toBe(false);
+  });
+
+  it("is false while mirroring — Stop legitimately means both", () => {
+    expect(needsStopChoice(true, true, set("one", "two"))).toBe(false);
+  });
+
+  it("is false when fewer than two outputs are presenting", () => {
+    expect(needsStopChoice(true, false, set())).toBe(false);
+    expect(needsStopChoice(true, false, set("one"))).toBe(false);
+    expect(needsStopChoice(true, false, set("two"))).toBe(false);
+  });
+
+  it("is true only for multi-screen, mirror off, two screens presenting", () => {
+    expect(needsStopChoice(true, false, set("one", "two"))).toBe(true);
   });
 });

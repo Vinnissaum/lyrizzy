@@ -139,7 +139,7 @@
     "item_other": "{{count}} itens",
     "renameTip": "Clique para renomear",
     "invalidRef": "⚠ Referência inválida",
-    "blank": "Tela em branco",
+    "blank": "Tela preta",
     "countdownSummary": "Contagem — {{dur}}",
     "noUrl": "sem URL",
     "add": {
@@ -147,7 +147,7 @@
       "media": "Mídia",
       "countdown": "Contagem",
       "webView": "WebView",
-      "blank": "Branco",
+      "blank": "Tela preta",
       "slideShow": "Apresentação"
     },
     "slideshowItem": "Apresentação",
@@ -211,6 +211,15 @@
       "mainOnly": "Somente {{screen1}}",
       "mirrorAll": "Espelhar as duas"
     },
+    "stopChoice": {
+      "title": "Parar apresentação",
+      "situation": "Você está apresentando em {{screens}} telas com controle individual.",
+      "warning": "Ao parar, o controle desta tela é perdido e não poderá ser retomado — só apresentando tudo novamente.",
+      "question": "Qual tela deve parar?",
+      "stopOne": "Parar {{screen}}",
+      "stopAll": "Parar todas",
+      "cancel": "Cancelar"
+    },
     "action": {
       "present": "Apresentar",
       "stop": "Parar"
@@ -223,7 +232,7 @@
     },
     "blackoutSlide": "Tela preta",
     "currentSlide": "Slide atual",
-    "blankSlide": "Tela em branco",
+    "blankSlide": "Tela preta",
     "prev": "← Anterior",
     "next": "Próximo →",
     "notes": {

@@ -139,7 +139,7 @@
     "item_other": "{{count}} items",
     "renameTip": "Click to rename",
     "invalidRef": "⚠ Invalid reference",
-    "blank": "Blank slide",
+    "blank": "Black screen",
     "countdownSummary": "Countdown — {{dur}}",
     "noUrl": "no URL",
     "add": {
@@ -147,7 +147,7 @@
       "media": "Media",
       "countdown": "Countdown",
       "webView": "WebView",
-      "blank": "Blank",
+      "blank": "Black screen",
       "slideShow": "Slideshow"
     },
     "slideshowItem": "Slideshow",
@@ -211,6 +211,15 @@
       "mainOnly": "{{screen1}} only",
       "mirrorAll": "Mirror both"
     },
+    "stopChoice": {
+      "title": "Stop presentation",
+      "situation": "You are presenting on {{screens}} screens with individual control.",
+      "warning": "Stopping loses control of that screen for good — it cannot be resumed, only started over by presenting everything again.",
+      "question": "Which screen should stop?",
+      "stopOne": "Stop {{screen}}",
+      "stopAll": "Stop all",
+      "cancel": "Cancel"
+    },
     "action": {
       "present": "Present",
       "stop": "Stop"
@@ -223,7 +232,7 @@
     },
     "blackoutSlide": "Blackout",
     "currentSlide": "Current slide",
-    "blankSlide": "Blank slide",
+    "blankSlide": "Black screen",
     "prev": "← Previous",
     "next": "Next →",
     "notes": {

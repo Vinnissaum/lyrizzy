@@ -41,6 +41,7 @@
   --color-danger-bg:      var(--app-danger-bg);
   --color-warning:        var(--app-warning);
   --color-warning-bg:     var(--app-warning-bg);
+  --color-fg-on-warning:  var(--app-fg-on-warning);
   --color-success:        var(--app-success);
   --color-success-bg:     var(--app-success-bg);
   --color-info:           var(--app-info);
@@ -71,6 +72,9 @@
   --app-danger-bg:      #2A1416;
   --app-warning:        #F5A524;
   --app-warning-bg:     #2A2210;
+  /* Amber is the one status tone that is identical in every theme, so its
+     foreground is too: near-black is the only readable text on #F5A524. */
+  --app-fg-on-warning:  #1A1D23;
   --app-success:        #30A46C;
   --app-success-bg:     #0F2A20;
   --app-info:           #3B82F6;

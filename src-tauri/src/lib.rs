@@ -37,6 +37,7 @@ use commands::settings::{get_setting, set_setting};
 use commands::updates::{apply_update_and_restart, check_for_updates};
 use commands::window::{
     enter_presentation, exit_presentation, list_monitors, should_close_presentation_on_destroy,
+    should_reassert_on_top,
 };
 use state::AppState;
 use tauri::{Manager, WindowEvent};
@@ -115,6 +116,29 @@ pub fn run() {
                 }
                 WindowEvent::Focused(false) => {
                     tracing::info!(window.label = %label, event = "focus_lost", "window event");
+
+                    // P16-03: losing focus is exactly the moment another app
+                    // took the foreground — and the moment Windows may have
+                    // demoted this window out of the topmost band, letting an
+                    // Alt+Tabbed window draw over the projection. Re-assert the
+                    // pin. Gated on `is_fullscreen()` so the deliberate
+                    // windowed fallback (P16-02) is never pinned and can never
+                    // trap the operator on their own screen.
+                    if should_reassert_on_top(&label)
+                        && window.is_fullscreen().unwrap_or(false)
+                    {
+                        if let Err(e) = window.set_always_on_top(true) {
+                            // A window-management hiccup must never take down
+                            // the app mid-service; same policy as the
+                            // set_position / set_fullscreen calls in
+                            // enter_presentation.
+                            tracing::warn!(
+                                error = %e,
+                                window.label = %label,
+                                "failed to re-assert always-on-top after focus loss (ignored)"
+                            );
+                        }
+                    }
                 }
                 _ => {}
             }

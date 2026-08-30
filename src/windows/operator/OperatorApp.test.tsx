@@ -16,6 +16,18 @@ import { listen } from "@tauri-apps/api/event";
 import type { Song, ServiceSet, PresentationState, SetItem } from "../../types";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
+import { useSettingsStore } from "../../stores/settings";
+import type { OutputId } from "../../types";
+
+// jsdom lacks ResizeObserver; SlideStage (rendered by the presentation layout)
+// uses it internally.
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  window.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
 
 const mockSong = (id: string, title: string, artist?: string): Song => ({
   id,
@@ -466,6 +478,190 @@ describe("OperatorApp", () => {
 
       expect(jumpSpy).not.toHaveBeenCalled();
       jumpSpy.mockRestore();
+    });
+  });
+
+  describe("stopping with multiple screens under individual control", () => {
+    // P16-17..P16-25. Drives the real gate through both entry points: the Stop
+    // button in the presentation layout and the Esc key.
+
+    // A set with at least one item is required for the presentation layout to
+    // render its action bar (and therefore the Stop button) at all.
+    const presentingSet: ServiceSet = {
+      ...defaultSet,
+      items: [
+        {
+          id: "item-1",
+          setId: "set-1",
+          itemType: "blank",
+          sortOrder: 0,
+        } as SetItem,
+      ],
+    };
+
+    const liveState: PresentationState = {
+      mode: "live",
+      currentItemIndex: 0,
+      currentSlideIndex: 0,
+      itemSlideCounts: [1],
+      set: presentingSet,
+    };
+
+    /** Mount the app with both outputs presenting, then return a way to stop. */
+    const mountPresenting = async (opts: {
+      multiScreen: boolean;
+      mirror: boolean;
+      outputs: OutputId[];
+    }) => {
+      const lifecycleHandlers: ((e: any) => void)[] = [];
+      vi.mocked(listen).mockImplementation((event: any, cb: any) => {
+        if (event === "presentation_lifecycle") lifecycleHandlers.push(cb);
+        return Promise.resolve(() => {});
+      });
+
+      render(<OperatorApp />);
+      await waitFor(() => expect(lifecycleHandlers.length).toBeGreaterThan(0));
+
+      // Seed AFTER mount: OperatorApp fetches presentation state on mount and
+      // would otherwise overwrite the fixture with the mocked empty response.
+      act(() => {
+        useSettingsStore.setState({
+          multiScreenEnabled: opts.multiScreen,
+          mirrorEnabled: opts.mirror,
+        });
+        usePresentationStore.setState({
+          state: liveState,
+          focusedOutput: "one",
+        });
+      });
+
+      // Announce each output as presenting, the way Rust does.
+      await act(async () => {
+        for (const output of opts.outputs) {
+          for (const cb of lifecycleHandlers) {
+            cb({ payload: { phase: "entered", output } });
+          }
+        }
+        await Promise.resolve();
+      });
+    };
+
+    const exitCalls = () =>
+      vi.mocked(invoke).mock.calls.filter((c) => c[0] === "exit_presentation");
+
+    it("opens the chooser instead of silently stopping the focused screen", async () => {
+      await mountPresenting({ multiScreen: true, mirror: false, outputs: ["one", "two"] });
+
+      fireEvent.click(screen.getByTestId("stop-button"));
+
+      expect(screen.getByTestId("stop-presentation-modal")).toBeTruthy();
+      expect(exitCalls()).toHaveLength(0);
+    });
+
+    it("Esc routes through the same gate as the Stop button (P16-24)", async () => {
+      await mountPresenting({ multiScreen: true, mirror: false, outputs: ["one", "two"] });
+
+      fireEvent.keyDown(window, { key: "Escape" });
+
+      expect(screen.getByTestId("stop-presentation-modal")).toBeTruthy();
+      expect(exitCalls()).toHaveLength(0);
+    });
+
+    it("choosing a screen stops only that output", async () => {
+      await mountPresenting({ multiScreen: true, mirror: false, outputs: ["one", "two"] });
+      fireEvent.click(screen.getByTestId("stop-button"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("stop-output-two"));
+        await Promise.resolve();
+      });
+
+      expect(exitCalls()).toHaveLength(1);
+      expect(exitCalls()[0][1]).toEqual({ output: "two" });
+      expect(screen.queryByTestId("stop-presentation-modal")).toBeNull();
+    });
+
+    it("stop-all stops every presenting output", async () => {
+      await mountPresenting({ multiScreen: true, mirror: false, outputs: ["one", "two"] });
+      fireEvent.click(screen.getByTestId("stop-button"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("stop-all"));
+        await Promise.resolve();
+      });
+
+      expect(exitCalls()).toHaveLength(2);
+      expect(exitCalls().map((c) => (c[1] as any).output).sort()).toEqual(["one", "two"]);
+    });
+
+    it("cancelling stops nothing", async () => {
+      await mountPresenting({ multiScreen: true, mirror: false, outputs: ["one", "two"] });
+      fireEvent.click(screen.getByTestId("stop-button"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("stop-cancel"));
+        await Promise.resolve();
+      });
+
+      expect(exitCalls()).toHaveLength(0);
+      expect(screen.queryByTestId("stop-presentation-modal")).toBeNull();
+    });
+
+    it("mirroring stops both screens with no prompt (P16-18)", async () => {
+      await mountPresenting({ multiScreen: true, mirror: true, outputs: ["one", "two"] });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("stop-button"));
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId("stop-presentation-modal")).toBeNull();
+      expect(exitCalls().map((c) => (c[1] as any).output).sort()).toEqual(["one", "two"]);
+    });
+
+    it("a single presenting screen stops immediately (P16-18)", async () => {
+      await mountPresenting({ multiScreen: true, mirror: false, outputs: ["one"] });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("stop-button"));
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId("stop-presentation-modal")).toBeNull();
+      expect(exitCalls()).toHaveLength(1);
+      expect(exitCalls()[0][1]).toEqual({ output: "one" });
+    });
+
+    it("multi-screen off never prompts, even with two windows open (P16-18)", async () => {
+      await mountPresenting({ multiScreen: false, mirror: false, outputs: ["one", "two"] });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("stop-button"));
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId("stop-presentation-modal")).toBeNull();
+      expect(exitCalls()).toHaveLength(1);
+    });
+
+    it("an active overlay is cleared first and never raises the chooser (P16-25)", async () => {
+      await mountPresenting({ multiScreen: true, mirror: false, outputs: ["one", "two"] });
+      act(() => {
+        usePresentationStore.setState({
+          state: { ...liveState, mode: "live", overlay: { kind: "announcement", text: "oi" } as any },
+        });
+      });
+
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Escape" });
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId("stop-presentation-modal")).toBeNull();
+      expect(exitCalls()).toHaveLength(0);
+      expect(
+        vi.mocked(invoke).mock.calls.filter((c) => c[0] === "clear_overlay").length,
+      ).toBeGreaterThan(0);
     });
   });
 

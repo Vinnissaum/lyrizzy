@@ -79,7 +79,8 @@ export function itemLabel(
       return m?.displayName ?? "Apresentação";
     }
     default:
-      return "Branco";
+      // The `blank` item projects a black screen (P16-05..P16-08).
+      return "Tela preta";
   }
 }
 

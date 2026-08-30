@@ -1,4 +1,4 @@
-import { describe, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import ptBR from "../../i18n/locales/pt-BR.json";
 import enUS from "../../i18n/locales/en-US.json";
 
@@ -61,6 +61,25 @@ describe("i18n key completeness", () => {
       throw new Error(
         `Required Phase 3 keys missing from one or both locales:\n${missing.map((k) => `  - ${k}`).join("\n")}`
       );
+    }
+  });
+
+  it("the blank set item is named 'Tela preta', never 'em branco' (P16-08)", () => {
+    // The `blank` item projects a BLACK slide. Three labels used to call it
+    // white; this guards the rename against a regression. The lyrics-editor
+    // placeholders ("linha em branco entre as estrofes") are a different sense
+    // of the phrase and are deliberately excluded.
+    const itemLabelKeys = [
+      "builder.blank",
+      "builder.add.blank",
+      "presentation.blankSlide",
+    ];
+    const read = (obj: any, key: string) =>
+      key.split(".").reduce((o, k) => o?.[k], obj) as string;
+
+    for (const key of itemLabelKeys) {
+      expect(read(ptBR, key)).toBe("Tela preta");
+      expect(read(enUS, key)).toBe("Black screen");
     }
   });
 });

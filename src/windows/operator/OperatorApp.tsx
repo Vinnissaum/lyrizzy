@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   checkForUpdates,
@@ -27,6 +27,7 @@ import { HomeSetBuilder } from "../../components/setbuilder/HomeSetBuilder";
 import { SetBuilder } from "../../components/set/SetBuilder";
 import { SetList } from "../../components/set/SetList";
 import { OperatorPresentationLayout } from "../../components/presentation/OperatorPresentationLayout";
+import { StopPresentationModal } from "../../components/presentation/StopPresentationModal";
 import {
   PresentationLaunchProvider,
   useRequestPresentation,
@@ -45,7 +46,11 @@ import {
 import { CountdownScheduleModal } from "../../components/set/CountdownScheduleModal";
 import { useLibraryStore } from "../../stores/library";
 import { usePresentationStore } from "../../stores/presentation";
-import { fanOutToMirror, reducePresentingOutputs } from "../../utils/outputDispatch";
+import {
+  fanOutToMirror,
+  needsStopChoice,
+  reducePresentingOutputs,
+} from "../../utils/outputDispatch";
 import { useCountdownStore } from "../../stores/countdown";
 import { useSetsStore } from "../../stores/sets";
 import { useSettingsStore } from "../../stores/settings";
@@ -102,6 +107,50 @@ const OperatorAppInner: React.FC = () => {
     new Set(),
   );
   const presentingOutputsRef = useRef<Set<OutputId>>(new Set());
+
+  // Open when Stop needs the operator to say WHICH screen to end (P16-17).
+  const [stopChoiceOpen, setStopChoiceOpen] = useState(false);
+
+  /**
+   * The single decision path behind every way to stop (P16-24): the Stop button
+   * in the presentation layout, Esc, and the rebindable `exitPresentation`
+   * action all call this.
+   *
+   *   1. An active overlay is cleared first — clearing an overlay is not
+   *      stopping, so it must never raise the chooser (P16-25).
+   *   2. Otherwise, if two screens are being driven independently, ask which
+   *      one to end rather than silently killing the focused screen.
+   *   3. Otherwise stop exactly as before.
+   *
+   * Reads every input live (stores + ref) so it is stable across renders and
+   * never acts on a stale closure — the same reason `handleExit` already reads
+   * `focusedOutput` from the store rather than from props.
+   */
+  const requestStop = useCallback(() => {
+    const output = usePresentationStore.getState().focusedOutput;
+
+    if (usePresentationStore.getState().state?.overlay) {
+      clearOverlay(output).catch(console.error);
+      fanOutToMirror(output, (o) => clearOverlay(o));
+      return;
+    }
+
+    const { multiScreenEnabled, mirrorEnabled } = useSettingsStore.getState();
+    if (
+      needsStopChoice(
+        multiScreenEnabled,
+        mirrorEnabled,
+        presentingOutputsRef.current,
+      )
+    ) {
+      setStopChoiceOpen(true);
+      return;
+    }
+
+    exitPresentation(output).catch(console.error);
+    // Mirror (Simultânea): Esc/Stop exits BOTH screens.
+    fanOutToMirror(output, (o) => exitPresentation(o));
+  }, []);
 
   useEffect(() => {
     const unlistenSongs = onSongsChanged(() => {
@@ -260,18 +309,10 @@ const OperatorAppInner: React.FC = () => {
     // presentation window and resets state to idle). Both the hardcoded Esc
     // and the user-rebindable `exitPresentation` action go through this, so
     // they behave identically — no more "rebindable exit leaves window open".
-    const handleExit = () => {
-      // Act on the focused output (read live to avoid a stale closure).
-      const output = usePresentationStore.getState().focusedOutput;
-      if (usePresentationStore.getState().state?.overlay) {
-        clearOverlay(output).catch(console.error);
-        fanOutToMirror(output, (o) => clearOverlay(o));
-      } else {
-        exitPresentation(output).catch(console.error);
-        // Mirror (Simultânea): Esc/Stop exits BOTH screens.
-        fanOutToMirror(output, (o) => exitPresentation(o));
-      }
-    };
+    //
+    // P16-24: this now delegates to `requestStop`, the same gate the Stop
+    // button uses, so no surface can bypass the multi-screen stop chooser.
+    const handleExit = () => requestStop();
 
     const uninstall = installKeyboardDispatcher(
       () => useKeyBindingsStore.getState().bindings,
@@ -399,6 +440,23 @@ const OperatorAppInner: React.FC = () => {
         <RestoreInProgressDialog onDismissed={() => setRestoreInProgress(false)} />
       )}
 
+      {stopChoiceOpen && (
+        <StopPresentationModal
+          presentingOutputs={presentingOutputs}
+          onStopOne={(output) => {
+            setStopChoiceOpen(false);
+            exitPresentation(output).catch(console.error);
+          }}
+          onStopAll={() => {
+            setStopChoiceOpen(false);
+            for (const o of presentingOutputs) {
+              exitPresentation(o).catch(console.error);
+            }
+          }}
+          onCancel={() => setStopChoiceOpen(false)}
+        />
+      )}
+
       {pendingUpdate && !updateDismissed && (
         <UpdateBanner
           update={pendingUpdate}
@@ -500,7 +558,10 @@ const OperatorAppInner: React.FC = () => {
       {/* Main content */}
       <main className="flex-1 min-h-0">
         {isPresenting ? (
-          <OperatorPresentationLayout presentingOutputs={presentingOutputs} />
+          <OperatorPresentationLayout
+            presentingOutputs={presentingOutputs}
+            onRequestStop={requestStop}
+          />
         ) : (
           <>
             {currentView === "home" && <HomeSetBuilder />}

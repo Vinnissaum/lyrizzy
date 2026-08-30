@@ -5,7 +5,6 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   clearOverlay,
   enterPresentation,
-  exitPresentation,
   getPresentationState,
   getSetting,
   importPresentation,
@@ -39,7 +38,10 @@ export const OperatorPresentationLayout: React.FC<{
   /** Outputs that currently have a live presentation window (from OperatorApp).
    *  Drives whether clicking a screen tab opens the launch modal. */
   presentingOutputs?: ReadonlySet<OutputId>;
-}> = ({ presentingOutputs }) => {
+  /** Host gate for stopping (P16-24). Decides whether to stop straight away or
+   *  ask which screen first; shared with Esc and the rebindable exit action. */
+  onRequestStop?: () => void;
+}> = ({ presentingOutputs, onRequestStop }) => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
@@ -207,12 +209,12 @@ export const OperatorPresentationLayout: React.FC<{
   };
 
   // Stop presentation — same behavior as pressing Esc in operator mode.
+  //
+  // P16-24: the decision of WHAT to stop (and whether to ask first) belongs to
+  // the host's single gate, so Stop and Esc can never diverge. This handler
+  // keeps only its local concern: closing the live editor.
   const handleStop = () => {
-    exitPresentation(focusedOutput).catch((err) =>
-      console.error("exit presentation failed:", err),
-    );
-    // Mirror (Simultânea): Stop exits BOTH screens.
-    fanOutToMirror(focusedOutput, (o) => exitPresentation(o));
+    onRequestStop?.();
     // Clear any open live editor so it doesn't survive as an orphaned overlay.
     setEditingSongId(null);
   };

@@ -110,15 +110,66 @@ describe("OutputSwitcher", () => {
     expect(engageMirror).toHaveBeenCalledTimes(1);
   });
 
-  it("hides the per-screen tabs and does not re-engage when mirror is on", () => {
+  it("keeps the per-screen tabs visible and does not re-engage when mirror is on", () => {
+    // P16-09: the tabs used to unmount the moment mirror engaged, which made the
+    // whole control group jump. They now stay, marked as mirrored.
     mockStores({ enabled: true, mirror: true });
     render(<OutputSwitcher />);
-    // Tabs hidden under mirror; only the toggle remains.
-    expect(screen.queryByText("Tela 1")).toBeNull();
-    expect(screen.queryByText("Tela 2")).toBeNull();
+    expect(screen.getByText("Tela 1")).toBeTruthy();
+    expect(screen.getByText("Tela 2")).toBeTruthy();
+    expect(screen.getByText("Tela 1").getAttribute("data-mirrored")).toBe("true");
+    expect(screen.getByText("Tela 2").getAttribute("data-mirrored")).toBe("true");
+    // Neither tab is "current" while mirroring — both screens are being driven.
+    expect(screen.getByText("Tela 1").getAttribute("aria-current")).toBe("false");
+    expect(screen.getByText("Tela 2").getAttribute("aria-current")).toBe("false");
+
     fireEvent.click(screen.getByTestId("mirror-toggle"));
     expect(setMirrorEnabled).toHaveBeenCalledWith(false);
     expect(engageMirror).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    "puts the Simultânea toggle immediately after the tabs (mirror=%s)",
+    (mirror) => {
+      // P16-10: `ml-auto` used to shove the toggle to the far end of the bar,
+      // so engaging Simultânea made the control group jump.
+      mockStores({ enabled: true, mirror });
+      render(<OutputSwitcher />);
+
+      const bar = screen.getByTestId("output-switcher");
+      const toggle = screen.getByTestId("mirror-toggle");
+      expect(toggle.className).not.toContain("ml-auto");
+      // Two tabs, then the toggle — the toggle is the last tab's next sibling.
+      expect(bar.children).toHaveLength(3);
+      expect(bar.children[2]).toBe(toggle);
+    },
+  );
+
+  it("uses a colour distinct from an active screen tab when Simultânea is on", () => {
+    // P16-11: ON used to be byte-identical to a focused tab (`bg-primary`), so
+    // "mirroring" and "Tela 2 focused" rendered the same.
+    mockStores({ enabled: true, mirror: true });
+    render(<OutputSwitcher />);
+    const on = screen.getByTestId("mirror-toggle").className;
+    expect(on).toContain("bg-warning");
+    expect(on).not.toContain("bg-primary");
+  });
+
+  it("clicking a tab while mirroring re-points the master without disengaging", () => {
+    // P16-12: focus still moves (it selects the mirror master), mirror stays on,
+    // and no launch is requested for a screen that is already presenting.
+    const onRequestLaunch = vi.fn();
+    mockStores({ enabled: true, mirror: true, focused: "one" });
+    render(
+      <OutputSwitcher
+        presentingOutputs={new Set<OutputId>(["one", "two"])}
+        onRequestLaunch={onRequestLaunch}
+      />,
+    );
+    fireEvent.click(screen.getByText("Tela 2"));
+    expect(setFocusedOutput).toHaveBeenCalledWith("two");
+    expect(setMirrorEnabled).not.toHaveBeenCalled();
+    expect(onRequestLaunch).not.toHaveBeenCalled();
   });
 
   it("renders a stored monitor name for the assigned output", () => {

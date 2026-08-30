@@ -59,6 +59,32 @@ export function reducePresentingOutputs(
 }
 
 /**
+ * Whether Stop must ask the operator *which* screen to end instead of acting
+ * immediately (P16-17).
+ *
+ * Stopping is destructive and unrecoverable — `exit_presentation` resets the
+ * output to Idle and destroys its window, so a stopped screen can only come
+ * back by presenting from scratch. That is fine when the target is unambiguous;
+ * it is not fine when two screens are being driven independently and Stop would
+ * silently kill whichever one happens to be focused.
+ *
+ * Each clause removes an ambiguity:
+ *   - multi-screen off  → there is only one output; nothing to choose between
+ *   - mirror on         → Stop legitimately means "both", which `fanOutToMirror`
+ *                         already does
+ *   - fewer than two presenting → the target is the only live screen
+ *
+ * Pure — no store reads, no I/O.
+ */
+export function needsStopChoice(
+  multiScreenEnabled: boolean,
+  mirrorEnabled: boolean,
+  presentingOutputs: ReadonlySet<OutputId>,
+): boolean {
+  return multiScreenEnabled && !mirrorEnabled && presentingOutputs.size > 1;
+}
+
+/**
  * Launch a presentation on `output` starting at a chosen set item, in the order
  * that both opens the window AND propagates set state to an already-open one:
  *

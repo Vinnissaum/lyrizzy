@@ -14,8 +14,16 @@ const OUTPUTS: OutputId[] = ["one", "two"];
  * plus a Simultânea (mirror) toggle. Renders nothing unless multi-screen mode is
  * enabled in settings, so the single-screen workflow is visually unchanged.
  *
- * While mirror is ON the operator drives a single set and both screens render it
- * identically (see `fanOutToMirror`), so the per-screen focus tabs are hidden.
+ * The tabs render in BOTH states (P16-09). While mirror is ON the operator
+ * drives one set and every screen renders it identically (see `fanOutToMirror`),
+ * so neither tab is "current" — both are marked `data-mirrored` instead, which
+ * is what ties them visually to the amber toggle sitting beside them. Clicking a
+ * tab while mirroring re-points the mirror master without disengaging it.
+ *
+ * The toggle is the tabs' immediate sibling in both states (P16-10) so engaging
+ * Simultânea never makes the control group jump, and its ON style uses the
+ * `warning` accent (P16-11) rather than `bg-primary` — otherwise "Simultânea is
+ * engaged" and "Tela 2 is focused" would render identically.
  *
  * Clicking a tab whose output is not yet presenting (`onRequestLaunch` provided
  * and the output is absent from `presentingOutputs`) asks the host to open the
@@ -70,22 +78,24 @@ export const OutputSwitcher: React.FC<{
       data-testid="output-switcher"
       className="flex items-center gap-2 px-2 py-1 border-b border-border"
     >
-      {!mirrorEnabled &&
-        OUTPUTS.map((o, i) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onTabClick(o)}
-            aria-current={focusedOutput === o}
-            className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-              focusedOutput === o
+      {OUTPUTS.map((o, i) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onTabClick(o)}
+          aria-current={!mirrorEnabled && focusedOutput === o}
+          data-mirrored={mirrorEnabled ? "true" : undefined}
+          className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+            mirrorEnabled
+              ? "bg-surface-2 text-muted border border-warning"
+              : focusedOutput === o
                 ? "bg-primary text-fg-on-primary font-medium"
                 : "bg-surface-2 text-muted hover:bg-border"
-            }`}
-          >
-            {labelFor(o, i)}
-          </button>
-        ))}
+          }`}
+        >
+          {labelFor(o, i)}
+        </button>
+      ))}
 
       <button
         type="button"
@@ -93,9 +103,9 @@ export const OutputSwitcher: React.FC<{
         onClick={onToggleMirror}
         aria-pressed={mirrorEnabled}
         title={t("presentation.output.simultaneousHint")}
-        className={`ml-auto flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors ${
+        className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg transition-colors ${
           mirrorEnabled
-            ? "bg-primary text-fg-on-primary font-medium"
+            ? "bg-warning text-fg-on-warning font-semibold"
             : "bg-surface-2 text-muted hover:bg-border"
         }`}
       >

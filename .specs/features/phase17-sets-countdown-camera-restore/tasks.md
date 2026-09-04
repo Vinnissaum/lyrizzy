@@ -1,6 +1,8 @@
 # Phase 17 — Tasks
 
-**Status:** Draft — 30 tasks (T1–T30), none started
+**Status:** 17C slice DONE (2026-09-04) — T1 (backup strings), T3, T7, T5, T14, T20 implemented on branch `phase17c-restore-integrity`. Remaining: T2, T4, T6, T8–T13, T15–T19, T21–T27 (groups 17A/17B/17D/17E) + T28–T30 (release).
+
+**Gate after the slice:** 669 Vitest passing + 1 skipped (82 files, +6 over baseline) · 356 Rust passing (+7) · `tsc --noEmit` clean · `cargo clippy --all-targets -D warnings` clean.
 **Spec:** `spec.md` (37 reqs P17-01..P17-37) · **Design:** `design.md`
 
 **Gate (every task):** `npx vitest run` green · `npx tsc --noEmit` clean · `cargo test --manifest-path src-tauri/Cargo.toml` green · `cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings` clean
@@ -614,3 +616,48 @@ No ❌ violations.
 ## Splitting for an early 17C release
 
 If the restore fix ships ahead of the rest: **T1 (backup/error strings only) → T3 → T7 → T14 → T20 → T5**, then bump to `1.3.1` and tag. That subset is self-contained — it touches no file the other groups need first — and closes RC-3, RC-4, RC-5 and RC-7.
+
+
+---
+
+## 17C Slice — Execution Record (2026-09-04)
+
+| Task | Result | Tests added |
+|------|--------|-------------|
+| T1 (subset) | Done — `error.backup.*`, `error.artifact.*`, `error.generic`, `error.legacy`, `backup.import.ledgerCleared` in both locales | parity test green |
+| T3 | Done — transactional, ledger-first `wipe_db` | +2 Rust |
+| T7 | Done — read-then-wipe-then-delete ordering, media dir recreated | +2 Rust |
+| T5 | Done — `db_delete_set` transaction + `db_get_set_play_count` + command registration | +3 Rust |
+| T14 | Done — `formatCommandError` | +4 Vitest |
+| T20 | Done — 5 error sites + ledger notice | +2 Vitest |
+
+**RED proof for T3:** before the fix, `wipe_db_succeeds_with_a_populated_play_ledger` failed with
+`SqliteError { code: 787, message: "FOREIGN KEY constraint failed" }` — the reported defect, reproduced
+against the real schema and the real code path.
+
+### Deviations from the task plan
+
+1. **T3 and T7 landed in one commit** (`898e747`). Both rewrite `services/archive.rs`; they were
+   implemented and gated separately but could not be split into two commits after the fact without
+   fragile partial staging. The commit body documents both.
+2. **T20 touched five error sites, not four.** The task said "3 in `BackupScreen`, 1 in
+   `RestoreInProgressDialog`"; `BackupScreen` has four (`:52`, `:181`, `:197`, `:214`).
+3. **T7's "entry-missing archive is rejected" test was withdrawn.** `read_zip_entry_str` deliberately
+   maps a missing zip entry to `"[]"` ("Missing entry → treat as empty") because the selective-artifact
+   path depends on it — a songs-only artifact has no `sets.json`. Asserting rejection would have broken
+   artifact imports, so the test was replaced with one that proves the actual ordering guarantee:
+   closing the pool makes `wipe_db` fail after the archive read and flag write succeed, and the media
+   files must survive. See the new finding below.
+4. **`error.legacy` and `error.artifact.*` were added beyond T1's slice list** — the first because
+   `normalizeError` emits `code: "legacy"` for non-payload rejections and the generic fallback would
+   otherwise discard their message; the second because the same screen surfaces artifact codes.
+5. **`fs::create_dir_all(media_dir)`** was added in T7, covering the spec edge case "media directory
+   missing → recreate rather than fail on the flag write", which the task body had not called out.
+
+### Finding for a later phase (not fixed here)
+
+**A Replace restore from an archive whose `data/*.json` entries are missing wipes the library and
+restores nothing.** `read_zip_entry_str` treats a missing entry as `"[]"` by design for selective
+artifacts, but on the full-library Replace path that turns a structurally-valid, data-less `.tlz` into
+a total library loss. Not in the Phase 17 spec; logged in STATE.md under Deferred Ideas. A fix would
+likely gate the Replace path on `ArchiveKind::Library` archives declaring non-zero manifest counts.

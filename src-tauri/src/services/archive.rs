@@ -253,12 +253,32 @@ pub async fn import(
         });
     }
 
+    // Read and parse the whole archive BEFORE any destructive step: nothing that
+    // can fail on the archive itself should be able to run after the library has
+    // been emptied.
+    let path_buf = path.to_path_buf();
+    let (json_data, media_entries) = tokio::task::spawn_blocking(move || read_archive_data(&path_buf))
+        .await
+        .map_err(|e| ArchiveError::JoinError(e.to_string()))??;
+
+    // A first-run or hand-cleaned install may have no media directory yet; the
+    // flag write and the file copies below both need it to exist.
+    fs::create_dir_all(media_dir)?;
+    let flag = media_dir.join(RESTORE_IN_PROGRESS_FLAG);
+
     if mode == ImportMode::Replace {
         // Write the flag before any destructive work
-        let flag = media_dir.join(RESTORE_IN_PROGRESS_FLAG);
         fs::write(&flag, b"")?;
 
-        // Wipe media files (keep the flag)
+        // Wipe the DB first. It is transactional, so a failure changes nothing —
+        // drop the flag and bail before a single media file is deleted (RC-5).
+        if let Err(e) = wipe_db(pool).await {
+            let _ = fs::remove_file(&flag);
+            return Err(e);
+        }
+
+        // The database is empty and committed; only now discard the media files
+        // it referenced (keep the flag).
         if let Ok(entries) = fs::read_dir(media_dir) {
             for entry in entries.flatten() {
                 if entry.file_name() != RESTORE_IN_PROGRESS_FLAG {
@@ -266,37 +286,47 @@ pub async fn import(
                 }
             }
         }
-
-        // Wipe DB tables in FK-safe order
-        wipe_db(pool).await?;
     }
 
-    // Extract archive data and insert into DB
-    let path_buf = path.to_path_buf();
-    let mdir = media_dir.to_path_buf();
-    let pool_clone = pool.clone();
-
-    let summary = do_import(pool_clone, mdir, path_buf, mode).await?;
+    let summary = do_import(pool.clone(), media_dir.to_path_buf(), json_data, media_entries, mode).await?;
 
     // Remove the in-progress flag (Replace mode only, but safe to always try)
-    let flag = media_dir.join(RESTORE_IN_PROGRESS_FLAG);
     let _ = fs::remove_file(&flag);
 
     Ok(summary)
 }
 
 /// Hard-delete all tables in FK-safe order and clear the FTS index.
+///
+/// `song_plays` is deleted **first**: its `song_id`/`set_id` foreign keys carry
+/// no `ON DELETE` clause, so SQLite applies NO ACTION, and sqlx enables
+/// `PRAGMA foreign_keys` by default. A populated play ledger therefore blocks
+/// `DELETE FROM sets` on any install that has ever presented a set — which is
+/// every real install, since `record_set_start` writes a row per song at every
+/// presentation start.
+///
+/// The whole wipe runs in one transaction: a failure rolls back, so "the wipe
+/// failed" and "nothing was destroyed" are the same state. `import` relies on
+/// that to defer deleting media files until this returns `Ok`.
+///
+/// `tags` rows are deliberately left in place — they are not carried in the
+/// archive either, so wiping them would lose data no restore can bring back.
 pub async fn wipe_db(pool: &SqlitePool) -> Result<(), ArchiveError> {
-    sqlx::query("DELETE FROM set_items").execute(pool).await?;
-    sqlx::query("DELETE FROM sets").execute(pool).await?;
-    // songs has ON DELETE CASCADE → song_sections and song_tags are cascade-deleted
-    sqlx::query("DELETE FROM songs").execute(pool).await?;
-    sqlx::query("DELETE FROM media").execute(pool).await?;
-    sqlx::query("DELETE FROM settings").execute(pool).await?;
-    // Rebuild FTS after wiping songs
-    sqlx::query("INSERT INTO songs_fts(songs_fts) VALUES('rebuild')")
-        .execute(pool)
-        .await?;
+    let mut tx = pool.begin().await?;
+    for sql in [
+        "DELETE FROM song_plays",
+        "DELETE FROM set_items",
+        "DELETE FROM sets",
+        // songs has ON DELETE CASCADE → song_sections and song_tags follow
+        "DELETE FROM songs",
+        "DELETE FROM media",
+        "DELETE FROM settings",
+        // Rebuild FTS once the songs it indexes are gone
+        "INSERT INTO songs_fts(songs_fts) VALUES('rebuild')",
+    ] {
+        sqlx::query(sql).execute(&mut *tx).await?;
+    }
+    tx.commit().await?;
     Ok(())
 }
 
@@ -485,18 +515,15 @@ fn read_manifest(archive: &mut ZipArchive<File>) -> Result<ArchiveManifest, Arch
     })
 }
 
+/// Insert an already-parsed archive into the database and copy its media files.
+/// The caller reads the archive (and, for Replace, wipes) before calling this.
 async fn do_import(
     pool: SqlitePool,
     media_dir: PathBuf,
-    path: PathBuf,
+    json_data: ArchiveJsonData,
+    media_entries: Vec<(String, Vec<u8>)>,
     mode: ImportMode,
 ) -> Result<ImportSummary, ArchiveError> {
-    // Read archive JSON and media files in spawn_blocking
-    let (json_data, media_entries) =
-        tokio::task::spawn_blocking(move || read_archive_data(&path))
-            .await
-            .map_err(|e| ArchiveError::JoinError(e.to_string()))??;
-
     let mut summary = ImportSummary::default();
     let insert_or = if mode == ImportMode::Replace { "INSERT" } else { "INSERT OR IGNORE" };
 
@@ -1015,5 +1042,107 @@ mod tests {
         let title: String = sqlx::query_scalar("SELECT title FROM songs WHERE id = 's1'")
             .fetch_one(&pool2).await.unwrap();
         assert_eq!(title, "Existing");
+    }
+
+    /// Seeds a library that has been *presented*: `record_set_start` writes one
+    /// `song_plays` row per song per set per calendar day at every presentation
+    /// start, and those rows reference `songs`/`sets` with no `ON DELETE` clause.
+    async fn seed_presented_library(pool: &SqlitePool) {
+        let now = now_ms();
+        sqlx::query("INSERT INTO songs (id, title, language, created_at, updated_at) VALUES ('s1', 'Test Song', 'pt', ?, ?)")
+            .bind(now).bind(now).execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO sets (id, name, created_at, updated_at) VALUES ('set1', 'Culto Dominical', ?, ?)")
+            .bind(now).bind(now).execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO set_items (id, set_id, item_type, song_id, sort_order) VALUES ('i1', 'set1', 'song', 's1', 0)")
+            .execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO song_plays (id, song_id, set_id, played_on, created_at) VALUES ('p1', 's1', 'set1', '2026-09-04', ?)")
+            .bind(now).execute(pool).await.unwrap();
+    }
+
+    async fn count_rows(pool: &SqlitePool, table: &str) -> i64 {
+        sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table}"))
+            .fetch_one(pool).await.unwrap()
+    }
+
+    /// RC-3: `song_plays.song_id`/`set_id` are NO ACTION foreign keys and sqlx
+    /// enables `PRAGMA foreign_keys` by default, so `DELETE FROM sets` fails on
+    /// any install that has ever presented a set. Without the seeded ledger this
+    /// test passes against the broken implementation.
+    #[tokio::test]
+    async fn wipe_db_succeeds_with_a_populated_play_ledger() {
+        let (pool, _dir) = make_test_pool().await;
+        seed_presented_library(&pool).await;
+        assert_eq!(count_rows(&pool, "song_plays").await, 1, "ledger must be seeded");
+
+        wipe_db(&pool)
+            .await
+            .expect("wipe must not be blocked by the song_plays foreign keys");
+
+        for table in ["song_plays", "set_items", "sets", "songs", "media", "settings"] {
+            assert_eq!(count_rows(&pool, table).await, 0, "{table} should be empty after a wipe");
+        }
+    }
+
+    /// The FTS index is content-backed by `songs`; a wipe must leave it empty so
+    /// a restore rebuilds it from the archive rather than merging into stale rows.
+    #[tokio::test]
+    async fn wipe_db_clears_the_fts_index() {
+        let (pool, _dir) = make_test_pool().await;
+        seed_presented_library(&pool).await;
+
+        wipe_db(&pool).await.unwrap();
+
+        let hits: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM songs_fts WHERE songs_fts MATCH 'Test'")
+            .fetch_one(&pool).await.unwrap();
+        assert_eq!(hits, 0, "FTS index should be empty after a wipe");
+    }
+
+    /// RC-5: the destructive steps must be ordered so a failing wipe cannot
+    /// take the media library with it. Closing the pool makes `wipe_db` fail
+    /// while the archive read and the flag write still succeed — before the
+    /// ordering fix, the media directory was already emptied by that point.
+    #[tokio::test]
+    async fn media_survives_a_restore_whose_database_wipe_fails() {
+        let (pool, dir) = make_test_pool().await;
+        let media_dir = dir.path().join("media");
+        fs::create_dir_all(&media_dir).unwrap();
+        let out = dir.path().join("backup.tlz");
+        export(&pool, &media_dir, &out, |_| {}).await.unwrap();
+
+        let (pool2, dir2) = make_test_pool().await;
+        let media_dir2 = dir2.path().join("media");
+        fs::create_dir_all(&media_dir2).unwrap();
+        fs::write(media_dir2.join("keep-me.png"), b"binary").unwrap();
+        pool2.close().await; // every DB statement now fails
+
+        let result = import(&pool2, &media_dir2, &out, ImportMode::Replace).await;
+
+        assert!(result.is_err(), "a restore cannot succeed with an unusable database");
+        assert!(
+            media_dir2.join("keep-me.png").exists(),
+            "media must survive a restore that failed at the database wipe"
+        );
+        assert!(
+            !media_dir2.join(RESTORE_IN_PROGRESS_FLAG).exists(),
+            "a failure that destroyed nothing must leave no in-progress flag"
+        );
+    }
+
+    /// The media directory is recreated rather than failing the flag write.
+    #[tokio::test]
+    async fn replace_restore_recreates_a_missing_media_dir() {
+        let (pool, dir) = make_test_pool().await;
+        let media_dir = dir.path().join("media");
+        fs::create_dir_all(&media_dir).unwrap();
+        let out = dir.path().join("backup.tlz");
+        export(&pool, &media_dir, &out, |_| {}).await.unwrap();
+
+        let (pool2, dir2) = make_test_pool().await;
+        let missing = dir2.path().join("media-never-created");
+
+        import(&pool2, &missing, &out, ImportMode::Replace)
+            .await
+            .expect("a missing media dir must be created, not fatal");
+        assert!(missing.is_dir());
     }
 }

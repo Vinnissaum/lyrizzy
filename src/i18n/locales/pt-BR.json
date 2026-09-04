@@ -580,7 +580,8 @@
       "successStats": "{{songs}} músicas · {{sets}} conjuntos · {{media}} arquivos de mídia",
       "skippedStats": "{{songs}} músicas ignoradas · {{media}} mídias ignoradas · {{failures}} falhas",
       "restartHint": "Reinicie o app para ver as alterações refletidas em todos os painéis.",
-      "importAnother": "Importar outro arquivo"
+      "importAnother": "Importar outro arquivo",
+      "ledgerCleared": "O histórico de execuções usado nos relatórios CCLI foi apagado junto com a biblioteca anterior."
     },
     "restore": {
       "title": "Restauração interrompida",
@@ -835,6 +836,21 @@
       "copy_error": "Não foi possível copiar o arquivo: {{detail}}",
       "db_error": "Erro no banco de dados: {{detail}}"
     },
+    "backup": {
+      "db_not_ready": "O banco de dados ainda não está pronto. Tente novamente em instantes.",
+      "path_error": "Não foi possível localizar a pasta de mídias: {{detail}}",
+      "export_failed": "Falha ao gerar o backup: {{detail}}",
+      "inspect_failed": "Não foi possível ler o arquivo de backup: {{detail}}",
+      "restore_failed": "Falha ao restaurar: {{detail}}",
+      "abort_failed": "Não foi possível limpar a restauração interrompida: {{detail}}"
+    },
+    "artifact": {
+      "plan_failed": "Não foi possível ler o arquivo: {{detail}}",
+      "export_failed": "Falha ao exportar: {{detail}}",
+      "import_failed": "Falha ao importar: {{detail}}"
+    },
+    "legacy": "{{message}}",
+    "generic": "Algo deu errado ({{code}})",
     "unknown": "Erro ao iniciar apresentação"
   },
   "errors": {

@@ -580,7 +580,8 @@
       "successStats": "{{songs}} songs · {{sets}} sets · {{media}} media files",
       "skippedStats": "{{songs}} songs skipped · {{media}} media skipped · {{failures}} failures",
       "restartHint": "Restart the app to see changes reflected across all panels.",
-      "importAnother": "Import another file"
+      "importAnother": "Import another file",
+      "ledgerCleared": "The presentation history used for CCLI reports was cleared along with the previous library."
     },
     "restore": {
       "title": "Restore interrupted",
@@ -835,6 +836,21 @@
       "copy_error": "Could not copy the file: {{detail}}",
       "db_error": "Database error: {{detail}}"
     },
+    "backup": {
+      "db_not_ready": "The database is not ready yet. Try again in a moment.",
+      "path_error": "Could not resolve the media folder: {{detail}}",
+      "export_failed": "Backup failed: {{detail}}",
+      "inspect_failed": "Could not read the backup file: {{detail}}",
+      "restore_failed": "Restore failed: {{detail}}",
+      "abort_failed": "Could not clean up the interrupted restore: {{detail}}"
+    },
+    "artifact": {
+      "plan_failed": "Could not read the file: {{detail}}",
+      "export_failed": "Export failed: {{detail}}",
+      "import_failed": "Import failed: {{detail}}"
+    },
+    "legacy": "{{message}}",
+    "generic": "Something went wrong ({{code}})",
     "unknown": "Failed to start presentation"
   },
   "errors": {

@@ -229,6 +229,51 @@ pub async fn update_set(
     Ok(set)
 }
 
+/// Delete a set and the `song_plays` rows that reference it, in one transaction.
+///
+/// `song_plays.set_id` carries no `ON DELETE` clause (NO ACTION) and sqlx turns
+/// `PRAGMA foreign_keys` on, so a bare `DELETE FROM sets` fails for any set that
+/// has ever been presented. The ledger rows are provenance for that set only, so
+/// they are removed with it rather than blocking the delete.
+pub async fn db_delete_set(pool: &SqlitePool, id: &str) -> Result<(), ErrorPayload> {
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+
+    sqlx::query("DELETE FROM song_plays WHERE set_id = ?")
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+
+    // set_items cascade via their ON DELETE CASCADE foreign key.
+    let result = sqlx::query("DELETE FROM sets WHERE id = ?")
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ErrorPayload::new("set.not_found"));
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+    Ok(())
+}
+
+/// Number of presentation records (`song_plays` rows) attached to a set.
+/// Read-only — used to tell the operator what a deletion would discard.
+pub async fn db_get_set_play_count(pool: &SqlitePool, id: &str) -> Result<i64, ErrorPayload> {
+    sqlx::query_scalar("SELECT COUNT(*) FROM song_plays WHERE set_id = ?")
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))
+}
+
 #[tauri::command]
 pub async fn delete_set(
     state: State<'_, AppState>,
@@ -237,18 +282,20 @@ pub async fn delete_set(
 ) -> Result<(), ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
 
-    let result = sqlx::query("DELETE FROM sets WHERE id = ?")
-        .bind(&id)
-        .execute(pool)
-        .await
-        .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
+    db_delete_set(pool, &id).await?;
 
-    if result.rows_affected() == 0 {
-        return Err(ErrorPayload::new("set.not_found"));
-    }
     app.emit("set_changed", ())
         .map_err(|e| ErrorPayload::from(e.to_string()))?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_set_play_count(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<i64, ErrorPayload> {
+    let pool = state.db.get().expect("db initialized");
+    db_get_set_play_count(pool, &id).await
 }
 
 #[tauri::command]
@@ -728,5 +775,65 @@ mod tests {
 
         assert!(!patched);
         assert_eq!(set.items[0].notes.as_deref(), Some("old"));
+    }
+
+    /// Seeds `song_plays` the way `record_set_start` does at every presentation
+    /// start: one row per song, per set, per calendar day.
+    async fn seed_play(pool: &SqlitePool, id: &str, song_id: &str, set_id: &str) {
+        let now = now_ms();
+        sqlx::query("INSERT OR IGNORE INTO songs (id, title, language, created_at, updated_at) VALUES (?, 'Song', 'pt', ?, ?)")
+            .bind(song_id).bind(now).bind(now).execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO song_plays (id, song_id, set_id, played_on, created_at) VALUES (?, ?, ?, '2026-09-04', ?)")
+            .bind(id).bind(song_id).bind(set_id).bind(now).execute(pool).await.unwrap();
+    }
+
+    async fn insert_set(pool: &SqlitePool, id: &str) {
+        let now = now_ms();
+        sqlx::query("INSERT INTO sets (id, name, created_at, updated_at) VALUES (?, 'Culto', ?, ?)")
+            .bind(id).bind(now).bind(now).execute(pool).await.unwrap();
+    }
+
+    /// RC-7: `song_plays.set_id` is a NO ACTION foreign key, so deleting a set
+    /// that has ever been presented fails unless its ledger rows go with it.
+    #[tokio::test]
+    async fn delete_set_takes_its_play_ledger_with_it() {
+        let (pool, _dir) = open_db().await;
+        insert_set(&pool, "set-a").await;
+        insert_set(&pool, "set-b").await;
+        seed_play(&pool, "play-a", "song-1", "set-a").await;
+        seed_play(&pool, "play-b", "song-1", "set-b").await;
+
+        db_delete_set(&pool, "set-a")
+            .await
+            .expect("deleting a presented set must not be blocked by its ledger");
+
+        let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sets")
+            .fetch_one(&pool).await.unwrap();
+        assert_eq!(remaining, 1, "only the requested set is deleted");
+        let orphaned: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM song_plays WHERE set_id = 'set-a'")
+            .fetch_one(&pool).await.unwrap();
+        assert_eq!(orphaned, 0, "the deleted set's ledger rows go with it");
+        let kept: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM song_plays WHERE set_id = 'set-b'")
+            .fetch_one(&pool).await.unwrap();
+        assert_eq!(kept, 1, "another set's ledger rows are untouched");
+    }
+
+    #[tokio::test]
+    async fn delete_set_rejects_an_unknown_id() {
+        let (pool, _dir) = open_db().await;
+        let err = db_delete_set(&pool, "nope").await.unwrap_err();
+        assert_eq!(err.code, "set.not_found");
+    }
+
+    #[tokio::test]
+    async fn play_count_reports_the_ledger_size_per_set() {
+        let (pool, _dir) = open_db().await;
+        insert_set(&pool, "set-a").await;
+        insert_set(&pool, "set-b").await;
+        seed_play(&pool, "play-1", "song-1", "set-a").await;
+        seed_play(&pool, "play-2", "song-2", "set-a").await;
+
+        assert_eq!(db_get_set_play_count(&pool, "set-a").await.unwrap(), 2);
+        assert_eq!(db_get_set_play_count(&pool, "set-b").await.unwrap(), 0);
     }
 }

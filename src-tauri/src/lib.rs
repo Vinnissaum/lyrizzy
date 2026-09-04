@@ -27,6 +27,7 @@ use commands::overlay::{
 };
 use commands::set::{
     add_set_item, create_set, delete_set, duplicate_set_item, get_or_create_default_set, get_set,
+    get_set_play_count,
     list_sets, remove_set_item, reorder_set_items, update_set, update_set_item,
 };
 use commands::song::{create_song, delete_song, get_song, list_songs, parse_plain_text_import, update_song};
@@ -263,6 +264,7 @@ pub fn run() {
             preview_ccli_export,
             export_ccli_csv,
             get_or_create_default_set,
+            get_set_play_count,
             set_announcement_overlay,
             set_media_overlay,
             set_webview_overlay,

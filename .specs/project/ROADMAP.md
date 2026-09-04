@@ -348,3 +348,40 @@
 **Gate at completion:** 599 Vitest tests (76 files, baseline 546 + 53 new), 335 Rust tests (baseline 327 + 8 new, 1 ignored), `tsc --noEmit` clean, `cargo clippy -D warnings` clean, locale parity test green.
 
 **Deliverable:** A live-edit save refreshes the strophes grid everywhere the song is loaded, with position held by content even when strophes are inserted or removed above it; a monitor rename propagates to every surface (settings list, pickers, switcher, launch modal, audio blocks) with no restart; the Aviso tab has its own text-size label; song registration is one free-text lyrics box, blank-line-separated, exact round-trip on reopen; the app icon is a triquetra with noteheads. See STATE.md Phase 15 completion summary for the manual-verification checklist still open (requires two monitors, live presentation, and the `v1.2.0` tag push).
+
+---
+
+## Phase 16: Multi-Screen Focus Integrity, Simultaneous Control & Import/Naming Fixes — DONE
+
+**Goal:** Stop another Windows app from drawing over a presenting screen on multi-monitor setups, and close four operator-comprehension gaps (set item named for the wrong colour, Simultânea toggle indistinguishable from a screen tab, single-song Holyrics export rejected, Stop silently killing one of two independent screens).
+**Completed:** 2026-08-30. **Released:** `v1.3.0`.
+**Spec:** `.specs/features/phase16-multiscreen-focus-import-ux/spec.md` (28 requirements P16-01..P16-28, 28/28 done).
+
+**Root causes (spec § Root-Cause Analysis):** RC-1 `should_pin_on_top` returns `monitor_count == 1`, so no presentation window is topmost with 2+ monitors; RC-2 three strings name the `blank` set item by the wrong colour; RC-3 the screen tabs are hidden the moment mirror engages and the toggle's ON state is byte-identical to an active tab; RC-4 the Holyrics parser hard-fails on a bare object (single-song export); RC-5 Stop runs `exitPresentation(focusedOutput)` with an empty mirror fan-out, ending one screen with no prompt and no way back.
+
+**Gate at completion:** 641 Vitest, 349 Rust (1 ignored), `tsc --noEmit` clean, `cargo clippy -D warnings` clean, theme-token lint clean.
+
+---
+
+## Phase 17: Set Switching, Countdown Identity & Sizing, Restore Integrity, Camera Simplification — TASKS READY
+
+**Goal:** Fix a data-loss-class restore defect, give the countdown a name and size controls, make every service set reachable and switchable from Home, and rename/reduce the camera feature to the modes a camera can actually speak.
+**Specified:** 2026-09-04. **Release target:** `v1.4.0`.
+**Spec:** `.specs/features/phase17-sets-countdown-camera-restore/spec.md` (37 requirements P17-01..P17-37). **Design:** `design.md` · **Tasks:** `tasks.md` (30 tasks T1–T30, 37/37 requirements mapped). Execution not started.
+
+| Group | Requirements | Scope |
+|-------|--------------|-------|
+| 17A — Countdown identity | P17-01..P17-05 | Operator-editable `CountdownConfig.name`, localized default, duration suffix and the fabricated `"10min"` literal removed |
+| 17B — Countdown sizing | P17-06..P17-10, P17-37 | Per-item message/digit scale percentages over today's clamps (100% = `v1.3.0` exactly), mirrored through `CountdownState` for the takeover path |
+| 17C — Restore integrity | P17-11..P17-18 | `song_plays` wiped ahead of `sets`, DB wipe before media deletion, working `abort_restore`, real error messages in both locales |
+| 17D — Sets on Home | P17-19..P17-27 | Header set picker (switch / create / rename / delete), persisted selection, `song_plays` removed with a deleted set, unreachable `sets` views retired |
+| 17E — Camera | P17-28..P17-35 | "WebView" → "Câmera", modes reduced to RTSP / MJPEG / web page, RTMP+SRT+multicast removed, profiles scoped to the modes that honour them |
+| 17F — Release | P17-36 | Version bumped to `1.4.0`, tag push → signed draft release |
+
+**Key finding (17C):** the "replace everything" restore failure is not in the archive format. `wipe_db` never deletes `song_plays`, whose `song_id`/`set_id` foreign keys carry no `ON DELETE` clause while sqlx turns `PRAGMA foreign_keys` ON by default — so `DELETE FROM sets` raises `FOREIGN KEY constraint failed` on any install that has ever presented a set. It fails *after* the media directory has already been emptied, and `abort_restore` (the recovery path offered at next launch) calls the same broken wipe. Merge mode works only because it never wipes. Reproduced against the real schema shape.
+
+**Key finding (17E):** the RTMP mode maps to `Source::Pull` — MediaMTX dialling an RTMP *server* — while cameras push RTMP and the generated config disables every MediaMTX server except WebRTC, so the mode cannot work with a camera as built. Stream profiles were offered on all six modes but honoured only in `rtmp`/`rtsp`.
+
+**Design finding (DD-1):** the launch-time silent re-arm (`OperatorApp.tsx:267`) drops `position` and `backgroundMediaId`, because `UpcomingScheduledCountdown` never carried them — the same countdown takes over centred when armed at launch and correctly placed when armed from the modal. Added as P17-37 while every arm/start call site is being touched for the scales.
+
+**User decisions:** D-75 editable countdown name; D-76 per-item sizing as percentages of today's values; D-77 Home picker only, unreachable Sets screen retired; D-78 RTSP/MJPEG/web-page only, profiles scoped.

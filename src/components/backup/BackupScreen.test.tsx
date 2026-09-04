@@ -3,9 +3,16 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ImportCard } from "./BackupScreen";
 import type { ImportPlan, ArchiveInspection } from "../../api/commands";
 
+const tStub = (key: string | string[]) => {
+  // formatCommandError resolves a [code, fallback] key array.
+  if (Array.isArray(key)) return key[0];
+  // A typeable confirm word so the destructive replace path can be driven.
+  return key === "backup.import.confirmWord" ? "SUBSTITUIR" : key;
+};
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: tStub,
     i18n: { changeLanguage: vi.fn() },
   }),
 }));
@@ -47,7 +54,15 @@ vi.mock("../../api/commands", () => ({
   restoreLibrary: vi.fn().mockResolvedValue({}),
   onBackupProgress: vi.fn().mockResolvedValue(() => {}),
   exportLibrary: vi.fn(),
+  normalizeError: (err: unknown) =>
+    err && typeof err === "object" && "code" in err
+      ? err
+      : { code: "legacy", params: { message: String(err) } },
 }));
+
+const restoreLibrary = vi.mocked(
+  (await import("../../api/commands")).restoreLibrary,
+);
 
 describe("ImportCard (unified)", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -79,5 +94,54 @@ describe("ImportCard (unified)", () => {
     // The selective conflict-review modal must NOT be shown for a library file.
     expect(screen.queryByTestId("artifact-import-confirm")).not.toBeInTheDocument();
     expect(inspectArchive).toHaveBeenCalledWith("/tmp/in.tlz");
+  });
+
+  it("names the failure instead of rendering [object Object] when a restore fails", async () => {
+    planArtifactImport.mockResolvedValueOnce(libraryPlan);
+    inspectArchive.mockResolvedValueOnce(libraryInspection);
+    restoreLibrary.mockRejectedValueOnce({
+      code: "backup.restore_failed",
+      params: { detail: "FOREIGN KEY constraint failed" },
+    });
+    render(<ImportCard />);
+
+    fireEvent.click(screen.getByTestId("cta-import"));
+    await waitFor(() =>
+      expect(screen.getByText("backup.import.restoreButton")).toBeInTheDocument()
+    );
+    fireEvent.change(screen.getByPlaceholderText("SUBSTITUIR"), {
+      target: { value: "SUBSTITUIR" },
+    });
+    fireEvent.click(screen.getByText("backup.import.restoreButton"));
+
+    await waitFor(() =>
+      expect(screen.getByText("error.backup.restore_failed")).toBeInTheDocument()
+    );
+    expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
+  it("states that the presentation ledger was cleared after a replace restore", async () => {
+    planArtifactImport.mockResolvedValueOnce(libraryPlan);
+    inspectArchive.mockResolvedValueOnce(libraryInspection);
+    restoreLibrary.mockResolvedValueOnce({
+      songsImported: 1, songsSkipped: 0, songsOverwritten: 0, songsCopied: 0,
+      sectionsImported: 0, setsImported: 0, setsSkipped: 0, setsOverwritten: 0,
+      setsCopied: 0, setItemsImported: 0, mediaImported: 0, mediaSkipped: 0,
+      mediaOverwritten: 0, mediaCopied: 0, mediaFailed: 0, settingsImported: 0,
+    });
+    render(<ImportCard />);
+
+    fireEvent.click(screen.getByTestId("cta-import"));
+    await waitFor(() =>
+      expect(screen.getByText("backup.import.restoreButton")).toBeInTheDocument()
+    );
+    fireEvent.change(screen.getByPlaceholderText("SUBSTITUIR"), {
+      target: { value: "SUBSTITUIR" },
+    });
+    fireEvent.click(screen.getByText("backup.import.restoreButton"));
+
+    await waitFor(() =>
+      expect(screen.getByText("backup.import.ledgerCleared")).toBeInTheDocument()
+    );
   });
 });

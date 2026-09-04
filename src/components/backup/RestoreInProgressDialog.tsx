@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { abortRestore } from "../../api/commands";
+import { formatCommandError } from "../../i18n/commandError";
 
 interface Props {
   onDismissed: () => void;
@@ -19,7 +20,7 @@ export const RestoreInProgressDialog: React.FC<Props> = ({ onDismissed }) => {
       await abortRestore();
       onDismissed();
     } catch (err: unknown) {
-      setError(String(err));
+      setError(formatCommandError(err, t));
       setWorking(false);
       setConfirming(false);
     }

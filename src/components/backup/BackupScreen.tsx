@@ -20,6 +20,7 @@ import {
 import { ImportReviewModal } from "./ImportReviewModal";
 import { formatBytes } from "../media/MediaCard";
 import { formatDatetime } from "../../utils/format";
+import { formatCommandError } from "../../i18n/commandError";
 
 // ── Export card ───────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ const ExportCard: React.FC = () => {
       setSummary(result);
       setProgress(null);
     } catch (err: unknown) {
-      setError(String(err));
+      setError(formatCommandError(err, t));
       setProgress(null);
     } finally {
       (await unlisten)();
@@ -178,7 +179,7 @@ export const ImportCard: React.FC = () => {
         setStep("review");
       }
     } catch (err: unknown) {
-      setError(String(err));
+      setError(formatCommandError(err, t));
       setStep("idle");
     }
   };
@@ -194,7 +195,7 @@ export const ImportCard: React.FC = () => {
       setSummary(result);
       setStep("done");
     } catch (err: unknown) {
-      setError(String(err));
+      setError(formatCommandError(err, t));
       setStep("review");
     } finally {
       (await unlisten)();
@@ -211,7 +212,7 @@ export const ImportCard: React.FC = () => {
       setSummary(result);
       setStep("done");
     } catch (err: unknown) {
-      setError(String(err));
+      setError(formatCommandError(err, t));
       setStep("confirm");
     }
   };
@@ -368,6 +369,10 @@ export const ImportCard: React.FC = () => {
               </p>
             )}
           </div>
+          {/* A replace restore wipes song_plays, which the archive does not carry. */}
+          {isLibrary && mode === "replace" && (
+            <p className="text-xs text-muted">{t("backup.import.ledgerCleared")}</p>
+          )}
           {/* Selective import refreshes live via events; only a full restore needs a restart. */}
           {isLibrary && <p className="text-xs text-muted">{t("backup.import.restartHint")}</p>}
           <button onClick={reset} className="text-sm text-info hover:text-info transition-colors">

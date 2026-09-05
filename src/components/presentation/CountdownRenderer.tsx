@@ -11,10 +11,17 @@ interface Props {
   frozen?: boolean;
 }
 
+const scaled = (min: string, mid: string, max: string, pct: number) =>
+  `clamp(calc(${min} * ${pct / 100}), calc(${mid} * ${pct / 100}), calc(${max} * ${pct / 100}))`;
+
 export const CountdownRenderer: React.FC<Props> = ({ config, background, frozen }) => {
   const { t } = useTranslation();
   const { formattedTime, isFinished, isLow, isScheduled } = useCountdownDigits();
   const positionClass = POSITION_CLASS[config.position ?? "center"];
+  const messageScale = config.messageScale ?? 100;
+  const digitsScale = config.digitsScale ?? 100;
+  const messageFontSize = scaled("0.75rem", "3cqmin", "2rem", messageScale);
+  const digitsFontSize = scaled("2rem", "30cqmin", "18rem", digitsScale);
 
   // Size relative to THIS box (container query units) rather than the viewport,
   // so the digits scale down correctly inside the small operator live preview
@@ -31,7 +38,7 @@ export const CountdownRenderer: React.FC<Props> = ({ config, background, frozen 
         {isScheduled ? (
           <p
             className="text-amber-300 font-medium uppercase tracking-wider"
-            style={{ fontSize: "clamp(0.75rem, 3cqmin, 2rem)" }}
+            style={{ fontSize: messageFontSize }}
           >
             {t("countdown.scheduled.rendererLabel")}
           </p>
@@ -39,7 +46,7 @@ export const CountdownRenderer: React.FC<Props> = ({ config, background, frozen 
           config.message && (
             <p
               className="text-gray-200 font-medium"
-              style={{ fontSize: "clamp(0.75rem, 3cqmin, 2rem)" }}
+              style={{ fontSize: messageFontSize }}
             >
               {config.message}
             </p>
@@ -55,7 +62,7 @@ export const CountdownRenderer: React.FC<Props> = ({ config, background, frozen 
               ? "text-amber-400"
               : "text-white"
           }`}
-          style={{ fontSize: "clamp(2rem, 30cqmin, 18rem)" }}
+          style={{ fontSize: digitsFontSize }}
         >
           {formattedTime}
         </p>

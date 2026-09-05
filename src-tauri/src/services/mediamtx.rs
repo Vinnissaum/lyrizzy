@@ -1,7 +1,6 @@
-/// MediaMTX sidecar service — bridges a camera's RTMP(S), SRT, or UDP/multicast
-/// stream to WebRTC so it can play in WebView2 (Chromium dropped RTMP/Flash
-/// years ago and never spoke SRT or raw MPEG-TS, so none of these play in a
-/// `<video>` directly).
+/// MediaMTX sidecar service — bridges a camera's RTSP stream to WebRTC so it
+/// can play in WebView2 (Chromium never speaks RTSP directly, so it doesn't
+/// play in a `<video>` element as-is).
 ///
 /// MediaMTX is run as a single managed process configured to ingest the camera
 /// stream and *serve* it over WebRTC (WHEP) on localhost. The frontend then
@@ -70,22 +69,12 @@ pub fn whep_url() -> String {
     format!("http://127.0.0.1:{WEBRTC_PORT}/{PATH_NAME}/whep")
 }
 
-/// A camera stream MediaMTX should ingest and re-serve over WebRTC.
-pub enum Source {
-    /// MediaMTX *pulls* from this URL (RTMP/RTMPS, or `udp://ip:port` multicast).
-    Pull(String),
-    /// SRT where the camera is listener and MediaMTX dials it (the common
-    /// "give me an SRT URL to play" case). Carries the full source URL.
-    SrtPull(String),
-    /// SRT where the camera is caller and pushes to us: MediaMTX runs an SRT
-    /// server bound to `port` and the camera publishes to path [`PATH_NAME`].
-    SrtListen { port: u16 },
-    /// RTSP pull. `transport` maps to MediaMTX's `rtspTransport` (e.g. "udp",
-    /// "tcp"); `None` lets MediaMTX choose automatically.
-    Rtsp {
-        url: String,
-        transport: Option<String>,
-    },
+/// An RTSP camera stream MediaMTX should ingest and re-serve over WebRTC.
+pub struct RtspSource {
+    pub url: String,
+    /// Maps to MediaMTX's `rtspTransport` (e.g. "udp", "tcp"); `None` lets
+    /// MediaMTX choose automatically.
+    pub transport: Option<String>,
 }
 
 /// YAML single-quoted scalar: escape embedded single quotes by doubling them.
@@ -95,40 +84,20 @@ fn yaml_quote(s: &str) -> String {
 
 /// Render the minimal MediaMTX YAML config that bridges `source` to WebRTC.
 ///
-/// Every server except WebRTC (and the SRT server, only for `SrtListen`) is
-/// disabled, and WebRTC is bound to localhost. `sourceOnDemand` makes MediaMTX
-/// connect to the camera only while a reader is attached, so we don't hammer it
-/// when nothing is being presented. Targets MediaMTX v1.x config keys.
-pub fn render_config(source: &Source) -> String {
-    // SRT-listen needs MediaMTX's SRT server bound to all interfaces so the
-    // camera (a remote host) can publish to it; all other modes keep SRT off.
-    let (srt_server, path_body) = match source {
-        Source::Pull(url) | Source::SrtPull(url) => (
-            "srt: no\n".to_string(),
-            format!(
-                "    source: {}\n    sourceOnDemand: yes\n",
-                yaml_quote(url)
-            ),
-        ),
-        Source::Rtsp { url, transport } => {
-            let transport_line = transport
-                .as_deref()
-                .map(|t| format!("    rtspTransport: {t}\n"))
-                .unwrap_or_default();
-            (
-                "srt: no\n".to_string(),
-                format!(
-                    "    source: {}\n{transport_line}    sourceOnDemand: yes\n",
-                    yaml_quote(url)
-                ),
-            )
-        }
-        Source::SrtListen { port } => (
-            format!("srt: yes\nsrtAddress: :{port}\n"),
-            // No `source`: the path accepts a publisher (the camera).
-            String::new(),
-        ),
-    };
+/// Every server except WebRTC is disabled, and WebRTC is bound to localhost.
+/// `sourceOnDemand` makes MediaMTX connect to the camera only while a reader
+/// is attached, so we don't hammer it when nothing is being presented.
+/// Targets MediaMTX v1.x config keys.
+pub fn render_config(source: &RtspSource) -> String {
+    let transport_line = source
+        .transport
+        .as_deref()
+        .map(|t| format!("    rtspTransport: {t}\n"))
+        .unwrap_or_default();
+    let path_body = format!(
+        "    source: {}\n{transport_line}    sourceOnDemand: yes\n",
+        yaml_quote(&source.url)
+    );
 
     format!(
         "logLevel: error\n\
@@ -139,7 +108,7 @@ pub fn render_config(source: &Source) -> String {
          rtsp: no\n\
          rtmp: no\n\
          hls: no\n\
-         {srt_server}\
+         srt: no\n\
          webrtc: yes\n\
          webrtcAddress: 127.0.0.1:{WEBRTC_PORT}\n\
          webrtcEncryption: no\n\
@@ -200,7 +169,7 @@ fn urlencode(s: &str) -> String {
 }
 
 /// Write the rendered config to `<dir>/mediamtx.yml` and return its path.
-pub fn write_config(dir: &Path, source: &Source) -> std::io::Result<PathBuf> {
+pub fn write_config(dir: &Path, source: &RtspSource) -> std::io::Result<PathBuf> {
     let path = dir.join("mediamtx.yml");
     std::fs::write(&path, render_config(source))?;
     Ok(path)
@@ -260,11 +229,12 @@ mod tests {
     }
 
     #[test]
-    fn render_config_pull_embeds_source_and_disables_other_servers() {
-        let cfg = render_config(&Source::Pull(
-            "rtmp://192.168.100.138/live/stream0".to_string(),
-        ));
-        assert!(cfg.contains("source: 'rtmp://192.168.100.138/live/stream0'"));
+    fn render_config_rtsp_embeds_source_and_disables_other_servers() {
+        let cfg = render_config(&RtspSource {
+            url: "rtsp://192.168.100.138/live/stream0".to_string(),
+            transport: None,
+        });
+        assert!(cfg.contains("source: 'rtsp://192.168.100.138/live/stream0'"));
         assert!(cfg.contains("webrtc: yes"));
         assert!(cfg.contains("rtmp: no"));
         assert!(cfg.contains("srt: no"));
@@ -272,20 +242,17 @@ mod tests {
     }
 
     #[test]
-    fn render_config_pull_handles_multicast_udp() {
-        let cfg = render_config(&Source::Pull("udp://238.0.0.1:1234".to_string()));
-        assert!(cfg.contains("source: 'udp://238.0.0.1:1234'"));
-    }
-
-    #[test]
     fn render_config_escapes_single_quotes() {
-        let cfg = render_config(&Source::Pull("rtmp://h/a'b".to_string()));
-        assert!(cfg.contains("source: 'rtmp://h/a''b'"));
+        let cfg = render_config(&RtspSource {
+            url: "rtsp://h/a'b".to_string(),
+            transport: None,
+        });
+        assert!(cfg.contains("source: 'rtsp://h/a''b'"));
     }
 
     #[test]
     fn render_config_rtsp_includes_transport() {
-        let cfg = render_config(&Source::Rtsp {
+        let cfg = render_config(&RtspSource {
             url: "rtsp://192.168.15.50/1".to_string(),
             transport: Some("udp".to_string()),
         });
@@ -296,7 +263,7 @@ mod tests {
 
     #[test]
     fn render_config_rtsp_omits_transport_when_none() {
-        let cfg = render_config(&Source::Rtsp {
+        let cfg = render_config(&RtspSource {
             url: "rtsp://h/1".to_string(),
             transport: None,
         });
@@ -305,13 +272,13 @@ mod tests {
     }
 
     #[test]
-    fn render_config_srt_listen_enables_srt_server_without_source() {
-        let cfg = render_config(&Source::SrtListen { port: 8890 });
-        assert!(cfg.contains("srt: yes"));
-        assert!(cfg.contains("srtAddress: :8890"));
-        assert!(!cfg.contains("source:"));
-        // The path still exists so a publisher can attach.
-        assert!(cfg.contains("cam:"));
+    fn render_config_never_emits_srt_server_block() {
+        let cfg = render_config(&RtspSource {
+            url: "rtsp://h/1".to_string(),
+            transport: None,
+        });
+        assert!(cfg.contains("srt: no"));
+        assert!(!cfg.contains("srtAddress"));
     }
 
     #[test]
@@ -345,9 +312,16 @@ mod tests {
     #[test]
     fn write_config_creates_file() {
         let tmp = TempDir::new().unwrap();
-        let path = write_config(tmp.path(), &Source::Pull("rtmp://h/s".to_string())).unwrap();
+        let path = write_config(
+            tmp.path(),
+            &RtspSource {
+                url: "rtsp://h/s".to_string(),
+                transport: None,
+            },
+        )
+        .unwrap();
         assert!(path.exists());
         let contents = std::fs::read_to_string(&path).unwrap();
-        assert!(contents.contains("rtmp://h/s"));
+        assert!(contents.contains("rtsp://h/s"));
     }
 }

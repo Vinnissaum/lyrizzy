@@ -363,11 +363,13 @@
 
 ---
 
-## Phase 17: Set Switching, Countdown Identity & Sizing, Restore Integrity, Camera Simplification — TASKS READY
+## Phase 17: Set Switching, Countdown Identity & Sizing, Restore Integrity, Camera Simplification — RELEASED (`v1.4.0`)
 
 **Goal:** Fix a data-loss-class restore defect, give the countdown a name and size controls, make every service set reachable and switchable from Home, and rename/reduce the camera feature to the modes a camera can actually speak.
-**Specified:** 2026-09-04. **Release target:** `v1.4.0`.
-**Spec:** `.specs/features/phase17-sets-countdown-camera-restore/spec.md` (37 requirements P17-01..P17-37). **Design:** `design.md` · **Tasks:** `tasks.md` (30 tasks T1–T30, 37/37 requirements mapped). Execution not started.
+**Specified:** 2026-09-04. **Released:** 2026-09-04 as `v1.4.0`.
+**Spec:** `.specs/features/phase17-sets-countdown-camera-restore/spec.md` (37 requirements P17-01..P17-37, 37/37 done). **Design:** `design.md` · **Tasks:** `tasks.md` (30 tasks T1–T30; T1–T29 done, T30 manual-hardware verification open).
+
+**Gate at completion:** 736 Vitest (1 skipped, baseline 663+1, +73) · 372 Rust (1 ignored, baseline 349+1, +23) · `tsc --noEmit` clean · `cargo clippy --all-targets -D warnings` clean.
 
 | Group | Requirements | Scope |
 |-------|--------------|-------|

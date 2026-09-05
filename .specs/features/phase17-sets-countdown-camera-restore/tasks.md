@@ -1,6 +1,35 @@
 # Phase 17 — Tasks
 
-**Status:** 17C slice DONE (2026-09-04) — T1 (backup strings), T3, T7, T5, T14, T20 implemented on branch `phase17c-restore-integrity`. Remaining: T2, T4, T6, T8–T13, T15–T19, T21–T27 (groups 17A/17B/17D/17E) + T28–T30 (release).
+**Status:** DONE (2026-09-04) — T1–T29 all implemented and released as `v1.4.0` on `main`. Only T30 (manual verification on production hardware) remains open; it cannot be gated in CI.
+
+### Full-phase execution record (batch run, 2026-09-04)
+
+T2, T4, T6, T8–T13, T15–T19, T21–T27 (groups 17A/17B/17D/17E) were executed in dependency-ordered
+parallel batches after the 17C slice below. Notable fallout from parallel sub-agent execution,
+caught and fixed before commit:
+
+- A `git stash`/pop mishap in one agent (T4) transiently dropped T6's `library.ts` changes back to
+  HEAD; recovered from the stash entry before it was dropped, verified byte-identical to the
+  agent's own report, no data lost.
+- T1's original scope (17A/17B/17D/17E i18n strings — `countdown.editor.*`, `webview.editor.unsupportedMode`,
+  `sets.picker.*`, the `builder.add.webView`/`webview.editor.modes.*` rewording, and deleting
+  `builder.countdownSummary` plus the legacy `webview.editor.{rtmp,srt,multicast}` blocks) was never
+  completed by the earlier 17C slice, which only shipped the backup/error subset. Several
+  downstream tasks (T16, T17, T18, T21, T25) flagged the missing keys as they landed; all were
+  added in one consolidated pass before the final gate, confirmed against the locale-parity test
+  and a grep for stale references to the deleted keys.
+- One agent (T15) reported and resisted a spurious injected instruction claiming its target file
+  had been externally modified — verified the file was unchanged; no action taken, flagged here
+  for visibility.
+- Minor post-batch fixes: a clippy `field_reassign_with_default` lint in a T8 test, a `PROFILE_MODES`
+  type-widening cast in `StreamProfileSwitcher.tsx`, and one test fixture (`StreamProfileEditor.test.tsx`)
+  still using the now-legacy `"rtmp"` mode value.
+
+Final gate before release: `cargo test` 372 passed + 1 ignored (baseline 349+1, +23) · `cargo clippy
+--all-targets -D warnings` clean · `npx vitest run` 736 passed + 1 skipped (baseline 663+1, +73) ·
+`npx tsc --noEmit` clean. T28 bumped all five version sources to `1.4.0`; T29's tag push triggers
+the existing CI release pipeline (signed bundles + two-platform `latest.json` — not verifiable from
+this environment, which lacks the Windows build toolchain per this phase's own environment note).
 
 **Gate after the slice:** 669 Vitest passing + 1 skipped (82 files, +6 over baseline) · 356 Rust passing (+7) · `tsc --noEmit` clean · `cargo clippy --all-targets -D warnings` clean.
 **Spec:** `spec.md` (37 reqs P17-01..P17-37) · **Design:** `design.md`

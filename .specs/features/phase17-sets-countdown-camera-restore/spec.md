@@ -1,6 +1,6 @@
 # Phase 17 — Set Switching, Countdown Identity & Sizing, Restore Integrity, Camera Simplification
 
-**Status:** TASKS READY (2026-09-04) — `design.md` + `tasks.md` written (30 tasks, T1–T30); execution not started
+**Status:** RELEASED as `v1.4.0` (2026-09-04) — all 37 requirements (T1–T29) done; T30 (manual hardware verification) remains open
 **Depends on:** Phase 14 (stream profiles, dual outputs), Phase 15 (free-text lyrics), Phase 16 (`v1.3.0`, focus integrity)
 **Release target:** `v1.4.0` (minor — new operator-facing capability + one data-loss-class fix, no destructive schema change)
 
@@ -212,16 +212,16 @@ Every report was traced to specific lines before this spec was written. No requi
 
 | ID | Requirement | Group | Story | Status |
 |----|-------------|-------|-------|--------|
-| P17-01 | `CountdownConfig.name: Option<String>`, serde default, legacy JSON round-trips | 17A | P1 Name | Pending |
-| P17-02 | Countdown label = name, else localized default; no duration suffix anywhere | 17A | P1 Name | Pending |
-| P17-03 | `builder.countdownSummary` and its `"10min"` literal removed | 17A | P1 Name | Pending |
-| P17-04 | `itemMeta.itemLabel` countdown branch localized (no hardcoded pt-BR) | 17A | P1 Name | Pending |
-| P17-05 | Name field in the countdown configuration modal, persisted, empty → default | 17A | P1 Name | Pending |
-| P17-06 | `messageScale` / `digitsScale` on `CountdownConfig`, percent, default 100, clamped 50–300 | 17B | P1 Size | Pending |
-| P17-07 | Renderer multiplies all three clamp terms by the scale; 100% is byte-identical to `v1.3.0` | 17B | P1 Size | Pending |
-| P17-08 | Two size controls in the configuration modal with a reset to 100% | 17B | P1 Size | Pending |
-| P17-09 | Scales mirrored into `CountdownState` for the takeover path (wall + live preview) | 17B | P1 Size | Pending |
-| P17-10 | Live preview takeover honours the mirrored `position` instead of hardcoded `center` | 17B | P1 Size | Pending |
+| P17-01 | `CountdownConfig.name: Option<String>`, serde default, legacy JSON round-trips | 17A | P1 Name | **Done** |
+| P17-02 | Countdown label = name, else localized default; no duration suffix anywhere | 17A | P1 Name | **Done** |
+| P17-03 | `builder.countdownSummary` and its `"10min"` literal removed | 17A | P1 Name | **Done** |
+| P17-04 | `itemMeta.itemLabel` countdown branch localized (no hardcoded pt-BR) | 17A | P1 Name | **Done** |
+| P17-05 | Name field in the countdown configuration modal, persisted, empty → default | 17A | P1 Name | **Done** |
+| P17-06 | `messageScale` / `digitsScale` on `CountdownConfig`, percent, default 100, clamped 50–300 | 17B | P1 Size | **Done** |
+| P17-07 | Renderer multiplies all three clamp terms by the scale; 100% is byte-identical to `v1.3.0` | 17B | P1 Size | **Done** |
+| P17-08 | Two size controls in the configuration modal with a reset to 100% | 17B | P1 Size | **Done** |
+| P17-09 | Scales mirrored into `CountdownState` for the takeover path (wall + live preview) | 17B | P1 Size | **Done** |
+| P17-10 | Live preview takeover honours the mirrored `position` instead of hardcoded `center` | 17B | P1 Size | **Done** |
 | P17-11 | `wipe_db` deletes `song_plays` first; full FK-safe coverage of repopulated tables | 17C | P1 Restore | **Done** |
 | P17-12 | Regression test: Replace restore over a library with a non-empty play ledger | 17C | P1 Restore | **Done** |
 | P17-13 | DB wipe completes before any media file is deleted | 17C | P1 Restore | **Done** |
@@ -230,31 +230,31 @@ Every report was traced to specific lines before this spec was written. No requi
 | P17-16 | Backup/restore errors formatted through the shared error formatter — no `[object Object]` | 17C | P1 Restore | **Done** |
 | P17-17 | `backup.*` error codes present in both locales, parity-guarded | 17C | P1 Restore | **Done** |
 | P17-18 | Restore summary states that the presentation/CCLI ledger was cleared | 17C | P1 Restore | **Done** |
-| P17-19 | Set picker in the Home header: active set + list with item counts | 17D | P1 Sets | Pending |
-| P17-20 | Selecting a set repoints the Home builder with no reload | 17D | P1 Sets | Pending |
-| P17-21 | Active set persisted in settings and restored at launch | 17D | P1 Sets | Pending |
-| P17-22 | Missing/deleted active set falls back to most-recently-updated, else creates the default | 17D | P1 Sets | Pending |
-| P17-23 | "Apresentar" presents the selected set | 17D | P1 Sets | Pending |
-| P17-24 | Picker disabled while presenting, consistent with the nav lock | 17D | P1 Sets | Pending |
-| P17-25 | Create / rename from the picker, live across surfaces | 17D | P1 Sets | Pending |
-| P17-26 | Delete with confirmation; `song_plays` for that set removed in the same transaction; count stated in the confirmation | 17D | P1 Sets | **Partial** — backend; confirmation pending (T21) |
-| P17-27 | Unreachable `sets` / `set-builder` views removed, back-navigation repointed to Home | 17D | P1 Sets | Pending |
-| P17-28 | "WebView" → "Câmera"/"Camera" across every operator-facing label, both locales | 17E | P1 Camera | Pending |
-| P17-29 | Mode set reduced to `rtsp` / `mjpeg` / `iframe` (Página web) | 17E | P1 Camera | Pending |
-| P17-30 | Wire and DB identifiers (`web_view`, `webviewConfig`) unchanged | 17E | P1 Camera | Pending |
-| P17-31 | RTMP/SRT/multicast editor blocks, MediaMTX sources, `StreamSource` kinds, configs and i18n removed | 17E | P1 Camera | Pending |
-| P17-32 | Legacy removed-mode items deserialize into an explicit unsupported state, flagged for reconfiguration | 17E | P1 Camera | Pending |
-| P17-33 | Profile editor hidden for Página web | 17E | P1 Profiles | Pending |
-| P17-34 | Profile selection honoured at render time for MJPEG as well as RTSP | 17E | P1 Profiles | Pending |
-| P17-35 | Orphaned profiles on a non-profile mode are inert and dropped on next save | 17E | P1 Profiles | Pending |
-| P17-36 | Version bumped to `1.4.0` across all five sources; `v1.4.0` tag pushed | 17F | P2 Release | Pending |
-| P17-37 | Launch-time silent re-arm carries the full countdown appearance (position, background, both scales) | 17B | P1 Size | Pending |
+| P17-19 | Set picker in the Home header: active set + list with item counts | 17D | P1 Sets | **Done** |
+| P17-20 | Selecting a set repoints the Home builder with no reload | 17D | P1 Sets | **Done** |
+| P17-21 | Active set persisted in settings and restored at launch | 17D | P1 Sets | **Done** |
+| P17-22 | Missing/deleted active set falls back to most-recently-updated, else creates the default | 17D | P1 Sets | **Done** |
+| P17-23 | "Apresentar" presents the selected set | 17D | P1 Sets | **Done** |
+| P17-24 | Picker disabled while presenting, consistent with the nav lock | 17D | P1 Sets | **Done** |
+| P17-25 | Create / rename from the picker, live across surfaces | 17D | P1 Sets | **Done** |
+| P17-26 | Delete with confirmation; `song_plays` for that set removed in the same transaction; count stated in the confirmation | 17D | P1 Sets | **Done** |
+| P17-27 | Unreachable `sets` / `set-builder` views removed, back-navigation repointed to Home | 17D | P1 Sets | **Done** |
+| P17-28 | "WebView" → "Câmera"/"Camera" across every operator-facing label, both locales | 17E | P1 Camera | **Done** |
+| P17-29 | Mode set reduced to `rtsp` / `mjpeg` / `iframe` (Página web) | 17E | P1 Camera | **Done** |
+| P17-30 | Wire and DB identifiers (`web_view`, `webviewConfig`) unchanged | 17E | P1 Camera | **Done** |
+| P17-31 | RTMP/SRT/multicast editor blocks, MediaMTX sources, `StreamSource` kinds, configs and i18n removed | 17E | P1 Camera | **Done** |
+| P17-32 | Legacy removed-mode items deserialize into an explicit unsupported state, flagged for reconfiguration | 17E | P1 Camera | **Done** |
+| P17-33 | Profile editor hidden for Página web | 17E | P1 Profiles | **Done** |
+| P17-34 | Profile selection honoured at render time for MJPEG as well as RTSP | 17E | P1 Profiles | **Done** |
+| P17-35 | Orphaned profiles on a non-profile mode are inert and dropped on next save | 17E | P1 Profiles | **Done** |
+| P17-36 | Version bumped to `1.4.0` across all five sources; `v1.4.0` tag pushed | 17F | P2 Release | **Done** |
+| P17-37 | Launch-time silent re-arm carries the full countdown appearance (position, background, both scales) | 17B | P1 Size | **Done** |
 
 **Coverage:** 37 requirements, all mapped to tasks T1–T30.
 
-**Implemented:** 8 of 37 (P17-11..P17-18 — group 17C), released as `v1.3.1` and then `v1.3.2`.
-**Partial:** 1 (P17-26 — `delete_set` + `get_set_play_count` shipped; the confirmation that states the play count is UI, waiting on T21).
-**Not started:** 28 — groups 17A (countdown naming), 17B (countdown sizing), 17D (sets on Home), 17E (camera), P17-36 (`1.4.0` release), P17-37 (launch re-arm appearance).
+**Implemented:** 37 of 37. Groups 17A–17F all done; released as `v1.3.1`/`v1.3.2` (17C slice) and now `v1.4.0` (the remainder: 17A, 17B, 17D, 17E, 17F).
+**Partial:** none.
+**Not started:** none. T30 (manual verification on production hardware) remains open — see the task itself; it cannot be gated in CI.
 
 **Note on P17-15:** `abort_restore` is fixed by construction — it calls the same `wipe_db` that T3 repaired — but no test exercises `abort_restore` itself (`commands/backup.rs` has no co-located tests). Treat it as fixed-but-unverified until the T30 manual pass.
 

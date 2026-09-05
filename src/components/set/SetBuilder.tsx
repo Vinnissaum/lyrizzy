@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowLeft,
   ArrowUp,
   ArrowDown,
   Check,
@@ -65,7 +64,6 @@ import type { Media, ServiceSet, SetItem, Song } from "../../types";
 
 interface Props {
   setId: string | null;
-  hideBack?: boolean;
   hidePresentButton?: boolean;
 }
 
@@ -123,9 +121,9 @@ function isExpandable(item: SetItem): boolean {
   );
 }
 
-export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton }) => {
+export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
   const { t } = useTranslation();
-  const { setView, openEditor } = useLibraryStore();
+  const { openEditor } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
   const requestPresentation = useRequestPresentation();
   const [serviceSet, setServiceSet] = useState<ServiceSet | null>(null);
@@ -501,14 +499,6 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center gap-2 mb-2">
-          {!hideBack && (
-            <button
-              onClick={() => setView("sets")}
-              className="text-muted hover:text-inherit p-1 rounded transition-colors"
-            >
-              <ArrowLeft size={18} />
-            </button>
-          )}
           {editingName ? (
             <form
               onSubmit={(e) => {

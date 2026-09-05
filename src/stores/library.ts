@@ -11,8 +11,6 @@ export type AppView =
   | "editor"
   | "import-text"
   | "import-holyrics"
-  | "sets"
-  | "set-builder"
   | "media"
   | "backup"
   | "settings";
@@ -22,7 +20,6 @@ interface LibraryStore {
   isLoading: boolean;
   search: string;
   editingSongId: string | null;
-  editingSetId: string | null;
   currentView: AppView;
   activeSetId: string | null;
   /** True while `editingSongId` was opened via `openLiveEditor` (editing over
@@ -36,7 +33,6 @@ interface LibraryStore {
   closeEditor: () => void;
   openLiveEditor: (id: string) => void;
   closeLiveEditor: () => void;
-  openSetBuilder: (id?: string) => void;
   setView: (view: AppView) => void;
   loadActiveSet: () => Promise<void>;
   setActiveSet: (id: string) => Promise<void>;
@@ -47,7 +43,6 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   isLoading: false,
   search: "",
   editingSongId: null,
-  editingSetId: null,
   currentView: "home",
   activeSetId: null,
   isLiveEdit: false,
@@ -87,10 +82,6 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   closeLiveEditor: () => {
     set({ editingSongId: null, isLiveEdit: false });
-  },
-
-  openSetBuilder: (id?: string) => {
-    set({ editingSetId: id ?? null, currentView: "set-builder" });
   },
 
   setView: (view) => {

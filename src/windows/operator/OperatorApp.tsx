@@ -24,8 +24,6 @@ import { SongEditor } from "../../components/library/SongEditor";
 import { PlainTextImport } from "../../components/import/PlainTextImport";
 import { HolyricsImport } from "../../components/import/HolyricsImport";
 import { HomeSetBuilder } from "../../components/setbuilder/HomeSetBuilder";
-import { SetBuilder } from "../../components/set/SetBuilder";
-import { SetList } from "../../components/set/SetList";
 import { OperatorPresentationLayout } from "../../components/presentation/OperatorPresentationLayout";
 import { StopPresentationModal } from "../../components/presentation/StopPresentationModal";
 import {
@@ -74,11 +72,10 @@ const OperatorAppInner: React.FC = () => {
   const { t, i18n } = useTranslation();
   const {
     currentView,
-    editingSetId,
     openEditor,
     setView,
     refresh,
-    loadFixedSet,
+    loadActiveSet,
   } = useLibraryStore();
   const { state: presState, subscribe: subscribePresentation } = usePresentationStore();
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
@@ -255,7 +252,7 @@ const OperatorAppInner: React.FC = () => {
       })
       .catch(() => {});
 
-    loadFixedSet();
+    loadActiveSet();
 
     // Silent re-arm at launch: if the fixed set has a countdown scheduled for
     // later today, arm it directly (no prompt). Arming makes the floating widget
@@ -408,10 +405,7 @@ const OperatorAppInner: React.FC = () => {
     currentView === "import-text" ||
     currentView === "import-holyrics";
 
-  const isHomeSection =
-    currentView === "home" ||
-    currentView === "sets" ||
-    currentView === "set-builder";
+  const isHomeSection = currentView === "home";
 
   const isMediaSection = currentView === "media";
   const isBackupSection = currentView === "backup";
@@ -594,12 +588,6 @@ const OperatorAppInner: React.FC = () => {
                 }}
                 onCancel={() => setView("library")}
               />
-            )}
-
-            {currentView === "sets" && <SetList />}
-
-            {currentView === "set-builder" && (
-              <SetBuilder setId={editingSetId} />
             )}
 
             {currentView === "media" && <MediaLibrary />}

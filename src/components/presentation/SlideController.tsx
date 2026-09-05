@@ -84,7 +84,7 @@ export const SlideController: React.FC<Props> = ({ serviceSet }) => {
       <div className="px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center gap-2 mb-3">
           <button
-            onClick={() => setView("set-builder")}
+            onClick={() => setView("home")}
             className="text-muted hover:text-inherit p-1 rounded transition-colors"
           >
             <ArrowLeft size={18} />

@@ -38,7 +38,6 @@ const mockSong: Song = {
 function resetStore() {
   useLibraryStore.setState({
     editingSongId: null,
-    editingSetId: null,
     currentView: "home",
     isLiveEdit: false,
     songs: [],

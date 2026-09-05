@@ -52,7 +52,7 @@ export const OperatorPresentationLayout: React.FC<{
   const refreshSets = useSetsStore((s) => s.refresh);
   const { songs, refresh: refreshSongs } = useLibraryStore();
   const { media, refresh: refreshMedia } = useMediaStore();
-  const { fixedSetId } = useLibraryStore();
+  const { activeSetId } = useLibraryStore();
 
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
@@ -220,7 +220,7 @@ export const OperatorPresentationLayout: React.FC<{
   };
 
   const handleImportPresentation = async () => {
-    if (!fixedSetId) return;
+    if (!activeSetId) return;
     const selected = await open({
       title: t("media.slideshow.import"),
       filters: [{ name: "Presentation", extensions: ["pptx", "ppt", "pdf"] }],
@@ -231,7 +231,7 @@ export const OperatorPresentationLayout: React.FC<{
     try {
       const imported = await importPresentation(selected as string);
       await addSetItem({
-        setId: fixedSetId,
+        setId: activeSetId,
         itemType: "slide_show",
         mediaId: imported.id,
       });

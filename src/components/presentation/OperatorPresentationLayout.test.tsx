@@ -178,7 +178,7 @@ function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
         updatedAt: 0,
       },
     ],
-    fixedSetId: "set-1",
+    activeSetId: "set-1",
     setView: vi.fn(),
     refresh: vi.fn(),
   } as unknown as ReturnType<typeof useLibraryStore>);
@@ -240,7 +240,7 @@ describe("OperatorPresentationLayout", () => {
     );
     vi.mocked(useLibraryStore).mockReturnValue({
       songs: [],
-      fixedSetId: null,
+      activeSetId: null,
       setView: vi.fn(),
       refresh: vi.fn(),
     } as unknown as ReturnType<typeof useLibraryStore>);
@@ -284,7 +284,7 @@ describe("OperatorPresentationLayout", () => {
     );
     vi.mocked(useLibraryStore).mockReturnValue({
       songs: [],
-      fixedSetId: null,
+      activeSetId: null,
       setView: vi.fn(),
       refresh: vi.fn(),
     } as unknown as ReturnType<typeof useLibraryStore>);
@@ -338,7 +338,7 @@ describe("OperatorPresentationLayout", () => {
     );
     vi.mocked(useLibraryStore).mockReturnValue({
       songs: [],
-      fixedSetId: null,
+      activeSetId: null,
       setView: vi.fn(),
       refresh: vi.fn(),
     } as unknown as ReturnType<typeof useLibraryStore>);

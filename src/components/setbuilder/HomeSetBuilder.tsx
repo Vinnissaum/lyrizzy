@@ -18,13 +18,14 @@ import { useMediaStore } from "../../stores/media";
 import { mediaUrl } from "../../api/assets";
 import { usePresentationStore } from "../../stores/presentation";
 import { SetBuilder } from "../set/SetBuilder";
+import { SetPicker } from "./SetPicker";
 import { OverlayActionBar } from "../presentation/OverlayActionBar";
 import { useRequestPresentation } from "../presentation/PresentationLaunchProvider";
 import type { Song } from "../../types";
 
 export const HomeSetBuilder: React.FC = () => {
   const { t } = useTranslation();
-  const { fixedSetId } = useLibraryStore();
+  const { activeSetId } = useLibraryStore();
   const { state: presState } = usePresentationStore();
   const { media, refresh: refreshMedia } = useMediaStore();
   const requestPresentation = useRequestPresentation();
@@ -74,16 +75,16 @@ export const HomeSetBuilder: React.FC = () => {
   }, [songs, sidebarSearch]);
 
   const handleApresentar = async () => {
-    if (!fixedSetId) return;
+    if (!activeSetId) return;
     try {
-      const currentSet = await getSet(fixedSetId);
+      const currentSet = await getSet(activeSetId);
       if (currentSet.items.length === 0) {
         setErrorToast(t("error.presentation.empty_set"));
         setTimeout(() => setErrorToast(null), 5000);
         return;
       }
-      await loadSetForPresentation(fixedSetId);
-      await requestPresentation(fixedSetId);
+      await loadSetForPresentation(activeSetId);
+      await requestPresentation(activeSetId);
     } catch (err) {
       const payload = err as { code?: string; params?: Record<string, string> };
       setErrorToast(t(`error.${payload.code ?? "unknown"}`, payload.params));
@@ -92,18 +93,18 @@ export const HomeSetBuilder: React.FC = () => {
   };
 
   const ensurePresentation = async () => {
-    if (!fixedSetId) return;
+    if (!activeSetId) return;
     try {
-      await requestPresentation(fixedSetId);
+      await requestPresentation(activeSetId);
     } catch (err) {
       console.error("open presentation window failed:", err);
     }
   };
 
   const handleAddSong = async (songId: string) => {
-    if (!fixedSetId) return;
+    if (!activeSetId) return;
     try {
-      await addSetItem({ setId: fixedSetId, itemType: "song", songId });
+      await addSetItem({ setId: activeSetId, itemType: "song", songId });
     } catch (err) {
       console.error("add song failed:", err);
     }
@@ -160,7 +161,7 @@ export const HomeSetBuilder: React.FC = () => {
   };
 
   const handleImportPresentation = async () => {
-    if (!fixedSetId) return;
+    if (!activeSetId) return;
     const selected = await open({
       title: t("media.slideshow.import"),
       filters: [{ name: "Presentation", extensions: ["pptx", "ppt", "pdf"] }],
@@ -171,7 +172,7 @@ export const HomeSetBuilder: React.FC = () => {
     try {
       const imported = await importPresentation(selected as string);
       await addSetItem({
-        setId: fixedSetId,
+        setId: activeSetId,
         itemType: "slide_show",
         mediaId: imported.id,
       });
@@ -185,16 +186,20 @@ export const HomeSetBuilder: React.FC = () => {
     }
   };
 
-  if (!fixedSetId) {
+  const isOverlayActive = !!presState?.overlay;
+  const isPresenting =
+    presState?.mode === "live" ||
+    presState?.mode === "blank" ||
+    presState?.mode === "frozen";
+  const imageMedia = media.filter((m) => m.kind === "image");
+
+  if (!activeSetId) {
     return (
       <div className="h-full flex items-center justify-center text-muted text-sm">
         {t("loading")}
       </div>
     );
   }
-
-  const isOverlayActive = !!presState?.overlay;
-  const imageMedia = media.filter((m) => m.kind === "image");
 
   return (
     <div className="flex flex-col h-full relative">
@@ -204,6 +209,11 @@ export const HomeSetBuilder: React.FC = () => {
           {errorToast}
         </div>
       )}
+
+      {/* Active set picker */}
+      <div className="px-3 py-2 border-b border-border">
+        <SetPicker disabled={isPresenting} />
+      </div>
 
       {/* Overlay action bar */}
       <OverlayActionBar
@@ -232,7 +242,7 @@ export const HomeSetBuilder: React.FC = () => {
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleSongDrop}
         >
-          <SetBuilder setId={fixedSetId} hideBack hidePresentButton />
+          <SetBuilder setId={activeSetId} hideBack hidePresentButton />
         </div>
 
         {/* Sidebar collapse toggle */}

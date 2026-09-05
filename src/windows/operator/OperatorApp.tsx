@@ -6,6 +6,7 @@ import {
   clearOverlay,
   exitPresentation,
   getOrCreateDefaultSet,
+  getSet,
   loadSetForPresentation,
   onCountdownTriggered,
   onLocaleChanged,
@@ -252,13 +253,21 @@ const OperatorAppInner: React.FC = () => {
       })
       .catch(() => {});
 
-    loadActiveSet();
+    const activeSetLoaded = loadActiveSet();
 
-    // Silent re-arm at launch: if the fixed set has a countdown scheduled for
-    // later today, arm it directly (no prompt). Arming makes the floating widget
-    // appear; it doesn't take over until the wall-clock fire time.
-    getOrCreateDefaultSet()
+    // Silent re-arm at launch: if the ACTIVE set (DD-1) has a countdown
+    // scheduled for later today, arm it directly (no prompt), carrying its
+    // full appearance (position, background, both scales). Arming makes the
+    // floating widget appear; it doesn't take over until the wall-clock fire
+    // time. Waits on `loadActiveSet()` (kicked off above) so the active set id
+    // is resolved before it is read back from the store.
+    activeSetLoaded
+      .then(() => {
+        const activeSetId = useLibraryStore.getState().activeSetId;
+        return activeSetId ? getSet(activeSetId) : null;
+      })
       .then((set) => {
+        if (!set) return;
         const hit = findUpcomingScheduledCountdown(set.items ?? [], Date.now());
         if (!hit) return;
         useCountdownStore.getState().arm({
@@ -268,6 +277,10 @@ const OperatorAppInner: React.FC = () => {
           endBehavior: hit.endBehavior,
           setId: set.id,
           itemIndex: hit.itemIndex,
+          position: hit.position,
+          backgroundMediaId: hit.backgroundMediaId,
+          messageScale: hit.messageScale,
+          digitsScale: hit.digitsScale,
         });
       })
       .catch(() => {});

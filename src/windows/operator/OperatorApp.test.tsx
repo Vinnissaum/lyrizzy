@@ -361,6 +361,101 @@ describe("OperatorApp", () => {
       armSpy.mockRestore();
     });
 
+    it("forwards position, backgroundMediaId, messageScale and digitsScale to arm (DD-1)", async () => {
+      const future = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const hour = future.getHours();
+      const minute = future.getMinutes();
+      const item = scheduledCountdownItem(hour, minute);
+      item.countdownConfig = {
+        ...item.countdownConfig!,
+        position: "bottom-center",
+        backgroundMediaId: "media-42",
+        messageScale: 120,
+        digitsScale: 80,
+      };
+      const set = setWithSchedule(item);
+
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "get_setting") return Promise.reject({ code: "settings.not_found", params: {} });
+        if (cmd === "get_or_create_default_set") return Promise.resolve(set);
+        if (cmd === "get_set") return Promise.resolve(set);
+        if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
+        if (cmd === "arm_countdown") {
+          return Promise.resolve({
+            mode: "scheduled",
+            durationMs: 600_000,
+            remainingMs: 600_000,
+            endBehavior: "holdZero",
+            takeover: false,
+          });
+        }
+        return Promise.resolve([]);
+      });
+
+      const armSpy = vi.spyOn(useCountdownStore.getState(), "arm");
+
+      render(<OperatorApp />);
+
+      await waitFor(() => expect(armSpy).toHaveBeenCalledTimes(1));
+      expect(armSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          setId: "set-1",
+          itemIndex: 0,
+          position: "bottom-center",
+          backgroundMediaId: "media-42",
+          messageScale: 120,
+          digitsScale: 80,
+        }),
+      );
+
+      armSpy.mockRestore();
+    });
+
+    it("resolves the ACTIVE set (not the default set) when they differ", async () => {
+      const future = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const hour = future.getHours();
+      const minute = future.getMinutes();
+      const item = scheduledCountdownItem(hour, minute);
+      const activeSet: ServiceSet = { ...setWithSchedule(item), id: "set-active" };
+
+      vi.mocked(invoke).mockImplementation((cmd, args) => {
+        if (cmd === "get_setting") return Promise.resolve("set-active");
+        if (cmd === "get_or_create_default_set") return Promise.resolve(defaultSet);
+        if (cmd === "get_set") {
+          const id = (args as { id?: string })?.id;
+          if (id === "set-active") return Promise.resolve(activeSet);
+          return Promise.resolve(defaultSet);
+        }
+        if (cmd === "check_for_updates") return Promise.resolve({ status: "upToDate" });
+        if (cmd === "arm_countdown") {
+          return Promise.resolve({
+            mode: "scheduled",
+            durationMs: 600_000,
+            remainingMs: 600_000,
+            endBehavior: "holdZero",
+            takeover: false,
+          });
+        }
+        return Promise.resolve([]);
+      });
+
+      const armSpy = vi.spyOn(useCountdownStore.getState(), "arm");
+
+      render(<OperatorApp />);
+
+      await waitFor(() => expect(armSpy).toHaveBeenCalledTimes(1));
+      expect(armSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          setId: "set-active",
+          itemIndex: 0,
+        }),
+      );
+      // The default set was never scanned for a schedule — only the active one.
+      expect(vi.mocked(invoke)).not.toHaveBeenCalledWith("get_set", { id: "set-1" });
+
+      armSpy.mockRestore();
+    });
+
     it("does not arm when the schedule is in the past today", async () => {
       const past = new Date(Date.now() - 2 * 60 * 60 * 1000);
       const item = scheduledCountdownItem(past.getHours(), past.getMinutes());

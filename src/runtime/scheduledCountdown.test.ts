@@ -74,4 +74,23 @@ describe("findUpcomingScheduledCountdown", () => {
     );
     expect(hit).toBeNull();
   });
+
+  it("carries the item's full appearance — position, background, both scales (DD-1)", () => {
+    const item = countdownItem("c1", { hour: 19, minute: 30 });
+    item.countdownConfig = {
+      ...item.countdownConfig!,
+      position: "bottom-center",
+      backgroundMediaId: "media-42",
+      messageScale: 120,
+      digitsScale: 80,
+    } as never;
+
+    const hit = findUpcomingScheduledCountdown([item], NOW);
+
+    expect(hit).not.toBeNull();
+    expect(hit!.position).toBe("bottom-center");
+    expect(hit!.backgroundMediaId).toBe("media-42");
+    expect(hit!.messageScale).toBe(120);
+    expect(hit!.digitsScale).toBe(80);
+  });
 });

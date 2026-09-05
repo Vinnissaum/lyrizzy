@@ -28,6 +28,13 @@ pub struct CountdownTriggeredPayload {
     pub output: OutputId,
 }
 
+/// Resolve an optional operator-supplied scale to a safe value: absent
+/// defaults to 100 (unscaled), and any value out of the 50..=300 range is
+/// clamped rather than rejected (mirrors `CountdownConfig`'s deserialize).
+fn resolve_scale(scale: Option<u16>) -> u16 {
+    scale.map(|n| n.clamp(50, 300)).unwrap_or(100)
+}
+
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -297,6 +304,8 @@ pub async fn start_countdown(
     takeover: Option<bool>,
     position: Option<CountdownPosition>,
     background_media_id: Option<String>,
+    message_scale: Option<u16>,
+    digits_scale: Option<u16>,
     output: Option<OutputId>,
 ) -> Result<CountdownState, ErrorPayload> {
     let output = output.unwrap_or_default();
@@ -348,6 +357,8 @@ pub async fn start_countdown(
         // unspecified) so the takeover renderer mirrors the configured look.
         s.position = position.unwrap_or_default();
         s.background_media_id = background_media_id;
+        s.message_scale = resolve_scale(message_scale);
+        s.digits_scale = resolve_scale(digits_scale);
         s.clone()
     };
 
@@ -425,6 +436,8 @@ pub async fn reset_countdown(
         s.takeover = false;
         s.position = CountdownPosition::default();
         s.background_media_id = None;
+        s.message_scale = 100;
+        s.digits_scale = 100;
         s.clone()
     };
     let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
@@ -449,6 +462,8 @@ pub async fn arm_countdown(
     takeover: Option<bool>,
     position: Option<CountdownPosition>,
     background_media_id: Option<String>,
+    message_scale: Option<u16>,
+    digits_scale: Option<u16>,
     output: Option<OutputId>,
 ) -> Result<CountdownState, ErrorPayload> {
     let output = output.unwrap_or_default();
@@ -488,6 +503,8 @@ pub async fn arm_countdown(
         // needing the set item again.
         s.position = position.unwrap_or_default();
         s.background_media_id = background_media_id;
+        s.message_scale = resolve_scale(message_scale);
+        s.digits_scale = resolve_scale(digits_scale);
         s.clone()
     };
 
@@ -613,6 +630,49 @@ mod tests {
         s.takeover = true;
         assert_eq!(s.mode, CountdownMode::Running);
         assert!(s.takeover, "takeover must engage the instant the countdown fires");
+    }
+
+    /// (a) Arming (or starting) with explicit scales mirrors them onto the
+    /// state exactly, the same way `position`/`background_media_id` mirror.
+    #[test]
+    fn resolve_scale_mirrors_explicit_values_onto_state() {
+        let s = CountdownState {
+            message_scale: resolve_scale(Some(150)),
+            digits_scale: resolve_scale(Some(200)),
+            ..CountdownState::default()
+        };
+        assert_eq!(s.message_scale, 150);
+        assert_eq!(s.digits_scale, 200);
+    }
+
+    /// (b) Omitting the scales defaults both to 100.
+    #[test]
+    fn resolve_scale_defaults_to_100_when_absent() {
+        assert_eq!(resolve_scale(None), 100);
+    }
+
+    /// (c) Out-of-range values are clamped to 50..=300, never rejected.
+    #[test]
+    fn resolve_scale_clamps_out_of_range_values() {
+        assert_eq!(resolve_scale(Some(9999)), 300);
+        assert_eq!(resolve_scale(Some(1)), 50);
+        assert_eq!(resolve_scale(Some(0)), 50);
+    }
+
+    /// (d) Resetting a countdown that had non-default scales returns both to
+    /// 100 (mirrors `reset_countdown`'s state-write block).
+    #[test]
+    fn reset_returns_scales_to_100() {
+        let mut s = CountdownState {
+            message_scale: 175,
+            digits_scale: 225,
+            ..CountdownState::default()
+        };
+        // Mirrors the reset_countdown write block.
+        s.message_scale = 100;
+        s.digits_scale = 100;
+        assert_eq!(s.message_scale, 100);
+        assert_eq!(s.digits_scale, 100);
     }
 
     #[test]

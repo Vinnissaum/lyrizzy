@@ -152,6 +152,100 @@ describe("SetBuilder — countdown row", () => {
   });
 });
 
+// ── itemSummary: countdown + web_view cases ──────────────────────────────────
+
+const unconfiguredCountdownSet: ServiceSet = {
+  id: "set-cd-2",
+  name: "CdUnconfigured",
+  createdAt: 0,
+  updatedAt: 0,
+  items: [
+    {
+      id: "cd-2",
+      setId: "set-cd-2",
+      itemType: "countdown",
+      sortOrder: 0,
+      countdownConfig: {
+        target: { kind: "duration", durationMs: 0 },
+        endBehavior: "holdZero",
+      },
+    },
+  ],
+};
+
+const namedCountdownSet: ServiceSet = {
+  id: "set-cd-3",
+  name: "CdNamed",
+  createdAt: 0,
+  updatedAt: 0,
+  items: [
+    {
+      id: "cd-3",
+      setId: "set-cd-3",
+      itemType: "countdown",
+      sortOrder: 0,
+      countdownConfig: {
+        target: { kind: "duration", durationMs: 600_000 },
+        name: "Offering countdown",
+        endBehavior: "holdZero",
+      },
+    },
+  ],
+};
+
+const legacyWebViewSet: ServiceSet = {
+  id: "set-wv-1",
+  name: "WvLegacy",
+  createdAt: 0,
+  updatedAt: 0,
+  items: [
+    {
+      id: "wv-1",
+      setId: "set-wv-1",
+      itemType: "web_view",
+      sortOrder: 0,
+      webviewConfig: { mode: "rtmp", url: "rtmp://example.com/stream" },
+    },
+  ],
+};
+
+describe("SetBuilder — itemSummary countdown/web_view cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequestPresentation.mockReset().mockResolvedValue(undefined);
+    vi.mocked(useLibraryStore).mockReturnValue({ setView: vi.fn() } as ReturnType<typeof useLibraryStore>);
+    vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
+    vi.mocked(usePresentationStore).mockReturnValue({ getState: vi.fn() } as unknown as ReturnType<typeof usePresentationStore>);
+  });
+
+  it("(a) unconfigured countdown renders neither '10min' nor a duration", async () => {
+    vi.mocked(getSet).mockResolvedValue(unconfiguredCountdownSet);
+    render(<SetBuilder setId="set-cd-2" />);
+    await waitFor(() => expect(screen.getByText("CdUnconfigured")).toBeInTheDocument());
+
+    expect(screen.queryByText("10min")).toBeNull();
+    expect(screen.queryByText(/^\d+min$/)).toBeNull();
+    expect(screen.getByText("countdown.defaultName")).toBeInTheDocument();
+  });
+
+  it("(b) named countdown renders its name", async () => {
+    vi.mocked(getSet).mockResolvedValue(namedCountdownSet);
+    render(<SetBuilder setId="set-cd-3" />);
+    await waitFor(() => expect(screen.getByText("CdNamed")).toBeInTheDocument());
+
+    expect(screen.getByText("Offering countdown")).toBeInTheDocument();
+    expect(screen.queryByText("10min")).toBeNull();
+  });
+
+  it("(c) a legacy-mode camera item renders the unsupported wording", async () => {
+    vi.mocked(getSet).mockResolvedValue(legacyWebViewSet);
+    render(<SetBuilder setId="set-wv-1" />);
+    await waitFor(() => expect(screen.getByText("WvLegacy")).toBeInTheDocument());
+
+    expect(screen.getByText("webview.editor.unsupportedMode")).toBeInTheDocument();
+  });
+});
+
 // ── reorderIds pure-function tests ───────────────────────────────────────────
 
 type MinItem = Pick<SetItem, "id">;

@@ -444,22 +444,30 @@ export const SetBuilder: React.FC<Props> = ({ setId, hideBack, hidePresentButton
         );
       case "countdown": {
         const cfg = item.countdownConfig;
-        const cfgDurationMs = cfg?.target?.kind === 'duration' ? cfg.target.durationMs : 0;
-        const durLabel = cfgDurationMs > 0 ? `${Math.floor(cfgDurationMs / 60000)}min` : "10min";
         return (
-          <p className="text-sm text-warning font-medium">
-            {t("builder.countdownSummary", { dur: durLabel })}
+          <p className="text-sm text-warning font-medium truncate">
+            {cfg?.name || t("countdown.defaultName")}
           </p>
         );
       }
       case "web_view": {
         const wv = item.webviewConfig;
+        const mode = wv?.mode;
+        const isLegacyMode = mode === "rtmp" || mode === "srt" || mode === "multicast";
+        if (isLegacyMode) {
+          return (
+            <p className="text-sm text-danger font-medium truncate">
+              {t("webview.editor.unsupportedMode")}
+            </p>
+          );
+        }
+        const isCamera = mode === "mjpeg" || mode === "rtsp";
         const urlShort = wv?.url
           ? wv.url.replace(/^https?:\/\//, "").slice(0, 30)
           : t("builder.noUrl");
         return (
           <p className="text-sm text-purple-400 font-medium truncate">
-            {wv?.mode === "mjpeg" ? "Câmera" : "Web"} — {urlShort}
+            {isCamera ? t("builder.add.webView") : "Web"} — {urlShort}
           </p>
         );
       }

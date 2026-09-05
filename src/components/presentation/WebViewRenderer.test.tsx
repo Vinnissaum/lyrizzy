@@ -106,4 +106,66 @@ describe("WebViewRenderer — camera stream profiles", () => {
     source = JSON.parse(getByTestId("stream-proxy").getAttribute("data-source")!);
     expect(source.url).toBe("rtsp://192.168.1.20/sub");
   });
+
+  it("renders the active profile's URL for mjpeg mode instead of reading config.url directly", () => {
+    const mjpegProfiles = [
+      { id: "p1", label: "Main", url: "http://192.168.1.20/main.mjpeg" },
+      { id: "p2", label: "Sub", url: "http://192.168.1.20/sub.mjpeg" },
+    ];
+    const { container } = render(
+      <WebViewRenderer
+        config={{
+          mode: "mjpeg",
+          url: "http://192.168.1.20/fallback.mjpeg",
+          profiles: mjpegProfiles,
+          activeProfileId: "p2",
+        }}
+      />
+    );
+    const img = container.querySelector("img");
+    expect(img?.src).toBe("http://192.168.1.20/sub.mjpeg");
+  });
+
+  it("iframe mode ignores profiles entirely and uses config.url", () => {
+    const { container } = render(
+      <WebViewRenderer
+        config={{
+          mode: "iframe",
+          url: "http://192.168.1.20/page",
+          profiles,
+          activeProfileId: "p1",
+        }}
+      />
+    );
+    const iframe = container.querySelector("iframe");
+    expect(iframe?.src).toBe("http://192.168.1.20/page");
+  });
+});
+
+describe("WebViewRenderer — legacy modes", () => {
+  it("renders the camera error surface for a legacy rtmp config instead of a blank screen", () => {
+    const { container, queryByTestId } = render(
+      <WebViewRenderer config={{ mode: "rtmp", url: "rtmp://192.168.1.30/live" }} />
+    );
+    expect(queryByTestId("stream-proxy")).toBeNull();
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("p")?.textContent).toBeTruthy();
+  });
+
+  it("renders the camera error surface for a legacy srt config", () => {
+    const { queryByTestId, container } = render(
+      <WebViewRenderer config={{ mode: "srt", url: "" }} />
+    );
+    expect(queryByTestId("stream-proxy")).toBeNull();
+    expect(container.querySelector("p")?.textContent).toBeTruthy();
+  });
+
+  it("renders the camera error surface for a legacy multicast config", () => {
+    const { queryByTestId, container } = render(
+      <WebViewRenderer config={{ mode: "multicast", url: "" }} />
+    );
+    expect(queryByTestId("stream-proxy")).toBeNull();
+    expect(container.querySelector("p")?.textContent).toBeTruthy();
+  });
 });

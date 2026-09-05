@@ -20,7 +20,11 @@ describe("StreamProxyRenderer", () => {
   });
 
   it("starts the MediaMTX proxy and connects WHEP to the returned URL", async () => {
-    const source: StreamSource = { kind: "rtmp", url: "rtmp://192.168.100.138/live/stream0" };
+    const source: StreamSource = {
+      kind: "rtsp",
+      url: "rtsp://192.168.100.138/live/stream0",
+      transport: "udp",
+    };
     const { container } = render(<StreamProxyRenderer source={source} />);
 
     expect(container.querySelector("video")).not.toBeNull();
@@ -36,10 +40,11 @@ describe("StreamProxyRenderer", () => {
     );
   });
 
-  it("forwards an SRT source unchanged to the proxy", async () => {
+  it("forwards an RTSP source with tcp transport unchanged to the proxy", async () => {
     const source: StreamSource = {
-      kind: "srt",
-      config: { host: "192.168.100.138", port: 9000, mode: "listener", encrypted: false },
+      kind: "rtsp",
+      url: "rtsp://192.168.100.138:9000/live",
+      transport: "tcp",
     };
     render(<StreamProxyRenderer source={source} />);
     await waitFor(() => expect(startStreamProxy).toHaveBeenCalledWith(source));

@@ -11,35 +11,23 @@ interface Props {
   config: WebViewConfig;
 }
 
-/** Modes bridged to WebRTC by the Rust MediaMTX proxy. */
+/** Only rtsp is bridged to WebRTC by the Rust MediaMTX proxy. */
 function isProxyMode(mode: WebViewConfig["mode"]): boolean {
-  return mode === "rtmp" || mode === "rtsp" || mode === "srt" || mode === "multicast";
+  return mode === "rtsp";
+}
+
+/** No-longer-configurable modes retained only so old saved data still renders (as an error), never a blank screen. */
+function isLegacyMode(mode: WebViewConfig["mode"]): boolean {
+  return mode === "rtmp" || mode === "srt" || mode === "multicast";
 }
 
 /** Build the proxy source payload from config, or null if it's incomplete. */
 function buildStreamSource(config: WebViewConfig): StreamSource | null {
-  switch (config.mode) {
-    case "rtmp": {
-      const { url } = resolveActiveSource(config);
-      return url.trim() ? { kind: "rtmp", url: url.trim() } : null;
-    }
-    case "rtsp": {
-      const { url, transport } = resolveActiveSource(config);
-      return url.trim()
-        ? { kind: "rtsp", url: url.trim(), transport: transport ?? "udp" }
-        : null;
-    }
-    case "srt":
-      return config.srtConfig?.host.trim()
-        ? { kind: "srt", config: config.srtConfig }
-        : null;
-    case "multicast":
-      return config.multicastConfig?.ip.trim()
-        ? { kind: "multicast", config: config.multicastConfig }
-        : null;
-    default:
-      return null;
-  }
+  if (config.mode !== "rtsp") return null;
+  const { url, transport } = resolveActiveSource(config);
+  return url.trim()
+    ? { kind: "rtsp", url: url.trim(), transport: transport ?? "udp" }
+    : null;
 }
 
 export const WebViewRenderer: React.FC<Props> = ({ config }) => {
@@ -51,24 +39,36 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   const loadedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // MJPEG resolves its URL through the profile fallback chain; every other
+  // mode uses `config.url` (or none, for the proxy/legacy modes) directly.
+  const effectiveUrl = mode === "mjpeg" ? resolveActiveSource(config).url : url;
+
   useEffect(() => {
     loadedRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    // Proxy modes (rtmp/srt/multicast) don't use `url` and own their own
-    // load/error lifecycle in StreamProxyRenderer, so skip URL validation and
-    // the load-timeout watchdog that never resolves for a <video>.
+    // The proxy mode (rtsp) doesn't use `url` and owns its own load/error
+    // lifecycle in StreamProxyRenderer, so skip URL validation and the
+    // load-timeout watchdog that never resolves for a <video>.
     if (isProxyMode(mode)) {
       setError(null);
       return;
     }
 
-    const check = isUrlAllowed(url);
+    // Legacy modes (rtmp/srt/multicast) are no longer configurable and have
+    // no renderer left to display them — surface the error immediately
+    // instead of leaving the screen blank forever.
+    if (isLegacyMode(mode)) {
+      setError("Modo de câmera não suportado");
+      return;
+    }
+
+    const check = isUrlAllowed(effectiveUrl);
     if (!check.ok) {
       setError(check.reason ?? "URL não permitida");
       return;
     }
-    if (!url.trim()) {
+    if (!effectiveUrl.trim()) {
       setError("URL não configurada");
       return;
     }
@@ -83,7 +83,7 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [url, mode]);
+  }, [effectiveUrl, mode]);
 
   const handleLoad = () => {
     loadedRef.current = true;
@@ -133,8 +133,8 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   }
 
   if (isProxyMode(mode)) {
-    // RTMP/SRT/multicast can't play in WebView2; StreamProxyRenderer bridges
-    // them via the MediaMTX WebRTC proxy and manages its own lifecycle.
+    // RTSP can't play in WebView2; StreamProxyRenderer bridges it via the
+    // MediaMTX WebRTC proxy and manages its own lifecycle.
     const source = buildStreamSource(config);
     if (!source) {
       return (
@@ -155,8 +155,9 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
     );
   }
 
-  // MJPEG mode — inject basic-auth credentials into the URL if provided.
-  const mjpegUrl = withBasicAuth(url, basicAuthUser, basicAuthPass);
+  // MJPEG mode — resolve the active profile's URL and inject basic-auth
+  // credentials if provided.
+  const mjpegUrl = withBasicAuth(effectiveUrl, basicAuthUser, basicAuthPass);
 
   return (
     <div className="h-screen bg-black flex items-center justify-center">

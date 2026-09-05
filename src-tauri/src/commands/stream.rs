@@ -6,8 +6,7 @@
 //! client.
 
 use crate::domain::error::ErrorPayload;
-use crate::domain::set::{MulticastConfig, SrtConfig, SrtMode};
-use crate::services::mediamtx::{self, Source};
+use crate::services::mediamtx::{self, RtspSource};
 use crate::state::{AppState, StreamProxy};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
@@ -16,10 +15,7 @@ use tauri::{AppHandle, Manager, State};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum StreamSourceInput {
-    Rtmp { url: String },
     Rtsp { url: String, transport: String },
-    Srt { config: SrtConfig },
-    Multicast { config: MulticastConfig },
 }
 
 #[derive(Serialize, Clone)]
@@ -37,17 +33,10 @@ pub fn check_mediamtx(app: AppHandle) -> bool {
     mediamtx::mediamtx_path(resource_dir.as_deref()).is_some()
 }
 
-/// Translate the frontend source into the MediaMTX [`Source`] to render, after
-/// validating it.
-fn to_source(input: &StreamSourceInput) -> Result<Source, ErrorPayload> {
+/// Translate the frontend source into the MediaMTX [`RtspSource`] to render,
+/// after validating it.
+fn to_source(input: &StreamSourceInput) -> Result<RtspSource, ErrorPayload> {
     match input {
-        StreamSourceInput::Rtmp { url } => {
-            let url = url.trim().to_string();
-            if !(url.starts_with("rtmp://") || url.starts_with("rtmps://")) {
-                return Err(ErrorPayload::new("stream.invalid_url"));
-            }
-            Ok(Source::Pull(url))
-        }
         StreamSourceInput::Rtsp { url, transport } => {
             let url = url.trim().to_string();
             if !(url.starts_with("rtsp://") || url.starts_with("rtsps://")) {
@@ -58,39 +47,7 @@ fn to_source(input: &StreamSourceInput) -> Result<Source, ErrorPayload> {
                 "udp" | "tcp" | "multicast" => Some(transport.clone()),
                 _ => None,
             };
-            Ok(Source::Rtsp { url, transport })
-        }
-        StreamSourceInput::Srt { config } => {
-            if config.host.trim().is_empty() || config.port == 0 {
-                return Err(ErrorPayload::new("stream.invalid_srt"));
-            }
-            match config.mode {
-                // Camera waits for us → MediaMTX dials it (caller).
-                SrtMode::Listener => Ok(Source::SrtPull(mediamtx::build_srt_url(
-                    config.host.trim(),
-                    config.port,
-                    config.stream_id.as_deref(),
-                    if config.encrypted {
-                        config.passphrase.as_deref()
-                    } else {
-                        None
-                    },
-                    config.latency_ms,
-                    config.overhead_bandwidth,
-                ))),
-                // Camera pushes to us → MediaMTX runs an SRT server.
-                SrtMode::Caller => Ok(Source::SrtListen { port: config.port }),
-            }
-        }
-        StreamSourceInput::Multicast { config } => {
-            if config.ip.trim().is_empty() || config.port == 0 {
-                return Err(ErrorPayload::new("stream.invalid_multicast"));
-            }
-            Ok(Source::Pull(format!(
-                "udp://{}:{}",
-                config.ip.trim(),
-                config.port
-            )))
+            Ok(RtspSource { url, transport })
         }
     }
 }

@@ -41,7 +41,10 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
   const [mode, setMode] = useState<"duration" | "fixedTime">(initMode);
   const [durationInput, setDurationInput] = useState(msToDuration(configDurationMs));
   const [fixedTime, setFixedTime] = useState(initFixedTime);
+  const [name, setName] = useState(config?.name ?? "");
   const [message, setMessage] = useState(config?.message ?? t("countdown.editor.defaultMessage"));
+  const [messageScale, setMessageScale] = useState<number>(config?.messageScale ?? 100);
+  const [digitsScale, setDigitsScale] = useState<number>(config?.digitsScale ?? 100);
   const [endBehavior, setEndBehavior] = useState<CountdownEndBehavior>(
     config?.endBehavior ?? "holdZero"
   );
@@ -118,11 +121,14 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
 
     const newConfig: CountdownConfig = {
       target,
+      name: name.trim() || undefined,
       message: message.trim() || undefined,
       endBehavior,
       backgroundMediaId,
       position,
       scheduledStart,
+      messageScale,
+      digitsScale,
     };
 
     setSaving(true);
@@ -138,6 +144,8 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
           itemIndex,
           position,
           backgroundMediaId,
+          messageScale,
+          digitsScale,
         });
       } else {
         await useCountdownStore.getState().reset();
@@ -161,6 +169,19 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
         </div>
 
         <div className="p-4 space-y-3 overflow-y-auto">
+          {/* Name */}
+          <div>
+            <label className="text-xs text-muted mb-1 block">{t("countdown.editor.name")}</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={200}
+              aria-label={t("countdown.editor.name")}
+              className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+
           {/* Mode toggle + target input */}
           <div>
             <div className="flex gap-1 mb-2">
@@ -221,6 +242,60 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
               onChange={(e) => setMessage(e.target.value)}
               maxLength={200}
               className="w-full px-3 py-1.5 bg-surface-2 border border-border rounded text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          {/* Message scale */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-muted">{t("countdown.editor.messageScale")}</label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">{messageScale}%</span>
+                <button
+                  type="button"
+                  onClick={() => setMessageScale(100)}
+                  className="text-xs text-primary hover:underline"
+                >
+                  {t("countdown.editor.scaleReset")}
+                </button>
+              </div>
+            </div>
+            <input
+              type="range"
+              min={50}
+              max={300}
+              step={5}
+              value={messageScale}
+              onChange={(e) => setMessageScale(Number(e.target.value))}
+              aria-label={t("countdown.editor.messageScale")}
+              className="w-full accent-primary"
+            />
+          </div>
+
+          {/* Digits scale */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-muted">{t("countdown.editor.digitsScale")}</label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">{digitsScale}%</span>
+                <button
+                  type="button"
+                  onClick={() => setDigitsScale(100)}
+                  className="text-xs text-primary hover:underline"
+                >
+                  {t("countdown.editor.scaleReset")}
+                </button>
+              </div>
+            </div>
+            <input
+              type="range"
+              min={50}
+              max={300}
+              step={5}
+              value={digitsScale}
+              onChange={(e) => setDigitsScale(Number(e.target.value))}
+              aria-label={t("countdown.editor.digitsScale")}
+              className="w-full accent-primary"
             />
           </div>
 

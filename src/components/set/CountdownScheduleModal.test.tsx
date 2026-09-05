@@ -150,4 +150,98 @@ describe("CountdownScheduleModal", () => {
     expect(onClose).toHaveBeenCalled();
     expect(vi.mocked(updateSetItem)).not.toHaveBeenCalled();
   });
+
+  it("typing a name and saving calls updateSetItem with it", async () => {
+    render(
+      <CountdownScheduleModal item={durationItem} setId="set-1" itemIndex={0} onClose={vi.fn()} />
+    );
+
+    fireEvent.change(screen.getByLabelText("countdown.editor.name"), {
+      target: { value: "Countdown to worship" },
+    });
+    fireEvent.click(screen.getByText("countdown.modal.save"));
+
+    await waitFor(() =>
+      expect(vi.mocked(updateSetItem)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          countdownConfig: expect.objectContaining({ name: "Countdown to worship" }),
+        })
+      )
+    );
+  });
+
+  it("saves a whitespace-only name as undefined", async () => {
+    render(
+      <CountdownScheduleModal item={durationItem} setId="set-1" itemIndex={0} onClose={vi.fn()} />
+    );
+
+    fireEvent.change(screen.getByLabelText("countdown.editor.name"), {
+      target: { value: "   " },
+    });
+    fireEvent.click(screen.getByText("countdown.modal.save"));
+
+    await waitFor(() =>
+      expect(vi.mocked(updateSetItem)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          countdownConfig: expect.objectContaining({ name: undefined }),
+        })
+      )
+    );
+  });
+
+  it("moving a slider and saving persists the value", async () => {
+    render(
+      <CountdownScheduleModal item={durationItem} setId="set-1" itemIndex={0} onClose={vi.fn()} />
+    );
+
+    const [messageSlider, digitsSlider] = screen.getAllByRole("slider");
+    fireEvent.change(messageSlider, { target: { value: "150" } });
+    fireEvent.change(digitsSlider, { target: { value: "200" } });
+    fireEvent.click(screen.getByText("countdown.modal.save"));
+
+    await waitFor(() =>
+      expect(vi.mocked(updateSetItem)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          countdownConfig: expect.objectContaining({ messageScale: 150, digitsScale: 200 }),
+        })
+      )
+    );
+  });
+
+  it("reset returns a slider to 100", () => {
+    render(
+      <CountdownScheduleModal item={durationItem} setId="set-1" itemIndex={0} onClose={vi.fn()} />
+    );
+
+    const [messageSlider] = screen.getAllByRole("slider");
+    fireEvent.change(messageSlider, { target: { value: "250" } });
+    expect(screen.getByText("250%")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByText("countdown.editor.scaleReset")[0]);
+    const [resetSlider] = screen.getAllByRole("slider");
+    expect(resetSlider).toHaveValue("100");
+  });
+
+  it("arming forwards both scales", async () => {
+    render(
+      <CountdownScheduleModal item={durationItem} setId="set-1" itemIndex={3} onClose={vi.fn()} />
+    );
+
+    const [messageSlider, digitsSlider] = screen.getAllByRole("slider");
+    fireEvent.change(messageSlider, { target: { value: "150" } });
+    fireEvent.change(digitsSlider, { target: { value: "200" } });
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    const time = futureHHMM();
+    const timeInput = screen.getByDisplayValue("09:00");
+    fireEvent.change(timeInput, { target: { value: time } });
+
+    fireEvent.click(screen.getByText("countdown.modal.save"));
+
+    await waitFor(() =>
+      expect(arm).toHaveBeenCalledWith(
+        expect.objectContaining({ messageScale: 150, digitsScale: 200 })
+      )
+    );
+  });
 });

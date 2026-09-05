@@ -19,6 +19,8 @@ const defaultCountdownState: CountdownState = {
   durationMs: 0,
   remainingMs: 0,
   endBehavior: "holdZero",
+  messageScale: 100,
+  digitsScale: 100,
 };
 
 const defaultSet: ServiceSet = {

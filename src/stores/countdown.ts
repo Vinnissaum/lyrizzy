@@ -32,6 +32,8 @@ const DEFAULT_STATE: CountdownState = {
   durationMs: 0,
   remainingMs: 0,
   endBehavior: "holdZero",
+  messageScale: 100,
+  digitsScale: 100,
 };
 
 export const useCountdownStore = create<CountdownStore>((set, get) => ({

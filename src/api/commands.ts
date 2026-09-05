@@ -372,6 +372,10 @@ export interface StartCountdownParams {
   position?: CountdownPosition;
   /** Looped-video background id (mirrored into runtime state for takeover). */
   backgroundMediaId?: string;
+  /** Scale factor (%) applied to the countdown message text. */
+  messageScale?: number;
+  /** Scale factor (%) applied to the countdown digits. */
+  digitsScale?: number;
   [key: string]: unknown;
 }
 
@@ -391,6 +395,10 @@ export interface ArmCountdownParams {
   position?: CountdownPosition;
   /** Looped-video background id (mirrored into runtime state for takeover). */
   backgroundMediaId?: string;
+  /** Scale factor (%) applied to the countdown message text. */
+  messageScale?: number;
+  /** Scale factor (%) applied to the countdown digits. */
+  digitsScale?: number;
   [key: string]: unknown;
 }
 
@@ -405,6 +413,10 @@ export const resetCountdown = (output?: OutputId) =>
 
 export const getCountdownState = (output?: OutputId) =>
   invoke<CountdownState>("get_countdown_state", { output: output ?? null });
+
+/** Number of times a set has been presented (used for CCLI-style reporting). */
+export const getSetPlayCount = (id: string) =>
+  invoke<number>("get_set_play_count", { id });
 
 // ─── Backup / restore ────────────────────────────────────────────────────────
 

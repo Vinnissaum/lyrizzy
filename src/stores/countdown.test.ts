@@ -10,7 +10,7 @@ vi.mock("../api/commands", () => ({
   startCountdown: vi.fn(),
 }));
 
-import { armCountdown, resetCountdown } from "../api/commands";
+import { armCountdown, resetCountdown, startCountdown } from "../api/commands";
 import { useCountdownStore } from "./countdown";
 import type { CountdownState } from "../types";
 
@@ -19,6 +19,8 @@ const scheduledState: CountdownState = {
   durationMs: 60_000,
   remainingMs: 60_000,
   endBehavior: "holdZero",
+  messageScale: 100,
+  digitsScale: 100,
 };
 
 const idleState: CountdownState = {
@@ -26,6 +28,17 @@ const idleState: CountdownState = {
   durationMs: 0,
   remainingMs: 0,
   endBehavior: "holdZero",
+  messageScale: 100,
+  digitsScale: 100,
+};
+
+const runningState: CountdownState = {
+  mode: "running",
+  durationMs: 60_000,
+  remainingMs: 60_000,
+  endBehavior: "holdZero",
+  messageScale: 150,
+  digitsScale: 200,
 };
 
 describe("useCountdownStore — armedItem tracking", () => {
@@ -80,5 +93,49 @@ describe("useCountdownStore — armedItem tracking", () => {
     });
 
     expect(useCountdownStore.getState().armedItem).toBeNull();
+  });
+});
+
+describe("useCountdownStore — messageScale/digitsScale forwarding", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCountdownStore.setState({
+      state: idleState,
+      armedItem: null,
+      isSubscribed: false,
+    });
+  });
+
+  it("start forwards messageScale and digitsScale to startCountdown", async () => {
+    vi.mocked(startCountdown).mockResolvedValue(runningState);
+
+    await useCountdownStore.getState().start({
+      durationMs: 60_000,
+      messageScale: 150,
+      digitsScale: 200,
+    });
+
+    expect(startCountdown).toHaveBeenCalledWith(
+      expect.objectContaining({ messageScale: 150, digitsScale: 200 }),
+      "one",
+    );
+    expect(useCountdownStore.getState().state).toEqual(runningState);
+  });
+
+  it("arm forwards messageScale and digitsScale to armCountdown", async () => {
+    vi.mocked(armCountdown).mockResolvedValue(runningState);
+
+    await useCountdownStore.getState().arm({
+      scheduledStart: { hour: 19, minute: 30 },
+      durationMs: 60_000,
+      messageScale: 150,
+      digitsScale: 200,
+    });
+
+    expect(armCountdown).toHaveBeenCalledWith(
+      expect.objectContaining({ messageScale: 150, digitsScale: 200 }),
+      "one",
+    );
+    expect(useCountdownStore.getState().state).toEqual(runningState);
   });
 });

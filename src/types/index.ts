@@ -115,7 +115,10 @@ export interface MediaItemOptions {
 
 export type SetItemType = 'song' | 'media' | 'countdown' | 'web_view' | 'blank' | 'slide_show';
 
-export type WebViewMode = 'iframe' | 'mjpeg' | 'rtmp' | 'srt' | 'multicast' | 'rtsp';
+export type WebViewMode = 'iframe' | 'mjpeg' | 'rtsp';
+
+/** No-longer-configurable modes retained only so old saved data still type-checks. */
+export type LegacyWebViewMode = 'rtmp' | 'srt' | 'multicast';
 
 /** RTSP lower-transport, matching MediaMTX's `rtspTransport` path option. */
 export type RtspTransport = 'automatic' | 'udp' | 'tcp';
@@ -131,29 +134,6 @@ export interface WebViewCrop {
   offsetY: number;
 }
 
-/** Whether the camera dials us (`caller`, pushes) or waits for us (`listener`). */
-export type SrtMode = 'caller' | 'listener';
-
-/** SRT connection parameters, mirroring a camera's SRT settings page. */
-export interface SrtConfig {
-  host: string;
-  port: number;
-  mode: SrtMode;
-  streamId?: string;
-  encrypted: boolean;
-  passphrase?: string;
-  /** SRT latency in milliseconds. */
-  latencyMs?: number;
-  /** Overhead bandwidth as a percentage (libsrt `oheadbw`). */
-  overheadBandwidth?: number;
-}
-
-/** UDP multicast (MPEG-TS) parameters. */
-export interface MulticastConfig {
-  ip: string;
-  port: number;
-}
-
 /**
  * A saved stream configuration a camera item can switch between without
  * losing its other settings. `mode` stays item-level on `WebViewConfig` —
@@ -167,13 +147,11 @@ export interface StreamProfile {
 }
 
 export interface WebViewConfig {
-  mode: WebViewMode;
+  mode: WebViewMode | LegacyWebViewMode;
   url: string;
   basicAuthUser?: string;
   basicAuthPass?: string;
   crop?: WebViewCrop;
-  srtConfig?: SrtConfig;
-  multicastConfig?: MulticastConfig;
   /** RTSP lower-transport (rtsp mode reuses `url` for the rtsp:// address). */
   rtspTransport?: RtspTransport;
   profiles?: StreamProfile[];
@@ -181,11 +159,7 @@ export interface WebViewConfig {
 }
 
 /** Discriminated stream source sent to the `start_stream_proxy` command. */
-export type StreamSource =
-  | { kind: 'rtmp'; url: string }
-  | { kind: 'rtsp'; url: string; transport: RtspTransport }
-  | { kind: 'srt'; config: SrtConfig }
-  | { kind: 'multicast'; config: MulticastConfig };
+export type StreamSource = { kind: 'rtsp'; url: string; transport: RtspTransport };
 
 export interface SetItem {
   id: string;
@@ -308,12 +282,15 @@ export interface ScheduledStart {
 
 export interface CountdownConfig {
   target: CountdownTarget;
+  name?: string;
   message?: string;
   endBehavior: CountdownEndBehavior;
   backgroundMediaId?: string;
   position?: CountdownPosition;
   /** When set, the countdown is armed: waits until HH:MM then auto-starts. */
   scheduledStart?: ScheduledStart;
+  messageScale?: number;
+  digitsScale?: number;
 }
 
 export interface CountdownState {
@@ -331,6 +308,8 @@ export interface CountdownState {
   position?: CountdownPosition;
   /** Looped-video background id, mirrored from the source item config. */
   backgroundMediaId?: string;
+  messageScale: number;
+  digitsScale: number;
 }
 
 /** Emitted when a scheduled countdown reaches its wall-clock start time. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WebViewConfig } from '../types';
-import { resolveActiveSource } from './streamProfile';
+import { PROFILE_MODES, resolveActiveSource } from './streamProfile';
 
 function baseConfig(overrides: Partial<WebViewConfig> = {}): WebViewConfig {
   return {
@@ -80,5 +80,11 @@ describe('resolveActiveSource', () => {
       url: 'rtsp://p1.example.com',
       transport: undefined,
     });
+  });
+});
+
+describe('PROFILE_MODES', () => {
+  it('excludes "iframe"', () => {
+    expect(PROFILE_MODES).not.toContain('iframe');
   });
 });

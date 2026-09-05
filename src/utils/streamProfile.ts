@@ -1,4 +1,7 @@
-import type { RtspTransport, WebViewConfig } from '../types';
+import type { RtspTransport, WebViewConfig, WebViewMode } from '../types';
+
+/** Modes that support saved stream profiles (switching connections without losing settings). */
+export const PROFILE_MODES: WebViewMode[] = ['rtsp', 'mjpeg'];
 
 /** The resolved connection details for whichever source is currently active. */
 export interface ActiveSource {

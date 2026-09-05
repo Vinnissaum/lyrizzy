@@ -131,6 +131,15 @@
       "title": "Excluir conjunto",
       "message": "Deseja excluir \"{{name}}\"? Esta ação não pode ser desfeita.",
       "confirm": "Excluir"
+    },
+    "picker": {
+      "label": "Conjunto",
+      "switch": "Trocar conjunto",
+      "create": "Novo conjunto",
+      "rename": "Renomear",
+      "delete": "Excluir conjunto",
+      "deleteWithPlays": "Excluir \"{{name}}\"? {{count}} registro(s) de apresentação serão removidos com ele.",
+      "lastSetHint": "Uma biblioteca sempre mantém ao menos um conjunto."
     }
   },
   "builder": {
@@ -140,13 +149,12 @@
     "renameTip": "Clique para renomear",
     "invalidRef": "⚠ Referência inválida",
     "blank": "Tela preta",
-    "countdownSummary": "Contagem — {{dur}}",
     "noUrl": "sem URL",
     "add": {
       "song": "Música",
       "media": "Mídia",
       "countdown": "Contagem",
-      "webView": "WebView",
+      "webView": "Câmera",
       "blank": "Tela preta",
       "slideShow": "Apresentação"
     },
@@ -250,6 +258,7 @@
   },
   "countdown": {
     "title": "Cronômetro",
+    "defaultName": "Cronômetro",
     "setDuration": "Definir duração",
     "min": "Min",
     "sec": "Seg",
@@ -267,7 +276,11 @@
       "durationError": "Formato inválido. Use mm:ss ou hh:mm:ss",
       "defaultMessage": "O culto começa em…",
       "bgLabel": "Selecionar vídeo de fundo…",
-      "position": "Posição na tela"
+      "position": "Posição na tela",
+      "name": "Nome",
+      "messageScale": "Tamanho da mensagem",
+      "digitsScale": "Tamanho dos dígitos",
+      "scaleReset": "Redefinir para 100%"
     },
     "schedule": {
       "button": "Configurar / Agendar",
@@ -316,6 +329,10 @@
       "advanceSet": "Avançar conjunto"
     }
   },
+  "itemMeta": {
+    "camera": "Câmera — {{host}}",
+    "webPage": "Página web — {{host}}"
+  },
   "webview": {
     "editor": {
       "mode": "Modo",
@@ -325,12 +342,9 @@
       "pass": "Senha",
       "saving": "Salvando…",
       "modes": {
-        "iframe": "Iframe (URL)",
-        "mjpeg": "MJPEG (câmera)",
-        "rtmp": "RTMP (câmera)",
-        "rtsp": "RTSP (câmera)",
-        "srt": "SRT (câmera)",
-        "multicast": "Multicast (câmera)"
+        "iframe": "Página web (URL)",
+        "mjpeg": "MJPEG",
+        "rtsp": "RTSP"
       },
       "crop": {
         "label": "Recorte / zoom (iframe)",
@@ -341,9 +355,6 @@
         "reset": "Redefinir",
         "noPreview": "Informe uma URL válida para pré-visualizar"
       },
-      "rtmp": {
-        "hint": "O fluxo RTMP é convertido para WebRTC pelo servidor MediaMTX. Inclua usuário e senha na própria URL, se necessário."
-      },
       "rtsp": {
         "transport": "Transporte",
         "transports": {
@@ -353,36 +364,9 @@
         },
         "hint": "O fluxo RTSP é convertido para WebRTC pelo servidor MediaMTX. UDP equivale à opção do OBS rtsp_transport=udp."
       },
-      "srt": {
-        "host": "Servidor",
-        "port": "Porta",
-        "mode": "Modo",
-        "modes": {
-          "listener": "Listener (a câmera aguarda)",
-          "caller": "Caller (a câmera envia)"
-        },
-        "modeHint": {
-          "listener": "A câmera aguarda conexões; o app conecta nela.",
-          "caller": "A câmera envia o fluxo; o app abre um servidor SRT na porta informada."
-        },
-        "streamId": "Stream ID",
-        "optional": "opcional",
-        "encrypted": "Criptografado",
-        "passphrase": "Senha (passphrase)",
-        "latency": "Latência (ms)",
-        "overhead": "Banda extra (%)",
-        "hint": "O fluxo SRT é convertido para WebRTC pelo servidor MediaMTX."
-      },
-      "multicast": {
-        "ip": "IP multicast",
-        "port": "Porta",
-        "hint": "O fluxo UDP/MPEG-TS multicast é convertido para WebRTC pelo servidor MediaMTX."
-      },
       "errors": {
         "urlRequired": "URL obrigatória",
-        "urlInvalid": "URL inválida",
-        "srtRequired": "Servidor e porta SRT são obrigatórios",
-        "multicastRequired": "IP e porta multicast são obrigatórios"
+        "urlInvalid": "URL inválida"
       },
       "warnings": {
         "http": "Conexões http podem ser bloqueadas pelo navegador."
@@ -395,7 +379,8 @@
         "labelPlaceholder": "ex.: Principal (4K) / Reduzido (1080p)",
         "urlField": "URL",
         "hint": "Os perfis definem qual fluxo da câmera este app recebe — um sub-fluxo mais leve reduz a carga na rede. Isso não afeta o fluxo principal que o OBS ou o YouTube recebem da câmera; eles continuam usando o perfil que a câmera expõe a eles, de forma independente do que é selecionado aqui."
-      }
+      },
+      "unsupportedMode": "Este modo não é mais suportado — escolha RTSP, MJPEG ou Página web."
     },
     "stream": {
       "errors": {

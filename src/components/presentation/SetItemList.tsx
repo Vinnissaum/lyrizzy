@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
@@ -6,6 +7,7 @@ import { Play } from "lucide-react";
 import { ItemTypeIcon, itemLabel, songArtist } from "./itemMeta";
 
 export const SetItemList: React.FC = () => {
+  const { t } = useTranslation();
   const items = usePresentationStore((s) => s.state?.set?.items ?? []);
   const currentItemIndex = usePresentationStore((s) => s.state?.currentItemIndex ?? -1);
   const pendingSelection = usePresentationStore((s) => s.pendingSelection);
@@ -39,7 +41,7 @@ export const SetItemList: React.FC = () => {
             <ItemTypeIcon item={item} size={16} className="shrink-0" />
             {isActive && <Play size={12} className="shrink-0 fill-current" />}
             <span className="min-w-0 flex-1 flex flex-col">
-              <span className="truncate">{itemLabel(item, songs, media)}</span>
+              <span className="truncate">{itemLabel(item, songs, media, t)}</span>
               {artist && <span className="truncate text-xs text-muted">{artist}</span>}
             </span>
           </button>

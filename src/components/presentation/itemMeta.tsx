@@ -5,11 +5,23 @@ import {
   Image as ImageIcon,
   Timer,
   Globe,
+  Video,
   FileText,
   Square,
   type LucideProps,
 } from "lucide-react";
+import type { TFunction } from "i18next";
 import type { SetItem, Song, Media } from "../../types";
+
+/** rtsp/mjpeg webviews are camera feeds; iframe (and legacy modes) are web pages. */
+function isCameraWebViewMode(mode: string | undefined): boolean {
+  return mode === "rtsp" || mode === "mjpeg";
+}
+
+/** Host (+ port, if any) from a stream/page URL, for use in camera/webpage labels. */
+function urlHost(url: string): string {
+  return url.replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//, "").split(/[/?#]/)[0] || url;
+}
 
 /**
  * Icon for a set-item type. Uses lucide (SVG) instead of emoji/Unicode glyphs,
@@ -27,7 +39,11 @@ export const ItemTypeIcon: React.FC<{ item: SetItem } & LucideProps> = ({
     case "countdown":
       return <Timer {...props} />;
     case "web_view":
-      return <Globe {...props} />;
+      return isCameraWebViewMode(item.webviewConfig?.mode) ? (
+        <Video {...props} />
+      ) : (
+        <Globe {...props} />
+      );
     case "slide_show":
       return <FileText {...props} />;
     default:
@@ -43,6 +59,7 @@ export function itemLabel(
   item: SetItem,
   songs: Song[],
   media: Media[],
+  t: TFunction,
   fallback = "—",
 ): string {
   const songById = (id?: string) => songs.find((s) => s.id === id);
@@ -59,18 +76,19 @@ export function itemLabel(
     }
     case "countdown": {
       const cfg = item.countdownConfig;
-      if (cfg?.target?.kind === "fixedTime") {
-        const h = String(cfg.target.hour).padStart(2, "0");
-        const min = String(cfg.target.minute).padStart(2, "0");
-        return `Cronômetro — ${h}:${min}`;
-      }
-      const durMs = cfg?.target?.kind === "duration" ? cfg.target.durationMs : 0;
-      const mins = Math.floor(durMs / 60000);
-      const secs = Math.floor((durMs % 60000) / 1000);
-      return `Cronômetro — ${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+      return cfg?.name?.trim() || t("countdown.defaultName");
     }
     case "web_view": {
-      const url = item.webviewConfig?.url ?? "";
+      const cfg = item.webviewConfig;
+      const url = cfg?.url ?? "";
+      const host = urlHost(url);
+      if (isCameraWebViewMode(cfg?.mode)) {
+        return t("itemMeta.camera", { host });
+      }
+      if (cfg?.mode === "iframe") {
+        return t("itemMeta.webPage", { host });
+      }
+      // Legacy modes (rtmp/srt/multicast): unchanged fallback behaviour.
       const short = url.replace(/^https?:\/\//, "").slice(0, 30);
       return short || "WebView";
     }

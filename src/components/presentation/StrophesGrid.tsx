@@ -188,7 +188,7 @@ export const StrophesGrid: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full text-fg">
         <ItemTypeIcon item={activeItem} size={32} />
-        <p className="text-sm font-medium mt-2">{itemLabel(activeItem, songs, media)}</p>
+        <p className="text-sm font-medium mt-2">{itemLabel(activeItem, songs, media, t)}</p>
         <p className="text-xs text-muted mt-1">{t("presentation.singleItem.hint")}</p>
       </div>
     );

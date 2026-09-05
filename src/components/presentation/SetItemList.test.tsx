@@ -188,6 +188,7 @@ describe("SetItemList", () => {
     // itemLabel now returns plain text; the type icon is a separate lucide SVG.
     expect(screen.getByText("Aleluia")).toBeInTheDocument();
     expect(screen.getByText("Fundo Azul")).toBeInTheDocument();
-    expect(screen.getByText("Cronômetro — 05:00")).toBeInTheDocument();
+    // Unnamed countdown falls back to the localized default name — no duration.
+    expect(screen.getByText("Cronômetro")).toBeInTheDocument();
   });
 });

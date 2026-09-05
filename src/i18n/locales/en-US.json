@@ -131,6 +131,15 @@
       "title": "Delete set",
       "message": "Delete \"{{name}}\"? This action cannot be undone.",
       "confirm": "Delete"
+    },
+    "picker": {
+      "label": "Set",
+      "switch": "Switch set",
+      "create": "New set",
+      "rename": "Rename",
+      "delete": "Delete set",
+      "deleteWithPlays": "Delete \"{{name}}\"? {{count}} presentation record(s) will be removed with it.",
+      "lastSetHint": "A library always keeps at least one set."
     }
   },
   "builder": {
@@ -140,13 +149,12 @@
     "renameTip": "Click to rename",
     "invalidRef": "⚠ Invalid reference",
     "blank": "Black screen",
-    "countdownSummary": "Countdown — {{dur}}",
     "noUrl": "no URL",
     "add": {
       "song": "Song",
       "media": "Media",
       "countdown": "Countdown",
-      "webView": "WebView",
+      "webView": "Camera",
       "blank": "Black screen",
       "slideShow": "Slideshow"
     },
@@ -250,6 +258,7 @@
   },
   "countdown": {
     "title": "Countdown",
+    "defaultName": "Countdown",
     "setDuration": "Set duration",
     "min": "Min",
     "sec": "Sec",
@@ -267,7 +276,11 @@
       "durationError": "Invalid format. Use mm:ss or hh:mm:ss",
       "defaultMessage": "Service starts in…",
       "bgLabel": "Select background video…",
-      "position": "Screen position"
+      "position": "Screen position",
+      "name": "Name",
+      "messageScale": "Message size",
+      "digitsScale": "Digits size",
+      "scaleReset": "Reset to 100%"
     },
     "schedule": {
       "button": "Configure / Schedule",
@@ -316,6 +329,10 @@
       "advanceSet": "Advance set"
     }
   },
+  "itemMeta": {
+    "camera": "Camera — {{host}}",
+    "webPage": "Web page — {{host}}"
+  },
   "webview": {
     "editor": {
       "mode": "Mode",
@@ -325,12 +342,9 @@
       "pass": "Password",
       "saving": "Saving…",
       "modes": {
-        "iframe": "Iframe (URL)",
-        "mjpeg": "MJPEG (camera)",
-        "rtmp": "RTMP (camera)",
-        "rtsp": "RTSP (camera)",
-        "srt": "SRT (camera)",
-        "multicast": "Multicast (camera)"
+        "iframe": "Web page (URL)",
+        "mjpeg": "MJPEG",
+        "rtsp": "RTSP"
       },
       "crop": {
         "label": "Crop / zoom (iframe)",
@@ -341,9 +355,6 @@
         "reset": "Reset",
         "noPreview": "Enter a valid URL to preview"
       },
-      "rtmp": {
-        "hint": "The RTMP stream is converted to WebRTC by the MediaMTX server. Include a username and password in the URL itself if required."
-      },
       "rtsp": {
         "transport": "Transport",
         "transports": {
@@ -353,36 +364,9 @@
         },
         "hint": "The RTSP stream is converted to WebRTC by the MediaMTX server. UDP matches OBS's rtsp_transport=udp option."
       },
-      "srt": {
-        "host": "Server",
-        "port": "Port",
-        "mode": "Mode",
-        "modes": {
-          "listener": "Listener (camera waits)",
-          "caller": "Caller (camera pushes)"
-        },
-        "modeHint": {
-          "listener": "The camera waits for connections; the app connects to it.",
-          "caller": "The camera pushes the stream; the app opens an SRT server on the given port."
-        },
-        "streamId": "Stream ID",
-        "optional": "optional",
-        "encrypted": "Encrypted",
-        "passphrase": "Passphrase",
-        "latency": "Latency (ms)",
-        "overhead": "Overhead bandwidth (%)",
-        "hint": "The SRT stream is converted to WebRTC by the MediaMTX server."
-      },
-      "multicast": {
-        "ip": "Multicast IP",
-        "port": "Port",
-        "hint": "The UDP/MPEG-TS multicast stream is converted to WebRTC by the MediaMTX server."
-      },
       "errors": {
         "urlRequired": "URL is required",
-        "urlInvalid": "Invalid URL",
-        "srtRequired": "SRT server and port are required",
-        "multicastRequired": "Multicast IP and port are required"
+        "urlInvalid": "Invalid URL"
       },
       "warnings": {
         "http": "HTTP connections may be blocked by the browser."
@@ -395,7 +379,8 @@
         "labelPlaceholder": "e.g. Main (4K) / Sub (1080p)",
         "urlField": "URL",
         "hint": "Profiles select which camera stream this app pulls — a lighter sub-stream reduces network load. This does not affect the main feed OBS or YouTube pull from the camera; those keep using whatever profile the camera exposes to them, independently of what is selected here."
-      }
+      },
+      "unsupportedMode": "This mode is no longer supported — choose RTSP, MJPEG or Web page."
     },
     "stream": {
       "errors": {

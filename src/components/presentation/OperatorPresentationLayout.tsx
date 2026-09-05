@@ -143,7 +143,7 @@ export const OperatorPresentationLayout: React.FC<{
   const currentItemIndex = state?.currentItemIndex ?? 0;
   const activeItem = items[currentItemIndex];
   const activeItemLabel = activeItem
-    ? itemLabel(activeItem, songs, media)
+    ? itemLabel(activeItem, songs, media, t)
     : "—";
   const activeItemArtist = activeItem ? songArtist(activeItem, songs) : undefined;
 

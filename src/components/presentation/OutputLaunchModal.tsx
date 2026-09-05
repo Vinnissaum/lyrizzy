@@ -204,7 +204,7 @@ export const OutputLaunchModal: React.FC<{
                     >
                       <ItemTypeIcon item={item} size={16} className="shrink-0" />
                       <span className="min-w-0 flex-1 flex flex-col">
-                        <span className="truncate">{itemLabel(item, songs, media)}</span>
+                        <span className="truncate">{itemLabel(item, songs, media, t)}</span>
                         {artist && (
                           <span className="truncate text-xs text-muted">{artist}</span>
                         )}

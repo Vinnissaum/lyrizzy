@@ -576,6 +576,40 @@ describe("PresentationApp — set-enter never arms (manual present)", () => {
     });
   });
 
+  it("forwards messageScale/digitsScale from the item's countdown config", () => {
+    presStateMock = {
+      ...countdownItemState,
+      set: {
+        ...countdownItemState.set!,
+        items: [
+          {
+            id: "cd-1",
+            itemType: "countdown",
+            countdownConfig: {
+              target: { kind: "duration", durationMs: 600000 },
+              message: "Começa em…",
+              endBehavior: "holdZero",
+              position: "bottom-right",
+              messageScale: 150,
+              digitsScale: 60,
+            },
+          } as never,
+        ],
+      },
+    };
+    render(<PresentationApp />);
+    expect(cdStartMock).toHaveBeenCalledTimes(1);
+    expect(cdStartMock).toHaveBeenCalledWith({
+      target: { kind: "duration", durationMs: 600000 },
+      message: "Começa em…",
+      endBehavior: "holdZero",
+      position: "bottom-right",
+      backgroundMediaId: undefined,
+      messageScale: 150,
+      digitsScale: 60,
+    });
+  });
+
   it("does NOT restart/arm when a schedule is already pending (scheduled)", () => {
     cdStateMock = {
       mode: "scheduled",

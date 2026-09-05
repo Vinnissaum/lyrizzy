@@ -73,6 +73,30 @@ vi.mock("./SongBackground", () => ({
   SongBackground: () => <div data-testid="song-background-stub" />,
 }));
 
+// Wrap the real CountdownRenderer to also expose the config it received as
+// data attributes — jsdom's CSS engine silently drops the clamp()/calc()
+// font-size values CountdownRenderer computes from messageScale/digitsScale,
+// so asserting on rendered style.fontSize is unreliable here. Reading the
+// forwarded config directly verifies T19's "scales are mirrored" requirement
+// without depending on that CSS serialization.
+vi.mock("./CountdownRenderer", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./CountdownRenderer")>();
+  return {
+    ...actual,
+    CountdownRenderer: (props: Parameters<typeof actual.CountdownRenderer>[0]) => (
+      <div
+        data-testid="countdown-renderer-config"
+        data-position={props.config.position}
+        data-message-scale={props.config.messageScale}
+        data-digits-scale={props.config.digitsScale}
+      >
+        <actual.CountdownRenderer {...props} />
+      </div>
+    ),
+  };
+});
+
 import { usePresentationStore } from "../../stores/presentation";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
@@ -441,6 +465,33 @@ describe("LivePreview", () => {
       render(<LivePreview />);
       expect(screen.getByText("Aleluia")).toBeInTheDocument();
       expect(screen.queryByText("10:00")).toBeNull();
+    });
+
+    // ── T19: mirrored appearance for the synthetic takeover config ─────────────
+    it("renders the takeover preview bottom-right when countdown.position is bottom-right", () => {
+      cdStateMock = { ...runningTakeover, position: "bottom-right" };
+      mockStores(baseState());
+      const { container } = render(<LivePreview />);
+      const positioned = container.querySelector(".justify-end.items-end.text-right");
+      expect(positioned).toBeTruthy();
+      expect(container.querySelector(".justify-center.items-center.text-center")).toBeNull();
+    });
+
+    it("renders the takeover preview with the mirrored message/digits scales", () => {
+      cdStateMock = {
+        ...runningTakeover,
+        message: "Volta já já",
+        messageScale: 150,
+        digitsScale: 60,
+      };
+      mockStores(baseState());
+      render(<LivePreview />);
+      const wrapper = screen.getByTestId("countdown-renderer-config");
+      expect(wrapper.getAttribute("data-message-scale")).toBe("150");
+      expect(wrapper.getAttribute("data-digits-scale")).toBe("60");
+      // The underlying renderer still shows the mirrored message/digits.
+      expect(screen.getByText("Volta já já")).toBeInTheDocument();
+      expect(screen.getByText("10:00")).toBeInTheDocument();
     });
   });
 });

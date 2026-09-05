@@ -85,7 +85,9 @@ export const LivePreview: React.FC = () => {
       target: { kind: "duration", durationMs: countdown.durationMs },
       message: countdown.message,
       endBehavior: countdown.endBehavior,
-      position: "center",
+      position: countdown.position ?? "center",
+      messageScale: countdown.messageScale,
+      digitsScale: countdown.digitsScale,
     };
     return (
       <div

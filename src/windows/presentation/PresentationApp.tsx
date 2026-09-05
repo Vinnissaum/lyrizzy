@@ -194,9 +194,24 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
     if (currentItem?.itemType === "countdown" && currentItem.countdownConfig) {
       const cdMode = useCountdownStore.getState().state.mode;
       if (cdMode === "scheduled" || cdMode === "running") return;
-      const { target, message, endBehavior, position, backgroundMediaId } =
-        currentItem.countdownConfig;
-      startCountdown({ target, message, endBehavior, position, backgroundMediaId });
+      const {
+        target,
+        message,
+        endBehavior,
+        position,
+        backgroundMediaId,
+        messageScale,
+        digitsScale,
+      } = currentItem.countdownConfig;
+      startCountdown({
+        target,
+        message,
+        endBehavior,
+        position,
+        backgroundMediaId,
+        messageScale,
+        digitsScale,
+      });
     }
   }, [currentItem?.id]);
 
@@ -228,6 +243,8 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
       endBehavior: countdown.endBehavior,
       position: countdown.position ?? "center",
       backgroundMediaId: countdown.backgroundMediaId,
+      messageScale: countdown.messageScale,
+      digitsScale: countdown.digitsScale,
     };
     // Resolve the configured background the same way the manual countdown branch
     // does, so a takeover honours the set item's background video.

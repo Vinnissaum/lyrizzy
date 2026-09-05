@@ -1,6 +1,9 @@
 import { create } from "zustand";
-import { getOrCreateDefaultSet, listSongs } from "../api/commands";
+import { getOrCreateDefaultSet, getSet, getSetting, listSongs, setSetting } from "../api/commands";
 import type { Song } from "../types";
+
+/** Settings key for the operator's last-active set selection. */
+export const ACTIVE_SET_KEY = "ui.active_set_id";
 
 export type AppView =
   | "home"
@@ -21,7 +24,7 @@ interface LibraryStore {
   editingSongId: string | null;
   editingSetId: string | null;
   currentView: AppView;
-  fixedSetId: string | null;
+  activeSetId: string | null;
   /** True while `editingSongId` was opened via `openLiveEditor` (editing over
    *  the presentation layout). `closeEditor` checks this to avoid navigating
    *  `currentView` away from the presentation layout on save/delete. */
@@ -35,7 +38,8 @@ interface LibraryStore {
   closeLiveEditor: () => void;
   openSetBuilder: (id?: string) => void;
   setView: (view: AppView) => void;
-  loadFixedSet: () => Promise<void>;
+  loadActiveSet: () => Promise<void>;
+  setActiveSet: (id: string) => Promise<void>;
 }
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
@@ -45,7 +49,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   editingSongId: null,
   editingSetId: null,
   currentView: "home",
-  fixedSetId: null,
+  activeSetId: null,
   isLiveEdit: false,
 
   setSearch: (search) => {
@@ -93,12 +97,32 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     set({ currentView: view });
   },
 
-  loadFixedSet: async () => {
+  loadActiveSet: async () => {
+    let id: string | null = null;
     try {
-      const defaultSet = await getOrCreateDefaultSet();
-      set({ fixedSetId: defaultSet.id });
+      id = await getSetting(ACTIVE_SET_KEY);
+    } catch {
+      // Setting missing → fall through to the default set.
+    }
+    if (id) {
+      try {
+        await getSet(id);
+      } catch {
+        id = null;
+      }
+    }
+    if (!id) {
+      id = (await getOrCreateDefaultSet()).id;
+    }
+    set({ activeSetId: id });
+  },
+
+  setActiveSet: async (id: string) => {
+    set({ activeSetId: id });
+    try {
+      await setSetting(ACTIVE_SET_KEY, id);
     } catch (err) {
-      console.error("Falha ao carregar conjunto fixo:", err);
+      console.error("Falha ao salvar conjunto ativo:", err);
     }
   },
 }));

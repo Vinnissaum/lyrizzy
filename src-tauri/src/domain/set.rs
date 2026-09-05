@@ -14,19 +14,29 @@ pub enum SetItemType {
     SlideShow,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum WebViewMode {
     Iframe,
     Mjpeg,
-    /// RTMP(S) camera stream, bridged to WebRTC by the MediaMTX proxy.
-    Rtmp,
-    /// SRT camera stream, bridged to WebRTC by the MediaMTX proxy.
-    Srt,
-    /// UDP/MPEG-TS multicast stream, bridged to WebRTC by the MediaMTX proxy.
-    Multicast,
     /// RTSP camera stream, bridged to WebRTC by the MediaMTX proxy.
     Rtsp,
+    /// Legacy: parse-only, never offered, never rendered. Kept as a variant
+    /// (rather than deleted) so a `v1.3.0` item using this mode deserializes
+    /// into an explicit unsupported state instead of failing to load.
+    Rtmp,
+    /// Legacy: parse-only, never offered, never rendered. See `Rtmp`.
+    Srt,
+    /// Legacy: parse-only, never offered, never rendered. See `Rtmp`.
+    Multicast,
+}
+
+impl WebViewMode {
+    /// True only for the modes the operator can still pick or that still
+    /// render — the legacy modes remain parseable but are otherwise inert.
+    pub fn is_supported(self) -> bool {
+        matches!(self, Self::Iframe | Self::Mjpeg | Self::Rtsp)
+    }
 }
 
 /// RTSP lower-transport, matching MediaMTX's `rtspTransport` path option.
@@ -47,44 +57,6 @@ pub struct WebViewCrop {
     pub zoom: f64,
     pub offset_x: f64,
     pub offset_y: f64,
-}
-
-/// Whether the camera initiates the SRT connection (`Caller`, it pushes to us)
-/// or waits for one (`Listener`, we pull from it).
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum SrtMode {
-    Caller,
-    Listener,
-}
-
-/// SRT connection parameters, mirroring a camera's SRT settings page.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct SrtConfig {
-    pub host: String,
-    pub port: u16,
-    pub mode: SrtMode,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stream_id: Option<String>,
-    #[serde(default)]
-    pub encrypted: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub passphrase: Option<String>,
-    /// SRT latency in milliseconds.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub latency_ms: Option<u32>,
-    /// Overhead bandwidth as a percentage (libsrt `oheadbw`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub overhead_bandwidth: Option<u32>,
-}
-
-/// UDP multicast (MPEG-TS) parameters.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct MulticastConfig {
-    pub ip: String,
-    pub port: u16,
 }
 
 /// A saved stream configuration a camera item can switch between without
@@ -109,10 +81,6 @@ pub struct WebViewConfig {
     pub basic_auth_pass: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crop: Option<WebViewCrop>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub srt_config: Option<SrtConfig>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub multicast_config: Option<MulticastConfig>,
     /// RTSP lower-transport (rtsp mode reuses `url` for the rtsp:// address).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rtsp_transport: Option<RtspTransport>,
@@ -227,11 +195,14 @@ mod tests {
             media_options: None,
             countdown_config: Some(CountdownConfig {
                 target: crate::domain::countdown::CountdownTarget::Duration { duration_ms: 600_000 },
+                name: None,
                 message: Some("Serviço em breve".into()),
                 end_behavior: CountdownEndBehavior::HoldZero,
                 background_media_id: None,
                 position: Default::default(),
                 scheduled_start: None,
+                message_scale: 100,
+                digits_scale: 100,
             }),
             webview_config: None,
             sort_order: 0,
@@ -261,8 +232,6 @@ mod tests {
                 basic_auth_user: Some("admin".into()),
                 basic_auth_pass: Some("secret".into()),
                 crop: None,
-                srt_config: None,
-                multicast_config: None,
                 rtsp_transport: None,
                 profiles: Vec::new(),
                 active_profile_id: None,
@@ -325,8 +294,6 @@ mod tests {
             basic_auth_user: None,
             basic_auth_pass: None,
             crop: None,
-            srt_config: None,
-            multicast_config: None,
             rtsp_transport: None,
             profiles: Vec::new(),
             active_profile_id: None,
@@ -334,5 +301,103 @@ mod tests {
         let json = serde_json::to_string(&config).unwrap();
         assert!(!json.contains("\"profiles\""), "{json}");
         assert!(!json.contains("\"activeProfileId\""), "{json}");
+    }
+
+    /// A `v1.3.0` blob for a mode/config we no longer offer must still
+    /// deserialize (unknown keys ignored, no `deny_unknown_fields`), landing
+    /// on the matching legacy variant in an explicitly unsupported state.
+    #[test]
+    fn v1_3_0_srt_blob_deserializes_to_unsupported_legacy_variant() {
+        let legacy_json = r#"{
+            "mode": "srt",
+            "url": "",
+            "basicAuthUser": null,
+            "basicAuthPass": null,
+            "srtConfig": {
+                "host": "192.168.1.30",
+                "port": 9000,
+                "mode": "caller",
+                "streamId": "cam1",
+                "encrypted": true,
+                "passphrase": "secret",
+                "latencyMs": 200,
+                "overheadBandwidth": 25
+            }
+        }"#;
+        let config: WebViewConfig = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(config.mode, WebViewMode::Srt);
+        assert!(!config.mode.is_supported());
+    }
+
+    #[test]
+    fn v1_3_0_multicast_blob_deserializes_to_unsupported_legacy_variant() {
+        let legacy_json = r#"{
+            "mode": "multicast",
+            "url": "",
+            "basicAuthUser": null,
+            "basicAuthPass": null,
+            "multicastConfig": {
+                "ip": "239.1.1.1",
+                "port": 5000
+            }
+        }"#;
+        let config: WebViewConfig = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(config.mode, WebViewMode::Multicast);
+        assert!(!config.mode.is_supported());
+    }
+
+    #[test]
+    fn v1_3_0_rtmp_blob_deserializes_to_unsupported_legacy_variant() {
+        let legacy_json = r#"{
+            "mode": "rtmp",
+            "url": "rtmp://192.168.1.40/live",
+            "basicAuthUser": null,
+            "basicAuthPass": null
+        }"#;
+        let config: WebViewConfig = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(config.mode, WebViewMode::Rtmp);
+        assert!(!config.mode.is_supported());
+    }
+
+    #[test]
+    fn rtsp_config_with_profiles_round_trips_byte_for_byte() {
+        let config = WebViewConfig {
+            mode: WebViewMode::Rtsp,
+            url: "rtsp://192.168.1.20/stream".into(),
+            basic_auth_user: None,
+            basic_auth_pass: None,
+            crop: None,
+            rtsp_transport: Some(RtspTransport::Tcp),
+            profiles: vec![
+                StreamProfile {
+                    id: "profile1".into(),
+                    label: "Main Cam".into(),
+                    url: "rtsp://192.168.1.20/stream".into(),
+                    rtsp_transport: Some(RtspTransport::Tcp),
+                },
+                StreamProfile {
+                    id: "profile2".into(),
+                    label: "Backup Cam".into(),
+                    url: "rtsp://192.168.1.21/stream".into(),
+                    rtsp_transport: None,
+                },
+            ],
+            active_profile_id: Some("profile1".into()),
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let back: WebViewConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, config);
+        let json_again = serde_json::to_string(&back).unwrap();
+        assert_eq!(json_again, json, "expected byte-for-byte round trip");
+    }
+
+    #[test]
+    fn is_supported_truth_table() {
+        assert!(WebViewMode::Iframe.is_supported());
+        assert!(WebViewMode::Mjpeg.is_supported());
+        assert!(WebViewMode::Rtsp.is_supported());
+        assert!(!WebViewMode::Rtmp.is_supported());
+        assert!(!WebViewMode::Srt.is_supported());
+        assert!(!WebViewMode::Multicast.is_supported());
     }
 }

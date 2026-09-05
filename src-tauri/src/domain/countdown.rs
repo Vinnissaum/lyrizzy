@@ -56,6 +56,11 @@ pub enum CountdownPosition {
     BottomRight,
 }
 
+/// Default scale for message/digits — 100 = the Phase 16 rendering exactly.
+fn default_scale() -> u16 {
+    100
+}
+
 /// Configuration for a countdown set item.
 ///
 /// Custom Deserialize provides backward compatibility with the old flat shape
@@ -64,6 +69,8 @@ pub enum CountdownPosition {
 #[serde(rename_all = "camelCase")]
 pub struct CountdownConfig {
     pub target: CountdownTarget,
+    /// Operator-supplied item name. `None` → the UI shows its localized default.
+    pub name: Option<String>,
     pub message: Option<String>,
     pub end_behavior: CountdownEndBehavior,
     /// Optional media ID for a looped video background behind the digits.
@@ -75,12 +82,23 @@ pub struct CountdownConfig {
     /// If set, the operator arming this item enters Scheduled mode until the
     /// wall-clock hits HH:MM, then auto-starts the countdown.
     pub scheduled_start: Option<ScheduledStart>,
+    /// Percent of the built-in size. 100 = the Phase 16 rendering exactly.
+    /// Clamped to 50..=300 on read; never rejected.
+    #[serde(default = "default_scale")]
+    pub message_scale: u16,
+    #[serde(default = "default_scale")]
+    pub digits_scale: u16,
 }
 
 impl<'de> Deserialize<'de> for CountdownConfig {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use serde::de::Error;
         let value = serde_json::Value::deserialize(deserializer)?;
+
+        let name = value
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
 
         let message = value
             .get("message")
@@ -112,6 +130,20 @@ impl<'de> Deserialize<'de> for CountdownConfig {
                 }
             });
 
+        // Clamp rather than reject: an out-of-range or missing scale falls back
+        // to a safe value instead of failing the whole deserialize.
+        let message_scale: u16 = value
+            .get("messageScale")
+            .and_then(|v| v.as_u64())
+            .map(|n| n.clamp(50, 300) as u16)
+            .unwrap_or(100);
+
+        let digits_scale: u16 = value
+            .get("digitsScale")
+            .and_then(|v| v.as_u64())
+            .map(|n| n.clamp(50, 300) as u16)
+            .unwrap_or(100);
+
         // New format: has a "target" field.
         let target = if let Some(target_val) = value.get("target") {
             serde_json::from_value(target_val.clone())
@@ -125,11 +157,14 @@ impl<'de> Deserialize<'de> for CountdownConfig {
 
         Ok(CountdownConfig {
             target,
+            name,
             message,
             end_behavior,
             background_media_id,
             position,
             scheduled_start,
+            message_scale,
+            digits_scale,
         })
     }
 }
@@ -162,6 +197,13 @@ pub struct CountdownState {
     /// `CountdownConfig.background_media_id` for the same reason as `position`.
     #[serde(default)]
     pub background_media_id: Option<String>,
+    /// Mirrored from the source item's `CountdownConfig.message_scale`/`digits_scale`.
+    /// Defaults to 100 (not `u16::default()`'s 0) for states serialized before
+    /// this field existed.
+    #[serde(default = "default_scale")]
+    pub message_scale: u16,
+    #[serde(default = "default_scale")]
+    pub digits_scale: u16,
 }
 
 impl Default for CountdownState {
@@ -177,6 +219,8 @@ impl Default for CountdownState {
             takeover: false,
             position: CountdownPosition::Center,
             background_media_id: None,
+            message_scale: 100,
+            digits_scale: 100,
         }
     }
 }
@@ -209,11 +253,14 @@ mod tests {
     fn countdown_config_new_duration_round_trips() {
         let config = CountdownConfig {
             target: CountdownTarget::Duration { duration_ms: 600_000 },
+            name: Some("Abertura".into()),
             message: Some("O culto começa em…".into()),
             end_behavior: CountdownEndBehavior::AdvanceSet,
             background_media_id: Some("media-uuid-123".into()),
             position: CountdownPosition::BottomRight,
             scheduled_start: None,
+            message_scale: 150,
+            digits_scale: 200,
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"position\":\"bottom-right\""), "{json}");
@@ -228,11 +275,14 @@ mod tests {
     fn countdown_config_fixed_time_round_trips() {
         let config = CountdownConfig {
             target: CountdownTarget::FixedTime { hour: 9, minute: 30 },
+            name: None,
             message: None,
             end_behavior: CountdownEndBehavior::HoldZero,
             background_media_id: None,
             position: CountdownPosition::Center,
             scheduled_start: None,
+            message_scale: 100,
+            digits_scale: 100,
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"kind\":\"fixedTime\""), "{json}");
@@ -307,5 +357,59 @@ mod tests {
         assert_eq!(state.scheduled_start_epoch_ms, None);
         let json = serde_json::to_string(&state).unwrap();
         assert!(json.contains("\"scheduledStartEpochMs\":null"), "{json}");
+    }
+
+    /// (a) A pre-Phase-17 config blob (no name/messageScale/digitsScale) still
+    /// deserializes, with name absent and both scales defaulting to 100.
+    #[test]
+    fn countdown_config_pre_phase17_defaults_name_and_scales() {
+        let legacy = r#"{"target":{"kind":"duration","durationMs":1000},"message":null,"endBehavior":"holdZero","backgroundMediaId":null,"position":"center"}"#;
+        let config: CountdownConfig = serde_json::from_str(legacy).unwrap();
+        assert_eq!(config.name, None);
+        assert_eq!(config.message_scale, 100);
+        assert_eq!(config.digits_scale, 100);
+    }
+
+    /// (b) Out-of-range scales are clamped rather than rejected.
+    #[test]
+    fn countdown_config_scale_clamps_to_range() {
+        let too_big = r#"{"target":{"kind":"duration","durationMs":1000},"message":null,"endBehavior":"holdZero","backgroundMediaId":null,"messageScale":9999,"digitsScale":9999}"#;
+        let config: CountdownConfig = serde_json::from_str(too_big).unwrap();
+        assert_eq!(config.message_scale, 300);
+        assert_eq!(config.digits_scale, 300);
+
+        let too_small = r#"{"target":{"kind":"duration","durationMs":1000},"message":null,"endBehavior":"holdZero","backgroundMediaId":null,"messageScale":1,"digitsScale":1}"#;
+        let config: CountdownConfig = serde_json::from_str(too_small).unwrap();
+        assert_eq!(config.message_scale, 50);
+        assert_eq!(config.digits_scale, 50);
+    }
+
+    /// (c) A fully-populated config round-trips through serialize/deserialize.
+    #[test]
+    fn countdown_config_full_round_trip_with_name_and_scales() {
+        let config = CountdownConfig {
+            target: CountdownTarget::Duration { duration_ms: 300_000 },
+            name: Some("Contagem final".into()),
+            message: Some("Voltamos em breve".into()),
+            end_behavior: CountdownEndBehavior::Blackout,
+            background_media_id: Some("media-xyz".into()),
+            position: CountdownPosition::TopCenter,
+            scheduled_start: Some(ScheduledStart { hour: 18, minute: 45 }),
+            message_scale: 175,
+            digits_scale: 225,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let back: CountdownConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, config);
+    }
+
+    /// (d) A pre-Phase-17 serialized CountdownState (no scale fields) still
+    /// deserializes, defaulting both scales to 100 — not `u16::default()`'s 0.
+    #[test]
+    fn countdown_state_pre_phase17_defaults_scales_to_100() {
+        let legacy = r#"{"mode":"idle","durationMs":0,"remainingMs":0,"targetEpochMs":null,"scheduledStartEpochMs":null,"message":null,"endBehavior":"holdZero","takeover":false,"position":"center","backgroundMediaId":null}"#;
+        let state: CountdownState = serde_json::from_str(legacy).unwrap();
+        assert_eq!(state.message_scale, 100);
+        assert_eq!(state.digits_scale, 100);
     }
 }

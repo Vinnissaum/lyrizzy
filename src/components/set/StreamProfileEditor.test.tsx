@@ -57,7 +57,7 @@ describe("StreamProfileEditor", () => {
     const { rerender } = render(<Harness mode="rtsp" initialProfiles={profiles} />);
     expect(screen.getByText("webview.editor.rtsp.transport")).toBeTruthy();
 
-    rerender(<Harness mode="rtmp" initialProfiles={profiles} />);
+    rerender(<Harness mode="mjpeg" initialProfiles={profiles} />);
     expect(screen.queryByText("webview.editor.rtsp.transport")).toBeNull();
   });
 

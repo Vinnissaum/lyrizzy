@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { updateSetItem } from "../../api/commands";
+import { PROFILE_MODES } from "../../utils/streamProfile";
 
 /**
  * Operator-facing switcher for mid-presentation camera stream profile changes.
@@ -34,7 +35,13 @@ export const StreamProfileSwitcher: React.FC = () => {
     setError(null);
   }, [item?.id, persistedId]);
 
-  if (!item || item.itemType !== "web_view" || profiles.length < 2 || !cfg) {
+  if (
+    !item ||
+    item.itemType !== "web_view" ||
+    !cfg ||
+    profiles.length < 2 ||
+    !(PROFILE_MODES as readonly string[]).includes(cfg.mode)
+  ) {
     return null;
   }
 

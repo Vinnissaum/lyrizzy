@@ -115,4 +115,28 @@ describe("StreamProfileSwitcher", () => {
     expect(screen.getByText("Tight").getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText("Wide").getAttribute("aria-pressed")).toBe("false");
   });
+
+  it("renders nothing for iframe mode even with two profiles", () => {
+    mockStore(mockItem({ ...baseConfig, mode: "iframe" }));
+    render(<StreamProfileSwitcher />);
+    expect(screen.queryByTestId("stream-profile-switcher")).toBeNull();
+  });
+
+  it("still renders for rtsp mode with two profiles", () => {
+    mockStore(mockItem({ ...baseConfig, mode: "rtsp" }));
+    render(<StreamProfileSwitcher />);
+    expect(screen.getByTestId("stream-profile-switcher")).toBeInTheDocument();
+  });
+
+  it("still renders nothing for iframe mode with only one profile", () => {
+    mockStore(
+      mockItem({
+        mode: "iframe",
+        url: "rtsp://x",
+        profiles: [{ id: "p1", label: "Wide", url: "rtsp://wide" }],
+      }),
+    );
+    render(<StreamProfileSwitcher />);
+    expect(screen.queryByTestId("stream-profile-switcher")).toBeNull();
+  });
 });

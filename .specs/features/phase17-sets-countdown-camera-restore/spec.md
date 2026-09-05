@@ -222,14 +222,14 @@ Every report was traced to specific lines before this spec was written. No requi
 | P17-08 | Two size controls in the configuration modal with a reset to 100% | 17B | P1 Size | Pending |
 | P17-09 | Scales mirrored into `CountdownState` for the takeover path (wall + live preview) | 17B | P1 Size | Pending |
 | P17-10 | Live preview takeover honours the mirrored `position` instead of hardcoded `center` | 17B | P1 Size | Pending |
-| P17-11 | `wipe_db` deletes `song_plays` first; full FK-safe coverage of repopulated tables | 17C | P1 Restore | Pending |
-| P17-12 | Regression test: Replace restore over a library with a non-empty play ledger | 17C | P1 Restore | Pending |
-| P17-13 | DB wipe completes before any media file is deleted | 17C | P1 Restore | Pending |
-| P17-14 | No `.restore_in_progress` flag left behind by a failure that changed nothing | 17C | P1 Restore | Pending |
-| P17-15 | `abort_restore` succeeds on a library with presentation history | 17C | P1 Restore | Pending |
-| P17-16 | Backup/restore errors formatted through the shared error formatter — no `[object Object]` | 17C | P1 Restore | Pending |
-| P17-17 | `backup.*` error codes present in both locales, parity-guarded | 17C | P1 Restore | Pending |
-| P17-18 | Restore summary states that the presentation/CCLI ledger was cleared | 17C | P1 Restore | Pending |
+| P17-11 | `wipe_db` deletes `song_plays` first; full FK-safe coverage of repopulated tables | 17C | P1 Restore | **Done** |
+| P17-12 | Regression test: Replace restore over a library with a non-empty play ledger | 17C | P1 Restore | **Done** |
+| P17-13 | DB wipe completes before any media file is deleted | 17C | P1 Restore | **Done** |
+| P17-14 | No `.restore_in_progress` flag left behind by a failure that changed nothing | 17C | P1 Restore | **Done** |
+| P17-15 | `abort_restore` succeeds on a library with presentation history | 17C | P1 Restore | **Done** |
+| P17-16 | Backup/restore errors formatted through the shared error formatter — no `[object Object]` | 17C | P1 Restore | **Done** |
+| P17-17 | `backup.*` error codes present in both locales, parity-guarded | 17C | P1 Restore | **Done** |
+| P17-18 | Restore summary states that the presentation/CCLI ledger was cleared | 17C | P1 Restore | **Done** |
 | P17-19 | Set picker in the Home header: active set + list with item counts | 17D | P1 Sets | Pending |
 | P17-20 | Selecting a set repoints the Home builder with no reload | 17D | P1 Sets | Pending |
 | P17-21 | Active set persisted in settings and restored at launch | 17D | P1 Sets | Pending |
@@ -237,7 +237,7 @@ Every report was traced to specific lines before this spec was written. No requi
 | P17-23 | "Apresentar" presents the selected set | 17D | P1 Sets | Pending |
 | P17-24 | Picker disabled while presenting, consistent with the nav lock | 17D | P1 Sets | Pending |
 | P17-25 | Create / rename from the picker, live across surfaces | 17D | P1 Sets | Pending |
-| P17-26 | Delete with confirmation; `song_plays` for that set removed in the same transaction; count stated in the confirmation | 17D | P1 Sets | Pending |
+| P17-26 | Delete with confirmation; `song_plays` for that set removed in the same transaction; count stated in the confirmation | 17D | P1 Sets | **Partial** — backend; confirmation pending (T21) |
 | P17-27 | Unreachable `sets` / `set-builder` views removed, back-navigation repointed to Home | 17D | P1 Sets | Pending |
 | P17-28 | "WebView" → "Câmera"/"Camera" across every operator-facing label, both locales | 17E | P1 Camera | Pending |
 | P17-29 | Mode set reduced to `rtsp` / `mjpeg` / `iframe` (Página web) | 17E | P1 Camera | Pending |
@@ -250,7 +250,13 @@ Every report was traced to specific lines before this spec was written. No requi
 | P17-36 | Version bumped to `1.4.0` across all five sources; `v1.4.0` tag pushed | 17F | P2 Release | Pending |
 | P17-37 | Launch-time silent re-arm carries the full countdown appearance (position, background, both scales) | 17B | P1 Size | Pending |
 
-**Coverage:** 37 requirements (36 specified + P17-37 added at design time), **37 mapped to tasks T1–T30, 0 unmapped** ✅
+**Coverage:** 37 requirements, all mapped to tasks T1–T30.
+
+**Implemented:** 8 of 37 (P17-11..P17-18 — group 17C), released as `v1.3.1` and then `v1.3.2`.
+**Partial:** 1 (P17-26 — `delete_set` + `get_set_play_count` shipped; the confirmation that states the play count is UI, waiting on T21).
+**Not started:** 28 — groups 17A (countdown naming), 17B (countdown sizing), 17D (sets on Home), 17E (camera), P17-36 (`1.4.0` release), P17-37 (launch re-arm appearance).
+
+**Note on P17-15:** `abort_restore` is fixed by construction — it calls the same `wipe_db` that T3 repaired — but no test exercises `abort_restore` itself (`commands/backup.rs` has no co-located tests). Treat it as fixed-but-unverified until the T30 manual pass.
 
 ---
 

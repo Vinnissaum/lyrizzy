@@ -11,8 +11,6 @@ vi.mock("react-i18next", () => ({
 import { OverlayActionBar } from "./OverlayActionBar";
 
 const defaultProps = {
-  showApresentarButton: true,
-  onApresentar: vi.fn(),
   onOferta: vi.fn(),
   onAviso: vi.fn(),
   onPdf: vi.fn(),
@@ -26,16 +24,6 @@ describe("OverlayActionBar", () => {
     vi.clearAllMocks();
   });
 
-  it("renders Apresentar button when showApresentarButton is true", () => {
-    render(<OverlayActionBar {...defaultProps} showApresentarButton={true} />);
-    expect(screen.getByTestId("apresentar-button")).toBeInTheDocument();
-  });
-
-  it("does NOT render Apresentar button when showApresentarButton is false", () => {
-    render(<OverlayActionBar {...defaultProps} showApresentarButton={false} />);
-    expect(screen.queryByTestId("apresentar-button")).not.toBeInTheDocument();
-  });
-
   it("renders Clear Overlay button when isOverlayActive is true", () => {
     render(<OverlayActionBar {...defaultProps} isOverlayActive={true} />);
     expect(screen.getByText("home.overlay.closeOverlay", { exact: false })).toBeInTheDocument();
@@ -44,13 +32,6 @@ describe("OverlayActionBar", () => {
   it("does NOT render Clear Overlay button when isOverlayActive is false", () => {
     render(<OverlayActionBar {...defaultProps} isOverlayActive={false} />);
     expect(screen.queryByText("home.overlay.closeOverlay", { exact: false })).not.toBeInTheDocument();
-  });
-
-  it("calls onApresentar when Apresentar button is clicked", () => {
-    const onApresentar = vi.fn();
-    render(<OverlayActionBar {...defaultProps} onApresentar={onApresentar} />);
-    fireEvent.click(screen.getByTestId("apresentar-button"));
-    expect(onApresentar).toHaveBeenCalledTimes(1);
   });
 
   it("calls onClearOverlay when Clear Overlay button is clicked", () => {

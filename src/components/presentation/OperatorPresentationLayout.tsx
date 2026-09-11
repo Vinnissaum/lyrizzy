@@ -300,7 +300,6 @@ export const OperatorPresentationLayout: React.FC<{
       />
       <MicSwitch />
       <OverlayActionBar
-        showApresentarButton={false}
         onOferta={handleOferta}
         onAviso={handleAvisoClick}
         onPdf={handleImportPresentation}

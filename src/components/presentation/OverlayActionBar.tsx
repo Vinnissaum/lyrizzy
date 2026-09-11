@@ -1,10 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Play, X, Image as ImageIcon, Megaphone, FileText, MonitorOff, Square } from "lucide-react";
+import { X, Image as ImageIcon, Megaphone, FileText, MonitorOff, Square } from "lucide-react";
 
 interface Props {
-  showApresentarButton: boolean;
-  onApresentar?: () => void;
   onOferta: () => void;
   onAviso: () => void;
   onPdf: () => void;
@@ -17,8 +15,6 @@ interface Props {
 }
 
 export const OverlayActionBar: React.FC<Props> = ({
-  showApresentarButton,
-  onApresentar,
   onOferta,
   onAviso,
   onPdf,
@@ -33,15 +29,6 @@ export const OverlayActionBar: React.FC<Props> = ({
 
   return (
     <div className="px-3 py-2 border-b border-border flex items-center gap-2 flex-wrap shrink-0">
-      {showApresentarButton && (
-        <button
-          onClick={onApresentar}
-          className="px-3 py-1 text-xs bg-primary hover:bg-primary-hover text-fg-on-primary rounded-lg font-medium transition-colors inline-flex items-center gap-1"
-          data-testid="apresentar-button"
-        >
-          <Play size={12} className="fill-current" /> {t("presentation.action.present")}
-        </button>
-      )}
       {onStop && (
         <button
           onClick={onStop}

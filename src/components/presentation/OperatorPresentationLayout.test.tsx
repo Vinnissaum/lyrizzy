@@ -418,11 +418,11 @@ describe("OperatorPresentationLayout", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders OverlayActionBar without Apresentar button", () => {
+  it("renders OverlayActionBar without an Apresentar button", () => {
     setupDefaultMocks();
     render(<OperatorPresentationLayout />);
 
-    // The Apresentar button must not be in the DOM when showApresentarButton=false
+    // OverlayActionBar no longer has an Apresentar button/prop at all
     expect(screen.queryByTestId("apresentar-button")).not.toBeInTheDocument();
 
     // But the overlay action bar itself is present (check one of its stable buttons)

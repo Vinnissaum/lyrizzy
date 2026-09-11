@@ -117,7 +117,9 @@ describe("HomeSetBuilder", () => {
   it("renders the SetPicker", () => {
     vi.mocked(getSet).mockResolvedValue(baseSet);
     render(<HomeSetBuilder />);
-    expect(screen.getByTestId("set-picker-active-name")).toBeInTheDocument();
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+    expect(select.value).toBe("set-1");
   });
 
   it("switching sets repoints SetBuilder's setId with no reload", () => {
@@ -126,7 +128,7 @@ describe("HomeSetBuilder", () => {
 
     expect(screen.getByTestId("set-builder")).toHaveAttribute("data-set-id", "set-1");
 
-    fireEvent.click(screen.getByRole("button", { name: /Culto Noite/ }));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "set-2" } });
     expect(setActiveSet).toHaveBeenCalledWith("set-2");
 
     // Simulate the store re-rendering the component with the new active set,

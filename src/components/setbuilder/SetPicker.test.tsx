@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("../../stores/sets", () => ({
   useSetsStore: vi.fn(),
@@ -10,10 +10,6 @@ vi.mock("../../stores/library", () => ({
 }));
 
 vi.mock("../../api/commands", () => ({
-  createSet: vi.fn(),
-  updateSet: vi.fn(),
-  deleteSet: vi.fn(),
-  getSetPlayCount: vi.fn(),
   onSetChanged: vi.fn().mockResolvedValue(() => {}),
 }));
 
@@ -25,10 +21,17 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+vi.mock("./SetManagerDialog", () => ({
+  SetManagerDialog: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="set-manager-dialog">
+      <button onClick={onClose}>close</button>
+    </div>
+  ),
+}));
+
 import { SetPicker } from "./SetPicker";
 import { useSetsStore } from "../../stores/sets";
 import { useLibraryStore } from "../../stores/library";
-import { createSet, deleteSet, getSetPlayCount, updateSet } from "../../api/commands";
 import type { ServiceSet } from "../../types";
 
 const makeSet = (id: string, name: string, itemCount = 0): ServiceSet => ({
@@ -61,136 +64,62 @@ describe("SetPicker", () => {
     setActiveSet.mockResolvedValue(undefined);
   });
 
-  it("lists sets with counts and marks the active one", () => {
+  it("lists every set and selects the active one", () => {
     const sets = [makeSet("s1", "Culto Manhã", 3), makeSet("s2", "Culto Noite", 5)];
     mockStores(sets, "s2");
 
     render(<SetPicker />);
 
-    expect(screen.getByTestId("set-picker-active-name")).toHaveTextContent("Culto Noite");
-    expect(screen.getByRole("button", { name: /Culto Manhã/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Culto Noite/ })).toBeInTheDocument();
-
-    const activeButton = screen.getByRole("button", { name: /Culto Noite/ });
-    expect(activeButton).toHaveAttribute("aria-current", "true");
-    const otherButton = screen.getByRole("button", { name: /Culto Manhã/ });
-    expect(otherButton).toHaveAttribute("aria-current", "false");
+    const select = screen.getByRole("combobox", {
+      name: "sets.picker.switch",
+    }) as HTMLSelectElement;
+    expect(select.value).toBe("s2");
+    expect(screen.getByRole("option", { name: "Culto Manhã" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Culto Noite" })).toBeInTheDocument();
   });
 
-  it("selecting a set calls setActiveSet", () => {
-    const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
-    mockStores(sets, "s2");
-
-    render(<SetPicker />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Culto Manhã/ }));
-    expect(setActiveSet).toHaveBeenCalledWith("s1");
-  });
-
-  it("does not call setActiveSet when clicking the already-active set", () => {
-    const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
-    mockStores(sets, "s2");
-
-    render(<SetPicker />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Culto Noite/ }));
-    expect(setActiveSet).not.toHaveBeenCalled();
-  });
-
-  it("create makes the new set active", async () => {
-    const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
-    mockStores(sets, "s1");
-    vi.mocked(createSet).mockResolvedValue(makeSet("s3", "Novo Culto"));
-
-    render(<SetPicker />);
-
-    fireEvent.click(screen.getByText("sets.picker.create"));
-    fireEvent.change(screen.getByPlaceholderText("sets.namePlaceholder"), {
-      target: { value: "Novo Culto" },
-    });
-    fireEvent.submit(screen.getByPlaceholderText("sets.namePlaceholder").closest("form")!);
-
-    await waitFor(() => {
-      expect(createSet).toHaveBeenCalledWith({ name: "Novo Culto" });
-    });
-    expect(refresh).toHaveBeenCalled();
-    expect(setActiveSet).toHaveBeenCalledWith("s3");
-  });
-
-  it("rename calls updateSet", async () => {
-    const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
-    mockStores(sets, "s1");
-    vi.mocked(updateSet).mockResolvedValue(makeSet("s1", "Culto da Manhã"));
-
-    render(<SetPicker />);
-
-    const renameButtons = screen.getAllByText("sets.picker.rename");
-    fireEvent.click(renameButtons[0]);
-
-    const input = screen.getByDisplayValue("Culto Manhã");
-    fireEvent.change(input, { target: { value: "Culto da Manhã" } });
-    fireEvent.submit(input.closest("form")!);
-
-    await waitFor(() => {
-      expect(updateSet).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "s1", name: "Culto da Manhã" })
-      );
-    });
-  });
-
-  it("delete confirmation shows the play count and calls deleteSet", async () => {
-    const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
-    mockStores(sets, "s1");
-    vi.mocked(getSetPlayCount).mockResolvedValue(7);
-    vi.mocked(deleteSet).mockResolvedValue(undefined);
-
-    render(<SetPicker />);
-
-    const deleteButtons = screen.getAllByText("sets.picker.delete");
-    fireEvent.click(deleteButtons[0]);
-
-    await waitFor(() => {
-      expect(getSetPlayCount).toHaveBeenCalledWith("s1");
-    });
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/sets\.picker\.deleteWithPlays.*"count":7/)
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("sets.delete.confirm"));
-
-    await waitFor(() => {
-      expect(deleteSet).toHaveBeenCalledWith("s1");
-    });
-    expect(refresh).toHaveBeenCalled();
-  });
-
-  it("disables delete when only one set exists", () => {
-    const sets = [makeSet("s1", "Único Culto")];
-    mockStores(sets, "s1");
-
-    render(<SetPicker />);
-
-    const deleteButton = screen.getByText("sets.picker.delete");
-    expect(deleteButton).toBeDisabled();
-
-    fireEvent.click(deleteButton);
-    expect(getSetPlayCount).not.toHaveBeenCalled();
-  });
-
-  it("disabled prop hides every mutating control", () => {
+  it("changing the select calls setActiveSet", () => {
     const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
     mockStores(sets, "s1");
 
-    render(<SetPicker disabled />);
+    render(<SetPicker />);
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "s2" } });
+    expect(setActiveSet).toHaveBeenCalledWith("s2");
+  });
+
+  it("shows no create/rename/delete controls in the closed state", () => {
+    const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
+    mockStores(sets, "s1");
+
+    render(<SetPicker />);
 
     expect(screen.queryByText("sets.picker.create")).not.toBeInTheDocument();
     expect(screen.queryByText("sets.picker.rename")).not.toBeInTheDocument();
     expect(screen.queryByText("sets.picker.delete")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("set-manager-dialog")).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: /Culto Noite/ }));
-    expect(setActiveSet).not.toHaveBeenCalled();
+  it("clicking the gear opens the set manager dialog", () => {
+    const sets = [makeSet("s1", "Culto Manhã"), makeSet("s2", "Culto Noite")];
+    mockStores(sets, "s1");
+
+    render(<SetPicker />);
+
+    fireEvent.click(screen.getByRole("button", { name: "sets.manage.open" }));
+    expect(screen.getByTestId("set-manager-dialog")).toBeInTheDocument();
+  });
+
+  it("renders a single disabled option holding the active set's name when sets are empty", () => {
+    mockStores([], "s1");
+
+    render(<SetPicker />);
+
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const options = select.querySelectorAll("option");
+    expect(options.length).toBe(1);
+    expect(options[0]).toBeDisabled();
+    expect(options[0].textContent).not.toBe("");
+    expect(options[0].textContent).not.toBe("undefined");
   });
 });

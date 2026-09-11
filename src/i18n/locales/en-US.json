@@ -140,6 +140,11 @@
       "delete": "Delete set",
       "deleteWithPlays": "Delete \"{{name}}\"? {{count}} presentation record(s) will be removed with it.",
       "lastSetHint": "A library always keeps at least one set."
+    },
+    "manage": {
+      "title": "Manage sets",
+      "open": "Manage sets",
+      "close": "Close"
     }
   },
   "builder": {

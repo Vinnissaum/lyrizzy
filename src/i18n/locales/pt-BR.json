@@ -140,6 +140,11 @@
       "delete": "Excluir conjunto",
       "deleteWithPlays": "Excluir \"{{name}}\"? {{count}} registro(s) de apresentação serão removidos com ele.",
       "lastSetHint": "Uma biblioteca sempre mantém ao menos um conjunto."
+    },
+    "manage": {
+      "title": "Gerenciar conjuntos",
+      "open": "Gerenciar conjuntos",
+      "close": "Fechar"
     }
   },
   "builder": {

@@ -87,3 +87,25 @@ describe("release workflow — tauri-action inputs", () => {
     );
   });
 });
+
+describe("release workflow — release-notes job", () => {
+  const releaseNotesJob = workflow.jobs["release-notes"];
+  const checkoutStep = releaseNotesJob.steps.find((s) => String(s.uses ?? "").startsWith("actions/checkout"));
+  const applyStep = releaseNotesJob.steps.find((s) => typeof s.run === "string");
+
+  it("gates the release-notes job behind build", () => {
+    expect(releaseNotesJob.needs).toBe("build");
+  });
+
+  it("checks out full history via fetch-depth: 0", () => {
+    expect(checkoutStep.with["fetch-depth"]).toBe(0);
+  });
+
+  it("does not fail the workflow if composing/applying notes fails", () => {
+    expect(applyStep["continue-on-error"]).toBe(true);
+  });
+
+  it("never references the Tauri signing secret", () => {
+    expect(JSON.stringify(releaseNotesJob)).not.toContain("TAURI_SIGNING_PRIVATE_KEY");
+  });
+});

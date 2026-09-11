@@ -59,3 +59,34 @@ jobs:
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true
           retryAttempts: 2
+
+  release-notes:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Compose and apply release notes
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f tag_name="$TAG" ${PREV:+-f previous_tag_name="$PREV"} \
+            --jq .body > generated.md || echo "" > generated.md
+          if [ -n "$PREV" ]; then
+            git log --no-merges --pretty=format:%s "$PREV..$TAG" > commits.txt
+          else
+            git log --no-merges --pretty=format:%s "$TAG" > commits.txt
+          fi
+          node scripts/release-notes.mjs \
+            --generated generated.md --commits commits.txt \
+            --install-line "Baixe o instalador para a sua plataforma abaixo." \
+            --compare-url "https://github.com/$GITHUB_REPOSITORY/compare/${PREV:-$TAG}...$TAG" > notes.md
+          gh release edit "$TAG" --notes-file notes.md

@@ -82,6 +82,25 @@ the private key in CI secrets is safe here.
    the Linux `*.AppImage` + `.sig`, and a `latest.json` with both platform entries.
    Smoke-test the installer if this is a meaningful release.
 
+   A third job, `release-notes`, runs after both platform builds finish
+   (`needs: build`). It composes the release body — the install line plus either
+   GitHub's auto-generated "What's Changed" text, or (when that comes back empty)
+   a list built from the tag's commit subjects — via `scripts/release-notes.mjs`,
+   then applies it with `gh release edit <tag> --notes-file notes.md`. It never
+   creates, publishes, or deletes a release, and it never touches the signing
+   secrets. The step runs with `continue-on-error: true`, so a failure here never
+   fails the overall workflow or blocks publishing — it just leaves the draft
+   with its default body for you to edit by hand.
+
+   **Open verification point:** whether `gh release edit <tag>` resolves a
+   **draft** release by tag name is unverified. If it does not, the documented
+   fallback is to resolve the release id first and PATCH it directly:
+
+   ```bash
+   ID="$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name=="'"$TAG"'") | .id')"
+   gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$ID" -f body@notes.md
+   ```
+
 5. **Publish.** Only after publishing does
    `https://github.com/Vinnissaum/lyrizzy/releases/latest/download/latest.json`
    start returning 200 — **while the release is a draft, that URL 404s, and the

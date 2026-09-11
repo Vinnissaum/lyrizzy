@@ -221,17 +221,32 @@ describe("HomeSetBuilder", () => {
     });
   });
 
-  it("disables the SetPicker while presenting", () => {
+  it("renders no overlay controls (image, aviso, pdf)", () => {
     vi.mocked(getSet).mockResolvedValue(baseSet);
-    vi.mocked(usePresentationStore).mockReturnValue({
-      state: { mode: "live" },
-    } as ReturnType<typeof usePresentationStore>);
-
     render(<HomeSetBuilder />);
 
-    expect(screen.queryByText("sets.picker.create")).not.toBeInTheDocument();
+    expect(screen.queryByText("home.overlay.image")).not.toBeInTheDocument();
+    expect(screen.queryByText("home.overlay.aviso")).not.toBeInTheDocument();
+    expect(screen.queryByText("home.overlay.pdf")).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: /Culto Noite/ }));
-    expect(setActiveSet).not.toHaveBeenCalled();
+  it("renders exactly one element with border-b in the header", () => {
+    vi.mocked(getSet).mockResolvedValue(baseSet);
+    const { container } = render(<HomeSetBuilder />);
+
+    const root = container.firstElementChild as HTMLElement;
+    const headerLevelBorderB = Array.from(root.children).filter((el) =>
+      el.classList.contains("border-b")
+    );
+    expect(headerLevelBorderB.length).toBe(1);
+  });
+
+  it("renders the Apresentar button with the prominent styling classes", () => {
+    vi.mocked(getSet).mockResolvedValue(baseSet);
+    render(<HomeSetBuilder />);
+
+    const button = screen.getByTestId("apresentar-button");
+    expect(button.className).toContain("bg-primary");
+    expect(button.className).toContain("text-sm");
   });
 });

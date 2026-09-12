@@ -387,3 +387,25 @@
 **Design finding (DD-1):** the launch-time silent re-arm (`OperatorApp.tsx:267`) drops `position` and `backgroundMediaId`, because `UpcomingScheduledCountdown` never carried them — the same countdown takes over centred when armed at launch and correctly placed when armed from the modal. Added as P17-37 while every arm/start call site is being touched for the scales.
 
 **User decisions:** D-75 editable countdown name; D-76 per-item sizing as percentages of today's values; D-77 Home picker only, unreachable Sets screen retired; D-78 RTSP/MJPEG/web-page only, profiles scoped.
+---
+
+## Phase 18: Home Simplification — Single Primary Action & Compact Set Control — TASKS READY
+
+**Goal:** Make Home's visual hierarchy match its usage frequency — one unmistakable `Apresentar` button, and set management collapsed behind a select and a gear — so the operator hits the right control seconds before a service starts.
+**Specified:** 2026-09-11. **Target tag:** `v1.5.0`.
+**Spec:** `.specs/features/phase18-home-simplification/spec.md` (24 requirements P18-01..P18-24; P18-04 retired at design time → 23 live). **Design:** `design.md` · **Tasks:** `tasks.md` (10 tasks T1–T10 in 4 batches, 23/23 live requirements mapped). Not executed.
+
+| Group | Requirements | Scope |
+|-------|--------------|-------|
+| 18A — Header trim | P18-01..P18-05 | `Imagem`/`Aviso`/`Apresentação` removed from Home only; `OverlayActionBar` makes those three handlers optional like `onBlackout`/`onStop`; the live presentation layout keeps all of them; `Fechar overlay` stays on Home; unreachable dialogs and state deleted |
+| 18B — Apresentar prominence | P18-06..P18-09 | `Apresentar` is the largest element in the header with the primary fill, behaviour unchanged; header collapses from two stacked bands to one wrapping row |
+| 18C — Compact set control | P18-10..P18-19 | Native `<select>` for switching + gear → `Gerenciar conjuntos` modal for create/rename/delete; play-count confirm and last-set guard retained; deleting the active set reassigns it (F-1); the dead `disabled` prop retired (F-2) |
+| 18D — Release | P18-20..P18-24 | Version bumped to `1.5.0` across five sources; post-build job fills the draft body via `scripts/release-notes.mjs`; a notes failure never destroys the draft or its artifacts |
+
+**Findings traced before specifying:** CS-1 the Home `Apresentação` button duplicates `SetBuilder.handleAddPresentation` (`SetBuilder.tsx:311`), already on screen below it — removing it costs nothing; CS-3 `ui.active_set_id` already restores the last-used set at launch, which is why no "main set" is built (D-80); **F-1** `SetPicker.handleDelete` never reassigns `activeSetId`, so deleting the set you are on strands Home on a deleted id until restart; **F-2** `SetPicker`'s `disabled` prop can never be true in production; **F-3** GitHub's generated release notes list merged PRs and this repo has zero merge commits since `v1.3.0`, so the generated body would be empty without a `git log` fallback.
+
+**User decisions:** D-80 no main set (last-used already persists); D-81 select + gear → modal; D-82 no drag-to-reorder; D-83 GitHub generated notes with a `git log --no-merges` fallback.
+
+**Scope note:** frontend + CI only — no Rust, no migration, no IPC contract change. Existing `createSet`/`updateSet`/`deleteSet`/`getSetPlayCount`/`listSets` commands cover it.
+
+**Design findings:** **DD-1** Home builds its own header row and stops mounting the shared `OverlayActionBar`, which sheds `showApresentarButton`/`onApresentar` and becomes the presentation layout's alone (amends P18-02); **DD-2** `Fechar overlay` on Home is retired as unreachable — `exit_presentation` clears `overlay` in the same critical section as `mode = Idle` (`window.rs:520-540`), every remaining overlay setter is in the presentation layout, and Home is unmounted while any output presents (retires P18-04); **DD-6** F-1's fix lands as a pure `nextActiveSetId` helper so the regression is testable without rendering; **DD-8** the notes job only PATCHes an existing release body, so P18-24 holds structurally. **DD-9 is flagged unverified:** draft lookup by `gh release edit <tag>` must be confirmed on the first real tag push, with a `gh api` + PATCH fallback documented.

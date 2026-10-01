@@ -295,20 +295,22 @@ fn fullscreen_on_monitor_linux<R: Runtime>(
 /// Returns true when the presentation window should be pinned on top of all
 /// other windows.
 ///
-/// Read as: **if this window is going fullscreen, it is topmost.**
+/// Read as: **only a single-monitor fullscreen presentation is topmost.**
 ///
-/// The old rule pinned only single-monitor setups, on the reasoning that the
-/// presentation must sit above the operator window. That is true but partial:
-/// on a multi-monitor setup the presentation must also sit above everything the
-/// *shell* can raise. Alt+Tab activates a window and raises it within its
-/// z-band, so a non-topmost fullscreen presentation has no defence — the
-/// congregation ends up looking at Explorer (P16-01).
+/// With one monitor, output One fullscreens over the operator's own screen and
+/// must stay above the operator window. With two or more, the presentation owns
+/// a monitor of its own and is a normal window there (P19-01): pinning it there
+/// (as `v1.3.0`–`v1.5.0` did, P16-01) hid every other window dragged onto the
+/// projection monitor behind it, with no way to grab them back.
 ///
-/// The single carve-out is the deliberate windowed fallback below: that is the
-/// one case where a topmost window would sit on the operator's own screen and
-/// could trap them behind it (P16-02).
-pub(crate) fn should_pin_on_top(output: OutputId, target_idx: Option<usize>) -> bool {
-    !use_windowed_fallback(output, target_idx)
+/// The deliberate windowed fallback below is never pinned: it sits on the
+/// operator's own screen and would trap them behind it (P16-02, P19-03).
+pub(crate) fn should_pin_on_top(
+    output: OutputId,
+    target_idx: Option<usize>,
+    monitor_count: usize,
+) -> bool {
+    monitor_count == 1 && !use_windowed_fallback(output, target_idx)
 }
 
 /// Whether to show a windowed (non-fullscreen), focusable window instead of
@@ -320,20 +322,6 @@ pub(crate) fn should_pin_on_top(output: OutputId, target_idx: Option<usize>) -> 
 /// single-screen workflow is unchanged. Pure for testability.
 pub(crate) fn use_windowed_fallback(output: OutputId, target_idx: Option<usize>) -> bool {
     output == OutputId::Two && target_idx.is_none()
-}
-
-/// Returns true when a focus-loss on the window with this `label` should
-/// re-assert its always-on-top flag (P16-03/P16-04).
-///
-/// The flag is set once, at build time, and Windows can demote a fullscreen
-/// window out of the topmost band when another app takes the foreground — which
-/// is precisely the moment this fires. Keyed on the label rather than on
-/// presentation state: a presentation window that exists at all is one the
-/// operator opened to project on, and re-asserting on an already-topmost window
-/// is a no-op. The caller additionally gates on `is_fullscreen()` so the
-/// windowed fallback is never pinned.
-pub(crate) fn should_reassert_on_top(label: &str) -> bool {
-    OutputId::ALL.iter().any(|o| o.window_label() == label)
 }
 
 /// Returns true if destroying the window with the given `label` should also
@@ -422,7 +410,7 @@ pub async fn enter_presentation(
     // Manual picker (monitor_index) wins; otherwise auto-detect a free monitor.
     let target_idx = resolve_monitor_for_output(monitor_index, monitors.len(), &blocked, &avoid);
 
-    let pin_on_top = should_pin_on_top(output, target_idx);
+    let pin_on_top = should_pin_on_top(output, target_idx, monitors.len());
 
     let title = match output {
         OutputId::One => "Lyrizzy — Presentation",
@@ -630,55 +618,34 @@ mod tests {
     }
 
     #[test]
-    fn should_pin_on_top_single_monitor_still_pinned() {
-        // The original single-screen behaviour: output One has no free monitor
-        // of its own and fullscreens over the operator's screen — it must stay
-        // above the operator window, exactly as before P16-01.
-        assert!(should_pin_on_top(OutputId::One, None));
+    fn should_pin_on_top_single_monitor() {
+        // Output One has no free monitor of its own and fullscreens over the
+        // operator's screen — it must stay above the operator window.
+        assert!(should_pin_on_top(OutputId::One, None, 1));
     }
 
     #[test]
-    fn should_pin_on_top_multi_monitor() {
-        // The P16-01 fix: with a monitor resolved, BOTH outputs are pinned, so
-        // Alt+Tab cannot raise Explorer over a screen that is presenting.
-        assert!(should_pin_on_top(OutputId::One, Some(0)));
-        assert!(should_pin_on_top(OutputId::Two, Some(1)));
-        assert!(should_pin_on_top(OutputId::One, Some(2)));
+    fn should_not_pin_on_multi_monitor() {
+        // P19-01: with a monitor of its own, no output is pinned, so windows
+        // dragged onto the projection monitor are never hidden behind it.
+        assert!(!should_pin_on_top(OutputId::One, Some(0), 2));
+        assert!(!should_pin_on_top(OutputId::Two, Some(1), 2));
+        assert!(!should_pin_on_top(OutputId::One, Some(2), 3));
+        assert!(!should_pin_on_top(OutputId::One, None, 2));
     }
 
     #[test]
     fn should_not_pin_the_windowed_fallback() {
-        // P16-02: the one carve-out — a secondary output with no free monitor
-        // shows a normal window on the operator's screen. Pinning that would
-        // trap the operator behind a window they cannot get past.
-        assert!(!should_pin_on_top(OutputId::Two, None));
+        // P16-02 / P19-03: a secondary output with no free monitor shows a
+        // normal window on the operator's screen. Pinning that would trap the
+        // operator behind a window they cannot get past.
+        assert!(!should_pin_on_top(OutputId::Two, None, 1));
+        assert!(!should_pin_on_top(OutputId::Two, None, 2));
     }
 
     #[test]
-    fn pin_on_top_is_the_inverse_of_the_windowed_fallback() {
-        for output in OutputId::ALL {
-            for target in [None, Some(0), Some(1)] {
-                assert_eq!(
-                    should_pin_on_top(output, target),
-                    !use_windowed_fallback(output, target),
-                    "output {output:?} target {target:?}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn reassert_on_top_for_every_presentation_window() {
-        for output in OutputId::ALL {
-            assert!(should_reassert_on_top(output.window_label()));
-        }
-    }
-
-    #[test]
-    fn reassert_on_top_never_for_operator_or_unknown() {
-        assert!(!should_reassert_on_top("operator"));
-        assert!(!should_reassert_on_top(""));
-        assert!(!should_reassert_on_top("presentation-99"));
+    fn should_not_pin_with_zero_monitors() {
+        assert!(!should_pin_on_top(OutputId::One, None, 0));
     }
 
     #[test]

@@ -32,6 +32,7 @@ import { SetItemList } from "./SetItemList";
 import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
 import { LiveSongEditModal } from "./LiveSongEditModal";
+import { AnnouncementDialog } from "./AnnouncementDialog";
 import type { OutputId } from "../../types";
 
 export const OperatorPresentationLayout: React.FC<{
@@ -55,7 +56,6 @@ export const OperatorPresentationLayout: React.FC<{
   const { activeSetId } = useLibraryStore();
 
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
-  const [announcementText, setAnnouncementText] = useState("");
 
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   // Force the set picker open even when a set is already loaded (the "change
@@ -81,7 +81,6 @@ export const OperatorPresentationLayout: React.FC<{
     if (!launched) setFocusedOutput("one");
   };
 
-  const announcementRef = useRef<HTMLTextAreaElement>(null);
   const autoLoadedTwoRef = useRef(false);
 
   useEffect(() => {
@@ -174,16 +173,11 @@ export const OperatorPresentationLayout: React.FC<{
   };
 
   const handleAvisoClick = () => {
-    setAnnouncementText("");
     setShowAnnouncementDialog(true);
-    setTimeout(() => announcementRef.current?.focus(), 50);
   };
 
-  const handleConfirmAnnouncement = async () => {
-    const text = announcementText.trim();
-    if (!text) return;
+  const handleConfirmAnnouncement = async (text: string) => {
     setShowAnnouncementDialog(false);
-    setAnnouncementText("");
     await ensurePresentation();
     try {
       await setAnnouncementOverlay(text, focusedOutput);
@@ -376,45 +370,10 @@ export const OperatorPresentationLayout: React.FC<{
 
       {/* Announcement dialog */}
       {showAnnouncementDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-surface rounded-xl shadow-2xl w-96 flex flex-col">
-            <div className="px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-semibold">{t("home.overlay.announcementTitle")}</h3>
-            </div>
-            <div className="p-4">
-              <textarea
-                ref={announcementRef}
-                value={announcementText}
-                onChange={(e) => setAnnouncementText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                    handleConfirmAnnouncement();
-                  }
-                  if (e.key === "Escape") {
-                    setShowAnnouncementDialog(false);
-                  }
-                }}
-                placeholder={t("home.overlay.announcementPlaceholder")}
-                className="w-full h-28 px-3 py-2 bg-surface-2 border border-border rounded text-sm resize-none focus:outline-none focus:border-primary placeholder-muted"
-              />
-            </div>
-            <div className="px-4 py-3 border-t border-border flex justify-end gap-2">
-              <button
-                onClick={() => setShowAnnouncementDialog(false)}
-                className="px-4 py-2 text-sm rounded-lg bg-surface-2 hover:bg-border transition-colors"
-              >
-                {t("home.overlay.cancel")}
-              </button>
-              <button
-                onClick={handleConfirmAnnouncement}
-                disabled={!announcementText.trim()}
-                className="px-4 py-2 text-sm rounded-lg bg-primary hover:bg-primary-hover text-fg-on-primary font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t("home.overlay.confirm")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <AnnouncementDialog
+          onCancel={() => setShowAnnouncementDialog(false)}
+          onConfirm={handleConfirmAnnouncement}
+        />
       )}
 
       {/* Set picker (change which set the focused screen presents) */}

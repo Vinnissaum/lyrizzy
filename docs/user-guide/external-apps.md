@@ -22,7 +22,7 @@ telling you so; the rest of the app keeps working.
 
 ## LibreOffice — PowerPoint / PDF slides
 
-Lyrizzy converts presentation files (`.pptx`, `.pdf`, and similar) into image
+Lyrizzy converts presentation files (`.pptx`, `.ppsx`, `.ppt`, `.pps`, `.odp`, `.pdf`) into image
 slides so they can be projected. It does this by running **LibreOffice** in the
 background. Without LibreOffice, slide import is unavailable.
 

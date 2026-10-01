@@ -885,7 +885,7 @@
       "image": "Imagem",
       "aviso": "Aviso",
       "pdf": "Apresentação",
-      "pdfTooltip": "Importar PPTX ou PDF",
+      "pdfTooltip": "Importar PowerPoint (PPTX, PPSX), ODP ou PDF",
       "closeOverlay": "Fechar overlay",
       "announcementTitle": "Enviar aviso",
       "announcementPlaceholder": "Digite o texto do aviso…",

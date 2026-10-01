@@ -39,7 +39,7 @@ Some features call out to small external programs. Install only the ones you use
 
 | If you want to… | Install |
 | --- | --- |
-| Import PowerPoint (`.pptx`) or PDF slides | **LibreOffice** |
+| Import PowerPoint (`.pptx`, `.ppsx`) or PDF slides | **LibreOffice** |
 | Use video backgrounds / video media | **FFmpeg** (+ GStreamer on Linux) |
 | Show a live camera over RTMP / RTSP / SRT / multicast | **MediaMTX** |
 

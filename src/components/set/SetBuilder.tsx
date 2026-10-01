@@ -56,6 +56,7 @@ import { mediaUrl } from "../../api/assets";
 import { listSongs } from "../../api/commands";
 import { useRequestPresentation } from "../presentation/PresentationLaunchProvider";
 import { CountdownScheduleModal } from "./CountdownScheduleModal";
+import { PRESENTATION_EXTENSIONS } from "../../utils/presentationFiles";
 import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
 import { MediaSetItemEditor } from "./MediaSetItemEditor";
 import { BlankItemNotesEditor } from "./BlankItemNotesEditor";
@@ -312,7 +313,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
     if (!serviceSet) return;
     const selected = await open({
       title: t("media.slideshow.import"),
-      filters: [{ name: "Presentation", extensions: ["pptx", "ppt", "pdf"] }],
+      filters: [{ name: "Presentation", extensions: PRESENTATION_EXTENSIONS }],
       multiple: false,
     });
     if (!selected) return;

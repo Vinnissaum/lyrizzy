@@ -21,6 +21,7 @@ import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
 import { fanOutToMirror } from "../../utils/outputDispatch";
+import { PRESENTATION_EXTENSIONS } from "../../utils/presentationFiles";
 import { OutputSwitcher } from "./OutputSwitcher";
 import { OutputLaunchModal } from "./OutputLaunchModal";
 import { MicSwitch } from "./MicSwitch";
@@ -217,7 +218,7 @@ export const OperatorPresentationLayout: React.FC<{
     if (!activeSetId) return;
     const selected = await open({
       title: t("media.slideshow.import"),
-      filters: [{ name: "Presentation", extensions: ["pptx", "ppt", "pdf"] }],
+      filters: [{ name: "Presentation", extensions: PRESENTATION_EXTENSIONS }],
       multiple: false,
     });
     if (!selected) return;

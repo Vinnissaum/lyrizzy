@@ -288,7 +288,24 @@ pub struct ConversionProgress {
     pub message: Option<String>,
 }
 
-/// Import a PPTX, PDF, PPT, or ODP file into the media library.
+/// MIME type for a presentation file extension (lowercase), or `None` when the
+/// extension is not an importable presentation. This is the single allow-list
+/// for `import_presentation` (P20-08): every format here is opened by
+/// LibreOffice and rasterised through the same PDF path, so accepting one is
+/// only a matter of listing it. `ppsx`/`pps` are PowerPoint's slide-show
+/// variants, read by the same PowerPoint import filters as `pptx`/`ppt`.
+pub(crate) fn presentation_mime(ext: &str) -> Option<&'static str> {
+    Some(match ext {
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "ppsx" => "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+        "ppt" | "pps" => "application/vnd.ms-powerpoint",
+        "odp" => "application/vnd.oasis.opendocument.presentation",
+        "pdf" => "application/pdf",
+        _ => return None,
+    })
+}
+
+/// Import a PPTX, PPSX, PPT, PPS, ODP or PDF file into the media library.
 ///
 /// Copies the source, runs LibreOffice headless conversion to PNG slides,
 /// normalises filenames to slide_000.png…, inserts a Presentation media record.
@@ -306,14 +323,9 @@ pub async fn import_presentation(
         .map(|e| e.to_lowercase())
         .ok_or_else(|| ErrorPayload::new("media.no_extension"))?;
 
-    match ext.as_str() {
-        "pptx" | "ppt" | "pdf" | "odp" => {}
-        _ => {
-            return Err(
-                ErrorPayload::new("media.unsupported_container").with_param("ext", &ext),
-            )
-        }
-    }
+    let mime_type = presentation_mime(&ext).ok_or_else(|| {
+        ErrorPayload::new("media.unsupported_container").with_param("ext", &ext)
+    })?;
 
     let resource_dir = app.path().resource_dir().ok();
     let soffice = libreoffice::soffice_path(resource_dir.as_deref())
@@ -393,13 +405,6 @@ pub async fn import_presentation(
     let byte_size = std::fs::metadata(&dest).map(|m| m.len() as i64).unwrap_or(0);
     let now = now_ms();
     let thumbnail_file = format!("{uuid}/slide_000.png");
-    let mime_type = match ext.as_str() {
-        "pdf" => "application/pdf",
-        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "ppt" => "application/vnd.ms-powerpoint",
-        "odp" => "application/vnd.oasis.opendocument.presentation",
-        _ => "application/octet-stream",
-    };
 
     let media = Media {
         id: uuid.clone(),
@@ -478,4 +483,32 @@ pub async fn get_media_references(
             })
             .collect(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn presentation_mime_accepts_every_presentation_format() {
+        let cases = [
+            ("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+            ("ppsx", "application/vnd.openxmlformats-officedocument.presentationml.slideshow"),
+            ("ppt", "application/vnd.ms-powerpoint"),
+            ("pps", "application/vnd.ms-powerpoint"),
+            ("odp", "application/vnd.oasis.opendocument.presentation"),
+            ("pdf", "application/pdf"),
+        ];
+        for (ext, mime) in cases {
+            assert_eq!(presentation_mime(ext), Some(mime), "{ext}");
+        }
+    }
+
+    #[test]
+    fn presentation_mime_rejects_other_files() {
+        // The caller lowercases first; anything else is not a presentation.
+        for ext in ["key", "docx", "mp4", "png", "", "PPSX"] {
+            assert_eq!(presentation_mime(ext), None, "{ext}");
+        }
+    }
 }

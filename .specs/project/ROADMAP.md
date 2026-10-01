@@ -427,3 +427,21 @@
 | 19C — Release | P19-12 | Version `1.6.0` across five sources, tag pushed |
 
 **Gate at completion:** 768 Vitest + 1 skipped, 370 Rust (1 ignored), `tsc --noEmit` clean, `cargo clippy --all-targets -D warnings` clean.
+
+---
+
+## Phase 20: Countdown Agrees on Both Screens, `.ppsx` Import — RELEASED (`v1.7.0`)
+
+**Goal:** Stop a countdown left over from an earlier run from showing on one screen while the other shows the right time, and import PowerPoint slide-show files.
+**Completed:** 2026-10-01. **Released:** `v1.7.0`.
+**Spec:** `.specs/features/phase20-countdown-screens-ppsx/spec.md` (10 requirements P20-01..P20-10, 10/10 done) · **Tasks:** `tasks.md` (T1–T6).
+
+| Group | Requirements | Scope |
+|-------|--------------|-------|
+| 20A — Countdown leftovers | P20-01..P20-05 | Stop resets any non-scheduled countdown, not just takeovers; `CountdownState.sourceItemId`; the keep-or-restart decision moves into `start_countdown(preserveActive)` (D-86) |
+| 20B — `.ppsx` import | P20-06..P20-09 | `presentation_mime` allow-list (`pptx ppsx ppt pps odp pdf`); one shared picker constant; tooltip + user guide (D-87) |
+| 20C — Release | P20-10 | Version `1.7.0`, tag pushed |
+
+**Root causes:** RC-1 `exit_presentation` cleared only takeovers, so a manual countdown survived Stop; RC-2 the landing guard kept any `running` countdown; RC-3 the editor's reset hits only the focused output, which is always Tela 1 on Home, hence one screen right and one wrong; RC-4 the guard read a store that might not have loaded yet. **F-1:** a second countdown item inherited the first one's time.
+
+**Gate at completion:** 772 Vitest + 1 skipped, 382 Rust (1 ignored), `tsc --noEmit` clean, `cargo clippy --all-targets -D warnings` clean.

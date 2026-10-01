@@ -204,6 +204,13 @@ pub struct CountdownState {
     pub message_scale: u16,
     #[serde(default = "default_scale")]
     pub digits_scale: u16,
+    /// Id of the set item whose landing started this countdown (manual-present
+    /// path). Lets a presentation window landing on a countdown item tell "my
+    /// own countdown, still running" from a leftover of another item or of an
+    /// earlier presentation (P20-02/P20-03). `None` for armed/scheduled and
+    /// reset countdowns.
+    #[serde(default)]
+    pub source_item_id: Option<String>,
 }
 
 impl Default for CountdownState {
@@ -221,6 +228,7 @@ impl Default for CountdownState {
             background_media_id: None,
             message_scale: 100,
             digits_scale: 100,
+            source_item_id: None,
         }
     }
 }

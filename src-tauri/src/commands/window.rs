@@ -1,4 +1,4 @@
-use crate::domain::countdown::{CountdownMode, CountdownPosition};
+use crate::domain::countdown::{CountdownMode, CountdownPosition, CountdownState};
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{PresentationMode, PresentationState};
 use crate::domain::events::{CountdownTickPayload, StateChangedPayload};
@@ -492,6 +492,21 @@ pub async fn enter_presentation(
     Ok(())
 }
 
+/// Whether stopping a screen should return its countdown to `Idle` (P20-01).
+///
+/// Anything that was counting on that screen goes: a takeover, and also a
+/// manual countdown started by landing on the item (`takeover = false`), which
+/// used to survive Stop and win again at the next presentation until the app
+/// was restarted (RC-1). A `Scheduled` countdown is armed for later and is
+/// deliberately kept, so stopping doesn't silently disarm it.
+pub(crate) fn should_reset_countdown_on_exit(cd: &CountdownState) -> bool {
+    cd.takeover
+        || matches!(
+            cd.mode,
+            CountdownMode::Running | CountdownMode::Paused | CountdownMode::Finished
+        )
+}
+
 /// Returns `true` when `exit_presentation` can short-circuit:
 /// state is already idle and no presentation window is open.
 fn is_already_exited(mode: &PresentationMode, window_exists: bool) -> bool {
@@ -528,12 +543,12 @@ pub async fn exit_presentation(
         pres.clone()
     };
 
-    // Stop/Esc must also tear down an active countdown takeover — otherwise the
-    // ticker keeps running, `takeover` stays set, and reopening the projector
-    // (or the lingering floating widget) re-seizes the screen. Only an actually
-    // engaged takeover is cleared; a merely-Scheduled (armed-for-later) countdown
-    // is left alone so exiting a presentation doesn't silently disarm it.
-    if state.output(output).countdown.read().await.takeover {
+    // Stop/Esc must also tear down whatever was counting on this screen —
+    // otherwise the ticker keeps running and reopening the projector shows the
+    // stale countdown again (a takeover re-seizes the screen; a manual one wins
+    // the landing check). A Scheduled (armed-for-later) countdown is left alone
+    // so exiting a presentation doesn't silently disarm it (P20-01).
+    if should_reset_countdown_on_exit(&*state.output(output).countdown.read().await) {
         {
             let mut task = state.output(output).countdown_task.lock().await;
             if let Some(handle) = task.take() {
@@ -549,6 +564,9 @@ pub async fn exit_presentation(
             cd.takeover = false;
             cd.position = CountdownPosition::default();
             cd.background_media_id = None;
+            cd.message_scale = 100;
+            cd.digits_scale = 100;
+            cd.source_item_id = None;
             cd.clone()
         };
         let _ = app.emit(
@@ -600,6 +618,30 @@ mod tests {
             }),
             ..Default::default()
         }
+    }
+
+    fn countdown(mode: CountdownMode, takeover: bool) -> CountdownState {
+        CountdownState { mode, takeover, ..CountdownState::default() }
+    }
+
+    #[test]
+    fn exit_resets_a_manual_countdown() {
+        // RC-1: a countdown started by landing on the item has no takeover and
+        // used to survive Stop until the app was restarted.
+        for mode in [CountdownMode::Running, CountdownMode::Paused, CountdownMode::Finished] {
+            assert!(should_reset_countdown_on_exit(&countdown(mode.clone(), false)), "{mode:?}");
+        }
+    }
+
+    #[test]
+    fn exit_resets_a_takeover() {
+        assert!(should_reset_countdown_on_exit(&countdown(CountdownMode::Running, true)));
+    }
+
+    #[test]
+    fn exit_keeps_a_pending_schedule_and_idle() {
+        assert!(!should_reset_countdown_on_exit(&countdown(CountdownMode::Scheduled, false)));
+        assert!(!should_reset_countdown_on_exit(&countdown(CountdownMode::Idle, false)));
     }
 
     #[test]

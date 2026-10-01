@@ -573,6 +573,8 @@ describe("PresentationApp — set-enter never arms (manual present)", () => {
       target: { kind: "duration", durationMs: 600000 },
       message: "Começa em…",
       endBehavior: "holdZero",
+      sourceItemId: "cd-1",
+      preserveActive: true,
     });
   });
 
@@ -607,19 +609,33 @@ describe("PresentationApp — set-enter never arms (manual present)", () => {
       backgroundMediaId: undefined,
       messageScale: 150,
       digitsScale: 60,
+      sourceItemId: "cd-1",
+      preserveActive: true,
     });
   });
 
-  it("does NOT restart/arm when a schedule is already pending (scheduled)", () => {
+  // P20-03/P20-04: keep-or-restart is decided by the backend against its own
+  // state, never from this window's store — which may not have loaded yet, or
+  // may hold a leftover from an earlier presentation (RC-2, RC-4). Whatever the
+  // store says, the window asks with `preserveActive` and its own item id; the
+  // backend keeps a pending schedule, a fired takeover or this item's own
+  // running countdown, and restarts anything else.
+  it.each([
+    ["a pending schedule", { mode: "scheduled", takeover: false }],
+    ["a leftover running countdown", { mode: "running", takeover: false }],
+    ["a fired takeover", { mode: "running", takeover: true }],
+  ])("defers to the backend with preserveActive over %s", (_label, cd) => {
     cdStateMock = {
-      mode: "scheduled",
       durationMs: 600000,
       remainingMs: 7200000,
       endBehavior: "holdZero",
-      takeover: false,
+      ...cd,
     };
     render(<PresentationApp />);
-    expect(cdStartMock).not.toHaveBeenCalled();
+    expect(cdStartMock).toHaveBeenCalledTimes(1);
+    expect(cdStartMock).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceItemId: "cd-1", preserveActive: true }),
+    );
   });
 
   it("does not overlay while scheduled+takeover:false — projector stays put", () => {

@@ -183,17 +183,16 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
   }, []);
 
   // Landing on a countdown set item. Arming a schedule is owned by the launch
-  // modal (OperatorApp), so this effect NEVER arms. If a schedule is already
-  // pending/running (kept-on at launch), leave it alone — navigating here just
-  // previews it via the countdown branch, and the takeover still fires at HH:MM
-  // regardless of where the operator is parked. Otherwise — an unscheduled item,
-  // OR a schedule the operator switched OFF at launch — start the countdown
-  // immediately: this is the manual-present path (clicking the item runs it now,
-  // no takeover).
+  // modal (OperatorApp), so this effect NEVER arms. It always asks the backend
+  // to start this item's countdown with `preserveActive`, and the backend keeps
+  // the current one instead when it is a pending schedule, a schedule that
+  // fired (takeover), or this same item still running (P20-03). Anything else
+  // restarts from this item's config — a leftover from an earlier
+  // presentation or another countdown item never wins (RC-2, F-1). The
+  // decision is NOT made from this window's store, which may not have loaded
+  // the backend state yet (RC-4). This is the manual-present path: no takeover.
   useEffect(() => {
     if (currentItem?.itemType === "countdown" && currentItem.countdownConfig) {
-      const cdMode = useCountdownStore.getState().state.mode;
-      if (cdMode === "scheduled" || cdMode === "running") return;
       const {
         target,
         message,
@@ -211,6 +210,8 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
         backgroundMediaId,
         messageScale,
         digitsScale,
+        sourceItemId: currentItem.id,
+        preserveActive: true,
       });
     }
   }, [currentItem?.id]);

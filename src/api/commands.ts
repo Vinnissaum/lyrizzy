@@ -376,6 +376,11 @@ export interface StartCountdownParams {
   messageScale?: number;
   /** Scale factor (%) applied to the countdown digits. */
   digitsScale?: number;
+  /** Set item this start comes from; recorded so a later landing can recognise its own countdown. */
+  sourceItemId?: string;
+  /** Keep an active countdown instead of restarting when the backend says it qualifies
+   *  (scheduled, a fired takeover, or this same item still running). */
+  preserveActive?: boolean;
   [key: string]: unknown;
 }
 

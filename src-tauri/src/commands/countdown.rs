@@ -35,6 +35,34 @@ fn resolve_scale(scale: Option<u16>) -> u16 {
     scale.map(|n| n.clamp(50, 300)).unwrap_or(100)
 }
 
+/// Whether a presentation window landing on the countdown item `source_item_id`
+/// should leave the output's current countdown alone instead of restarting it
+/// from the item's config (P20-03).
+///
+/// Kept:
+/// - `Scheduled` — an armed schedule is never disarmed by landing on any item.
+/// - `Running` as a takeover — a schedule that just fired owns the wall; the
+///   projector jumping to its item must not restart it.
+/// - `Running` and started by this same item — navigating away and back
+///   continues the same countdown.
+///
+/// Everything else restarts: a leftover from an earlier presentation or an
+/// edited item, a different countdown item still running (F-1), and
+/// `Paused`/`Finished`/`Idle`. A missing id on either side never matches.
+pub(crate) fn should_preserve_countdown(state: &CountdownState, source_item_id: Option<&str>) -> bool {
+    match state.mode {
+        CountdownMode::Scheduled => true,
+        CountdownMode::Running => {
+            state.takeover
+                || matches!(
+                    (state.source_item_id.as_deref(), source_item_id),
+                    (Some(a), Some(b)) if a == b
+                )
+        }
+        _ => false,
+    }
+}
+
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -306,12 +334,24 @@ pub async fn start_countdown(
     background_media_id: Option<String>,
     message_scale: Option<u16>,
     digits_scale: Option<u16>,
+    source_item_id: Option<String>,
+    preserve_active: Option<bool>,
     output: Option<OutputId>,
 ) -> Result<CountdownState, ErrorPayload> {
     let output = output.unwrap_or_default();
-    // Abort any running ticker first.
+    // Abort any running ticker first — unless the caller asked to keep an
+    // active countdown and this one qualifies (P20-03). The keep-or-restart
+    // decision is made here, under the task lock, against the authoritative
+    // state, so a window whose store hasn't loaded yet can't get it wrong
+    // (RC-4). Lock order task → countdown, same as exit_presentation.
     {
         let mut task = state.output(output).countdown_task.lock().await;
+        if preserve_active == Some(true) {
+            let s = state.output(output).countdown.read().await;
+            if should_preserve_countdown(&s, source_item_id.as_deref()) {
+                return Ok(s.clone());
+            }
+        }
         if let Some(handle) = task.take() {
             handle.abort();
         }
@@ -359,6 +399,7 @@ pub async fn start_countdown(
         s.background_media_id = background_media_id;
         s.message_scale = resolve_scale(message_scale);
         s.digits_scale = resolve_scale(digits_scale);
+        s.source_item_id = source_item_id;
         s.clone()
     };
 
@@ -438,6 +479,7 @@ pub async fn reset_countdown(
         s.background_media_id = None;
         s.message_scale = 100;
         s.digits_scale = 100;
+        s.source_item_id = None;
         s.clone()
     };
     let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
@@ -505,6 +547,8 @@ pub async fn arm_countdown(
         s.background_media_id = background_media_id;
         s.message_scale = resolve_scale(message_scale);
         s.digits_scale = resolve_scale(digits_scale);
+        // An armed countdown belongs to its schedule, not to a landed item.
+        s.source_item_id = None;
         s.clone()
     };
 
@@ -673,6 +717,74 @@ mod tests {
         s.digits_scale = 100;
         assert_eq!(s.message_scale, 100);
         assert_eq!(s.digits_scale, 100);
+    }
+
+    fn running(takeover: bool, source: Option<&str>) -> CountdownState {
+        CountdownState {
+            mode: CountdownMode::Running,
+            takeover,
+            source_item_id: source.map(str::to_string),
+            ..CountdownState::default()
+        }
+    }
+
+    #[test]
+    fn preserve_a_pending_schedule_for_any_item() {
+        let s = CountdownState { mode: CountdownMode::Scheduled, ..CountdownState::default() };
+        assert!(should_preserve_countdown(&s, Some("cd-1")));
+        assert!(should_preserve_countdown(&s, None));
+    }
+
+    #[test]
+    fn preserve_a_fired_takeover_for_any_item() {
+        assert!(should_preserve_countdown(&running(true, None), Some("cd-1")));
+    }
+
+    #[test]
+    fn preserve_the_same_items_running_countdown() {
+        // Navigating away from the item and back continues the same countdown.
+        assert!(should_preserve_countdown(&running(false, Some("cd-1")), Some("cd-1")));
+    }
+
+    #[test]
+    fn restart_a_different_items_running_countdown() {
+        // F-1: a second countdown item must not inherit the first one's time.
+        assert!(!should_preserve_countdown(&running(false, Some("cd-1")), Some("cd-2")));
+    }
+
+    #[test]
+    fn restart_a_leftover_with_no_source() {
+        // RC-2: a manual countdown with no recorded source (e.g. left over from
+        // before this field existed) is never mistaken for this item's own.
+        assert!(!should_preserve_countdown(&running(false, None), Some("cd-1")));
+        assert!(!should_preserve_countdown(&running(false, Some("cd-1")), None));
+        assert!(!should_preserve_countdown(&running(false, None), None));
+    }
+
+    #[test]
+    fn restart_paused_finished_and_idle() {
+        for mode in [CountdownMode::Paused, CountdownMode::Finished, CountdownMode::Idle] {
+            let s = CountdownState {
+                mode: mode.clone(),
+                source_item_id: Some("cd-1".into()),
+                ..CountdownState::default()
+            };
+            assert!(!should_preserve_countdown(&s, Some("cd-1")), "{mode:?}");
+        }
+    }
+
+    #[test]
+    fn source_item_id_defaults_to_none_and_round_trips() {
+        let legacy: CountdownState = serde_json::from_str(
+            r#"{"mode":"running","durationMs":0,"remainingMs":0,"targetEpochMs":null,
+                "scheduledStartEpochMs":null,"message":null,"endBehavior":"holdZero"}"#,
+        )
+        .unwrap();
+        assert_eq!(legacy.source_item_id, None);
+
+        let s = running(false, Some("cd-1"));
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(json.contains("\"sourceItemId\":\"cd-1\""), "{json}");
     }
 
     #[test]

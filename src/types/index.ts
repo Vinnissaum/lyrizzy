@@ -310,6 +310,8 @@ export interface CountdownState {
   backgroundMediaId?: string;
   messageScale: number;
   digitsScale: number;
+  /** Set item whose landing started this countdown (manual present); absent for armed/reset ones. */
+  sourceItemId?: string;
 }
 
 /** Emitted when a scheduled countdown reaches its wall-clock start time. */

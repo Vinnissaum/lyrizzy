@@ -353,6 +353,8 @@
 
 ## Phase 16: Multi-Screen Focus Integrity, Simultaneous Control & Import/Naming Fixes — DONE
 
+> **16A (P16-01, P16-03) reverted in Phase 19 / `v1.6.0`** — see D-84.
+
 **Goal:** Stop another Windows app from drawing over a presenting screen on multi-monitor setups, and close four operator-comprehension gaps (set item named for the wrong colour, Simultânea toggle indistinguishable from a screen tab, single-song Holyrics export rejected, Stop silently killing one of two independent screens).
 **Completed:** 2026-08-30. **Released:** `v1.3.0`.
 **Spec:** `.specs/features/phase16-multiscreen-focus-import-ux/spec.md` (28 requirements P16-01..P16-28, 28/28 done).
@@ -389,11 +391,11 @@
 **User decisions:** D-75 editable countdown name; D-76 per-item sizing as percentages of today's values; D-77 Home picker only, unreachable Sets screen retired; D-78 RTSP/MJPEG/web-page only, profiles scoped.
 ---
 
-## Phase 18: Home Simplification — Single Primary Action & Compact Set Control — TASKS READY
+## Phase 18: Home Simplification — Single Primary Action & Compact Set Control — RELEASED (`v1.5.0`)
 
 **Goal:** Make Home's visual hierarchy match its usage frequency — one unmistakable `Apresentar` button, and set management collapsed behind a select and a gear — so the operator hits the right control seconds before a service starts.
 **Specified:** 2026-09-11. **Target tag:** `v1.5.0`.
-**Spec:** `.specs/features/phase18-home-simplification/spec.md` (24 requirements P18-01..P18-24; P18-04 retired at design time → 23 live). **Design:** `design.md` · **Tasks:** `tasks.md` (10 tasks T1–T10 in 4 batches, 23/23 live requirements mapped). Not executed.
+**Spec:** `.specs/features/phase18-home-simplification/spec.md` (24 requirements P18-01..P18-24; P18-04 retired at design time → 23 live). **Design:** `design.md` · **Tasks:** `tasks.md` (10 tasks T1–T10 in 4 batches, 23/23 live requirements mapped). Executed and released as `v1.5.0`.
 
 | Group | Requirements | Scope |
 |-------|--------------|-------|
@@ -409,3 +411,19 @@
 **Scope note:** frontend + CI only — no Rust, no migration, no IPC contract change. Existing `createSet`/`updateSet`/`deleteSet`/`getSetPlayCount`/`listSets` commands cover it.
 
 **Design findings:** **DD-1** Home builds its own header row and stops mounting the shared `OverlayActionBar`, which sheds `showApresentarButton`/`onApresentar` and becomes the presentation layout's alone (amends P18-02); **DD-2** `Fechar overlay` on Home is retired as unreachable — `exit_presentation` clears `overlay` in the same critical section as `mode = Idle` (`window.rs:520-540`), every remaining overlay setter is in the presentation layout, and Home is unmounted while any output presents (retires P18-04); **DD-6** F-1's fix lands as a pure `nextActiveSetId` helper so the regression is testable without rendering; **DD-8** the notes job only PATCHes an existing release body, so P18-24 holds structurally. **DD-9 is flagged unverified:** draft lookup by `gh release edit <tag>` must be confirmed on the first real tag push, with a `gh api` + PATCH fallback documented.
+
+---
+
+## Phase 19: Presentation Screens Stop Covering the Desktop, Aviso Size & Preview — RELEASED (`v1.6.0`)
+
+**Goal:** Stop a multi-monitor presentation from hiding every other window on its monitor, and let the operator size and preview an aviso without leaving the live screen.
+**Completed:** 2026-10-01. **Released:** `v1.6.0`.
+**Spec:** `.specs/features/phase19-unpin-screens-aviso-preview/spec.md` (12 requirements P19-01..P19-12, 12/12 done; design and tasks inline, Medium scope).
+
+| Group | Requirements | Scope |
+|-------|--------------|-------|
+| 19A — Unpin on multi-monitor | P19-01..P19-04 | `should_pin_on_top` back to single-monitor only (keeps P16-02's windowed-fallback carve-out); P16-03 focus-loss re-pin and `should_reassert_on_top` removed |
+| 19B — Aviso size + preview | P19-05..P19-11 | New `AnnouncementDialog`: 16:9 preview via the wall's `SlideStage` + `WarningBody`, −/+ stepper on the global `announcementFontSize` (D-85) |
+| 19C — Release | P19-12 | Version `1.6.0` across five sources, tag pushed |
+
+**Gate at completion:** 768 Vitest + 1 skipped, 370 Rust (1 ignored), `tsc --noEmit` clean, `cargo clippy --all-targets -D warnings` clean.

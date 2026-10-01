@@ -2,7 +2,7 @@
 
 **Spec:** `.specs/features/phase18-home-simplification/spec.md`
 **Design:** `.specs/features/phase18-home-simplification/design.md`
-**Status:** Draft — awaiting approval, **not executed**
+**Status:** Executed. Released as `v1.5.0` (status line corrected 2026-10-01)
 
 **Measured baseline (this tree, 2026-09-11):** 736 Vitest passing + 1 skipped (87 files) ·
 `tsc --noEmit` clean. Rust untouched by this phase — 372 passing + 1 ignored must not move.

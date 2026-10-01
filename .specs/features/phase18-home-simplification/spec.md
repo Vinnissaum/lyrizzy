@@ -1,6 +1,6 @@
 # Phase 18: Home Simplification — Single Primary Action & Compact Set Control
 
-**Status:** DESIGNED (2026-09-11) — see `design.md`; two requirements amended, see Spec Amendments below
+**Status:** RELEASED as `v1.5.0` (status line corrected 2026-10-01; the code shipped before these docs were updated). Two requirements amended at design time, see Spec Amendments below
 **Specified:** 2026-09-11
 **Target tag:** `v1.5.0`
 **Depends on:** Phase 17 (`v1.4.0`) — the Home `SetPicker` this phase compacts was introduced there (P17-19..P17-27).

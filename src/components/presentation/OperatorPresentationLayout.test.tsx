@@ -61,7 +61,9 @@ vi.mock("react-i18next", () => ({
 
 // Stub child components introduced in P7 so they don't need their own stores
 vi.mock("./SetItemList", () => ({
-  SetItemList: () => <div data-testid="set-item-list-stub" />,
+  SetItemList: ({ editable }: { editable?: boolean }) => (
+    <div data-testid="set-item-list-stub" data-editable={String(!!editable)} />
+  ),
 }));
 
 vi.mock("./StrophesGrid", () => ({
@@ -241,6 +243,12 @@ describe("OperatorPresentationLayout", () => {
     useCountdownStore.setState({ state: countdownState("running", true) });
     render(<OperatorPresentationLayout />);
     expect(screen.getByTestId("live-countdown-controls-stub")).toBeInTheDocument();
+  });
+
+  it("the set pane's list is the editable one while presenting", () => {
+    setupDefaultMocks();
+    render(<OperatorPresentationLayout />);
+    expect(screen.getByTestId("set-item-list-stub")).toHaveAttribute("data-editable", "true");
   });
 
   it("live countdown controls outside the live pane and every hidden container", () => {

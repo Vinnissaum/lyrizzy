@@ -42,7 +42,7 @@ helper that `vitest` reaches.
 3. out: `countdown_tick` (exists) to both windows; `CountdownRenderer` (exists) on the wall and `LivePreview` (exists) redraw
 4. operator uses `Adicionar música` -> `SetItemList` (exists) with the song picker (new) -> `addSetItem({ setId, itemType: "song", songId, afterItemId })`
 5. `commands/set.rs::add_set_item` (exists) - shifts `sort_order` after the anchor, inserts and persists `SetItem`; while the set is presenting, persists today's `SongPlay`
-6. operator uses remove -> confirm dialog (new) -> `removeSetItem(itemId)` -> `commands/set.rs::remove_set_item` (exists) - refuses with `set.item_on_screen` when the item is on screen on any presenting output, otherwise deletes the `SetItem` row
+6. operator uses remove -> confirm dialog (new); the control is disabled for an item on screen on any output, read through `useOutputStates` (new) -> `removeSetItem(itemId)` -> `commands/set.rs::remove_set_item` (exists) - refuses with `set.item_on_screen` when the item is on screen on any presenting output, otherwise deletes the `SetItem` row
 7. `commands/presentation.rs` (exists) - splices the item into or out of every output whose loaded set is this set: `set.items`, `presentation_slides`, `item_slide_counts`, `current_item_index`, `frozen_at`, `next_slide`; the index arithmetic is a pure helper in `domain/presentation.rs` (exists)
 8. out: `state_changed` carrying the full slides (`with_full_slides`) to both windows, and `set_changed` (exists) so Home's `SetBuilder` reloads
 
@@ -54,7 +54,7 @@ flowchart LR
     CD["2. commands/countdown.rs + domain/countdown.rs (exists)"]
     WIN["3, 8. CountdownRenderer, LivePreview, both windows (exists)"]
     SL["4. SetItemList (exists) + song picker (new)"]
-    RM["6. remove control + confirm dialog (new)"]
+    RM["6. remove control + confirm dialog + useOutputStates (new)"]
     SET["5, 6. commands/set.rs (exists)"]
     DB[("5. SQLite set_items, song_plays (exists)")]
     PR["7. commands/presentation.rs + domain/presentation.rs (exists)"]

@@ -332,7 +332,7 @@ export const OperatorPresentationLayout: React.FC<{
             )}
           </header>
           <div className="flex-1 overflow-hidden">
-            <SetItemList />
+            <SetItemList editable />
           </div>
         </div>
 

@@ -1,7 +1,9 @@
 use crate::commands::set::db_load_set;
 use crate::commands::song::load_sections;
 use crate::domain::error::ErrorPayload;
-use crate::domain::presentation::{with_full_slides, PresentationMode, PresentationState};
+use crate::domain::presentation::{
+    splice_insert, splice_remove, with_full_slides, PresentationMode, PresentationState,
+};
 use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{anchor_of, resolve_anchor, RepeatMode, Slide, SlideConfig};
 use crate::services::{background, play_counter, slide_splitter};
@@ -224,7 +226,7 @@ async fn resolve_background_for_item(
         .flatten()
 }
 
-async fn emit_state(
+pub(crate) async fn emit_state(
     app: &AppHandle,
     output: OutputId,
     state: &PresentationState,
@@ -401,54 +403,54 @@ pub(crate) async fn compute_item_slides(
     Ok(slides)
 }
 
-/// Append a newly created set item to the live presentation snapshot when its set
-/// is the one currently loaded. Lets items added mid-presentation (e.g. a pptx/pdf
-/// slideshow imported from the operator) appear without a disruptive full reload.
-/// No-op when nothing is presenting or the item belongs to another set.
-pub(crate) async fn append_item_to_live_presentation(
+/// Splice a newly created set item into every output that has its set loaded,
+/// right after `after_item_id` in that output's list (at the end when absent or
+/// not in it), so items added mid-presentation appear without a disruptive full
+/// reload. Each output keeps the item, slide and frozen item it shows. Outputs
+/// on another set are untouched.
+///
+/// Returns the emit-ready snapshots for the caller to emit once the locks are
+/// gone. They carry every slide: the frontend keeps its previous slides when an
+/// emit carries none (`reconcileSlides`), which would misalign them after a splice.
+pub(crate) async fn insert_item_into_outputs(
     state: &AppState,
-    app: &AppHandle,
     item: &SetItem,
-) -> Result<(), ErrorPayload> {
-    let pool = state.db.get().expect("db initialized");
-
-    let belongs = {
-        let pres = state.output(OutputId::One).presentation.read().await;
-        pres.set
-            .as_ref()
-            .map(|s| s.id == item.set_id)
-            .unwrap_or(false)
-    };
-    if !belongs {
-        return Ok(());
-    }
-
-    let config = SlideConfig::default();
-    let settings = load_slide_gen_settings(pool).await;
-    let slides = compute_item_slides(pool, item, &config, &settings).await?;
-    let count = slides.len();
-
-    {
-        let mut all = state.output(OutputId::One).presentation_slides.write().await;
-        all.push(slides);
-    }
-
-    // Same lock order as do_next_slide (slides read → presentation write) to avoid
-    // deadlocks. Drop both before emitting (see AppState invariants in CLAUDE.md).
-    let snapshot = {
-        let all = state.output(OutputId::One).presentation_slides.read().await;
-        let mut pres = state.output(OutputId::One).presentation.write().await;
-        if let Some(set) = pres.set.as_mut() {
-            set.items.push(item.clone());
-        }
-        pres.item_slide_counts.push(count);
-        // The new item lands at the end, so it only changes the lookahead when we
-        // were already sitting on the final slide (next_slide was None).
+    after_item_id: Option<&str>,
+    slides: &[Slide],
+) -> Vec<(OutputId, PresentationState)> {
+    let mut snapshots = Vec::new();
+    for output in OutputId::ALL {
+        let out = state.output(output);
+        // Lock order slides → presentation, as in the navigation commands.
+        let mut all = out.presentation_slides.write().await;
+        let mut pres = out.presentation.write().await;
+        let Some(set) = pres.set.as_ref().filter(|s| s.id == item.set_id) else {
+            continue;
+        };
+        let index = after_item_id
+            .and_then(|id| set.items.iter().position(|i| i.id == id))
+            .map(|p| p + 1)
+            .unwrap_or(set.items.len());
+        splice_insert(&mut pres, &mut all, index, item.clone(), slides.to_vec());
+        pres.current_slide = resolve_current_slide(&all, &pres);
         pres.next_slide = resolve_next_slide(&all, &pres);
-        pres.clone()
-    };
+        snapshots.push((output, with_full_slides(&pres, &all)));
+    }
+    snapshots
+}
 
-    emit_state(app, OutputId::One, &snapshot).await
+/// Splice the item at `index` out of an output whose slides and presentation
+/// locks the caller holds, keeping the output on the item and slide it shows,
+/// and return the emit-ready snapshot (carrying every slide, as above).
+pub(crate) fn remove_item_locked(
+    pres: &mut PresentationState,
+    all: &mut Vec<Vec<Slide>>,
+    index: usize,
+) -> PresentationState {
+    splice_remove(pres, all, index);
+    pres.current_slide = resolve_current_slide(all, pres);
+    pres.next_slide = resolve_next_slide(all, pres);
+    with_full_slides(pres, all)
 }
 
 /// Recompute slides for every set item referencing `song_id`, without touching

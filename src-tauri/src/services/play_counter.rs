@@ -34,6 +34,30 @@ pub async fn record_set_start(pool: &SqlitePool, set_id: &str) -> Result<usize, 
     Ok(inserted)
 }
 
+/// Record today's play of one song in a set: a song added while its set is
+/// presenting (D-90). Idempotent per day, like `record_set_start`. Returns
+/// whether a row was inserted.
+pub async fn record_song_play(
+    pool: &SqlitePool,
+    set_id: &str,
+    song_id: &str,
+) -> Result<bool, sqlx::Error> {
+    let played_on = Local::now().format("%Y-%m-%d").to_string();
+    let created_at = chrono::Utc::now().timestamp_millis();
+    let result = sqlx::query(
+        "INSERT OR IGNORE INTO song_plays (id, song_id, set_id, played_on, created_at) \
+         VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(Uuid::new_v4().to_string())
+    .bind(song_id)
+    .bind(set_id)
+    .bind(&played_on)
+    .bind(created_at)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

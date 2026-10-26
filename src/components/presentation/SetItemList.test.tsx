@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SetItemList } from "./SetItemList";
 
 vi.mock("../../stores/presentation", () => ({
@@ -14,10 +14,22 @@ vi.mock("../../stores/media", () => ({
   useMediaStore: vi.fn(),
 }));
 
-vi.mock("../../api/commands", () => ({
-  goToItem: vi.fn().mockResolvedValue({}),
+vi.mock("../../api/commands", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../api/commands")>();
+  return {
+    normalizeError: actual.normalizeError,
+    goToItem: vi.fn().mockResolvedValue({}),
+    removeSetItem: vi.fn().mockResolvedValue(undefined),
+    addSetItem: vi.fn(),
+  };
+});
+
+vi.mock("../../hooks/useOutputStates", () => ({
+  useOutputStates: vi.fn(),
 }));
 
+import { removeSetItem } from "../../api/commands";
+import { useOutputStates } from "../../hooks/useOutputStates";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
@@ -190,5 +202,107 @@ describe("SetItemList", () => {
     expect(screen.getByText("Fundo Azul")).toBeInTheDocument();
     // Unnamed countdown falls back to the localized default name — no duration.
     expect(screen.getByText("Cronômetro")).toBeInTheDocument();
+  });
+});
+
+// ── P21: live set editing ───────────────────────────────────────────────────
+
+describe("SetItemList editable", () => {
+  const ON_AIR = "No ar — não pode ser removido";
+
+  function focused(state: Record<string, unknown>) {
+    vi.mocked(usePresentationStore).mockImplementation((selector: (s: any) => any) =>
+      selector({ state: { set: mockSet, ...state }, selectSlide }),
+    );
+  }
+
+  function tela2(state: Record<string, unknown> | null) {
+    vi.mocked(useOutputStates).mockReturnValue({
+      one: null,
+      two: state ? ({ set: mockSet, ...state } as any) : null,
+    });
+  }
+
+  const removeButton = (label: string) =>
+    screen.getByRole("button", { name: `Remover ${label}` });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useLibraryStore).mockImplementation((selector: any) =>
+      selector ? selector({ songs: mockSongs }) : { songs: mockSongs },
+    );
+    vi.mocked(useMediaStore).mockImplementation((selector: any) =>
+      selector ? selector({ media: mockMedia }) : { media: mockMedia },
+    );
+    tela2(null);
+  });
+
+  it("add song opens the picker", () => {
+    focused({ mode: "live", currentItemIndex: 0 });
+    render(<SetItemList editable />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar música" }));
+    expect(screen.getByRole("dialog", { name: "Adicionar música ao conjunto" })).toBeInTheDocument();
+  });
+
+  it("remove disabled on screen: current, frozen and Tela 2's item; enabled elsewhere", () => {
+    // The focused output's current item.
+    focused({ mode: "live", currentItemIndex: 0 });
+    const first = render(<SetItemList editable />);
+    expect(removeButton("Aleluia")).toBeDisabled();
+    expect(removeButton("Aleluia").closest("span")).toHaveAttribute("title", ON_AIR);
+    expect(removeButton("Fundo Azul")).toBeEnabled();
+    expect(removeButton("Cronômetro")).toBeEnabled();
+    first.unmount();
+
+    // Frozen on the countdown while navigating on the song.
+    focused({ mode: "frozen", currentItemIndex: 0, frozenAt: [2, 0] });
+    const second = render(<SetItemList editable />);
+    expect(removeButton("Aleluia")).toBeDisabled();
+    expect(removeButton("Cronômetro")).toBeDisabled();
+    expect(removeButton("Cronômetro").closest("span")).toHaveAttribute("title", ON_AIR);
+    expect(removeButton("Fundo Azul")).toBeEnabled();
+    second.unmount();
+
+    // Tela 2 presents the same set on the media item.
+    focused({ mode: "live", currentItemIndex: 0 });
+    tela2({ mode: "live", currentItemIndex: 1 });
+    const third = render(<SetItemList editable />);
+    expect(removeButton("Fundo Azul")).toBeDisabled();
+    expect(removeButton("Cronômetro")).toBeEnabled();
+    third.unmount();
+
+    // Tela 2 idle on the media item blocks nothing.
+    tela2({ mode: "idle", currentItemIndex: 1 });
+    render(<SetItemList editable />);
+    expect(removeButton("Fundo Azul")).toBeEnabled();
+  });
+
+  it("confirm before removing: Remover sends the id, Cancelar sends nothing", async () => {
+    focused({ mode: "live", currentItemIndex: 2 });
+    render(<SetItemList editable />);
+
+    fireEvent.click(removeButton("Aleluia"));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Remover “Aleluia” do conjunto?");
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(removeSetItem).not.toHaveBeenCalled();
+
+    fireEvent.click(removeButton("Aleluia"));
+    fireEvent.click(screen.getByRole("button", { name: "Remover" }));
+    expect(removeSetItem).toHaveBeenCalledWith("item-1");
+    expect(removeSetItem).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
+  it("shows the removal error as its localized message", async () => {
+    vi.mocked(removeSetItem).mockRejectedValueOnce({ code: "set.item_on_screen", params: {} });
+    focused({ mode: "live", currentItemIndex: 2 });
+    render(<SetItemList editable />);
+    fireEvent.click(removeButton("Aleluia"));
+    fireEvent.click(screen.getByRole("button", { name: "Remover" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Este item está no ar e não pode ser removido",
+    );
   });
 });

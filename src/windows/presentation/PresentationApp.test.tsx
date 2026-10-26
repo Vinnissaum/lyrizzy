@@ -638,6 +638,32 @@ describe("PresentationApp — set-enter never arms (manual present)", () => {
     );
   });
 
+  // P21: a live set edit before the countdown item shifts its index but not
+  // its id, so the landing effect must not run again (no restart on the wall).
+  it("item before the countdown changes: removing or inserting one does not restart it", () => {
+    const song = (id: string) => ({ id, itemType: "song", songId: `song-${id}` }) as never;
+    const countdownItem = countdownItemState.set!.items[0];
+    const withItems = (items: never[], currentItemIndex: number): PresentationState => ({
+      ...countdownItemState,
+      set: { ...countdownItemState.set!, items },
+      currentItemIndex,
+      itemSlideCounts: items.map(() => 1),
+    });
+
+    presStateMock = withItems([song("a"), countdownItem as never], 1);
+    const { rerender } = render(<PresentationApp />);
+    expect(cdStartMock).toHaveBeenCalledTimes(1);
+
+    // "a" removed: the countdown item moves from index 1 to 0.
+    presStateMock = withItems([countdownItem as never], 0);
+    rerender(<PresentationApp />);
+    // Two songs inserted before it: index 0 → 2.
+    presStateMock = withItems([song("x"), song("y"), countdownItem as never], 2);
+    rerender(<PresentationApp />);
+
+    expect(cdStartMock).toHaveBeenCalledTimes(1);
+  });
+
   it("does not overlay while scheduled+takeover:false — projector stays put", () => {
     presStateMock = liveState;
     cdStateMock = {

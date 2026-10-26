@@ -470,20 +470,52 @@ pub async fn reset_countdown(
     }
     let snapshot = {
         let mut s = state.output(output).countdown.write().await;
-        s.remaining_ms = s.duration_ms;
-        s.mode = CountdownMode::Idle;
-        s.target_epoch_ms = None;
-        s.scheduled_start_epoch_ms = None;
-        s.takeover = false;
-        s.position = CountdownPosition::default();
-        s.background_media_id = None;
-        s.message_scale = 100;
-        s.digits_scale = 100;
-        s.source_item_id = None;
+        reset_to_idle(&mut s);
         s.clone()
     };
     let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
     Ok(snapshot)
+}
+
+/// Back to idle at the configured duration, with the default look.
+fn reset_to_idle(s: &mut CountdownState) {
+    s.remaining_ms = s.duration_ms;
+    s.mode = CountdownMode::Idle;
+    s.target_epoch_ms = None;
+    s.scheduled_start_epoch_ms = None;
+    s.takeover = false;
+    s.position = CountdownPosition::default();
+    s.background_media_id = None;
+    s.message_scale = 100;
+    s.digits_scale = 100;
+    s.source_item_id = None;
+}
+
+/// Return `output`'s countdown to idle when the set item that started it was
+/// just removed and it is still counting (running, paused or finished):
+/// nothing can show it any more, and left alone it would tick on unseen and an
+/// "advance the set" end would move the wall (P21). A scheduled countdown has
+/// no source item and is never touched. Returns the state to emit, if changed.
+pub(crate) async fn reset_countdown_of_removed_item(
+    state: &AppState,
+    output: OutputId,
+    item_id: &str,
+) -> Option<CountdownState> {
+    let out = state.output(output);
+    let mut task = out.countdown_task.lock().await;
+    let mut s = out.countdown.write().await;
+    let counting = matches!(
+        s.mode,
+        CountdownMode::Running | CountdownMode::Paused | CountdownMode::Finished
+    );
+    if !counting || s.source_item_id.as_deref() != Some(item_id) {
+        return None;
+    }
+    if let Some(handle) = task.take() {
+        handle.abort();
+    }
+    reset_to_idle(&mut s);
+    Some(s.clone())
 }
 
 /// Arm a scheduled countdown. The state goes to `Scheduled` and `remaining_ms`

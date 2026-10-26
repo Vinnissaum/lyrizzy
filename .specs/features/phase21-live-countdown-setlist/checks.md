@@ -183,6 +183,8 @@ Proof: `npx vitest run src/tests/i18n/live-errors.test.ts -t "live presentation 
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** none
-- **Boundary:** none closed
+- **Dispatched:** Verifier (independent sub-agent) at `5025296`, 2026-10-26; no screens sub-agent - no criterion cites a capture
+- **Boundary:** C1-C14, C37 closed at `5e0ae00`; C15-C36 closed at `5025296`; `proofs.md` 55/55 pass at `5025296`, tree clean
 - **Abandoned:** none
+- **Walked:** not walked - this session cannot drive the Tauri windows (no browser or display driver); the hands-on steps go to the user in the report: (1) present a set with a countdown item, use +1 min, +5 min, −1 min, Pausar/Retomar and Reiniciar, and confirm the wall follows; (2) with Simultânea on, confirm both screens move together; (3) add a song from `Adicionar música` and advance into it; (4) try to remove the item on screen (disabled), remove another one through the confirm dialog, and confirm the wall never changes; (5) stop and check Home shows the same list
+- **Build decisions:** `SetItemList` gained an opt-in `editable` mode (the presentation layout turns it on) so the existing read-only tests, which count every button in the list, keep proving their unchanged claim; `append_item_to_live_presentation` was replaced by `insert_item_into_outputs`, which reaches every output

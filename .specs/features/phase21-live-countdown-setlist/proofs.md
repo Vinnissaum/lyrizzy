@@ -1,0 +1,63 @@
+# phase21-live-countdown-setlist proofs
+
+**HEAD**: 5025296
+**Tree**: clean
+**Result**: 55 pass, 0 fail; mutations 0 killed, 0 not
+
+| Check | Proof | Ran | Passed | Result |
+| --- | --- | --- | --- | --- |
+| C1 | `npx vitest run src/utils/countdownControls.test.ts -t "countdown on the wall"` | 1 | 1 | pass |
+| C1 | `npx vitest run src/components/presentation/OperatorPresentationLayout.test.tsx -t "live countdown controls app` | 1 | 1 | pass |
+| C2 | `npx vitest run src/components/presentation/OperatorPresentationLayout.test.tsx -t "live countdown controls out` | 1 | 1 | pass |
+| C2 | `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "shows the remaining time"` | 1 | 1 | pass |
+| C3 | `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "plus buttons send"` | 1 | 1 | pass |
+| C4 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_adds_time` | 1 | - | pass |
+| C5 | `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "minus button sends"` | 1 | 1 | pass |
+| C5 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_subtracts_a_minute` | 1 | - | pass |
+| C6 | `npx vitest run src/utils/countdownControls.test.ts -t "minus disabled at or below a minute"` | 1 | 1 | pass |
+| C6 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_refuses_below_mini` | 1 | - | pass |
+| C7 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_moves_the_target` | 1 | - | pass |
+| C8 | `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "pause and resume"` | 1 | 1 | pass |
+| C8 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_resume_continues_from_hel` | 1 | - | pass |
+| C8 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_while_paused_stays` | 1 | - | pass |
+| C9 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_reruns_a_finished_` | 1 | - | pass |
+| C9 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_ticker_needed_only_when_s` | 1 | - | pass |
+| C10 | `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "restart button sends"` | 1 | 1 | pass |
+| C10 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_restart_target` | 2 | - | pass |
+| C10 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_restart_runs_from_target` | 1 | - | pass |
+| C11 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_keeps_configured_d` | 1 | - | pass |
+| C12 | `npx vitest run src/utils/countdownControls.test.ts -t "idle and scheduled disable every control"` | 1 | 1 | pass |
+| C12 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_refuses_idle_and_s` | 1 | - | pass |
+| C12 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_resume_refuses_when_not_p` | 1 | - | pass |
+| C12 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_restart_refuses_idle_and_` | 1 | - | pass |
+| C13 | `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "mirror sends to both screens"` | 1 | 1 | pass |
+| C14 | `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "shows the command error"` | 1 | 1 | pass |
+| C15 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "add song opens the picker"` | 1 | 1 | pass |
+| C16 | `npx vitest run src/components/presentation/LiveSongPicker.test.tsx -t "lists and filters"` | 1 | 1 | pass |
+| C16 | `npx vitest run src/components/presentation/LiveSongPicker.test.tsx -t "empty and no match"` | 1 | 1 | pass |
+| C17 | `npx vitest run src/components/presentation/LiveSongPicker.test.tsx -t "picks anchor"` | 1 | 1 | pass |
+| C18 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_after_current_keeps_the_w` | 1 | - | pass |
+| C19 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_after_last_item_updates_l` | 1 | - | pass |
+| C20 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_keeps_pick_order` | 1 | - | pass |
+| C21 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_generates_slides_like_apr` | 1 | - | pass |
+| C22 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_records_a_play_only_while` | 1 | - | pass |
+| C23 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_refuses_a_foreign_anchor` | 1 | - | pass |
+| C24 | `npx vitest run src/components/presentation/LiveSongPicker.test.tsx -t "shows the add error"` | 1 | 1 | pass |
+| C25 | `npx vitest run src/utils/onScreen.test.ts -t "on screen item ids"` | 2 | 2 | pass |
+| C25 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::presentation::tests::on_screen_item` | 1 | - | pass |
+| C26 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "remove disabled on screen"` | 1 | 1 | pass |
+| C27 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "confirm before removing"` | 1 | 1 | pass |
+| C28 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_remove_keeps_the_wall` | 1 | - | pass |
+| C29 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_remove_refuses_on_screen` | 1 | - | pass |
+| C29 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_remove_refuses_an_unknown_ite` | 1 | - | pass |
+| C30 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_remove_checks_under_the_prese` | 2 | - | pass |
+| C31 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_remove_keeps_the_play_row` | 1 | - | pass |
+| C32 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_remove_resets_its_countdown` | 1 | - | pass |
+| C33 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::presentation::tests::splice_` | 9 | - | pass |
+| C34 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_reaches_every_output_with` | 1 | - | pass |
+| C35 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_remove_leaves_a_running_count` | 1 | - | pass |
+| C35 | `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "item before the countdown changes"` | 1 | 1 | pass |
+| C36 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_add_appends_on_every_output` | 1 | - | pass |
+| C37 | `npx vitest run src/tests/i18n/live-errors.test.ts -t "live presentation error codes"` | 8 | 8 | pass |
+| Build | `npx tsc --noEmit` | - | - | pass |
+| Build | `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` | - | - | pass |

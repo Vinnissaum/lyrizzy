@@ -1,7 +1,7 @@
 use crate::commands::presentation::{do_blank_presentation, do_next_slide};
 use crate::domain::countdown::{
-    CountdownEndBehavior, CountdownMode, CountdownPosition, CountdownState, CountdownTarget,
-    ScheduledStart,
+    adjusted, restart_target, restarted, resumed, ticker_needed, CountdownEndBehavior,
+    CountdownMode, CountdownPosition, CountdownState, CountdownTarget, ScheduledStart,
 };
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::PresentationState;
@@ -578,6 +578,91 @@ pub async fn arm_countdown(
 
     let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
     Ok(snapshot)
+}
+
+/// Apply a live control's rule to `output`'s countdown and emit the result.
+///
+/// The rule runs under the task lock against the authoritative state (lock
+/// order task → countdown, as in `start_countdown`), so a ticker finishing at
+/// the same moment is either seen as `Finished` or not at all. A ticker is
+/// started only when the countdown begins to run from a mode that has none;
+/// a running one keeps its ticker, which reads the moved target on its next
+/// tick. The set item is never written (D-89).
+async fn apply_live_control(
+    state: &AppState,
+    app: &AppHandle,
+    output: OutputId,
+    rule: impl FnOnce(&CountdownState, u64) -> Result<CountdownState, ErrorPayload>,
+) -> Result<CountdownState, ErrorPayload> {
+    let out = state.output(output);
+    let snapshot = {
+        let mut task = out.countdown_task.lock().await;
+        let (before, snapshot) = {
+            let mut s = out.countdown.write().await;
+            let next = rule(&s, now_ms())?;
+            let before = std::mem::replace(&mut *s, next);
+            (before.mode, s.clone())
+        };
+        if ticker_needed(&before, &snapshot.mode) {
+            if let Some(handle) = task.take() {
+                handle.abort();
+            }
+            let pool = state.db.get().expect("db initialized").clone();
+            let join_handle = tokio::spawn(tick_countdown(
+                Arc::clone(&out.countdown),
+                app.clone(),
+                Arc::clone(&out.presentation),
+                Arc::clone(&out.presentation_slides),
+                pool,
+                output,
+            ));
+            *task = Some(join_handle.abort_handle());
+        }
+        snapshot
+    };
+    let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
+    Ok(snapshot)
+}
+
+/// Add (`delta_ms > 0`) or take off (`delta_ms < 0`) time on the countdown on
+/// the wall, for this run only.
+#[tauri::command]
+pub async fn adjust_countdown(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    delta_ms: i64,
+    output: Option<OutputId>,
+) -> Result<CountdownState, ErrorPayload> {
+    let output = output.unwrap_or_default();
+    apply_live_control(state.inner(), &app, output, |s, now| adjusted(s, delta_ms, now)).await
+}
+
+/// Continue a paused countdown from the time it was holding.
+#[tauri::command]
+pub async fn resume_countdown(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    output: Option<OutputId>,
+) -> Result<CountdownState, ErrorPayload> {
+    let output = output.unwrap_or_default();
+    apply_live_control(state.inner(), &app, output, resumed).await
+}
+
+/// Count down again from the configured target, dropping every adjustment.
+#[tauri::command]
+pub async fn restart_countdown(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    output: Option<OutputId>,
+) -> Result<CountdownState, ErrorPayload> {
+    let output = output.unwrap_or_default();
+    let set = state.output(output).presentation.read().await.set.clone();
+    apply_live_control(state.inner(), &app, output, move |s, now| {
+        let target = restart_target(s, set.as_ref());
+        let target_epoch = resolve_target_epoch_ms(&target, now)?;
+        restarted(s, &target, target_epoch, now)
+    })
+    .await
 }
 
 #[tauri::command]

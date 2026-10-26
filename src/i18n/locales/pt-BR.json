@@ -259,6 +259,28 @@
     "noSlides": "Nenhum slide encontrado",
     "countdown": {
       "noConfig": "Contagem regressiva não configurada"
+    },
+    "liveCountdown": {
+      "label": "Cronômetro",
+      "plusOne": "+1 min",
+      "plusFive": "+5 min",
+      "minusOne": "−1 min",
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "restart": "Reiniciar"
+    },
+    "liveSet": {
+      "addSong": "Adicionar música",
+      "pickerTitle": "Adicionar música ao conjunto",
+      "searchPlaceholder": "Pesquisar por título ou artista…",
+      "libraryEmpty": "Nenhuma música na biblioteca.",
+      "noMatch": "Nenhuma música corresponde à pesquisa.",
+      "close": "Fechar",
+      "added": "Adicionada",
+      "remove": "Remover",
+      "onAir": "No ar — não pode ser removido",
+      "confirmRemove": "Remover “{{name}}” do conjunto?",
+      "cancel": "Cancelar"
     }
   },
   "countdown": {
@@ -841,7 +863,16 @@
     },
     "legacy": "{{message}}",
     "generic": "Algo deu errado ({{code}})",
-    "unknown": "Erro ao iniciar apresentação"
+    "unknown": "Erro ao iniciar apresentação",
+    "set": {
+      "item_not_found": "Item não encontrado",
+      "item_on_screen": "Este item está no ar e não pode ser removido"
+    },
+    "countdown": {
+      "not_active": "Nenhum cronômetro em andamento",
+      "not_paused": "O cronômetro não está pausado",
+      "below_minimum": "Falta 1 minuto ou menos — não é possível tirar mais tempo"
+    }
   },
   "errors": {
     "song": {

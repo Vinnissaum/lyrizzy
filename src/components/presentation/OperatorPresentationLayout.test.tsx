@@ -72,6 +72,10 @@ vi.mock("./LivePreview", () => ({
   LivePreview: () => <div data-testid="live-preview-stub" />,
 }));
 
+vi.mock("./LiveCountdownControls", () => ({
+  LiveCountdownControls: () => <div data-testid="live-countdown-controls-stub" />,
+}));
+
 vi.mock("./LiveSongEditModal", () => ({
   LiveSongEditModal: ({ songId }: { songId: string | null; onClose: () => void }) =>
     songId ? <div data-testid="live-song-edit-modal-stub">{songId}</div> : null,
@@ -90,7 +94,8 @@ import {
   loadSetForPresentation,
 } from "../../api/commands";
 import { fanOutToMirror } from "../../utils/outputDispatch";
-import type { PresentationState, ServiceSet } from "../../types";
+import { useCountdownStore } from "../../stores/countdown";
+import type { CountdownState, PresentationState, ServiceSet } from "../../types";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
@@ -202,6 +207,51 @@ function mockSetsSelector(sets: { id: string; name: string }[] = []) {
 describe("OperatorPresentationLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useCountdownStore.setState({ state: countdownState("idle", false) });
+  });
+
+  function countdownState(mode: CountdownState["mode"], takeover: boolean): CountdownState {
+    return {
+      mode,
+      durationMs: 600_000,
+      remainingMs: 270_000,
+      endBehavior: "holdZero",
+      messageScale: 100,
+      digitsScale: 100,
+      takeover,
+    };
+  }
+
+  it("live countdown controls appear for a countdown item or a takeover, not for a song", () => {
+    // Current item a song, no takeover → no controls.
+    setupDefaultMocks({ currentItemIndex: 0 });
+    useCountdownStore.setState({ state: countdownState("running", false) });
+    const { unmount } = render(<OperatorPresentationLayout />);
+    expect(screen.queryByTestId("live-countdown-controls-stub")).not.toBeInTheDocument();
+    unmount();
+
+    // Current item a countdown → controls.
+    setupDefaultMocks({ currentItemIndex: 1 });
+    const second = render(<OperatorPresentationLayout />);
+    expect(screen.getByTestId("live-countdown-controls-stub")).toBeInTheDocument();
+    second.unmount();
+
+    // A fired schedule running over a song → controls.
+    setupDefaultMocks({ currentItemIndex: 0 });
+    useCountdownStore.setState({ state: countdownState("running", true) });
+    render(<OperatorPresentationLayout />);
+    expect(screen.getByTestId("live-countdown-controls-stub")).toBeInTheDocument();
+  });
+
+  it("live countdown controls outside the live pane and every hidden container", () => {
+    setupDefaultMocks({ currentItemIndex: 1 });
+    useCountdownStore.setState({ state: countdownState("running", false) });
+    render(<OperatorPresentationLayout />);
+    const controls = screen.getByTestId("live-countdown-controls-stub");
+    expect(screen.getByTestId("live-pane").contains(controls)).toBe(false);
+    for (let el = controls.parentElement; el; el = el.parentElement) {
+      expect(el.classList.contains("hidden")).toBe(false);
+    }
   });
 
   it("renders the root data-testid", () => {

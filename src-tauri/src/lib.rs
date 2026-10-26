@@ -13,8 +13,8 @@ use commands::backup::{
     abort_restore, check_restore_in_progress, export_library, inspect_archive, restore_library,
 };
 use commands::countdown::{
-    arm_countdown, get_countdown_state, pause_countdown, reset_countdown, set_countdown_duration,
-    start_countdown,
+    adjust_countdown, arm_countdown, get_countdown_state, pause_countdown, reset_countdown,
+    restart_countdown, resume_countdown, set_countdown_duration, start_countdown,
 };
 use commands::import::{import_holyrics_batch, parse_holyrics_file};
 use commands::media::{check_ffprobe, check_libreoffice, delete_media, get_media_references, import_media, import_presentation, list_media, rename_media};
@@ -233,6 +233,9 @@ pub fn run() {
             arm_countdown,
             pause_countdown,
             reset_countdown,
+            adjust_countdown,
+            resume_countdown,
+            restart_countdown,
             get_countdown_state,
             get_key_bindings,
             set_key_bindings,

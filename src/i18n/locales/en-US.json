@@ -259,6 +259,28 @@
     "noSlides": "No slides found",
     "countdown": {
       "noConfig": "Countdown not configured"
+    },
+    "liveCountdown": {
+      "label": "Countdown",
+      "plusOne": "+1 min",
+      "plusFive": "+5 min",
+      "minusOne": "−1 min",
+      "pause": "Pause",
+      "resume": "Resume",
+      "restart": "Restart"
+    },
+    "liveSet": {
+      "addSong": "Add song",
+      "pickerTitle": "Add a song to the set",
+      "searchPlaceholder": "Search by title or artist…",
+      "libraryEmpty": "No songs in the library.",
+      "noMatch": "No song matches the search.",
+      "close": "Close",
+      "added": "Added",
+      "remove": "Remove",
+      "onAir": "On screen — can't be removed",
+      "confirmRemove": "Remove “{{name}}” from the set?",
+      "cancel": "Cancel"
     }
   },
   "countdown": {
@@ -841,7 +863,16 @@
     },
     "legacy": "{{message}}",
     "generic": "Something went wrong ({{code}})",
-    "unknown": "Failed to start presentation"
+    "unknown": "Failed to start presentation",
+    "set": {
+      "item_not_found": "Item not found",
+      "item_on_screen": "This item is on screen and can't be removed"
+    },
+    "countdown": {
+      "not_active": "No countdown is running",
+      "not_paused": "The countdown is not paused",
+      "below_minimum": "1 minute or less left — can't take more time off"
+    }
   },
   "errors": {
     "song": {

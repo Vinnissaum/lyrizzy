@@ -16,12 +16,15 @@ import {
   addSetItem,
 } from "../../api/commands";
 import { usePresentationStore } from "../../stores/presentation";
+import { useCountdownStore } from "../../stores/countdown";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
 import { fanOutToMirror } from "../../utils/outputDispatch";
 import { PRESENTATION_EXTENSIONS } from "../../utils/presentationFiles";
+import { countdownOnWall } from "../../utils/countdownControls";
+import { LiveCountdownControls } from "./LiveCountdownControls";
 import { OutputSwitcher } from "./OutputSwitcher";
 import { OutputLaunchModal } from "./OutputLaunchModal";
 import { MicSwitch } from "./MicSwitch";
@@ -46,6 +49,7 @@ export const OperatorPresentationLayout: React.FC<{
 }> = ({ presentingOutputs, onRequestStop }) => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
+  const countdownState = useCountdownStore((s) => s.state);
   const focusedOutput = usePresentationStore((s) => s.focusedOutput);
   const setFocusedOutput = usePresentationStore((s) => s.setFocusedOutput);
   const multiScreenEnabled = useSettingsStore((s) => s.multiScreenEnabled);
@@ -305,6 +309,9 @@ export const OperatorPresentationLayout: React.FC<{
         isOverlayActive={!!state?.overlay}
         isImportingPresentation={isImportingPresentation}
       />
+      {/* Outside the live pane, which is hidden below lg, so the controls are
+          reachable at every window width. */}
+      {countdownOnWall(activeItem, countdownState) && <LiveCountdownControls />}
 
       <div className="grid grid-cols-1 sm:grid-cols-[1fr] md:grid-cols-[240px_1fr] lg:grid-cols-[240px_1fr_320px] gap-2 flex-1 overflow-hidden">
         {/* Set pane */}

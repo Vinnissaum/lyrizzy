@@ -238,6 +238,8 @@ export interface AddSetItemPayload {
   mediaOptions?: MediaItemOptions;
   countdownConfig?: CountdownConfig;
   webviewConfig?: WebViewConfig;
+  /** Insert right after this item of the same set; absent appends. */
+  afterItemId?: string;
 }
 
 export interface UpdateSetItemPayload {
@@ -415,6 +417,17 @@ export const pauseCountdown = (output?: OutputId) =>
 
 export const resetCountdown = (output?: OutputId) =>
   invoke<CountdownState>("reset_countdown", { output: output ?? null });
+
+/** Add (`deltaMs > 0`) or take off (`deltaMs < 0`) time on the countdown, for this run only. */
+export const adjustCountdown = (deltaMs: number, output?: OutputId) =>
+  invoke<CountdownState>("adjust_countdown", { deltaMs, output: output ?? null });
+
+export const resumeCountdown = (output?: OutputId) =>
+  invoke<CountdownState>("resume_countdown", { output: output ?? null });
+
+/** Count down again from the configured target, dropping every adjustment. */
+export const restartCountdown = (output?: OutputId) =>
+  invoke<CountdownState>("restart_countdown", { output: output ?? null });
 
 export const getCountdownState = (output?: OutputId) =>
   invoke<CountdownState>("get_countdown_state", { output: output ?? null });

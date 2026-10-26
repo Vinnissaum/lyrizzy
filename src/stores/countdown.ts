@@ -1,16 +1,20 @@
 import { create } from "zustand";
 import {
+  adjustCountdown,
   armCountdown,
   getCountdownState,
   onCountdownTick,
   pauseCountdown,
   resetCountdown,
+  restartCountdown,
+  resumeCountdown,
   setCountdownDuration,
   startCountdown,
   type ArmCountdownParams,
   type StartCountdownParams,
 } from "../api/commands";
 import type { CountdownState, OutputId } from "../types";
+import { fanOutToMirror } from "../utils/outputDispatch";
 
 interface CountdownStore {
   state: CountdownState;
@@ -25,6 +29,14 @@ interface CountdownStore {
   arm: (params: ArmCountdownParams) => Promise<void>;
   pause: () => Promise<void>;
   reset: () => Promise<void>;
+  /**
+   * Live controls (P21). Each acts on this store's output and, while mirror
+   * (Simultânea) is on, on the other screen too. Unlike the actions above they
+   * reject with the command's error so the control can show it.
+   */
+  adjust: (deltaMs: number) => Promise<void>;
+  resume: () => Promise<void>;
+  restart: () => Promise<void>;
 }
 
 const DEFAULT_STATE: CountdownState = {
@@ -95,12 +107,35 @@ export const useCountdownStore = create<CountdownStore>((set, get) => ({
   },
 
   pause: async () => {
+    const output = get().output;
     try {
-      const newState = await pauseCountdown(get().output);
+      const newState = await pauseCountdown(output);
       set({ state: newState });
     } catch (err) {
       console.error("Falha ao pausar cronômetro:", err);
     }
+    fanOutToMirror(output, (o) => pauseCountdown(o));
+  },
+
+  adjust: async (deltaMs) => {
+    const output = get().output;
+    const newState = await adjustCountdown(deltaMs, output);
+    set({ state: newState });
+    fanOutToMirror(output, (o) => adjustCountdown(deltaMs, o));
+  },
+
+  resume: async () => {
+    const output = get().output;
+    const newState = await resumeCountdown(output);
+    set({ state: newState });
+    fanOutToMirror(output, (o) => resumeCountdown(o));
+  },
+
+  restart: async () => {
+    const output = get().output;
+    const newState = await restartCountdown(output);
+    set({ state: newState });
+    fanOutToMirror(output, (o) => restartCountdown(o));
   },
 
   reset: async () => {

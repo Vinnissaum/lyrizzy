@@ -156,6 +156,82 @@
       ],
       "method": "copy",
       "global": false
+    },
+    "web-design-guidelines": {
+      "name": "web-design-guidelines",
+      "source": "local",
+      "contentHash": "213a23fff251b12ddfec648bda148bf10704ef6617e162eb9329cc83963dd138",
+      "installedAt": "2026-05-18T17:10:00.174Z",
+      "updatedAt": "2026-05-18T17:10:00.174Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-discover": {
+      "name": "tlc-discover",
+      "source": "local",
+      "contentHash": "518ab626fc8bac4ed1d0c5170b617d1adaec28a83634c1a462c7529d42170d3a",
+      "installedAt": "2026-10-26T19:42:53.707Z",
+      "updatedAt": "2026-10-26T19:42:53.814Z",
+      "agents": [
+        "claude-code",
+        "github-copilot"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-implement": {
+      "name": "tlc-implement",
+      "source": "local",
+      "contentHash": "66c91f40f0f8250c1a52c3242b4f4e33a5b038f5a2fda2578bf2f95df5de0b11",
+      "installedAt": "2026-10-26T19:42:53.735Z",
+      "updatedAt": "2026-10-26T19:42:53.846Z",
+      "agents": [
+        "claude-code",
+        "github-copilot"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-plan": {
+      "name": "tlc-plan",
+      "source": "local",
+      "contentHash": "6e6fa709ed167718184622004855fc151b47fb3878f4030fa5745c85bd292404",
+      "installedAt": "2026-10-26T19:42:53.751Z",
+      "updatedAt": "2026-10-26T19:42:53.873Z",
+      "agents": [
+        "claude-code",
+        "github-copilot"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-prd": {
+      "name": "tlc-prd",
+      "source": "local",
+      "contentHash": "ce417e8df0cff1870fbfdd157959e6efbdc6b1b547c57ac3850134e8f70bba80",
+      "installedAt": "2026-10-26T19:42:53.760Z",
+      "updatedAt": "2026-10-26T19:42:53.883Z",
+      "agents": [
+        "claude-code",
+        "github-copilot"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-spec-lean": {
+      "name": "tlc-spec-lean",
+      "source": "local",
+      "contentHash": "51bcf485f5b981d613d660767d03f194d9117188c7615914108759a21de7b5cf",
+      "installedAt": "2026-10-26T19:42:53.803Z",
+      "updatedAt": "2026-10-26T19:42:53.803Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
     }
   }
 }

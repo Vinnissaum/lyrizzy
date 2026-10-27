@@ -448,10 +448,10 @@
 
 ---
 
-## Phase 21: Live Countdown Controls and Live Set List — TAGGED (`v1.8.0`, draft)
+## Phase 21: Live Countdown Controls and Live Set List — RELEASED (`v1.8.0`)
 
 **Goal:** Let the operator change the countdown on the wall and add or remove set items without stopping the presentation.
-**Completed:** 2026-10-26. **Tagged:** `v1.8.0` (CI builds a draft release; publish after a smoke test).
+**Completed:** 2026-10-26. **Released:** `v1.8.0` (published 2026-10-26; `publish-manifest` green, `latest.json` serves 1.8.0 for every platform).
 **Plan:** `.specs/features/phase21-live-countdown-setlist/plan.md` (28 criteria, 4 slices) · **Checks:** `checks.md` (C1–C40) · **Proofs:** `proofs.md` · **Verification:** `verification.md` (independent Verifier, 6 findings, all closed).
 
 | Slice | Criteria | Scope |

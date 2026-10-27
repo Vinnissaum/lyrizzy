@@ -4,7 +4,7 @@ Mutations: 3
 Build: `npx tsc --noEmit`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
 Plan: `.specs/features/phase21-live-countdown-setlist/plan.md`
 
-36 checks in 4 slices · 0 one-way doors · 0 open
+40 checks in 4 slices (3 appended after verification) · 0 one-way doors · 0 open
 
 ## Checks
 
@@ -143,6 +143,21 @@ Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tes
 **C37** - `error.set.item_on_screen`, `error.countdown.not_active`, `error.countdown.not_paused` and `error.countdown.below_minimum` each have a non-empty message in pt-BR and en-US (AC 27)
 Proof: `npx vitest run src/tests/i18n/live-errors.test.ts -t "live presentation error codes"`
 
+### Appended after verification
+
+**C38** - Pausing changes only a running countdown: `pause_countdown` leaves an idle, scheduled, paused or finished countdown as it is (a scheduled one keeps its schedule), so `Pausar` with Simultânea on cannot disarm Tela 2; the existing `countdownPause` key still pauses the focused screen only, and only the live control mirrors (AC 6, AC 11)
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_pause_only_pauses_a_running_countdown`
+Proof: `npx vitest run src/stores/countdown.test.ts -t "pause mirrors only when asked"`
+
+**C39** - In the set pane, the first pick anchors on the focused output's current item: live on index 1 (`Fundo Azul`), picking `Aleluia` sends `afterItemId` `item-2` (AC 13)
+Proof: `npx vitest run src/components/presentation/SetItemList.test.tsx -t "first pick anchors on the current item"`
+
+**C40** - Once an "until HH:MM" target has passed today, `Reiniciar` is disabled and the restart returns `countdown.target_passed` with the countdown unchanged: until 19:00, at 19:02 → refused; at 18:59 → runs to 19:00; at exactly 19:00 → refused; a duration countdown restarts as before; an idle one still reports `countdown.not_active`; the message exists in pt-BR and en-US (AC 28)
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_restart_refuses_a_passed_clock_time`
+Proof: `npx vitest run src/utils/countdownControls.test.ts -t "restart disabled once a clock time has passed"`
+Proof: `npx vitest run src/components/presentation/LiveCountdownControls.test.tsx -t "restart disabled once a clock time has passed"`
+Proof: `npx vitest run src/tests/i18n/live-errors.test.ts -t "target passed message"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -151,7 +166,8 @@ Proof: `npx vitest run src/tests/i18n/live-errors.test.ts -t "live presentation 
 | countdown mode under adjust (5) | `idle` C12 · `scheduled` C12 · `running` C4 · `paused` C8 · `finished` C9 | - |
 | `adjust_countdown` outcomes (3) | `Ok` C4 · `countdown.not_active` C12 · `countdown.below_minimum` C6 | - |
 | `resume_countdown` outcomes (2) | `Ok` C8 · `countdown.not_paused` C12 | - |
-| `restart_countdown` outcomes (2) | `Ok` C10 · `countdown.not_active` C12 | - |
+| `pause_countdown` by mode (5) | `running` C8 · `idle` C38 · `scheduled` C38 · `paused` C38 · `finished` C38 | - |
+| `restart_countdown` outcomes (3) | `Ok` C10 · `countdown.not_active` C12 · `countdown.target_passed` C40 | - |
 | `add_set_item` outcomes (3) | `Ok` with anchor C18 · `Ok` without anchor C36 · `set.item_not_found` C23 | - |
 | `remove_set_item` outcomes (3) | `Ok` C28 · `set.item_on_screen` C29 · `set.item_not_found` C29 | - |
 | −1 min floor, AC 4 (5 examples) | 60 000 refused C6 · 60 001 allowed C5 · 40 000 refused C6 · finished 0 refused C6 · paused 60 000 refused C6 | - |
@@ -182,8 +198,8 @@ Proof: `npx vitest run src/tests/i18n/live-errors.test.ts -t "live presentation 
 
 ## Handoff
 
-- **Settled mid-build:** none
-- **Dispatched:** Verifier (independent sub-agent) at `5025296`, 2026-10-26; no screens sub-agent - no criterion cites a capture
+- **Settled mid-build:** 2026-10-26, on the Verifier's finding that Reiniciar on an "until HH:MM" countdown after HH:MM counts to tomorrow - user: "Disable Reiniciar after the time" (refused by the backend with a message; duration countdowns unaffected) → AC 28, C40
+- **Dispatched:** Verifier (independent sub-agent) at `5025296` (HEAD `ffca439`, docs-only after it), 2026-10-26 - returned: FAIL, 6 findings, 0/3 mutations killed; no screens sub-agent - no criterion cites a capture
 - **Boundary:** C1-C14, C37 closed at `5e0ae00`; C15-C36 closed at `5025296`; `proofs.md` 55/55 pass at `5025296`, tree clean
 - **Abandoned:** none
 - **Walked:** not walked - this session cannot drive the Tauri windows (no browser or display driver); the hands-on steps go to the user in the report: (1) present a set with a countdown item, use +1 min, +5 min, −1 min, Pausar/Retomar and Reiniciar, and confirm the wall follows; (2) with Simultânea on, confirm both screens move together; (3) add a song from `Adicionar música` and advance into it; (4) try to remove the item on screen (disabled), remove another one through the confirm dialog, and confirm the wall never changes; (5) stop and check Home shows the same list

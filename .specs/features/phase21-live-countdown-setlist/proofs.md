@@ -1,8 +1,8 @@
 # phase21-live-countdown-setlist proofs
 
-**HEAD**: 5025296
+**HEAD**: ffca439
 **Tree**: clean
-**Result**: 55 pass, 0 fail; mutations 0 killed, 0 not
+**Result**: 55 pass, 0 fail; mutations 0 killed, 3 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -61,3 +61,11 @@
 | C37 | `npx vitest run src/tests/i18n/live-errors.test.ts -t "live presentation error codes"` | 8 | 8 | pass |
 | Build | `npx tsc --noEmit` | - | - | pass |
 | Build | `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` | - | - | pass |
+
+## Mutations
+
+| Mutation | Location | Killed |
+| --- | --- | --- |
+| C17 picker anchor: focused current item -> the item after it (song lands one slot late) | `src/components/presentation/SetItemList.tsx:84` | no |
+| C32 removed countdown item: a paused countdown is no longer reset to idle | `src-tauri/src/commands/countdown.rs:509` | no |
+| C33 insert at the frozen item's index: frozen_at no longer shifts (>= -> >) | `src-tauri/src/domain/presentation.rs:127` | no |

@@ -32,3 +32,13 @@ describe("live presentation error codes", () => {
     }
   }
 });
+
+describe("countdown restart error (AC 28)", () => {
+  it("target passed message exists in pt-BR and en-US", () => {
+    for (const locale of [ptBR, enUS]) {
+      const message = lookup(locale as Record<string, unknown>, "error.countdown.target_passed");
+      expect(typeof message).toBe("string");
+      expect((message as string).trim().length).toBeGreaterThan(0);
+    }
+  });
+});

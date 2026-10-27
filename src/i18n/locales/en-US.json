@@ -871,7 +871,8 @@
     "countdown": {
       "not_active": "No countdown is running",
       "not_paused": "The countdown is not paused",
-      "below_minimum": "1 minute or less left — can't take more time off"
+      "below_minimum": "1 minute or less left — can't take more time off",
+      "target_passed": "This countdown's time has already passed"
     }
   },
   "errors": {

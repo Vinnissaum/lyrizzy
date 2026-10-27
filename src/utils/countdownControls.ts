@@ -31,6 +31,7 @@ export interface CountdownControlState {
 /** Which live controls are usable for a countdown. Mirrors the backend rules. */
 export function countdownControlState(
   countdown: CountdownState,
+  restartTargetPassed = false,
 ): CountdownControlState {
   const { mode, remainingMs } = countdown;
   const counting = mode === "running" || mode === "paused";
@@ -40,6 +41,24 @@ export function countdownControlState(
     minus: counting && remainingMs > MINUTE_MS,
     pause: mode === "running",
     resume: mode === "paused",
-    restart: active,
+    restart: active && !restartTargetPassed,
   };
+}
+
+/**
+ * Whether a restart has nowhere to go: the countdown's source item counts to a
+ * clock time (HH:MM) that has already passed today. The backend refuses that
+ * restart rather than rolling to tomorrow (AC 28).
+ */
+export function restartTargetPassed(
+  countdown: CountdownState,
+  items: readonly SetItem[],
+  now: Date,
+): boolean {
+  const source = items.find((i) => i.id === countdown.sourceItemId);
+  const target = source?.countdownConfig?.target;
+  if (target?.kind !== "fixedTime") return false;
+  const at = new Date(now);
+  at.setHours(target.hour, target.minute, 0, 0);
+  return at.getTime() <= now.getTime();
 }

@@ -1,7 +1,7 @@
 use crate::commands::presentation::{do_blank_presentation, do_next_slide};
 use crate::domain::countdown::{
-    adjusted, restart_target, restarted, resumed, ticker_needed, CountdownEndBehavior,
-    CountdownMode, CountdownPosition, CountdownState, CountdownTarget, ScheduledStart,
+    adjusted, paused, restart, resumed, ticker_needed, CountdownEndBehavior, CountdownMode,
+    CountdownPosition, CountdownState, CountdownTarget, ScheduledStart,
 };
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::PresentationState;
@@ -434,21 +434,19 @@ pub async fn pause_countdown(
     output: Option<OutputId>,
 ) -> Result<CountdownState, ErrorPayload> {
     let output = output.unwrap_or_default();
-    {
-        let mut task = state.output(output).countdown_task.lock().await;
-        if let Some(handle) = task.take() {
-            handle.abort();
-        }
-    }
+    let out = state.output(output);
     let snapshot = {
-        let now = now_ms();
-        let mut s = state.output(output).countdown.write().await;
-        // Freeze remaining_ms at exact wall-clock value rather than last emitted tick.
-        if s.mode == CountdownMode::Running {
-            let target = s.target_epoch_ms.unwrap_or(now);
-            s.remaining_ms = target.saturating_sub(now);
+        // Lock order task → countdown, as in start_countdown. Anything but a
+        // running countdown is left as it is, ticker included: a mirrored
+        // Pausar must not disarm a schedule on the other screen.
+        let mut task = out.countdown_task.lock().await;
+        let mut s = out.countdown.write().await;
+        if let Some(next) = paused(&s, now_ms()) {
+            if let Some(handle) = task.take() {
+                handle.abort();
+            }
+            *s = next;
         }
-        s.mode = CountdownMode::Paused;
         s.clone()
     };
     let _ = app.emit("countdown_tick", CountdownTickPayload::new(output, snapshot.clone()));
@@ -690,11 +688,23 @@ pub async fn restart_countdown(
     let output = output.unwrap_or_default();
     let set = state.output(output).presentation.read().await.set.clone();
     apply_live_control(state.inner(), &app, output, move |s, now| {
-        let target = restart_target(s, set.as_ref());
-        let target_epoch = resolve_target_epoch_ms(&target, now)?;
-        restarted(s, &target, target_epoch, now)
+        restart(s, set.as_ref(), now, local_today_at)
     })
     .await
+}
+
+/// Today's HH:MM:00 in local time, as epoch-ms, with no roll to tomorrow.
+fn local_today_at(hour: u8, minute: u8) -> Result<u64, ErrorPayload> {
+    use chrono::{Local, TimeZone};
+    let naive = Local::now()
+        .date_naive()
+        .and_hms_opt(hour as u32, minute as u32, 0)
+        .ok_or_else(|| ErrorPayload::new("countdown.invalid_time"))?;
+    let local = Local
+        .from_local_datetime(&naive)
+        .single()
+        .ok_or_else(|| ErrorPayload::new("countdown.invalid_time"))?;
+    Ok(local.timestamp_millis() as u64)
 }
 
 #[tauri::command]

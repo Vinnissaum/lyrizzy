@@ -1285,6 +1285,26 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn live_add_reaches_every_output_with_the_set_when_frozen_right_after_the_anchor() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        seed_song_set(pool, "set-1", &["A", "B", "C"]).await;
+        seed_two_strophe_song(pool, "D").await;
+        present(&state, One, "set-1", (1, 0), Live, None).await;
+        // Tela 2 frozen on C's slide 1 while its operator navigates on B.
+        present(&state, Two, "set-1", (1, 0), Frozen, Some((2, 1))).await;
+        let two_shows = live(&state, Two).await.current_slide;
+
+        let (d, _) = add_set_item_core(&state, add_song("set-1", "D", Some("B"))).await.unwrap();
+
+        assert_eq!(live_order(&state, Two).await, ["A", "B", d.id.as_str(), "C"]);
+        let two = live(&state, Two).await;
+        assert_eq!(two.frozen_at, Some((3, 1)), "still frozen on C, not on the new song");
+        assert_eq!(two.current_slide, two_shows);
+        assert_eq!(two.current_item_index, 1);
+    }
+
+    #[tokio::test]
     async fn live_add_appends_on_every_output() {
         let (state, _dir) = live_state().await;
         seed_song_set(db(&state), "set-1", &["A", "B"]).await;
@@ -1470,6 +1490,33 @@ mod tests {
         assert_eq!(removal.countdowns.len(), 1);
         assert_eq!(removal.countdowns[0].0, One);
         assert_eq!(removal.countdowns[0].1.mode, CountdownMode::Idle);
+    }
+
+    #[tokio::test]
+    async fn live_remove_resets_its_countdown_when_paused_or_finished() {
+        for mode in [CountdownMode::Paused, CountdownMode::Finished] {
+            let (state, _dir) = live_state().await;
+            let pool = db(&state);
+            seed_song_set(pool, "set-1", &["A", "B"]).await;
+            seed_countdown_item(pool, "set-1", "CD", 5).await;
+            present(&state, One, "set-1", (1, 0), Live, None).await;
+            *state.output(One).countdown.write().await = CountdownState {
+                mode: mode.clone(),
+                duration_ms: 600_000,
+                remaining_ms: 120_000,
+                source_item_id: Some("CD".into()),
+                ..CountdownState::default()
+            };
+
+            let removal = remove_set_item_core(&state, "CD").await.unwrap();
+
+            assert_eq!(
+                state.output(One).countdown.read().await.mode,
+                CountdownMode::Idle,
+                "{mode:?}"
+            );
+            assert_eq!(removal.countdowns.len(), 1, "{mode:?}");
+        }
     }
 
     #[tokio::test]

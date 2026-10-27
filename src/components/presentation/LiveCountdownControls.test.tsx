@@ -19,6 +19,7 @@ import {
   resumeCountdown,
 } from "../../api/commands";
 import { useCountdownStore } from "../../stores/countdown";
+import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
 import { LiveCountdownControls } from "./LiveCountdownControls";
 import type { CountdownMode, CountdownState } from "../../types";
@@ -116,6 +117,50 @@ describe("LiveCountdownControls", () => {
     fireEvent.click(button("\\+1 min"));
     await waitFor(() => expect(adjustCountdown).toHaveBeenCalledWith(60_000, "one"));
     expect(adjustCountdown).not.toHaveBeenCalledWith(60_000, "two");
+  });
+
+  it("mirror sends to both screens: Retomar too", async () => {
+    useSettingsStore.setState({ mirrorEnabled: true });
+    show(countdown("paused", 270_000));
+    fireEvent.click(button("Retomar"));
+    await waitFor(() => expect(resumeCountdown).toHaveBeenCalledWith("two"));
+    expect(resumeCountdown).toHaveBeenCalledWith("one");
+  });
+
+  it("restart disabled once a clock time has passed, from the source item on the set", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 26, 19, 2, 0));
+    try {
+      const until1900 = {
+        id: "cd-19",
+        setId: "set-1",
+        itemType: "countdown" as const,
+        sortOrder: 0,
+        countdownConfig: {
+          target: { kind: "fixedTime" as const, hour: 19, minute: 0 },
+          endBehavior: "holdZero" as const,
+        },
+      };
+      usePresentationStore.setState({
+        state: {
+          set: { id: "set-1", name: "Culto", createdAt: 0, updatedAt: 0, items: [until1900] },
+          mode: "live",
+          currentItemIndex: 0,
+          currentSlideIndex: 0,
+          itemSlideCounts: [1],
+        },
+      });
+      const { unmount } = show({ ...countdown("running", 180_000), sourceItemId: "cd-19" });
+      expect(button("Reiniciar")).toBeDisabled();
+      unmount();
+
+      vi.setSystemTime(new Date(2026, 9, 26, 18, 59, 0));
+      show({ ...countdown("running", 360_000), sourceItemId: "cd-19" });
+      expect(button("Reiniciar")).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+      usePresentationStore.setState({ state: null });
+    }
   });
 
   it("shows the command error as its localized message", async () => {

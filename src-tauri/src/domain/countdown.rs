@@ -336,6 +336,60 @@ pub fn restarted(
     Ok(next)
 }
 
+/// What a restart counts down to, as an absolute epoch-ms. An "until HH:MM"
+/// target whose time has already passed today is refused rather than rolled to
+/// tomorrow, which would put about 24 h on the wall (AC 28). `today_at` gives
+/// today's HH:MM:00 in local time.
+pub fn restart_epoch(
+    target: &CountdownTarget,
+    now_ms: u64,
+    today_at: impl FnOnce(u8, u8) -> Result<u64, ErrorPayload>,
+) -> Result<u64, ErrorPayload> {
+    match target {
+        CountdownTarget::Duration { duration_ms } => Ok(now_ms.saturating_add(*duration_ms)),
+        CountdownTarget::FixedTime { hour, minute } => {
+            let at = today_at(*hour, *minute)?;
+            if at <= now_ms {
+                return Err(ErrorPayload::new("countdown.target_passed"));
+            }
+            Ok(at)
+        }
+    }
+}
+
+/// `Reiniciar`: the countdown counting again from its configured target (see
+/// `restart_target`), or the reason it cannot.
+pub fn restart(
+    state: &CountdownState,
+    set: Option<&ServiceSet>,
+    now_ms: u64,
+    today_at: impl FnOnce(u8, u8) -> Result<u64, ErrorPayload>,
+) -> Result<CountdownState, ErrorPayload> {
+    if matches!(state.mode, CountdownMode::Idle | CountdownMode::Scheduled) {
+        return Err(ErrorPayload::new("countdown.not_active"));
+    }
+    let target = restart_target(state, set);
+    let target_epoch_ms = restart_epoch(&target, now_ms, today_at)?;
+    restarted(state, &target, target_epoch_ms, now_ms)
+}
+
+/// The countdown after the operator pauses it. Only a running countdown
+/// pauses; any other is left as it is (`None`), so a mirrored `Pausar` cannot
+/// disarm a schedule or turn an idle screen paused.
+pub fn paused(state: &CountdownState, now_ms: u64) -> Option<CountdownState> {
+    if state.mode != CountdownMode::Running {
+        return None;
+    }
+    let mut next = state.clone();
+    // Freeze at the exact wall-clock value rather than the last emitted tick.
+    next.remaining_ms = state
+        .target_epoch_ms
+        .unwrap_or(now_ms)
+        .saturating_sub(now_ms);
+    next.mode = CountdownMode::Paused;
+    Some(next)
+}
+
 /// Whether a live control must start a ticker: only when the countdown begins
 /// to run from a mode that has none (paused, finished). A running countdown
 /// keeps its ticker, which picks up a moved target on its next tick.
@@ -835,6 +889,77 @@ mod tests {
         ] {
             assert_eq!(code(resumed(&s, NOW)), "countdown.not_paused", "{:?}", s.mode);
         }
+    }
+
+    #[test]
+    fn live_pause_only_pauses_a_running_countdown() {
+        let p = paused(&running_with(270_000), NOW + 10_000).expect("a running countdown pauses");
+        assert_eq!(p.mode, CountdownMode::Paused);
+        assert_eq!(p.remaining_ms, 260_000);
+
+        let scheduled = CountdownState {
+            mode: CountdownMode::Scheduled,
+            scheduled_start_epoch_ms: Some(NOW + 3_600_000),
+            ..CountdownState::default()
+        };
+        for s in [
+            CountdownState::default(),
+            scheduled,
+            held(CountdownMode::Paused, 100_000),
+            held(CountdownMode::Finished, 0),
+        ] {
+            assert!(paused(&s, NOW).is_none(), "{:?} must be left as it is", s.mode);
+        }
+    }
+
+    #[test]
+    fn live_restart_refuses_a_passed_clock_time() {
+        // Today's 19:00, as a fixed epoch for the test.
+        let at_1900: u64 = 19 * 3_600_000;
+        let today_at = |h: u8, m: u8| {
+            assert_eq!((h, m), (19, 0));
+            Ok(at_1900)
+        };
+        let until_1900 = CountdownTarget::FixedTime { hour: 19, minute: 0 };
+
+        // 19:02, after +5 min moved the end to 19:05: refused.
+        assert_eq!(
+            restart_epoch(&until_1900, at_1900 + 120_000, today_at).unwrap_err().code,
+            "countdown.target_passed"
+        );
+        // Exactly 19:00: refused.
+        assert_eq!(
+            restart_epoch(&until_1900, at_1900, today_at).unwrap_err().code,
+            "countdown.target_passed"
+        );
+        // 18:59: counts to 19:00 today.
+        assert_eq!(restart_epoch(&until_1900, at_1900 - 60_000, today_at).unwrap(), at_1900);
+        // A duration countdown is unaffected.
+        let ten = CountdownTarget::Duration { duration_ms: 600_000 };
+        assert_eq!(restart_epoch(&ten, NOW, today_at).unwrap(), NOW + 600_000);
+
+        // Through `restart`: the countdown is left unchanged, and an idle one
+        // still reports not_active.
+        let set = set_with(vec![countdown_item("cd-1", until_1900)]);
+        let running = CountdownState {
+            source_item_id: Some("cd-1".into()),
+            mode: CountdownMode::Running,
+            target_epoch_ms: Some(at_1900 + 300_000),
+            ..CountdownState::default()
+        };
+        let r = restart(&running, Some(&set), at_1900 + 120_000, today_at);
+        assert_eq!(r.unwrap_err().code, "countdown.target_passed");
+        let idle = CountdownState {
+            source_item_id: Some("cd-1".into()),
+            ..CountdownState::default()
+        };
+        assert_eq!(
+            restart(&idle, Some(&set), at_1900 + 120_000, today_at).unwrap_err().code,
+            "countdown.not_active"
+        );
+        let ok = restart(&running, Some(&set), at_1900 - 60_000, today_at).unwrap();
+        assert_eq!(ok.target_epoch_ms, Some(at_1900));
+        assert_eq!(ok.remaining_ms, 60_000);
     }
 
     #[test]

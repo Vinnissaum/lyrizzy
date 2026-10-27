@@ -139,3 +139,26 @@ describe("useCountdownStore — messageScale/digitsScale forwarding", () => {
     expect(useCountdownStore.getState().state).toEqual(runningState);
   });
 });
+
+// ── P21: the live Pausar mirrors; the countdownPause key does not ──────────────
+
+describe("useCountdownStore — pause and Simultânea", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const { useSettingsStore } = await import("./settings");
+    useSettingsStore.setState({ mirrorEnabled: true });
+    useCountdownStore.setState({ state: runningState, output: "one" });
+  });
+
+  it("pause mirrors only when asked: the key's pause() stays on its screen", async () => {
+    const { pauseCountdown } = await import("../api/commands");
+    vi.mocked(pauseCountdown).mockResolvedValue({ ...runningState, mode: "paused" });
+
+    await useCountdownStore.getState().pause();
+    expect(vi.mocked(pauseCountdown).mock.calls).toEqual([["one"]]);
+
+    vi.mocked(pauseCountdown).mockClear();
+    await useCountdownStore.getState().pause({ mirror: true });
+    expect(vi.mocked(pauseCountdown).mock.calls).toEqual([["one"], ["two"]]);
+  });
+});

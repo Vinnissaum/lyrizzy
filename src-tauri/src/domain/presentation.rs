@@ -457,6 +457,18 @@ mod tests {
     }
 
     #[test]
+    fn splice_insert_at_the_frozen_index_shifts_it() {
+        // Frozen on C (2) while navigating on B (1); D lands at C's index.
+        let (mut s, mut all) = loaded(&["A", "B", "C"], 1, PresentationMode::Frozen);
+        s.frozen_at = Some((2, 1));
+        splice_insert(&mut s, &mut all, 2, item("D"), slides_of("D", 1));
+        assert_eq!(ids(&s), ["A", "B", "D", "C"]);
+        assert_eq!(s.frozen_at, Some((3, 1)));
+        assert_eq!(ids(&s)[3], "C");
+        assert_eq!(s.current_item_index, 1);
+    }
+
+    #[test]
     fn splice_insert_before_another_outputs_current_shifts_it() {
         let (mut s, mut all) = loaded(&["A", "B", "C"], 2, PresentationMode::Live);
         splice_insert(&mut s, &mut all, 1, item("D"), slides_of("D", 1));

@@ -27,7 +27,12 @@ interface CountdownStore {
   setDuration: (durationMs: number) => Promise<void>;
   start: (params?: StartCountdownParams) => Promise<void>;
   arm: (params: ArmCountdownParams) => Promise<void>;
-  pause: () => Promise<void>;
+  /**
+   * `mirror: true` (the live `Pausar` control) also pauses the other screen
+   * while Simultânea is on. Without it - the `countdownPause` key, whose
+   * resume path is not mirrored - only this store's output pauses.
+   */
+  pause: (options?: { mirror?: boolean }) => Promise<void>;
   reset: () => Promise<void>;
   /**
    * Live controls (P21). Each acts on this store's output and, while mirror
@@ -106,7 +111,7 @@ export const useCountdownStore = create<CountdownStore>((set, get) => ({
     }
   },
 
-  pause: async () => {
+  pause: async (options) => {
     const output = get().output;
     try {
       const newState = await pauseCountdown(output);
@@ -114,7 +119,7 @@ export const useCountdownStore = create<CountdownStore>((set, get) => ({
     } catch (err) {
       console.error("Falha ao pausar cronômetro:", err);
     }
-    fanOutToMirror(output, (o) => pauseCountdown(o));
+    if (options?.mirror) fanOutToMirror(output, (o) => pauseCountdown(o));
   },
 
   adjust: async (deltaMs) => {

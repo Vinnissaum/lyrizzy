@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { SetItemList } from "./SetItemList";
 
 vi.mock("../../stores/presentation", () => ({
@@ -28,7 +28,7 @@ vi.mock("../../hooks/useOutputStates", () => ({
   useOutputStates: vi.fn(),
 }));
 
-import { removeSetItem } from "../../api/commands";
+import { addSetItem, removeSetItem } from "../../api/commands";
 import { useOutputStates } from "../../hooks/useOutputStates";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
@@ -293,6 +293,31 @@ describe("SetItemList editable", () => {
     expect(removeSetItem).toHaveBeenCalledWith("item-1");
     expect(removeSetItem).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
+  it("first pick anchors on the current item of the focused output", async () => {
+    vi.mocked(addSetItem).mockResolvedValue({
+      id: "new-1",
+      setId: "set-1",
+      itemType: "song",
+      songId: "song-1",
+      sortOrder: 2,
+    });
+    focused({ mode: "live", currentItemIndex: 1 });
+    render(<SetItemList editable />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar música" }));
+    const picker = screen.getByRole("dialog", { name: "Adicionar música ao conjunto" });
+    fireEvent.click(within(picker).getByText("Aleluia"));
+
+    await waitFor(() =>
+      expect(addSetItem).toHaveBeenCalledWith({
+        setId: "set-1",
+        itemType: "song",
+        songId: "song-1",
+        afterItemId: "item-2",
+      }),
+    );
   });
 
   it("shows the removal error as its localized message", async () => {

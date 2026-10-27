@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { countdownControlState, countdownOnWall } from "./countdownControls";
+import { countdownControlState, countdownOnWall, restartTargetPassed } from "./countdownControls";
 import type { CountdownMode, CountdownState, SetItem } from "../types";
 
 function countdown(mode: CountdownMode, remainingMs: number, takeover = false): CountdownState {
@@ -61,6 +61,30 @@ describe("countdownControls", () => {
         restart: false,
       });
     }
+  });
+
+  it("restart disabled once a clock time has passed; a duration countdown is unaffected", () => {
+    const until1900: SetItem = {
+      ...countdownItem,
+      id: "cd-19",
+      countdownConfig: { target: { kind: "fixedTime", hour: 19, minute: 0 }, endBehavior: "holdZero" },
+    };
+    const items = [songItem, countdownItem, until1900];
+    const at = (h: number, m: number) => new Date(2026, 9, 26, h, m, 0, 0);
+    const fromItem = (id: string): CountdownState => ({
+      ...countdown("running", 180_000),
+      sourceItemId: id,
+    });
+
+    expect(restartTargetPassed(fromItem("cd-19"), items, at(19, 2))).toBe(true);
+    expect(restartTargetPassed(fromItem("cd-19"), items, at(19, 0))).toBe(true);
+    expect(restartTargetPassed(fromItem("cd-19"), items, at(18, 59))).toBe(false);
+    // A duration countdown, or one with no source item (a fired schedule).
+    expect(restartTargetPassed(fromItem("item-2"), items, at(23, 59))).toBe(false);
+    expect(restartTargetPassed(countdown("running", 180_000), items, at(23, 59))).toBe(false);
+
+    expect(countdownControlState(fromItem("cd-19"), true).restart).toBe(false);
+    expect(countdownControlState(fromItem("cd-19"), false).restart).toBe(true);
   });
 
   it("running, paused and finished enable what applies", () => {

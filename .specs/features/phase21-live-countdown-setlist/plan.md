@@ -124,7 +124,7 @@ code below becomes a Coverage set in checks.md.
 
 - `adjust_countdown(deltaMs: i64, output?)` (new) → `CountdownState`. The operator sends `60000`, `300000` or `-60000`. Fails with `countdown.not_active` when idle or scheduled, and with `countdown.below_minimum` for a negative delta with 60 000 ms or less remaining
 - `resume_countdown(output?)` (new) → `CountdownState`. Fails with `countdown.not_paused`
-- `restart_countdown(output?)` (new) → `CountdownState`. Fails with `countdown.not_active` when idle or scheduled
+- `restart_countdown(output?)` (new) → `CountdownState`. Fails with `countdown.not_active` when idle or scheduled, and with `countdown.target_passed` when an "until HH:MM" target has passed today (AC 28)
 - `add_set_item(payload)` (changed) - the payload gains `afterItemId?: string`; absent appends, as every current caller does → `SetItem`. Fails with `set.item_not_found` when the anchor is not in this set (nothing written), and with `set.db_error`
 - `remove_set_item(itemId)` (changed) → `()`. Fails with `set.item_on_screen` (new, nothing written) and `set.item_not_found`
 
@@ -165,6 +165,8 @@ The operator changes the time of the countdown the congregation is watching, wit
     - armed for 19:00, `adjust_countdown(60000)` → refused, still scheduled for 19:00
 11. WHERE Simultânea (mirror) is on, each countdown control SHALL act on both screens; otherwise it SHALL act on the focused screen only
     - mirror on, Tela 1 focused, both at 04:30, +1 min → both 05:30; mirror off → Tela 2 stays at its time
+28. IF an "until HH:MM" countdown's HH:MM has already passed today THEN `Reiniciar` SHALL be disabled, and `restart_countdown` SHALL return `countdown.target_passed` with the countdown unchanged; a duration countdown is unaffected (added mid-build, user: "Disable Reiniciar after the time")
+    - until 19:00, +5 min, Reiniciar at 19:02 → refused, still counting to 19:05; Reiniciar at 18:59 → counts to 19:00; exactly 19:00 → refused
 
 ### S2: Add a song to the live set (P1)
 
@@ -240,6 +242,7 @@ Adds and removes reach every screen showing the set, and none of them loses its 
 | +time after 00:00 | Counts down again from the added time; an end action that already fired is not undone | user: "Counts again from the added time" | y |
 | −1 min with 01:00 or less left | −1 min is disabled at 60 000 ms or less, and the backend refuses it | user: "−1 min disabled under 1:00"; the boundary is at 60 000 ms so a −1 min never reaches 00:00 and never fires an end action | y |
 | CCLI count for a song added live | Counted: it gets today's `song_plays` row; a removed song keeps its row | user: "Yes, counted" | y |
+| Reiniciar on an "until HH:MM" countdown after HH:MM | Disabled, and refused by the backend with `countdown.target_passed` (AC 28) | user, mid-build 2026-10-26: "Disable Reiniciar after the time"; the alternative counted to tomorrow (about 24 h on the wall) | y |
 | Where the countdown controls appear | only while the countdown is on the wall (criterion 1) | a control for a countdown nobody can see invites a change nobody can check | n |
 | Several picks in one picker session | the picker stays open; picks land in the order picked | inserting each one after the current item would reverse the order the operator picked | n |
 | The same song twice in a set | allowed, as on Home | Home's sidebar adds duplicates today; refusing them only here would be a second rule | n |

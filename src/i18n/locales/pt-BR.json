@@ -871,7 +871,8 @@
     "countdown": {
       "not_active": "Nenhum cronômetro em andamento",
       "not_paused": "O cronômetro não está pausado",
-      "below_minimum": "Falta 1 minuto ou menos — não é possível tirar mais tempo"
+      "below_minimum": "Falta 1 minuto ou menos — não é possível tirar mais tempo",
+      "target_passed": "O horário deste cronômetro já passou"
     }
   },
   "errors": {

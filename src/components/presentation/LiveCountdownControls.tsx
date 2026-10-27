@@ -2,8 +2,13 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlarmClock, Pause, Play, RotateCcw } from "lucide-react";
 import { useCountdownStore } from "../../stores/countdown";
+import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownDigits } from "../../runtime/useCountdownDigits";
-import { countdownControlState, MINUTE_MS } from "../../utils/countdownControls";
+import {
+  countdownControlState,
+  MINUTE_MS,
+  restartTargetPassed,
+} from "../../utils/countdownControls";
 import { formatCommandError } from "../../i18n/commandError";
 
 const BUTTON =
@@ -17,8 +22,13 @@ const BUTTON =
 export const LiveCountdownControls: React.FC = () => {
   const { t } = useTranslation();
   const countdown = useCountdownStore((s) => s.state);
+  const items = usePresentationStore((s) => s.state?.set?.items);
   const { formattedTime } = useCountdownDigits();
-  const can = countdownControlState(countdown);
+  // Re-evaluated every tick, since each tick re-renders this component.
+  const can = countdownControlState(
+    countdown,
+    restartTargetPassed(countdown, items ?? [], new Date()),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const run = (action: () => Promise<void>) => {
@@ -86,7 +96,7 @@ export const LiveCountdownControls: React.FC = () => {
           type="button"
           className={BUTTON}
           disabled={!can.pause}
-          onClick={() => run(() => store().pause())}
+          onClick={() => run(() => store().pause({ mirror: true }))}
         >
           <Pause size={12} aria-hidden="true" />
           {t("presentation.liveCountdown.pause")}

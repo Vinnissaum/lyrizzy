@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 7,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "surviving_mutant::test an index shift rule at the equality boundary inserting exactly at the tracked index not only below it",
+      "text": "Test an index-shift rule at the equality boundary, inserting exactly at the tracked index, not only below it",
+      "signal": "surviving_mutant",
+      "scope": "presentation-splice",
+      "status": "candidate",
+      "features": [
+        "phase21-live-countdown-setlist"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src-tauri/src/domain/presentation.rs:127 (C33) (presentation-splice)"
+      ],
+      "created": "2026-10-27T00:20:39Z",
+      "last_seen": "2026-10-27T00:20:39Z"
+    },
+    {
+      "id": "L-002",
+      "key": "ac_gap::when a shared store action gains mirror fan out check every existing caller for a paired action that does not fan out",
+      "text": "When a shared store action gains mirror fan-out, check every existing caller for a paired action that does not fan out",
+      "signal": "ac_gap",
+      "scope": "frontend-stores",
+      "status": "candidate",
+      "features": [
+        "phase21-live-countdown-setlist"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/stores/countdown.ts:117, src/windows/operator/OperatorApp.tsx:350 (frontend-stores)"
+      ],
+      "created": "2026-10-27T00:20:39Z",
+      "last_seen": "2026-10-27T00:20:39Z"
+    },
+    {
+      "id": "L-003",
+      "key": "ac_gap::give every path that re resolves a clock time countdown target an explicit rule for a time that has already passed",
+      "text": "Give every path that re-resolves a clock-time countdown target an explicit rule for a time that has already passed",
+      "signal": "ac_gap",
+      "scope": "countdown",
+      "status": "candidate",
+      "features": [
+        "phase21-live-countdown-setlist"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "AC 28 (C40) (countdown)"
+      ],
+      "created": "2026-10-27T00:20:39Z",
+      "last_seen": "2026-10-27T00:20:39Z"
+    },
+    {
+      "id": "L-004",
+      "key": "surviving_mutant::prove a value a parent component computes at the parent not only in the child that receives it as a prop",
+      "text": "Prove a value a parent component computes at the parent, not only in the child that receives it as a prop",
+      "signal": "surviving_mutant",
+      "scope": "frontend-components",
+      "status": "candidate",
+      "features": [
+        "phase21-live-countdown-setlist"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/components/presentation/SetItemList.tsx:84 (C17) (frontend-components)"
+      ],
+      "created": "2026-10-27T00:20:39Z",
+      "last_seen": "2026-10-27T00:20:39Z"
+    },
+    {
+      "id": "L-005",
+      "key": "surviving_mutant::when a rule matches a set of modes give each mode in the set its own test case",
+      "text": "When a rule matches a set of modes, give each mode in the set its own test case",
+      "signal": "surviving_mutant",
+      "scope": "countdown",
+      "status": "candidate",
+      "features": [
+        "phase21-live-countdown-setlist"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src-tauri/src/commands/countdown.rs:507 (C32) (countdown)"
+      ],
+      "created": "2026-10-27T00:20:39Z",
+      "last_seen": "2026-10-27T00:20:39Z"
+    },
+    {
+      "id": "L-006",
+      "key": "spec_precision_gap::a claim over every control must exercise each control in its test not a sample of them",
+      "text": "A claim over every control must exercise each control in its test, not a sample of them",
+      "signal": "spec_precision_gap",
+      "scope": "frontend-components",
+      "status": "candidate",
+      "features": [
+        "phase21-live-countdown-setlist"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C13 LiveCountdownControls.test.tsx (frontend-components)"
+      ],
+      "created": "2026-10-27T00:20:39Z",
+      "last_seen": "2026-10-27T00:20:39Z"
+    }
+  ]
+}

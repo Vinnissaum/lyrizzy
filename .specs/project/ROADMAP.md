@@ -445,3 +445,20 @@
 **Root causes:** RC-1 `exit_presentation` cleared only takeovers, so a manual countdown survived Stop; RC-2 the landing guard kept any `running` countdown; RC-3 the editor's reset hits only the focused output, which is always Tela 1 on Home, hence one screen right and one wrong; RC-4 the guard read a store that might not have loaded yet. **F-1:** a second countdown item inherited the first one's time.
 
 **Gate at completion:** 772 Vitest + 1 skipped, 382 Rust (1 ignored), `tsc --noEmit` clean, `cargo clippy --all-targets -D warnings` clean.
+
+---
+
+## Phase 21: Live Countdown Controls and Live Set List — IMPLEMENTED (not released)
+
+**Goal:** Let the operator change the countdown on the wall and add or remove set items without stopping the presentation.
+**Completed:** 2026-10-26. **Released:** not yet - no version bump or tag.
+**Plan:** `.specs/features/phase21-live-countdown-setlist/plan.md` (28 criteria, 4 slices) · **Checks:** `checks.md` (C1–C40) · **Proofs:** `proofs.md` · **Verification:** `verification.md` (independent Verifier, 6 findings, all closed).
+
+| Slice | Criteria | Scope |
+|-------|----------|-------|
+| S1 — Countdown on the wall | AC 1–11, 28 | `+1 min`, `+5 min`, `−1 min`, `Pausar`/`Retomar`, `Reiniciar` beside the remaining time; run-only adjustments (D-89); `−1 min` refused at 01:00 or less; `Reiniciar` refused once an "until HH:MM" time has passed |
+| S2 — Add a song | AC 12–17 | Song picker in the set pane; inserts right after the current item, picks keep their order; counted for CCLI (D-90) |
+| S3 — Remove an item | AC 18–22 | Remove with a confirm dialog; the item on screen on any presenting output cannot be removed (`set.item_on_screen`, D-88) |
+| S4 — Every screen agrees | AC 23–27 | Adds and removes reach every output with the set loaded, each keeping its item, slide and frozen item |
+
+**Gate at completion:** 812 Vitest + 1 skipped, 428 Rust (1 ignored), `tsc --noEmit` clean, `cargo clippy --all-targets -D warnings` clean; 62/62 proofs and 3/3 mutations killed at `8547048`. Hardware walk still open (two screens, live presentation).

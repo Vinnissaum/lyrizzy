@@ -485,7 +485,22 @@ pub(crate) async fn refresh_song_in_outputs(
     state: &AppState,
     song_id: &str,
 ) -> Result<(), ErrorPayload> {
+    for (output, snapshot) in refresh_song_in_outputs_core(state, song_id).await? {
+        emit_state(app, output, &snapshot).await?;
+    }
+    Ok(())
+}
+
+/// The state half of `refresh_song_in_outputs`: regenerates the song's slides
+/// on every output whose loaded set holds it, keeping each output's item and
+/// slide (the strophe on screen follows its anchor). Returns the snapshots to
+/// emit, with full slides.
+pub(crate) async fn refresh_song_in_outputs_core(
+    state: &AppState,
+    song_id: &str,
+) -> Result<Vec<(OutputId, PresentationState)>, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
+    let mut snapshots = Vec::new();
 
     for output in OutputId::ALL {
         let out = state.output(output);
@@ -546,10 +561,10 @@ pub(crate) async fn refresh_song_in_outputs(
             with_full_slides(&pres, &all)
         };
 
-        emit_state(app, output, &snapshot).await?;
+        snapshots.push((output, snapshot));
     }
 
-    Ok(())
+    Ok(snapshots)
 }
 
 // ─── Tauri commands ──────────────────────────────────────────────────────────

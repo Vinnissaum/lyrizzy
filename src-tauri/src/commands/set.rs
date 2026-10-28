@@ -1547,4 +1547,83 @@ mod tests {
         assert_eq!(live(&state, One).await.current_item_index, 1);
         assert_eq!(live_order(&state, One).await[1], "CD");
     }
+
+    // ─── Live song edits (P22) ───────────────────────────────────────────────
+
+    use crate::commands::presentation::refresh_song_in_outputs_core;
+
+    async fn set_strophes(pool: &SqlitePool, song_id: &str, strophes: &[&str]) {
+        sqlx::query("DELETE FROM song_sections WHERE song_id = ?")
+            .bind(song_id).execute(pool).await.unwrap();
+        for (k, body) in strophes.iter().enumerate() {
+            sqlx::query("INSERT INTO song_sections (id, song_id, label, type, body, sort_order) VALUES (?, ?, '', 'verse', ?, ?)")
+                .bind(format!("{song_id}-e{k}")).bind(song_id).bind(body).bind(k as i32)
+                .execute(pool).await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn live_song_edit_keeps_each_output_in_place() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        seed_song_set(pool, "set-1", &["A", "B", "C"]).await;
+        seed_song_set(pool, "set-2", &["X1"]).await;
+        // Tela 1 live on A's first strophe; Tela 2 frozen on C while on B.
+        present(&state, One, "set-1", (0, 1), Live, None).await;
+        present(&state, Two, "set-1", (1, 2), Frozen, Some((2, 1))).await;
+        let one_before = live(&state, One).await;
+        let two_before = live(&state, Two).await;
+
+        // B (on screen nowhere) gains a strophe.
+        set_strophes(pool, "song-B", &["B verso 1", "B verso 2", "B verso 3"]).await;
+        let snapshots = refresh_song_in_outputs_core(&state, "song-B").await.unwrap();
+
+        assert_eq!(snapshots.iter().map(|(o, _)| *o).collect::<Vec<_>>(), [One, Two]);
+        for (output, before) in [(One, &one_before), (Two, &two_before)] {
+            let after = live(&state, output).await;
+            assert_eq!(after.current_item_index, before.current_item_index, "{output:?}");
+            assert_eq!(after.current_slide_index, before.current_slide_index, "{output:?}");
+            assert_eq!(after.current_slide, before.current_slide, "{output:?}");
+            assert_eq!(after.frozen_at, before.frozen_at, "{output:?}");
+            assert_eq!(after.item_slide_counts, vec![4, 5, 4], "{output:?}");
+            let b = &live_slides(&state, output).await[1];
+            assert_eq!(b.len(), 5);
+            assert_eq!(b[3].lines, ["B verso 3"]);
+        }
+        // The emitted copy carries the full slides the panes redraw from.
+        let (_, emitted) = &snapshots[0];
+        assert_eq!(emitted.all_slides_per_item[1].len(), 5);
+
+        // An output on another set gets nothing.
+        present(&state, Two, "set-2", (0, 1), Live, None).await;
+        let snapshots = refresh_song_in_outputs_core(&state, "song-B").await.unwrap();
+        assert_eq!(snapshots.iter().map(|(o, _)| *o).collect::<Vec<_>>(), [One]);
+        assert_eq!(live_order(&state, Two).await, ["X1"]);
+        assert_eq!(live(&state, Two).await.item_slide_counts, vec![4]);
+    }
+
+    #[tokio::test]
+    async fn live_song_edit_on_air_keeps_the_strophe() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        let strophes: Vec<String> = (1..=6).map(|k| format!("estrofe {k}")).collect();
+        seed_song(pool, "song-S", &strophes).await;
+        insert_set(pool, "set-1").await;
+        sqlx::query("INSERT INTO set_items (id, set_id, item_type, song_id, sort_order) VALUES ('S', 'set-1', 'song', 'song-S', 0)")
+            .execute(pool).await.unwrap();
+        // Slide 0 is the title, so slide 5 is strophe 5.
+        present(&state, One, "set-1", (0, 5), Live, None).await;
+        assert_eq!(live(&state, One).await.current_slide.unwrap().lines, ["estrofe 5"]);
+
+        let mut edited: Vec<&str> = strophes.iter().map(String::as_str).collect();
+        edited[4] = "estrofe cinco";
+        set_strophes(pool, "song-S", &edited).await;
+        refresh_song_in_outputs_core(&state, "song-S").await.unwrap();
+
+        let after = live(&state, One).await;
+        assert_eq!(after.current_item_index, 0);
+        assert_eq!(after.current_slide_index, 5);
+        assert_eq!(after.current_slide.unwrap().lines, ["estrofe cinco"]);
+        assert_eq!(after.next_slide.unwrap().lines, ["estrofe 6"]);
+    }
 }

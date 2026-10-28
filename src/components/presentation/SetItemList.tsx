@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
-import { Play, Plus, Trash2 } from "lucide-react";
+import { Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { removeSetItem } from "../../api/commands";
 import { useOutputStates } from "../../hooks/useOutputStates";
 import { onScreenItemIds } from "../../utils/onScreen";
@@ -15,7 +15,9 @@ import type { SetItem } from "../../types";
 export const SetItemList: React.FC<{
   /** Live set editing (P21): add songs, remove items not on screen. */
   editable?: boolean;
-}> = ({ editable = false }) => {
+  /** Opens the live song editor for a song row (P22); never selects the row. */
+  onEditSong?: (songId: string) => void;
+}> = ({ editable = false, onEditSong }) => {
   const { t } = useTranslation();
   const items = usePresentationStore((s) => s.state?.set?.items ?? []);
   const currentItemIndex = usePresentationStore((s) => s.state?.currentItemIndex ?? -1);
@@ -62,14 +64,15 @@ export const SetItemList: React.FC<{
       </div>
     );
   }
-  return <EditableSetItemList items={items} row={row} />;
+  return <EditableSetItemList items={items} row={row} onEditSong={onEditSong} />;
 };
 
-/** The live-editing variant: the same rows, plus add and remove. */
+/** The live-editing variant: the same rows, plus add, edit and remove. */
 const EditableSetItemList: React.FC<{
   items: SetItem[];
   row: (item: SetItem, idx: number) => React.ReactNode;
-}> = ({ items, row }) => {
+  onEditSong?: (songId: string) => void;
+}> = ({ items, row, onEditSong }) => {
   const { t } = useTranslation();
   const focusedState = usePresentationStore((s) => s.state);
   const songs = useLibraryStore((s) => s.songs);
@@ -120,6 +123,17 @@ const EditableSetItemList: React.FC<{
           return (
             <div key={item.id} className="flex items-center gap-1">
               <div className="min-w-0 flex-1">{row(item, idx)}</div>
+              {item.itemType === "song" && item.songId && (
+                <button
+                  type="button"
+                  onClick={() => onEditSong?.(item.songId!)}
+                  aria-label={`${t("presentation.liveSet.edit")} ${label}`}
+                  title={t("presentation.liveSet.edit")}
+                  className="shrink-0 p-1.5 rounded text-muted hover:text-fg hover:bg-surface-2 transition-colors"
+                >
+                  <Pencil size={14} aria-hidden="true" />
+                </button>
+              )}
               <span title={locked ? t("presentation.liveSet.onAir") : undefined}>
                 <button
                   type="button"

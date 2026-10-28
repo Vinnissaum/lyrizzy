@@ -203,6 +203,16 @@ describe("SetItemList", () => {
     // Unnamed countdown falls back to the localized default name — no duration.
     expect(screen.getByText("Cronômetro")).toBeInTheDocument();
   });
+
+  it("the read-only list has no edit control", () => {
+    vi.mocked(usePresentationStore).mockImplementation((selector: (s: any) => any) =>
+      selector({ state: { set: mockSet, currentItemIndex: 0 } })
+    );
+
+    render(<SetItemList onEditSong={vi.fn()} />);
+
+    expect(screen.queryAllByRole("button", { name: /^Editar música/ })).toHaveLength(0);
+  });
 });
 
 // ── P21: live set editing ───────────────────────────────────────────────────
@@ -318,6 +328,73 @@ describe("SetItemList editable", () => {
         afterItemId: "item-2",
       }),
     );
+  });
+
+  // ── P22: edit a song from its row ─────────────────────────────────────────
+
+  const everyTypeSet: ServiceSet = {
+    ...mockSet,
+    items: [
+      { id: "i-song-1", setId: "set-1", itemType: "song", songId: "song-1", sortOrder: 0 },
+      { id: "i-media", setId: "set-1", itemType: "media", mediaId: "media-1", mediaKind: "image", sortOrder: 1 },
+      { id: "i-countdown", setId: "set-1", itemType: "countdown", sortOrder: 2,
+        countdownConfig: { target: { kind: "duration", durationMs: 300000 }, endBehavior: "holdZero" } },
+      { id: "i-web", setId: "set-1", itemType: "web_view", sortOrder: 3,
+        webviewConfig: { mode: "iframe", url: "https://example.com" } },
+      { id: "i-blank", setId: "set-1", itemType: "blank", sortOrder: 4 },
+      { id: "i-slides", setId: "set-1", itemType: "slide_show", mediaId: "media-1", sortOrder: 5 },
+      { id: "i-song-2", setId: "set-1", itemType: "song", songId: "song-2", sortOrder: 6 },
+    ],
+  };
+  const twoSongs = [
+    ...mockSongs,
+    { id: "song-2", title: "Santo", artist: "Coral", sections: [], language: "pt", scrimOpacity: 0, createdAt: 0, updatedAt: 0 },
+  ];
+
+  function focusedOn(set: ServiceSet, currentItemIndex: number) {
+    vi.mocked(usePresentationStore).mockImplementation((selector: (s: any) => any) =>
+      selector({ state: { set, mode: "live", currentItemIndex }, pendingSelection: null, selectSlide }),
+    );
+    Object.assign(vi.mocked(usePresentationStore), {
+      getState: vi.fn().mockReturnValue({ state: { set, currentItemIndex } }),
+    });
+  }
+
+  it("edit control on every song row and no other row", () => {
+    vi.mocked(useLibraryStore).mockImplementation((selector: any) =>
+      selector ? selector({ songs: twoSongs }) : { songs: twoSongs },
+    );
+    // The first song is the one on screen; it gets an edit control too.
+    focusedOn(everyTypeSet, 0);
+    render(<SetItemList editable onEditSong={vi.fn()} />);
+
+    const edits = screen.getAllByRole("button", { name: /^Editar música/ });
+    expect(edits.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Editar música Aleluia",
+      "Editar música Santo",
+    ]);
+    for (const b of edits) expect(b).toHaveAttribute("title", "Editar música");
+    expect(screen.getByRole("button", { name: "Editar música Aleluia" })).toBeEnabled();
+    // Every row still has its remove control: 7 rows, 2 edit controls.
+    expect(screen.getAllByRole("button", { name: /^Remover / })).toHaveLength(7);
+  });
+
+  it("edit control hands the song id and never navigates", () => {
+    vi.mocked(useLibraryStore).mockImplementation((selector: any) =>
+      selector ? selector({ songs: twoSongs }) : { songs: twoSongs },
+    );
+    const onEditSong = vi.fn();
+    focusedOn(everyTypeSet, 0);
+    render(<SetItemList editable onEditSong={onEditSong} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar música Santo" }));
+
+    expect(onEditSong).toHaveBeenCalledTimes(1);
+    expect(onEditSong).toHaveBeenCalledWith("song-2");
+    expect(selectSlide).not.toHaveBeenCalled();
+    const current = document.querySelectorAll('[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Aleluia");
   });
 
   it("shows the removal error as its localized message", async () => {

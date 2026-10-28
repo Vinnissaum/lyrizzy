@@ -56,4 +56,10 @@ describe("locale key parity", () => {
     const missing = required.filter((k) => !enKeys.has(k) || !ptKeys.has(k));
     expect(missing, missing.join("\n")).toEqual([]);
   });
+
+  it("row edit label in both locales", () => {
+    type LiveSet = { presentation: { liveSet: Record<string, string> } };
+    expect((ptBR as unknown as LiveSet).presentation.liveSet.edit).toBe("Editar música");
+    expect((enUS as unknown as LiveSet).presentation.liveSet.edit).toBe("Edit song");
+  });
 });

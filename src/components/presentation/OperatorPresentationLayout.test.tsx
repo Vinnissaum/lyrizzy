@@ -61,8 +61,16 @@ vi.mock("react-i18next", () => ({
 
 // Stub child components introduced in P7 so they don't need their own stores
 vi.mock("./SetItemList", () => ({
-  SetItemList: ({ editable }: { editable?: boolean }) => (
-    <div data-testid="set-item-list-stub" data-editable={String(!!editable)} />
+  SetItemList: ({
+    editable,
+    onEditSong,
+  }: {
+    editable?: boolean;
+    onEditSong?: (songId: string) => void;
+  }) => (
+    <div data-testid="set-item-list-stub" data-editable={String(!!editable)}>
+      <button data-testid="row-edit-stub" onClick={() => onEditSong?.("song-2")} />
+    </div>
   ),
 }));
 
@@ -474,6 +482,25 @@ describe("OperatorPresentationLayout", () => {
     expect(
       screen.queryByTestId("live-song-edit-modal-stub"),
     ).not.toBeInTheDocument();
+  });
+
+  it("Editar letra opens the current item's song", () => {
+    setupDefaultMocks();
+    render(<OperatorPresentationLayout />);
+
+    fireEvent.click(screen.getByTestId("live-edit-button"));
+    expect(screen.getByTestId("live-song-edit-modal-stub")).toHaveTextContent("song-1");
+  });
+
+  it("Parar closes the editor opened from a row", () => {
+    setupDefaultMocks();
+    render(<OperatorPresentationLayout />);
+
+    fireEvent.click(screen.getByTestId("row-edit-stub"));
+    expect(screen.getByTestId("live-song-edit-modal-stub")).toHaveTextContent("song-2");
+
+    fireEvent.click(screen.getByTestId("stop-button"));
+    expect(screen.queryByTestId("live-song-edit-modal-stub")).not.toBeInTheDocument();
   });
 
   it("renders OverlayActionBar without an Apresentar button", () => {

@@ -69,9 +69,9 @@ export const OperatorPresentationLayout: React.FC<{
 
   const [isImportingPresentation, setIsImportingPresentation] = useState(false);
 
-  // Song id currently open in the live editor overlay, if any. Local to the
-  // operator layout — the presentation window is never involved (read-only
-  // invariant).
+  // Song id currently open in the live editor overlay, if any: the current
+  // item's song (`Editar letra`) or any song row's (P22). Local to the operator
+  // layout — the presentation window is never involved (read-only invariant).
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
 
   // Which output the launch modal is confirming, if any. Opened from an
@@ -332,7 +332,7 @@ export const OperatorPresentationLayout: React.FC<{
             )}
           </header>
           <div className="flex-1 overflow-hidden">
-            <SetItemList editable />
+            <SetItemList editable onEditSong={setEditingSongId} />
           </div>
         </div>
 

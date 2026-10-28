@@ -277,6 +277,7 @@
       "noMatch": "Nenhuma música corresponde à pesquisa.",
       "close": "Fechar",
       "added": "Adicionada",
+      "edit": "Editar música",
       "remove": "Remover",
       "onAir": "No ar — não pode ser removido",
       "confirmRemove": "Remover “{{name}}” do conjunto?",

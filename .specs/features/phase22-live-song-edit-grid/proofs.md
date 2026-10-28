@@ -1,8 +1,8 @@
 # phase22-live-song-edit-grid proofs
 
-**HEAD**: 962c71d
+**HEAD**: aff66a2
 **Tree**: clean
-**Result**: 31 pass, 4 fail; mutations 2 killed, 1 not
+**Result**: 35 pass, 3 fail; mutations 3 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -22,10 +22,13 @@
 | C9 | `npx vitest run src/components/presentation/OperatorPresentationLayout.test.tsx -t "enables the live-edit butto` | 1 | 1 | pass |
 | C10 | `npx vitest run src/i18n/locales.test.ts -t "en-US and pt-BR have identical key sets in both directions"` | 1 | 1 | pass |
 | C10 | `npx vitest run src/i18n/locales.test.ts -t "row edit label in both locales"` | 1 | 1 | pass |
+| C20 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_song_edit_on_air_follows_an_i` | 1 | - | pass |
+| C21 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_song_edit_keeps_a_frozen_wall` | 1 | - | pass |
 | C11 | `npx vitest run src/components/presentation/StrophesGrid.test.tsx -t "rows sized to their cards"` | 1 | 1 | pass |
 | C12 | `walk - present the 30-card song at 1536×912, then a 60-card song at 1280×720, then a 3-card song, measuring ev` | - | - | pass (Walked) |
+| C22 | `walk - present a 9-card song at 1536×912, measuring the row pitch` | - | - | pass (Walked) |
 | C13 | `npx vitest run src/components/presentation/StrophesGrid.test.tsx -t "scrolls the new active card into view"` | 1 | 1 | pass |
-| C14 | `browser - reach the state, save captures/operator-many-slides.running.png` | - | - | **diverges** (screens.md) |
+| C14 | `browser - reach the state, save captures/operator-many-slides.running.png` | - | - | pass |
 | C15 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "calls selectSlide\(idx, 0\) when a non-act` | 1 | 1 | pass |
 | C15 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "confirm before removing"` | 1 | 1 | pass |
 | C15 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "add song opens the picker"` | 1 | 1 | pass |
@@ -48,4 +51,4 @@
 | --- | --- | --- |
 | C1 - edit control hidden on the row on screen (copies the remove lock) | `src/components/presentation/SetItemList.tsx:126` | yes |
 | C2 - edit control also selects its row (go_to_item) | `src/components/presentation/SetItemList.tsx:129` | yes |
-| C4/C5 - live refresh ignores the anchor of the strophe on screen | `src-tauri/src/commands/presentation.rs:556` | no |
+| C4/C5 - live refresh ignores the anchor of the strophe on screen | `src-tauri/src/commands/presentation.rs:564` | yes |

@@ -1,14 +1,14 @@
 # Phase 22 live song edit and strophe grid screens
 
 **Verifier**: independent sub-agent (author != verifier)
-**Round**: 1
-**HEAD**: 8f4e4e7
+**Round**: 2
+**HEAD**: 532f0f8
 
-The picture was taken at `cfb5823`. Per the dispatch, the commits after it up to `8f4e4e7` touch no screen code.
+Round 1 judged the picture taken at `cfb5823` (HEAD `8f4e4e7`) and found 1 row that differed. In round 2, the picture was re-saved at `43fa952`, the last code commit; per the dispatch, the commits after it up to `532f0f8` are spec documents only. Round 2 reopened that one row on the re-saved picture, judged it against the current `plan.md` (whose Difference 1 now names `OS MEUS LÁBIOS …` and `Jorge Camargo, 1…`), and checked every `same` row for a visible regression. It found none. The notes on rows that were not reopened describe the round-1 picture.
 
 | Screen | Compared with | Verdict | Finding |
 | --- | --- | --- | --- |
-| `captures/operator-many-slides.running.png` | `captures/operator-many-slides.png` | diverges | 1 row differs |
+| `captures/operator-many-slides.running.png` | `captures/operator-many-slides.png` | matches | 0 rows differ (the round-1 row is now `same`; no regressions) |
 
 ### `captures/operator-many-slides.running.png`
 
@@ -32,7 +32,7 @@ The picture was taken at `cfb5823`. Per the dispatch, the commits after it up to
 | card rows: each row overlaps the bottom of the row above (95 CSS px pitch, 127 CSS px cards) | same | With Difference 2 applied: rows are as tall as their cards (~160 px at 16:9 for ~283 px width, ~170 px pitch), and no card overlaps another |
 | active card: the title card with a blue ring, its bottom hidden by the next row | same | The full ring shows, which follows from Difference 2 |
 | title card: `__TITLE__` label top-left, `AJUNTAMENTO` bold and centred near the top, small `(Jorge Camargo, 1996)` below | same | Note: the text sits closer to the card top |
-| strophe card content: the `ESTROFE N` label sits top-left, just above the lyric's first line, touching only the top of its first letters. The lyric is bold uppercase, 1-2 lines centred near the top, and every first line reads in full | differs | The label is larger and sits level with the lyric's first line, so it hides that line's first letters on most cards. `ESTROFE 1` covers `V` (`…EM E SOPRA SOBRE`), `ESTROFE 2` covers `REUNID` (`…OS NESTE AJUNTAMENTO`), `ESTROFE 3` covers `H`, `ESTROFE 5` covers `F`, `ESTROFE 6` covers `D`, `ESTROFE 7` covers `E A U` (`…MA VOZ OFERECER-TE`), `ESTROFE 10` covers `H`, `ESTROFE 11` covers `NO CO`, `ESTROFE 12` covers `DEUS BEND` (`…ITO REI E SALVADOR (2X)`), and so on through `ESTROFE 23`. The lyric text is also smaller and sits closer to the card top |
+| strophe card content: the `ESTROFE N` label sits top-left, just above the lyric's first line, touching only the top of its first letters. The lyric is bold uppercase, 1-2 lines centred near the top, and every first line reads in full | same | Round 2: as in the capture, the label sits just above the lyric's first line and touches only the top of its first letters (`REUNIDOS NESTE AJUNTAMENTO`, `E A UMA VOZ OFERECER-TE`, `NO CORRER DA HISTÓRIA`, `DEUS BENDITO REI E SALVADOR (2X)`). Every first line through `ESTROFE 23` reads in full, and the lyric's size and position match the capture. (Round 1 differed: the label sat level with the line and hid its first letters) |
 | card copy: labels `ESTROFE 1`…`ESTROFE 28` and the lyric lines (`VEM E SOPRA SOBRE / NÓS TEU SOPRO`, `REUNIDOS NESTE AJUNTAMENTO`, …, `DEUS BENDITO REI E SALVADOR (2X)`) | same | Where the label does not cover it (row above), the text matches |
 | last row: `ESTROFE 28` and the `TELA PRETA` closing card, cut off at the pane bottom | same | With Difference 2 applied: rows 1-5 show in full and row 6 (`ESTROFE 20`-`23`) is cut off at the pane bottom. `ESTROFE 24`-`28` and `TELA PRETA` lie below and are reached by scrolling |
 | grid scrollbar: right of the grid, up/down arrows, light grey thumb | same | The thumb is shorter (more to scroll), which follows from Difference 2 |

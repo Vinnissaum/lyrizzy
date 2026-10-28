@@ -493,8 +493,8 @@ pub(crate) async fn refresh_song_in_outputs(
 
 /// The state half of `refresh_song_in_outputs`: regenerates the song's slides
 /// on every output whose loaded set holds it, keeping each output's item and
-/// slide (the strophe on screen follows its anchor). Returns the snapshots to
-/// emit, with full slides.
+/// slide, and its frozen slide (each strophe follows its anchor). Returns the
+/// snapshots to emit, with full slides.
 pub(crate) async fn refresh_song_in_outputs_core(
     state: &AppState,
     song_id: &str,
@@ -505,9 +505,9 @@ pub(crate) async fn refresh_song_in_outputs_core(
     for output in OutputId::ALL {
         let out = state.output(output);
 
-        let (set, current_item_index, current_slide_index) = {
+        let (set, current_item_index, current_slide_index, frozen_at) = {
             let pres = out.presentation.read().await;
-            (pres.set.clone(), pres.current_item_index, pres.current_slide_index)
+            (pres.set.clone(), pres.current_item_index, pres.current_slide_index, pres.frozen_at)
         };
         let Some(set) = set else { continue };
 
@@ -516,16 +516,24 @@ pub(crate) async fn refresh_song_in_outputs_core(
             continue;
         }
 
-        let current_item_regenerated =
-            regenerated.iter().any(|(idx, _)| *idx == current_item_index);
+        let is_regenerated = |item: usize| regenerated.iter().any(|(idx, _)| *idx == item);
+        let current_item_regenerated = is_regenerated(current_item_index);
+        // A frozen wall shows `frozen_at`, which can be another item than the
+        // operator's current one, or another strophe of the same song.
+        let frozen_regenerated = frozen_at.filter(|(item, _)| is_regenerated(*item));
 
-        // Capture the anchor against the OLD slides, before the splice below.
-        let anchor = if current_item_regenerated {
+        // Capture the anchors against the OLD slides, before the splice below.
+        let (anchor, frozen_anchor) = {
             let all = out.presentation_slides.read().await;
-            all.get(current_item_index)
-                .and_then(|s| anchor_of(s, current_slide_index))
-        } else {
-            None
+            let anchor = if current_item_regenerated {
+                all.get(current_item_index)
+                    .and_then(|s| anchor_of(s, current_slide_index))
+            } else {
+                None
+            };
+            let frozen_anchor = frozen_regenerated
+                .and_then(|(item, slide)| all.get(item).and_then(|s| anchor_of(s, slide)));
+            (anchor, frozen_anchor)
         };
 
         {
@@ -554,6 +562,15 @@ pub(crate) async fn refresh_song_in_outputs_core(
                     all.get(current_item_index).map(Vec::as_slice).unwrap_or(&[]);
                 pres.current_slide_index =
                     resolve_anchor(new_item_slides, anchor.as_ref(), current_slide_index);
+            }
+            if let Some((item, slide)) = frozen_regenerated {
+                let new_item_slides = all.get(item).map(Vec::as_slice).unwrap_or(&[]);
+                pres.frozen_at = Some((
+                    item,
+                    resolve_anchor(new_item_slides, frozen_anchor.as_ref(), slide),
+                ));
+            }
+            if current_item_regenerated || frozen_regenerated.is_some() {
                 pres.current_slide = resolve_current_slide(&all, &pres);
                 pres.next_slide = resolve_next_slide(&all, &pres);
             }

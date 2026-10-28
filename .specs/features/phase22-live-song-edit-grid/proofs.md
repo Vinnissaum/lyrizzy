@@ -1,8 +1,8 @@
 # phase22-live-song-edit-grid proofs
 
-**HEAD**: ccb5872
+**HEAD**: 962c71d
 **Tree**: clean
-**Result**: 31 pass, 4 fail; mutations 0 killed, 0 not
+**Result**: 31 pass, 4 fail; mutations 2 killed, 1 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -25,7 +25,7 @@
 | C11 | `npx vitest run src/components/presentation/StrophesGrid.test.tsx -t "rows sized to their cards"` | 1 | 1 | pass |
 | C12 | `walk - present the 30-card song at 1536×912, then a 60-card song at 1280×720, then a 3-card song, measuring ev` | - | - | pass (Walked) |
 | C13 | `npx vitest run src/components/presentation/StrophesGrid.test.tsx -t "scrolls the new active card into view"` | 1 | 1 | pass |
-| C14 | `browser - reach the state, save captures/operator-many-slides.running.png` | - | - | **not judged** (screens.md) |
+| C14 | `browser - reach the state, save captures/operator-many-slides.running.png` | - | - | **diverges** (screens.md) |
 | C15 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "calls selectSlide\(idx, 0\) when a non-act` | 1 | 1 | pass |
 | C15 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "confirm before removing"` | 1 | 1 | pass |
 | C15 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "add song opens the picker"` | 1 | 1 | pass |
@@ -41,3 +41,11 @@
 | C19 | `grep -Eq '^## Phase 22: .* — RELEASED \(v1\.9\.0\)$' .specs/project/ROADMAP.md` | count unknown | - | **fail** |
 | Build | `npx tsc --noEmit` | - | - | pass |
 | Build | `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` | - | - | pass |
+
+## Mutations
+
+| Mutation | Location | Killed |
+| --- | --- | --- |
+| C1 - edit control hidden on the row on screen (copies the remove lock) | `src/components/presentation/SetItemList.tsx:126` | yes |
+| C2 - edit control also selects its row (go_to_item) | `src/components/presentation/SetItemList.tsx:129` | yes |
+| C4/C5 - live refresh ignores the anchor of the strophe on screen | `src-tauri/src/commands/presentation.rs:556` | no |

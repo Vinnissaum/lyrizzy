@@ -1626,4 +1626,77 @@ mod tests {
         assert_eq!(after.current_slide.unwrap().lines, ["estrofe cinco"]);
         assert_eq!(after.next_slide.unwrap().lines, ["estrofe 6"]);
     }
+
+    /// A set "set-1" of song S (6 one-line strophes, item "S") then song T
+    /// (2 strophes, item "T"). Slide 0 is S's title, so slide k is strophe k.
+    async fn seed_six_strophe_set(pool: &SqlitePool) -> Vec<String> {
+        let strophes: Vec<String> = (1..=6).map(|k| format!("estrofe {k}")).collect();
+        seed_song(pool, "song-S", &strophes).await;
+        seed_two_strophe_song(pool, "T").await;
+        insert_set(pool, "set-1").await;
+        for (k, name) in ["S", "T"].iter().enumerate() {
+            sqlx::query("INSERT INTO set_items (id, set_id, item_type, song_id, sort_order) VALUES (?, 'set-1', 'song', ?, ?)")
+                .bind(name).bind(format!("song-{name}")).bind(k as i32)
+                .execute(pool).await.unwrap();
+        }
+        strophes
+    }
+
+    /// S's strophes with "nova" inserted as the second one.
+    fn with_strophe_inserted_above(strophes: &[String]) -> Vec<&str> {
+        let mut edited: Vec<&str> = strophes.iter().map(String::as_str).collect();
+        edited.insert(1, "nova");
+        edited
+    }
+
+    #[tokio::test]
+    async fn live_song_edit_on_air_follows_an_inserted_strophe() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        let strophes = seed_six_strophe_set(pool).await;
+        present(&state, One, "set-1", (0, 5), Live, None).await;
+
+        set_strophes(pool, "song-S", &with_strophe_inserted_above(&strophes)).await;
+        refresh_song_in_outputs_core(&state, "song-S").await.unwrap();
+
+        let after = live(&state, One).await;
+        assert_eq!(after.current_item_index, 0);
+        assert_eq!(after.current_slide_index, 6);
+        assert_eq!(after.current_slide.unwrap().lines, ["estrofe 5"]);
+        assert_eq!(after.next_slide.unwrap().lines, ["estrofe 6"]);
+    }
+
+    #[tokio::test]
+    async fn live_song_edit_keeps_a_frozen_wall_on_its_strophe() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        let strophes = seed_six_strophe_set(pool).await;
+
+        // (a) Wall frozen on S strophe 5 while the operator is on T: fixing
+        // strophe 5's text reaches the wall.
+        present(&state, One, "set-1", (1, 1), Frozen, Some((0, 5))).await;
+        let mut fixed: Vec<&str> = strophes.iter().map(String::as_str).collect();
+        fixed[4] = "estrofe cinco";
+        set_strophes(pool, "song-S", &fixed).await;
+        refresh_song_in_outputs_core(&state, "song-S").await.unwrap();
+
+        let after = live(&state, One).await;
+        assert_eq!(after.frozen_at, Some((0, 5)));
+        assert_eq!(after.current_slide.unwrap().lines, ["estrofe cinco"]);
+        assert_eq!((after.current_item_index, after.current_slide_index), (1, 1));
+        assert_eq!(after.next_slide.unwrap().lines, ["T verso 2"]);
+
+        // (b) Wall frozen on S strophe 5 while the operator is on S strophe 2:
+        // a strophe inserted above both moves each to its own strophe.
+        set_strophes(pool, "song-S", &strophes.iter().map(String::as_str).collect::<Vec<_>>()).await;
+        present(&state, One, "set-1", (0, 2), Frozen, Some((0, 5))).await;
+        set_strophes(pool, "song-S", &with_strophe_inserted_above(&strophes)).await;
+        refresh_song_in_outputs_core(&state, "song-S").await.unwrap();
+
+        let after = live(&state, One).await;
+        assert_eq!(after.frozen_at, Some((0, 6)));
+        assert_eq!(after.current_slide.unwrap().lines, ["estrofe 5"]);
+        assert_eq!((after.current_item_index, after.current_slide_index), (0, 3));
+        assert_eq!(after.next_slide.unwrap().lines, ["estrofe 3"]);
+    }
 }

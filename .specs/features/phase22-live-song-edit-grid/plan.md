@@ -78,8 +78,8 @@ sequenceDiagram
 | domain | `editingSongId` in `OperatorPresentationLayout` meant "the current item's song"; it now means "any song in the loaded set". Its readers: `LiveSongEditModal`, and `handleStop`, which clears it so the dialog closes on Parar |
 | domain | `SetItemList` gains an edit callback beside its existing remove control. Its other caller, the read-only list (no `editable`), shows neither control and is unchanged |
 | stored data | nothing to migrate. `songs` and `song_sections` rows are written by the existing `update_song`, as `Editar letra` does today |
-| readers | every output whose loaded set holds the edited song, Tela 2 included (existing refresh); Home's set builder and the library list (existing `songs_changed` listeners in `OperatorApp` and `HomeSetBuilder`) |
-| layout | `StrophesGrid` rows no longer shrink to fit the pane. With few slides nothing changes; with many, fewer rows fit and the pane scrolls. This applies to slideshows too, since they share the grid |
+| readers | every output whose loaded set holds the edited song, Tela 2 included (existing refresh), and a frozen wall showing it, which the refresh now re-anchors too (`frozen_at` and its slide; before, a frozen wall kept the old text or slipped to another strophe); Home's set builder and the library list (existing `songs_changed` listeners in `OperatorApp` and `HomeSetBuilder`) |
+| layout | `StrophesGrid` rows no longer shrink to fit the pane, and no longer stretch to fill it either: rows pack at the top, 8 px apart. A song in one row looks as today. A song in 2 or more rows that fit used to spread over the pane (9 cards in a 944×760 pane: 251 px row pitch for 128 px cards) and now packs at the top (136 px pitch), with the empty space at the bottom (user, 2026-10-28: "Pack at the top (Recommended)"). A song too long for the pane scrolls. This applies to slideshows too, since they share the grid |
 
 ```mermaid
 erDiagram
@@ -170,6 +170,7 @@ Both changes reach every installation as one release.
 | Who publishes the draft release | The agent pushes `main` and `v1.9.0`; the user publishes the draft on GitHub once CI has built both installers; the agent then confirms the tag and the published `latest.json` (C17, C18) | user, 2026-10-28, after learning `gh` is absent and the API is rate-limited: "You publish, I confirm (Recommended)" | y |
 | Release version | `1.9.0` | a minor bump for new features, as `1.7.0` → `1.8.0` was | n |
 | Edit control label | tooltip `Editar música` (en-US `Edit song`), accessible name `Editar música <title>`; a pencil icon at the size of the row's remove control, placed left of it | reuses the dialog's own title (`presentation.liveEdit.title`); matches the remove control's `<label> <name>` pattern | n |
+| Songs whose cards fit in 2 or more rows | Rows pack at the top, 8 px apart, as in a long song; today they spread over the pane | user, 2026-10-28, asked after the Verifier found the change: "Pack at the top (Recommended)" | y |
 | Row height fix | rows sized to their content (`grid-auto-rows: max-content`) on the existing grid; the scroller and `scrollIntoView` stay as they are | the smallest change that removes the cause, confirmed in headless Chromium; a flex-wrap rewrite would change column behaviour | n |
 
 **Open questions:** none - all resolved or logged above.

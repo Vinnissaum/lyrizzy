@@ -4,7 +4,7 @@ Mutations: 3
 Build: `npx tsc --noEmit`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
 Plan: `.specs/features/phase22-live-song-edit-grid/plan.md`
 
-18 checks in 3 slices · 0 one-way doors · 0 open
+22 checks in 3 slices (3 appended after verification) · 0 one-way doors · 0 open
 
 ## Checks
 
@@ -46,6 +46,12 @@ Proof: `npx vitest run src/components/presentation/OperatorPresentationLayout.te
 Proof: `npx vitest run src/i18n/locales.test.ts -t "en-US and pt-BR have identical key sets in both directions"`
 Proof: `npx vitest run src/i18n/locales.test.ts -t "row edit label in both locales"`
 
+**C20** - After the song on the wall is saved with a strophe inserted above the strophe on screen, the output follows that strophe: a 6-strophe song live on slide 5 gets a new second strophe, so `current_slide_index` becomes 6, `current_slide` reads "estrofe 5" and `next_slide` "estrofe 6" (AC 3; appended after verification)
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_song_edit_on_air_follows_an_inserted_strophe`
+
+**C21** - A frozen wall showing the edited song keeps its strophe with the new text: frozen on slide 5 while the operator is on another song, strophe 5's text fixed → `frozen_at` stays (0, 5) and `current_slide` carries the new text; frozen on slide 5 while the operator is on slide 2 of the same song, a strophe inserted above both → `frozen_at` (0, 6) still showing "estrofe 5", and the operator on slide 3 (AC 3; appended after verification)
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_song_edit_keeps_a_frozen_wall_on_its_strophe`
+
 ### S2 - Strophe cards never overlap
 
 **C11** - The strophes grid sizes each row to its cards' content (`grid-auto-rows: max-content`), keeps its 220 px minimum column, 8 px gap and vertical scroll, and every card keeps its 16:9 spacer (AC 8)
@@ -53,6 +59,9 @@ Proof: `npx vitest run src/components/presentation/StrophesGrid.test.tsx -t "row
 
 **C12** - In Chromium, no two strophe cards overlap and each card's height is its width × 9/16 (± 1 px): 30 cards at a 1536×912 window (125% scale) → 0 overlaps and the last card reachable by scrolling; 60 cards at 1280×720 → 0 overlaps; 3 cards → at the top of the pane at full height (AC 8)
 Proof: walk - present the 30-card song at 1536×912, then a 60-card song at 1280×720, then a 3-card song, measuring every card's box
+
+**C22** - In Chromium, a song whose cards fit in 2 or more rows packs them at the top: 9 cards at a 1536×912 window → rows one card height plus 8 px apart (± 1 px), the first row 8 px below the pane's top, no scroll (user decision 2026-10-28, "Pack at the top"; appended after verification)
+Proof: walk - present a 9-card song at 1536×912, measuring the row pitch
 
 **C13** - When the current slide index changes, the strophes grid scrolls the newly active card into view (AC 9)
 Proof: `npx vitest run src/components/presentation/StrophesGrid.test.tsx -t "scrolls the new active card into view"`
@@ -92,11 +101,11 @@ Proof: `grep -Eq '^## Phase 22: .* — RELEASED \(`v1\.9\.0`\)$' .specs/project/
 | set item types for the edit control, AC 1 (6) | `song` C1 · `media` C1 · `countdown` C1 · `web_view` C1 · `blank` C1 · `slide_show` C1, table-driven over all 6 | - |
 | set lists, AC 1 (2) | editable C1 · read-only C1 | - |
 | AC 2 example (4 parts) | dialog shows song 2 C2 · no `go_to_item` C2 · highlight kept C2 · strophes header kept C2 | - |
-| AC 3 examples (3) | not on air, strophe added, wall stays C4 · on air, word changed, stays on strophe 5 C5 · other set untouched C4 | - |
+| AC 3 examples (6) | not on air, strophe added, wall stays C4 · on air, word changed, stays on strophe 5 C5 · other set untouched C4 · on air, strophe inserted above C20 · frozen on another item, text fixed C21 · frozen on the same song, strophe inserted above C21 | - |
 | dialog exits (3) | `Salvar` C3 · close control C7 · `Parar` C8 | - |
 | relabel readers, AC 4 (2) | set pane row C6 · strophes header C6 | - |
 | locales (2) | pt-BR C10 · en-US C10 | - |
-| AC 8 examples (3) | 30 cards at 1536×912 C12, C14 · 60 cards at 1280×720 C12 · 3 cards C12 | - |
+| AC 8 examples (4) | 30 cards at 1536×912 C12, C14 · 60 cards at 1280×720 C12 · 3 cards C12 · 9 cards in 3 rows C22 | - |
 | source controls: `operator-many-slides.png` (14) | edit control (new) C2 · set row C15 · remove control C15 · `Adicionar música` C15 · strophe card C15 · `Editar letra` C9 · `Parar` C15 · `Tela preta` C15 · `Imagem` C15 · `Aviso` C15 · `Apresentação` C15 · nav tabs C15 · strophes scroll C12 · `Tela preta` row and `Regressivo` row (no edit control) C1 | - |
 | release artefacts, AC 11-13 (4) | five version files C16 · tag C17 · published manifest on both platforms C18 · roadmap C19 | - |
 
@@ -109,13 +118,13 @@ Proof: `grep -Eq '^## Phase 22: .* — RELEASED \(`v1\.9\.0`\)$' .specs/project/
 - concurrency: C4 - one save refreshes both outputs; existing - `refresh_song_in_outputs` takes the slides lock before the presentation lock and drops both before emitting (`presentation.rs:525`)
 - data lifecycle: existing - `update_song` replaces the song's sections in one write, and `LiveSongEditModal.test.tsx` "saving inside SongEditor calls update_song" round-trips the loaded song; C4 and C5 read the stored song back through slide generation
 - dependency failure: n/a - no external call; the release proofs C17 and C18 read GitHub, and a network failure there fails the proof
-- state transitions: C3, C7, C8 - the dialog's three exits
+- state transitions: C3, C7, C8 - the dialog's three exits; C21 - a frozen output keeps its frozen strophe across a refresh
 - observability: n/a - no logging requirement; the existing save toast stays
 
 ## Handoff
 
-- **Settled mid-build:** Publishing - user, 2026-10-28, asked "How should publishing work?" (no `gh` CLI, GitHub API rate-limited): "You publish, I confirm (Recommended)". The agent pushes `main` and `v1.9.0`; the user publishes the draft once CI has built both installers; the agent then runs C17 and C18. C17-C19 are red until the release, so the full `check_proofs.py` run that closes the gate comes after the user publishes
-- **Dispatched:** Verifier (independent sub-agent) at `8f4e4e7`, 2026-10-28; screens round 1 (independent sub-agent) at `8f4e4e7`, pictures taken at `cfb5823` (later commits touch no screen code), 2026-10-28
+- **Settled mid-build:** Short songs - user, 2026-10-28, asked after the Verifier found that rows which fit now pack at the top instead of spreading over the pane: "Pack at the top (Recommended)" (plan `Changes underneath` corrected, C22). Publishing - user, 2026-10-28, asked "How should publishing work?" (no `gh` CLI, GitHub API rate-limited): "You publish, I confirm (Recommended)". The agent pushes `main` and `v1.9.0`; the user publishes the draft once CI has built both installers; the agent then runs C17 and C18. C17-C19 are red until the release, so the full `check_proofs.py` run that closes the gate comes after the user publishes
+- **Dispatched:** Verifier (independent sub-agent) at `8f4e4e7`, 2026-10-28 - returned: FAIL, 3 findings, 2/3 mutations killed; screens round 1 (independent sub-agent) at `8f4e4e7`, pictures taken at `cfb5823` (later commits touch no screen code), 2026-10-28 - returned: diverges, 1 row (the `ESTROFE N` badge hides the first letters of the first lyric line; the capture shows them in full)
 - **Boundary:** C1-C15 closed at `cfb5823` (C4, C5 at `80f42aa`; C1-C3, C6-C10 at `8483eb5`; C11-C15 at `cfb5823`); C16 closed at `0a3ce29`; C17-C19 wait for the release
 - **Abandoned:** none. One proof selector fixed after the first `check_proofs.py` run: C7's second `-t` filter had unescaped parentheses, which vitest reads as a regex group, so it selected no test; the claim is unchanged
 - **Walked:** 2026-10-28 at `cfb5823`, in Chrome Headless Shell 151 driven over CDP against the real operator app (`src/main.tsx`) served by Vite, with the backend replaced by `@tauri-apps/api/mocks` (a local harness under `.harness/`, excluded from git). The user reaches each state by presenting a set whose current song has that many slides. (1) 30 cards at a 1536×912 window, 125% scale: 4 columns, cards 226.3×128.1 px, row pitch 136.1 px, 0 overlaps, 0 cards off 16:9, the last card reachable by scrolling, computed `grid-auto-rows: max-content`; the same state at the parent commit measured a 97.8 px pitch and 26 overlapping pairs. (2) 60 cards at 1280×720: 2 columns, 332.5×187.9 px, 0 overlaps, last card reachable. (3) 3 cards at 1536×912: one row at the top of the pane (8 px offset), full 230×130.3 px, no scroll. (4) 30 cards at 1024×700: 1 column, 0 overlaps. (5) In the 30-card state, `Tela preta` sent `set_presentation_mode {mode: "blank", output: "one"}` and `Parar` sent `exit_presentation {output: "one"}`. (6) The row edit: the pencil on O AMOR DE DEUS opened `Editar música` with that song, sent only `get_song {id: s-amor}` (no `go_to_item`), and the set pane still marked AJUNTAMENTO current; X closed it and sent nothing; the pencil on AJUNTAMENTO (on screen) then `Salvar` sent `update_song` and `list_songs` and closed the dialog. `captures/operator-many-slides.running.png` is state (1). The capture's top strip, the Windows title bar, is outside the webview, so the picture starts at the nav tabs. Fonts are the Linux fallbacks, not Windows' Segoe UI

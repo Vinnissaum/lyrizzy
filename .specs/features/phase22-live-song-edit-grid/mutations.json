@@ -1,0 +1,23 @@
+[
+  {
+    "file": "src/components/presentation/SetItemList.tsx",
+    "old": "{item.itemType === \"song\" && item.songId && (",
+    "new": "{item.itemType === \"song\" && item.songId && !locked && (",
+    "proof": "npx vitest run src/components/presentation/SetItemList.test.tsx -t \"edit control on every song row and no other row\"",
+    "label": "C1 - edit control hidden on the row on screen (copies the remove lock)"
+  },
+  {
+    "file": "src/components/presentation/SetItemList.tsx",
+    "old": "onClick={() => onEditSong?.(item.songId!)}",
+    "new": "onClick={() => { onEditSong?.(item.songId!); usePresentationStore.getState().selectSlide(idx, 0).catch(() => {}); }}",
+    "proof": "npx vitest run src/components/presentation/LiveSongRowEdit.test.tsx -t \"row edit opens that song without moving the wall\"",
+    "label": "C2 - edit control also selects its row (go_to_item)"
+  },
+  {
+    "file": "src-tauri/src/commands/presentation.rs",
+    "old": "resolve_anchor(new_item_slides, anchor.as_ref(), current_slide_index);",
+    "new": "resolve_anchor(new_item_slides, None, current_slide_index);",
+    "proof": "cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::live_song_edit",
+    "label": "C4/C5 - live refresh ignores the anchor of the strophe on screen"
+  }
+]

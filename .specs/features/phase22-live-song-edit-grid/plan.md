@@ -179,7 +179,7 @@ Both changes reach every installation as one release.
 
 | Source shows | Product shows | Confirmed |
 | --- | --- | --- |
-| Song rows in the `Conjunto` pane with the remove control only | Song rows with an edit control (pencil) left of the remove control, so in the 240 px pane a song's title and artist truncate about 30 px sooner (`OS MEUS LÁBIO…`, `Jorge Camargo, …` on the row on screen); `Tela preta` and `Regressivo` rows unchanged | y - AD-091 |
+| Song rows in the `Conjunto` pane with the remove control only | Song rows with an edit control (pencil) left of the remove control, so in the 240 px pane a song's title and artist truncate about 30 px sooner (in the picture: `OS MEUS LÁBIOS …`, and `Jorge Camargo, 1…` on the row on screen); `Tela preta` and `Regressivo` rows unchanged | y - AD-091 |
 | Strophe cards overlapping: rows 95 CSS px apart for 127 CSS px cards, each card hiding the bottom of the one above | Rows as tall as their cards, so no card overlaps another; fewer rows fit and the pane scrolls | y - AD-092 |
 
 ## Sources

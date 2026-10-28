@@ -454,4 +454,43 @@ describe("StrophesGrid", () => {
     const spacer = firstCard?.querySelector("[aria-hidden]") as HTMLElement;
     expect(spacer?.style.paddingTop).toBe("56.25%");
   });
+
+  // ── P22: many slides must never squeeze rows below the card height ──────
+
+  it("rows sized to their cards", () => {
+    setStore({ state: makeState(undefined, undefined, [makeSongSlides(30)]), pendingSelection: null, selectSlide: vi.fn() });
+
+    render(<StrophesGrid />);
+
+    const grid = screen.getByTestId("strophes-grid");
+    const classes = grid.className.split(/\s+/);
+    // `auto` rows let the grid split the pane's height among the rows once the
+    // cards do not fit (the spacer counts as 0 in a row's minimum), so each row
+    // must be as tall as its cards.
+    expect(classes).toContain("auto-rows-max");
+    expect(classes).toContain("grid-cols-[repeat(auto-fill,minmax(220px,1fr))]");
+    expect(classes).toContain("gap-2");
+    expect(classes).toContain("overflow-y-auto");
+    const cards = grid.querySelectorAll("button");
+    expect(cards).toHaveLength(30);
+    for (const card of cards) {
+      expect((card.querySelector("[aria-hidden]") as HTMLElement).style.paddingTop).toBe("56.25%");
+    }
+  });
+
+  it("scrolls the new active card into view", () => {
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    const slides = [makeSongSlides(30)];
+    setStore({ state: makeState({ currentSlideIndex: 2 }, undefined, slides), pendingSelection: null, selectSlide: vi.fn() });
+    const { rerender } = render(<StrophesGrid />);
+    scroll.mockClear();
+
+    setStore({ state: makeState({ currentSlideIndex: 27 }, undefined, slides), pendingSelection: null, selectSlide: vi.fn() });
+    rerender(<StrophesGrid />);
+
+    expect(scroll).toHaveBeenCalledTimes(1);
+    const target = scroll.mock.contexts[0] as HTMLElement;
+    expect(target.getAttribute("aria-current")).toBe("true");
+    expect(target).toBe(screen.getByTestId("strophes-grid").querySelectorAll("button")[27]);
+  });
 });

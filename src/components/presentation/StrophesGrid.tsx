@@ -206,10 +206,13 @@ export const StrophesGrid: React.FC = () => {
     activeCardRef.current = el;
   };
 
+  // Rows are sized to their cards (`auto-rows-max`). With `auto` rows the card's
+  // padding spacer counts as 0 in a row's minimum, so once the cards outgrow the
+  // pane the grid splits its height among the rows and the cards overlap.
   return (
     <div
       data-testid="strophes-grid"
-      className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] items-start gap-2 p-2 overflow-y-auto h-full"
+      className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] auto-rows-max items-start gap-2 p-2 overflow-y-auto h-full"
     >
       {slides.map((slide, slideIdx) => (
         <SlideCard

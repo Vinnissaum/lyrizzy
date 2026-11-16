@@ -35,6 +35,11 @@ interface CountdownStore {
   pause: (options?: { mirror?: boolean }) => Promise<void>;
   reset: () => Promise<void>;
   /**
+   * A set's items were reordered (P23): the armed schedule is held by item
+   * index, so move it to wherever its item went. A no-op for another set.
+   */
+  followReorder: (setId: string, before: string[], after: string[]) => void;
+  /**
    * Live controls (P21). Each acts on this store's output and, while mirror
    * (Simultânea) is on, on the other screen too. Unlike the actions above they
    * reject with the command's error so the control can show it.
@@ -141,6 +146,15 @@ export const useCountdownStore = create<CountdownStore>((set, get) => ({
     const newState = await restartCountdown(output);
     set({ state: newState });
     fanOutToMirror(output, (o) => restartCountdown(o));
+  },
+
+  followReorder: (setId, before, after) => {
+    const armed = get().armedItem;
+    if (!armed || armed.setId !== setId) return;
+    const itemIndex = after.indexOf(before[armed.itemIndex]);
+    if (itemIndex >= 0 && itemIndex !== armed.itemIndex) {
+      set({ armedItem: { setId, itemIndex } });
+    }
   },
 
   reset: async () => {

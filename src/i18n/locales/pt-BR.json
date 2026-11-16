@@ -278,6 +278,7 @@
       "close": "Fechar",
       "added": "Adicionada",
       "edit": "Editar música",
+      "reorder": "Reordenar",
       "remove": "Remover",
       "onAir": "No ar — não pode ser removido",
       "confirmRemove": "Remover “{{name}}” do conjunto?",
@@ -867,7 +868,8 @@
     "unknown": "Erro ao iniciar apresentação",
     "set": {
       "item_not_found": "Item não encontrado",
-      "item_on_screen": "Este item está no ar e não pode ser removido"
+      "item_on_screen": "Este item está no ar e não pode ser removido",
+      "reorder_mismatch": "O conjunto mudou; a nova ordem não foi salva. Tente de novo"
     },
     "countdown": {
       "not_active": "Nenhum cronômetro em andamento",

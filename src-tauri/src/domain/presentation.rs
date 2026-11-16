@@ -163,6 +163,100 @@ pub fn splice_remove(state: &mut PresentationState, all: &mut Vec<Vec<Slide>>, i
     };
 }
 
+/// Whether `order` names every one of `current` exactly once: the same ids, in
+/// any order. A reorder list that is not one (an id missing, unknown or twice)
+/// would leave some `sort_order` untouched or write one twice.
+pub fn is_permutation(current: &[String], order: &[String]) -> bool {
+    if current.len() != order.len() {
+        return false;
+    }
+    let mut seen = std::collections::HashSet::with_capacity(order.len());
+    order.iter().all(|id| current.contains(id) && seen.insert(id.as_str()))
+}
+
+/// Put a loaded presentation's items in `order` (item ids), keeping every
+/// stored position on the item it pointed at: the current item, the frozen
+/// item, and each item's slides and slide count move with their item, and each
+/// item's `sort_order` becomes its new index. Returns `false`, changing
+/// nothing, when `order` is not a permutation of the loaded items.
+/// `current_slide`/`next_slide` are left to the caller.
+pub fn reorder_items(
+    state: &mut PresentationState,
+    all: &mut Vec<Vec<Slide>>,
+    order: &[String],
+) -> bool {
+    let Some(set) = state.set.as_mut() else {
+        return false;
+    };
+    let old_ids: Vec<String> = set.items.iter().map(|i| i.id.clone()).collect();
+    if !is_permutation(&old_ids, order) {
+        return false;
+    }
+    // new index -> old index
+    let from: Vec<usize> = order
+        .iter()
+        .map(|id| old_ids.iter().position(|o| o == id).expect("checked permutation"))
+        .collect();
+    let new_index_of = |old: usize| from.iter().position(|&o| o == old).unwrap_or(old);
+
+    let mut items: Vec<SetItem> = from.iter().map(|&o| set.items[o].clone()).collect();
+    for (k, item) in items.iter_mut().enumerate() {
+        item.sort_order = k as i32;
+    }
+    set.items = items;
+    *all = from.iter().map(|&o| all.get(o).cloned().unwrap_or_default()).collect();
+    state.item_slide_counts = from
+        .iter()
+        .map(|&o| state.item_slide_counts.get(o).copied().unwrap_or(0))
+        .collect();
+
+    if state.current_item_index < old_ids.len() {
+        state.current_item_index = new_index_of(state.current_item_index);
+    }
+    state.frozen_at = state.frozen_at.map(|(item, slide)| {
+        if item < old_ids.len() {
+            (new_index_of(item), slide)
+        } else {
+            (item, slide)
+        }
+    });
+    true
+}
+
+/// Move the operator one slide forward: the next slide of the current item,
+/// else the first slide of the next item, else stay (end of set).
+pub fn step_forward(state: &mut PresentationState, all: &[Vec<Slide>]) {
+    if all.is_empty() {
+        return;
+    }
+    let item_idx = state.current_item_index;
+    let slide_idx = state.current_slide_index;
+    let item_len = all.get(item_idx).map(|s| s.len()).unwrap_or(0);
+    if slide_idx + 1 < item_len {
+        state.current_slide_index = slide_idx + 1;
+    } else if item_idx + 1 < all.len() {
+        state.current_item_index = item_idx + 1;
+        state.current_slide_index = 0;
+    }
+}
+
+/// Move the operator one slide back: the previous slide of the current item,
+/// else the last slide of the previous item, else stay (start of set).
+pub fn step_back(state: &mut PresentationState, all: &[Vec<Slide>]) {
+    if all.is_empty() {
+        return;
+    }
+    let item_idx = state.current_item_index;
+    let slide_idx = state.current_slide_index;
+    if slide_idx > 0 {
+        state.current_slide_index = slide_idx - 1;
+    } else if item_idx > 0 {
+        state.current_item_index = item_idx - 1;
+        let prev_len = all.get(item_idx - 1).map(|s| s.len()).unwrap_or(1);
+        state.current_slide_index = prev_len.saturating_sub(1);
+    }
+}
+
 impl Default for PresentationState {
     fn default() -> Self {
         Self {
@@ -551,5 +645,80 @@ mod tests {
 
         let none = PresentationState { mode: PresentationMode::Live, ..Default::default() };
         assert!(on_screen_item_ids(&none).is_empty());
+    }
+
+    // ─── Live reorder (P23) ──────────────────────────────────────────────────
+
+    fn order(ids: &[&str]) -> Vec<String> {
+        ids.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// Each item's slides, by item id, so a test can see they moved with it.
+    fn slide_owner(all: &[Vec<Slide>]) -> Vec<String> {
+        all.iter().map(|s| s[0].lines[0].trim_end_matches('0').to_string()).collect()
+    }
+
+    #[test]
+    fn reorder_keeps_the_current_and_frozen_items() {
+        // Live on B slide 3 of [A, B, C]: C moved before A.
+        let (mut s, mut all) = loaded(&["A", "B", "C"], 1, PresentationMode::Live);
+        s.current_slide_index = 3;
+        s.item_slide_counts = vec![2, 5, 7];
+        assert!(reorder_items(&mut s, &mut all, &order(&["C", "A", "B"])));
+        assert_eq!(ids(&s), ["C", "A", "B"]);
+        assert_eq!((s.current_item_index, s.current_slide_index), (2, 3));
+        assert_eq!(slide_owner(&all), ["C", "A", "B"]);
+        assert_eq!(s.item_slide_counts, [7, 2, 5]);
+        let sort: Vec<i32> = s.set.as_ref().unwrap().items.iter().map(|i| i.sort_order).collect();
+        assert_eq!(sort, [0, 1, 2]);
+
+        // The row on screen itself: B dragged to the end.
+        let (mut s, mut all) = loaded(&["A", "B", "C"], 1, PresentationMode::Live);
+        s.current_slide_index = 3;
+        assert!(reorder_items(&mut s, &mut all, &order(&["A", "C", "B"])));
+        assert_eq!(ids(&s), ["A", "C", "B"]);
+        assert_eq!((s.current_item_index, s.current_slide_index), (2, 3));
+        assert_eq!(slide_owner(&all), ["A", "C", "B"]);
+
+        // Frozen on A slide 2 while the operator browses C: A moved to the end.
+        let (mut s, mut all) = loaded(&["A", "B", "C"], 2, PresentationMode::Frozen);
+        s.frozen_at = Some((0, 2));
+        assert!(reorder_items(&mut s, &mut all, &order(&["B", "C", "A"])));
+        assert_eq!(ids(&s), ["B", "C", "A"]);
+        assert_eq!(s.frozen_at, Some((2, 2)));
+        assert_eq!(ids(&s)[s.current_item_index], "C");
+        assert_eq!(s.current_item_index, 1);
+    }
+
+    #[test]
+    fn reorder_refuses_what_is_not_a_permutation() {
+        for bad in [vec!["A", "B"], vec!["A", "B", "C", "X"], vec!["A", "A", "B"], vec!["A", "B", "X"]] {
+            let (mut s, mut all) = loaded(&["A", "B", "C"], 1, PresentationMode::Live);
+            let before = (s.clone(), all.clone());
+            assert!(!reorder_items(&mut s, &mut all, &order(&bad)), "{bad:?}");
+            assert_eq!((s, all), before, "{bad:?}");
+            assert!(!is_permutation(&order(&["A", "B", "C"]), &order(&bad)), "{bad:?}");
+        }
+        assert!(is_permutation(&order(&["A", "B", "C"]), &order(&["C", "B", "A"])));
+        assert!(is_permutation(&[], &[]));
+    }
+
+    #[test]
+    fn step_forward_and_back_walk_slides_then_items() {
+        let (mut s, all) = loaded(&["A", "B"], 0, PresentationMode::Live);
+        step_forward(&mut s, &all);
+        assert_eq!((s.current_item_index, s.current_slide_index), (0, 1));
+        step_forward(&mut s, &all);
+        assert_eq!((s.current_item_index, s.current_slide_index), (1, 0));
+        step_forward(&mut s, &all);
+        step_forward(&mut s, &all);
+        // End of set: stays on the last slide.
+        assert_eq!((s.current_item_index, s.current_slide_index), (1, 1));
+        step_back(&mut s, &all);
+        step_back(&mut s, &all);
+        assert_eq!((s.current_item_index, s.current_slide_index), (0, 1));
+        step_back(&mut s, &all);
+        step_back(&mut s, &all);
+        assert_eq!((s.current_item_index, s.current_slide_index), (0, 0));
     }
 }

@@ -1,14 +1,16 @@
 use crate::commands::countdown::reset_countdown_of_removed_item;
 use crate::commands::presentation::{
     compute_item_slides, emit_state, insert_item_into_outputs, load_slide_gen_settings,
-    remove_item_locked,
+    remove_item_locked, reorder_items_locked,
 };
 use crate::commands::song::new_id;
 use crate::domain::countdown::CountdownState;
 use crate::domain::error::ErrorPayload;
 use crate::domain::events::CountdownTickPayload;
 use crate::domain::media::{MediaItemOptions, MediaKind};
-use crate::domain::presentation::{on_screen_item_ids, PresentationMode, PresentationState};
+use crate::domain::presentation::{
+    is_permutation, on_screen_item_ids, PresentationMode, PresentationState,
+};
 use crate::domain::set::{ServiceSet, SetItem, SetItemType, WebViewConfig};
 use crate::domain::slide::SlideConfig;
 use crate::domain::output::OutputId;
@@ -771,7 +773,47 @@ pub async fn reorder_set_items(
     set_id: String,
     item_ids: Vec<String>,
 ) -> Result<ServiceSet, ErrorPayload> {
+    let (set, snapshots) = reorder_set_items_core(state.inner(), &set_id, &item_ids).await?;
+    app.emit("set_changed", ())
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    for (output, snapshot) in snapshots {
+        emit_state(&app, output, &snapshot).await?;
+    }
+    Ok(set)
+}
+
+/// Save a set's new item order and apply it to every output that has the set
+/// loaded, each keeping the item, slide and frozen item it shows (AD-095).
+/// Refused with `set.reorder_mismatch`, changing nothing, unless `item_ids` is
+/// a permutation of the set's items: a list made stale by a concurrent add or
+/// remove would otherwise leave some `sort_order` behind. The check and the
+/// write run with every output's slides and presentation locks held (outputs
+/// in `OutputId::ALL` order, slides before presentation, as navigation takes
+/// them), so no add, remove or navigation lands in between. Returns the stored
+/// set and an emit-ready snapshot per output it changed.
+pub(crate) async fn reorder_set_items_core(
+    state: &AppState,
+    set_id: &str,
+    item_ids: &[String],
+) -> Result<(ServiceSet, Vec<(OutputId, PresentationState)>), ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
+
+    let mut locked = Vec::new();
+    for output in OutputId::ALL {
+        let out = state.output(output);
+        let all = out.presentation_slides.write().await;
+        let pres = out.presentation.write().await;
+        locked.push((output, all, pres));
+    }
+
+    let stored: Vec<String> = load_set_items(pool, set_id)
+        .await?
+        .into_iter()
+        .map(|i| i.id)
+        .collect();
+    if !is_permutation(&stored, item_ids) {
+        return Err(ErrorPayload::new("set.reorder_mismatch"));
+    }
 
     let mut tx = pool
         .begin()
@@ -782,7 +824,7 @@ pub async fn reorder_set_items(
         sqlx::query("UPDATE set_items SET sort_order = ? WHERE id = ? AND set_id = ?")
             .bind(i as i32)
             .bind(id)
-            .bind(&set_id)
+            .bind(set_id)
             .execute(&mut *tx)
             .await
             .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
@@ -792,10 +834,17 @@ pub async fn reorder_set_items(
         .await
         .map_err(|e| ErrorPayload::new("set.db_error").with_param("detail", e.to_string()))?;
 
-    let set = db_load_set(pool, &set_id).await?;
-    app.emit("set_changed", ())
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(set)
+    let set = db_load_set(pool, set_id).await?;
+
+    let mut snapshots = Vec::new();
+    for (output, mut all, mut pres) in locked {
+        if pres.set.as_ref().is_some_and(|s| s.id == set_id) {
+            if let Some(snapshot) = reorder_items_locked(&mut pres, &mut all, item_ids) {
+                snapshots.push((output, snapshot));
+            }
+        }
+    }
+    Ok((set, snapshots))
 }
 
 /// Return the most-recently-updated set, creating a default "Culto Dominical"
@@ -1698,5 +1747,133 @@ mod tests {
         assert_eq!(after.current_slide.unwrap().lines, ["estrofe 5"]);
         assert_eq!((after.current_item_index, after.current_slide_index), (0, 3));
         assert_eq!(after.next_slide.unwrap().lines, ["estrofe 3"]);
+    }
+
+    // ─── Live reorder (P23) ──────────────────────────────────────────────────
+
+    fn order(ids: &[&str]) -> Vec<String> {
+        ids.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[tokio::test]
+    async fn live_reorder_keeps_each_output_in_place() {
+        let (state, _dir) = live_state().await;
+        seed_song_set(db(&state), "set-1", &["A", "B", "C"]).await;
+        insert_set(db(&state), "set-2").await;
+        seed_countdown_item(db(&state), "set-2", "X", 0).await;
+        seed_countdown_item(db(&state), "set-2", "Y", 1).await;
+        // Tela 1 live on B slide 2, Tela 2 live on C slide 1, same set.
+        present(&state, One, "set-1", (1, 2), Live, None).await;
+        present(&state, Two, "set-1", (2, 1), Live, None).await;
+        let one_before = live(&state, One).await;
+        let two_before = live(&state, Two).await;
+        let b_slides = live_slides(&state, One).await[1].clone();
+
+        // A moved to the end.
+        let (set, snapshots) =
+            reorder_set_items_core(&state, "set-1", &order(&["B", "C", "A"])).await.unwrap();
+
+        assert_eq!(stored_order(db(&state), "set-1").await, ["B", "C", "A"]);
+        let returned: Vec<&str> = set.items.iter().map(|i| i.id.as_str()).collect();
+        assert_eq!(returned, ["B", "C", "A"]);
+        let sort: Vec<i32> = set.items.iter().map(|i| i.sort_order).collect();
+        assert_eq!(sort, [0, 1, 2]);
+
+        assert_eq!(live_order(&state, One).await, ["B", "C", "A"]);
+        let one = live(&state, One).await;
+        assert_eq!((one.current_item_index, one.current_slide_index), (0, 2));
+        assert_eq!(one.current_slide, one_before.current_slide);
+        assert_eq!(live_slides(&state, One).await[0], b_slides);
+
+        assert_eq!(live_order(&state, Two).await, ["B", "C", "A"]);
+        let two = live(&state, Two).await;
+        assert_eq!((two.current_item_index, two.current_slide_index), (1, 1));
+        assert_eq!(two.current_slide, two_before.current_slide);
+
+        // One snapshot per output that has the set, each carrying every slide.
+        let outputs: Vec<OutputId> = snapshots.iter().map(|(o, _)| *o).collect();
+        assert_eq!(outputs, [One, Two]);
+        assert_eq!(snapshots[0].1.all_slides_per_item.len(), 3);
+        assert_eq!(snapshots[0].1.all_slides_per_item[0], b_slides);
+
+        // An output on another set is untouched and gets no snapshot.
+        present(&state, Two, "set-2", (1, 0), Live, None).await;
+        let other_before = live(&state, Two).await;
+        let (_, snapshots) =
+            reorder_set_items_core(&state, "set-1", &order(&["A", "B", "C"])).await.unwrap();
+        assert_eq!(live(&state, Two).await, other_before);
+        assert_eq!(live_order(&state, Two).await, ["X", "Y"]);
+        let outputs: Vec<OutputId> = snapshots.iter().map(|(o, _)| *o).collect();
+        assert_eq!(outputs, [One]);
+        assert_eq!(live_order(&state, One).await, ["A", "B", "C"]);
+        assert_eq!(live(&state, One).await.current_item_index, 1);
+    }
+
+    #[tokio::test]
+    async fn live_reorder_keeps_a_frozen_wall_on_its_item() {
+        let (state, _dir) = live_state().await;
+        seed_song_set(db(&state), "set-1", &["A", "B", "C"]).await;
+        // Frozen on A slide 2 while the operator browses C.
+        present(&state, One, "set-1", (2, 0), Frozen, Some((0, 2))).await;
+        let shown = live(&state, One).await.current_slide;
+        assert!(shown.is_some());
+
+        reorder_set_items_core(&state, "set-1", &order(&["B", "C", "A"])).await.unwrap();
+
+        let after = live(&state, One).await;
+        assert_eq!(after.frozen_at, Some((2, 2)));
+        assert_eq!(after.current_item_index, 1);
+        assert_eq!(after.current_slide, shown);
+    }
+
+    #[tokio::test]
+    async fn live_reorder_navigation_follows_the_new_order() {
+        use crate::domain::presentation::{step_back, step_forward};
+        let (state, _dir) = live_state().await;
+        seed_song_set(db(&state), "set-1", &["A", "B", "C"]).await;
+        // Live on B's last slide (4 slides each): C is the lookahead.
+        present(&state, One, "set-1", (1, 3), Live, None).await;
+        assert!(live(&state, One).await.next_slide.is_some());
+
+        // C dragged before B: [A, C, B], B now last.
+        reorder_set_items_core(&state, "set-1", &order(&["A", "C", "B"])).await.unwrap();
+
+        let all = live_slides(&state, One).await;
+        let mut pres = live(&state, One).await;
+        let ids = live_order(&state, One).await;
+        assert_eq!(ids[pres.current_item_index], "B");
+        // Nothing follows B any more.
+        assert_eq!(pres.next_slide, None);
+        step_forward(&mut pres, &all);
+        assert_eq!(ids[pres.current_item_index], "B");
+        assert_eq!(pres.current_slide_index, 3);
+
+        // From B's first slide, previous is C's last slide.
+        pres.current_slide_index = 0;
+        step_back(&mut pres, &all);
+        assert_eq!(ids[pres.current_item_index], "C");
+        assert_eq!(pres.current_slide_index, 3);
+        assert_eq!(all[pres.current_item_index][3].section_id, live_slides(&state, One).await[1][3].section_id);
+    }
+
+    #[tokio::test]
+    async fn reorder_refuses_a_list_that_is_not_a_permutation() {
+        let (state, _dir) = live_state().await;
+        seed_song_set(db(&state), "set-1", &["A", "B", "C"]).await;
+        present(&state, One, "set-1", (1, 1), Live, None).await;
+        let before = live(&state, One).await;
+        let slides_before = live_slides(&state, One).await;
+
+        for bad in [vec!["A", "B"], vec!["A", "B", "C", "X"], vec!["A", "A", "B"]] {
+            let err = reorder_set_items_core(&state, "set-1", &order(&bad)).await.unwrap_err();
+            assert_eq!(err.code, "set.reorder_mismatch", "{bad:?}");
+            assert_eq!(stored_order(db(&state), "set-1").await, ["A", "B", "C"], "{bad:?}");
+            assert_eq!(live(&state, One).await, before, "{bad:?}");
+            assert_eq!(live_slides(&state, One).await, slides_before, "{bad:?}");
+        }
+
+        reorder_set_items_core(&state, "set-1", &order(&["C", "B", "A"])).await.unwrap();
+        assert_eq!(stored_order(db(&state), "set-1").await, ["C", "B", "A"]);
+        assert_eq!(live_order(&state, One).await, ["C", "B", "A"]);
     }
 }

@@ -2,7 +2,8 @@ use crate::commands::set::db_load_set;
 use crate::commands::song::load_sections;
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::{
-    splice_insert, splice_remove, with_full_slides, PresentationMode, PresentationState,
+    reorder_items, splice_insert, splice_remove, step_back, step_forward, with_full_slides,
+    PresentationMode, PresentationState,
 };
 use crate::domain::set::{SetItem, SetItemType};
 use crate::domain::slide::{anchor_of, resolve_anchor, RepeatMode, Slide, SlideConfig};
@@ -257,17 +258,7 @@ pub async fn do_next_slide(
     let prev_item_idx = pres.current_item_index;
     let prev_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
 
-    if !slides.is_empty() {
-        let item_idx = pres.current_item_index;
-        let slide_idx = pres.current_slide_index;
-        let item_len = slides.get(item_idx).map(|s| s.len()).unwrap_or(0);
-        if slide_idx + 1 < item_len {
-            pres.current_slide_index = slide_idx + 1;
-        } else if item_idx + 1 < slides.len() {
-            pres.current_item_index = item_idx + 1;
-            pres.current_slide_index = 0;
-        }
-    }
+    step_forward(&mut pres, &slides);
 
     pres.current_slide = resolve_current_slide(&slides, &pres);
     pres.next_slide = resolve_next_slide(&slides, &pres);
@@ -451,6 +442,23 @@ pub(crate) fn remove_item_locked(
     pres.current_slide = resolve_current_slide(all, pres);
     pres.next_slide = resolve_next_slide(all, pres);
     with_full_slides(pres, all)
+}
+
+/// Put the items of an output whose slides and presentation locks the caller
+/// holds in `order`, keeping the output on the item and slide it shows, and
+/// return the emit-ready snapshot (carrying every slide, as above). `None`,
+/// with nothing changed, when `order` is not a permutation of its items.
+pub(crate) fn reorder_items_locked(
+    pres: &mut PresentationState,
+    all: &mut Vec<Vec<Slide>>,
+    order: &[String],
+) -> Option<PresentationState> {
+    if !reorder_items(pres, all, order) {
+        return None;
+    }
+    pres.current_slide = resolve_current_slide(all, pres);
+    pres.next_slide = resolve_next_slide(all, pres);
+    Some(with_full_slides(pres, all))
 }
 
 /// Recompute slides for every set item referencing `song_id`, without touching
@@ -686,18 +694,7 @@ pub async fn prev_slide(
     let prev_item_idx = pres.current_item_index;
     let prev_section_id = pres.current_slide.as_ref().map(|s| s.section_id.clone());
 
-    if !slides.is_empty() {
-        let item_idx = pres.current_item_index;
-        let slide_idx = pres.current_slide_index;
-
-        if slide_idx > 0 {
-            pres.current_slide_index = slide_idx - 1;
-        } else if item_idx > 0 {
-            pres.current_item_index = item_idx - 1;
-            let prev_len = slides.get(item_idx - 1).map(|s| s.len()).unwrap_or(1);
-            pres.current_slide_index = prev_len.saturating_sub(1);
-        }
-    }
+    step_back(&mut pres, &slides);
 
     pres.current_slide = resolve_current_slide(&slides, &pres);
     pres.next_slide = resolve_next_slide(&slides, &pres);

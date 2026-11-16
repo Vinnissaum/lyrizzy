@@ -1,10 +1,28 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
-import { Pencil, Play, Plus, Trash2 } from "lucide-react";
-import { removeSetItem } from "../../api/commands";
+import { GripVertical, Pencil, Play, Plus, Trash2 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { removeSetItem, reorderSetItems } from "../../api/commands";
+import { useCountdownStore } from "../../stores/countdown";
 import { useOutputStates } from "../../hooks/useOutputStates";
 import { onScreenItemIds } from "../../utils/onScreen";
 import { formatCommandError } from "../../i18n/commandError";
@@ -67,7 +85,43 @@ export const SetItemList: React.FC<{
   return <EditableSetItemList items={items} row={row} onEditSong={onEditSong} />;
 };
 
-/** The live-editing variant: the same rows, plus add, edit and remove. */
+/**
+ * One sortable row of the live set pane (P23). Only the handle starts a drag,
+ * so pressing the row itself still selects it and a drag never navigates.
+ */
+const SortableLiveRow: React.FC<{
+  itemId: string;
+  handleLabel: string;
+  children: React.ReactNode;
+}> = ({ itemId, handleLabel, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: itemId });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      className="flex items-center gap-1"
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={handleLabel}
+        title={handleLabel}
+        className="shrink-0 py-1.5 rounded cursor-grab text-muted hover:text-fg hover:bg-surface-2 transition-colors touch-none"
+      >
+        <GripVertical size={14} aria-hidden="true" />
+      </button>
+      {children}
+    </div>
+  );
+};
+
+/** The live-editing variant: the same rows, plus reorder, add, edit and remove. */
 const EditableSetItemList: React.FC<{
   items: SetItem[];
   row: (item: SetItem, idx: number) => React.ReactNode;
@@ -81,6 +135,27 @@ const EditableSetItemList: React.FC<{
   const [picking, setPicking] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<SetItem | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The order just dropped, shown until the backend's own order arrives (or
+  // the save fails). Rows keep selecting by their authoritative index.
+  const [droppedOrder, setDroppedOrder] = useState<string[] | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const storedOrder = items.map((i) => i.id).join("\n");
+  useEffect(() => {
+    // The backend's order is the truth: once it changes in any way - our
+    // reorder landing, or an add or remove - the optimistic order is done.
+    setDroppedOrder(null);
+  }, [storedOrder]);
+
+  const shown = droppedOrder
+    ? droppedOrder
+        .map((id) => items.find((i) => i.id === id))
+        .filter((i): i is SetItem => !!i)
+    : items;
 
   const setId = focusedState?.set?.id;
   const onScreen = onScreenItemIds([focusedState, outputs.one, outputs.two], setId);
@@ -94,6 +169,26 @@ const EditableSetItemList: React.FC<{
       await removeSetItem(item.id);
       setError(null);
     } catch (err) {
+      setError(formatCommandError(err, t));
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!setId || !over || active.id === over.id) return;
+    const before = items.map((i) => i.id);
+    const from = before.indexOf(String(active.id));
+    const to = before.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(before, from, to);
+    setDroppedOrder(next);
+    try {
+      await reorderSetItems(setId, next);
+      setError(null);
+      // A schedule armed for an item of this set is held by index.
+      useCountdownStore.getState().followReorder(setId, before, next);
+    } catch (err) {
+      setDroppedOrder(null);
       setError(formatCommandError(err, t));
     }
   };
@@ -116,13 +211,19 @@ const EditableSetItemList: React.FC<{
           </p>
         )}
       </div>
-      <div className="flex flex-col gap-1 overflow-y-auto p-1">
-        {items.map((item, idx) => {
+      <div className="flex flex-col gap-1 overflow-y-auto overflow-x-hidden p-1">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={shown.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        {shown.map((item) => {
           const locked = onScreen.has(item.id);
           const label = itemLabel(item, songs, media, t);
           return (
-            <div key={item.id} className="flex items-center gap-1">
-              <div className="min-w-0 flex-1">{row(item, idx)}</div>
+            <SortableLiveRow
+              key={item.id}
+              itemId={item.id}
+              handleLabel={`${t("presentation.liveSet.reorder")} ${label}`}
+            >
+              <div className="min-w-0 flex-1">{row(item, items.indexOf(item))}</div>
               {item.itemType === "song" && item.songId && (
                 <button
                   type="button"
@@ -146,9 +247,11 @@ const EditableSetItemList: React.FC<{
                   <Trash2 size={14} aria-hidden="true" />
                 </button>
               </span>
-            </div>
+            </SortableLiveRow>
           );
         })}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {pendingRemoval && (

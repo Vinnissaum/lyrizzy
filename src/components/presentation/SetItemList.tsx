@@ -35,7 +35,9 @@ export const SetItemList: React.FC<{
   editable?: boolean;
   /** Opens the live song editor for a song row (P22); never selects the row. */
   onEditSong?: (songId: string) => void;
-}> = ({ editable = false, onEditSong }) => {
+  /** Opens the countdown dialog for a countdown row (P23); never selects it. */
+  onEditCountdown?: (itemId: string) => void;
+}> = ({ editable = false, onEditSong, onEditCountdown }) => {
   const { t } = useTranslation();
   const items = usePresentationStore((s) => s.state?.set?.items ?? []);
   const currentItemIndex = usePresentationStore((s) => s.state?.currentItemIndex ?? -1);
@@ -82,7 +84,14 @@ export const SetItemList: React.FC<{
       </div>
     );
   }
-  return <EditableSetItemList items={items} row={row} onEditSong={onEditSong} />;
+  return (
+    <EditableSetItemList
+      items={items}
+      row={row}
+      onEditSong={onEditSong}
+      onEditCountdown={onEditCountdown}
+    />
+  );
 };
 
 /**
@@ -126,7 +135,8 @@ const EditableSetItemList: React.FC<{
   items: SetItem[];
   row: (item: SetItem, idx: number) => React.ReactNode;
   onEditSong?: (songId: string) => void;
-}> = ({ items, row, onEditSong }) => {
+  onEditCountdown?: (itemId: string) => void;
+}> = ({ items, row, onEditSong, onEditCountdown }) => {
   const { t } = useTranslation();
   const focusedState = usePresentationStore((s) => s.state);
   const songs = useLibraryStore(presenterSongs);
@@ -230,6 +240,17 @@ const EditableSetItemList: React.FC<{
                   onClick={() => onEditSong?.(item.songId!)}
                   aria-label={`${t("presentation.liveSet.edit")} ${label}`}
                   title={t("presentation.liveSet.edit")}
+                  className="shrink-0 p-1.5 rounded text-muted hover:text-fg hover:bg-surface-2 transition-colors"
+                >
+                  <Pencil size={14} aria-hidden="true" />
+                </button>
+              )}
+              {item.itemType === "countdown" && (
+                <button
+                  type="button"
+                  onClick={() => onEditCountdown?.(item.id)}
+                  aria-label={`${t("presentation.liveSet.editCountdown")} ${label}`}
+                  title={t("presentation.liveSet.editCountdown")}
                   className="shrink-0 p-1.5 rounded text-muted hover:text-fg hover:bg-surface-2 transition-colors"
                 >
                   <Pencil size={14} aria-hidden="true" />

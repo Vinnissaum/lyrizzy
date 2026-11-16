@@ -209,9 +209,9 @@ describe("SetItemList", () => {
       selector({ state: { set: mockSet, currentItemIndex: 0 } })
     );
 
-    render(<SetItemList onEditSong={vi.fn()} />);
+    render(<SetItemList onEditSong={vi.fn()} onEditCountdown={vi.fn()} />);
 
-    expect(screen.queryAllByRole("button", { name: /^Editar música/ })).toHaveLength(0);
+    expect(screen.queryAllByRole("button", { name: /^Editar / })).toHaveLength(0);
   });
 });
 
@@ -360,23 +360,54 @@ describe("SetItemList editable", () => {
     });
   }
 
-  it("edit control on every song row and no other row", () => {
+  it("edit control on song and countdown rows and no other row", () => {
     vi.mocked(useLibraryStore).mockImplementation((selector: any) =>
       selector ? selector({ songs: twoSongs }) : { songs: twoSongs },
     );
-    // The first song is the one on screen; it gets an edit control too.
-    focusedOn(everyTypeSet, 0);
-    render(<SetItemList editable onEditSong={vi.fn()} />);
+    // The countdown is the item on screen; it gets its edit control too.
+    focusedOn(everyTypeSet, 2);
+    render(<SetItemList editable onEditSong={vi.fn()} onEditCountdown={vi.fn()} />);
 
-    const edits = screen.getAllByRole("button", { name: /^Editar música/ });
-    expect(edits.map((b) => b.getAttribute("aria-label"))).toEqual([
-      "Editar música Aleluia",
-      "Editar música Santo",
+    // One row per item, in set order: which of them carry an edit control.
+    const removes = screen.getAllByRole("button", { name: /^Remover / });
+    expect(removes).toHaveLength(7);
+    const editOf = removes.map((remove) => {
+      const row = remove.closest("div.flex.items-center")!;
+      const edit = within(row as HTMLElement).queryByRole("button", { name: /^Editar / });
+      return edit ? edit.getAttribute("title") : null;
+    });
+    expect(everyTypeSet.items!.map((i) => i.itemType)).toEqual([
+      "song", "media", "countdown", "web_view", "blank", "slide_show", "song",
     ]);
-    for (const b of edits) expect(b).toHaveAttribute("title", "Editar música");
-    expect(screen.getByRole("button", { name: "Editar música Aleluia" })).toBeEnabled();
-    // Every row still has its remove control: 7 rows, 2 edit controls.
-    expect(screen.getAllByRole("button", { name: /^Remover / })).toHaveLength(7);
+    expect(editOf).toEqual([
+      "Editar música", null, "Editar cronômetro", null, null, null, "Editar música",
+    ]);
+
+    expect(
+      screen.getAllByRole("button", { name: /^Editar música/ }).map((b) => b.getAttribute("aria-label")),
+    ).toEqual(["Editar música Aleluia", "Editar música Santo"]);
+    const countdownEdit = screen.getByRole("button", { name: /^Editar cronômetro / });
+    expect(countdownEdit).toHaveAttribute("aria-label", "Editar cronômetro Cronômetro");
+    expect(countdownEdit).toBeEnabled();
+    // On screen: its remove control is locked, its edit control is not.
+    expect(removes[2]).toBeDisabled();
+  });
+
+  it("the countdown edit control hands the item id and never navigates", () => {
+    vi.mocked(useLibraryStore).mockImplementation((selector: any) =>
+      selector ? selector({ songs: twoSongs }) : { songs: twoSongs },
+    );
+    const onEditCountdown = vi.fn();
+    const onEditSong = vi.fn();
+    focusedOn(everyTypeSet, 0);
+    render(<SetItemList editable onEditSong={onEditSong} onEditCountdown={onEditCountdown} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Editar cronômetro / }));
+
+    expect(onEditCountdown).toHaveBeenCalledTimes(1);
+    expect(onEditCountdown).toHaveBeenCalledWith("i-countdown");
+    expect(onEditSong).not.toHaveBeenCalled();
+    expect(selectSlide).not.toHaveBeenCalled();
   });
 
   it("edit control hands the song id and never navigates", () => {

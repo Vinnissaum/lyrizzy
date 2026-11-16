@@ -390,6 +390,37 @@ pub fn paused(state: &CountdownState, now_ms: u64) -> Option<CountdownState> {
     Some(next)
 }
 
+/// The countdown after the set item that started it was edited and saved
+/// (AD-093). Its look - message, sizes, position, background, end action -
+/// always follows the new configuration. Its time is touched only when the
+/// target changed: then it counts again, running, from the new target, with
+/// every adjustment dropped; otherwise it keeps its mode and remaining time. A
+/// countdown that is not counting (idle, scheduled) is returned as it is. A new
+/// clock-time target that has already passed today is refused, as a restart is.
+pub fn item_edited(
+    state: &CountdownState,
+    old: &CountdownConfig,
+    new: &CountdownConfig,
+    now_ms: u64,
+    today_at: impl FnOnce(u8, u8) -> Result<u64, ErrorPayload>,
+) -> Result<CountdownState, ErrorPayload> {
+    if matches!(state.mode, CountdownMode::Idle | CountdownMode::Scheduled) {
+        return Ok(state.clone());
+    }
+    let mut next = state.clone();
+    next.message = new.message.clone();
+    next.end_behavior = new.end_behavior.clone();
+    next.position = new.position;
+    next.background_media_id = new.background_media_id.clone();
+    next.message_scale = new.message_scale;
+    next.digits_scale = new.digits_scale;
+    if old.target == new.target {
+        return Ok(next);
+    }
+    let target_epoch_ms = restart_epoch(&new.target, now_ms, today_at)?;
+    restarted(&next, &new.target, target_epoch_ms, now_ms)
+}
+
 /// Whether a live control must start a ticker: only when the countdown begins
 /// to run from a mode that has none (paused, finished). A running countdown
 /// keeps its ticker, which picks up a moved target on its next tick.
@@ -973,5 +1004,177 @@ mod tests {
                 s.mode
             );
         }
+    }
+
+    // ─── Item edit while presenting (P23) ────────────────────────────────────
+
+    fn config(target: CountdownTarget) -> CountdownConfig {
+        CountdownConfig {
+            target,
+            name: None,
+            message: Some("Começamos em".into()),
+            end_behavior: CountdownEndBehavior::HoldZero,
+            background_media_id: None,
+            position: CountdownPosition::Center,
+            scheduled_start: None,
+            message_scale: 100,
+            digits_scale: 100,
+        }
+    }
+
+    fn minutes(m: u64) -> CountdownTarget {
+        CountdownTarget::Duration { duration_ms: m * 60_000 }
+    }
+
+    fn no_clock(_: u8, _: u8) -> Result<u64, ErrorPayload> {
+        panic!("a duration target never asks for the time of day")
+    }
+
+    /// Counting from a 10:00 item, in `mode`, with `remaining_ms` left.
+    fn from_item(mode: CountdownMode, remaining_ms: u64) -> CountdownState {
+        CountdownState {
+            mode: mode.clone(),
+            duration_ms: 600_000,
+            remaining_ms,
+            target_epoch_ms: (mode == CountdownMode::Running).then_some(NOW + remaining_ms),
+            message: Some("Começamos em".into()),
+            source_item_id: Some("cd".into()),
+            ..CountdownState::default()
+        }
+    }
+
+    #[test]
+    fn item_edit_restyles_without_touching_the_time() {
+        let old = config(minutes(10));
+
+        // Running at 03:12, message changed.
+        let running = from_item(CountdownMode::Running, 192_000);
+        let mut new = old.clone();
+        new.message = Some("Já vamos começar".into());
+        let next = item_edited(&running, &old, &new, NOW, no_clock).unwrap();
+        assert_eq!(next.mode, CountdownMode::Running);
+        assert_eq!(next.remaining_ms, 192_000);
+        assert_eq!(next.target_epoch_ms, Some(NOW + 192_000));
+        assert_eq!(next.duration_ms, 600_000);
+        assert_eq!(next.message.as_deref(), Some("Já vamos começar"));
+
+        // Paused at 02:00, position changed: still paused at 02:00.
+        let paused = from_item(CountdownMode::Paused, 120_000);
+        let mut new = old.clone();
+        new.position = CountdownPosition::BottomRight;
+        let next = item_edited(&paused, &old, &new, NOW, no_clock).unwrap();
+        assert_eq!(next.mode, CountdownMode::Paused);
+        assert_eq!(next.remaining_ms, 120_000);
+        assert_eq!(next.target_epoch_ms, None);
+        assert_eq!(next.position, CountdownPosition::BottomRight);
+
+        // Running at 03:12, end action changed to blackout: the time stays.
+        let mut new = old.clone();
+        new.end_behavior = CountdownEndBehavior::Blackout;
+        let next = item_edited(&running, &old, &new, NOW, no_clock).unwrap();
+        assert_eq!(next.end_behavior, CountdownEndBehavior::Blackout);
+        assert_eq!((next.mode.clone(), next.remaining_ms), (CountdownMode::Running, 192_000));
+        assert_eq!(next.target_epoch_ms, Some(NOW + 192_000));
+
+        // The same 10:00 typed again, with new sizes and a background: no restart.
+        let mut new = config(minutes(10));
+        new.message_scale = 150;
+        new.digits_scale = 80;
+        new.background_media_id = Some("bg-1".into());
+        new.message = None;
+        let next = item_edited(&running, &old, &new, NOW, no_clock).unwrap();
+        assert_eq!((next.mode.clone(), next.remaining_ms), (CountdownMode::Running, 192_000));
+        assert_eq!(next.target_epoch_ms, Some(NOW + 192_000));
+        assert_eq!((next.message_scale, next.digits_scale), (150, 80));
+        assert_eq!(next.background_media_id.as_deref(), Some("bg-1"));
+        assert_eq!(next.message, None);
+
+        // A countdown that is not counting is left exactly as it is.
+        let mut new = config(minutes(7));
+        new.message = Some("outra".into());
+        for idle in [CountdownState::default(), CountdownState { mode: CountdownMode::Scheduled, ..CountdownState::default() }] {
+            let next = item_edited(&idle, &old, &new, NOW, no_clock).unwrap();
+            assert_eq!(next.mode, idle.mode);
+            assert_eq!(next.message, idle.message);
+            assert_eq!(next.duration_ms, idle.duration_ms);
+        }
+    }
+
+    #[test]
+    fn item_edit_restarts_when_the_target_changed() {
+        let old = config(minutes(10));
+
+        // Running at 03:12 after a +5 min, 10:00 -> 07:30.
+        let new = config(CountdownTarget::Duration { duration_ms: 450_000 });
+        let next = item_edited(&from_item(CountdownMode::Running, 192_000), &old, &new, NOW, no_clock).unwrap();
+        assert_eq!(next.mode, CountdownMode::Running);
+        assert_eq!(next.duration_ms, 450_000);
+        assert_eq!(next.remaining_ms, 450_000);
+        assert_eq!(next.target_epoch_ms, Some(NOW + 450_000));
+        assert_eq!(next.source_item_id.as_deref(), Some("cd"));
+
+        // Paused at 02:00 -> 05:00: running from 05:00.
+        let new = config(minutes(5));
+        let next = item_edited(&from_item(CountdownMode::Paused, 120_000), &old, &new, NOW, no_clock).unwrap();
+        assert_eq!(next.mode, CountdownMode::Running);
+        assert_eq!((next.duration_ms, next.remaining_ms), (300_000, 300_000));
+        assert_eq!(next.target_epoch_ms, Some(NOW + 300_000));
+
+        // Finished at 00:00 -> 01:00: running from 01:00.
+        let new = config(minutes(1));
+        let next = item_edited(&from_item(CountdownMode::Finished, 0), &old, &new, NOW, no_clock).unwrap();
+        assert_eq!(next.mode, CountdownMode::Running);
+        assert_eq!((next.duration_ms, next.remaining_ms), (60_000, 60_000));
+
+        // Duration -> clock time 19:30, saved at 19:10: 20:00 left.
+        let at_1930: u64 = NOW + 20 * 60_000;
+        let new = config(CountdownTarget::FixedTime { hour: 19, minute: 30 });
+        let next = item_edited(&from_item(CountdownMode::Running, 192_000), &old, &new, NOW, |h, m| {
+            assert_eq!((h, m), (19, 30));
+            Ok(at_1930)
+        })
+        .unwrap();
+        assert_eq!(next.mode, CountdownMode::Running);
+        assert_eq!(next.remaining_ms, 1_200_000);
+        assert_eq!(next.target_epoch_ms, Some(at_1930));
+
+        // A restart also carries the new look.
+        let mut new = config(minutes(7));
+        new.message = Some("novo".into());
+        let next = item_edited(&from_item(CountdownMode::Running, 192_000), &old, &new, NOW, no_clock).unwrap();
+        assert_eq!(next.message.as_deref(), Some("novo"));
+        assert_eq!(next.remaining_ms, 420_000);
+    }
+
+    #[test]
+    fn item_edit_refuses_a_passed_clock_time() {
+        let old = config(minutes(10));
+        let new = config(CountdownTarget::FixedTime { hour: 19, minute: 30 });
+        // Saved at 19:40: today's 19:30 is 10 minutes behind.
+        let err = item_edited(&from_item(CountdownMode::Running, 192_000), &old, &new, NOW, |_, _| {
+            Ok(NOW - 600_000)
+        })
+        .unwrap_err();
+        assert_eq!(err.code, "countdown.target_passed");
+        // The same clock time saved again is not a target change, so not refused.
+        let kept = item_edited(&from_item(CountdownMode::Running, 192_000), &new, &new, NOW, no_clock).unwrap();
+        assert_eq!(kept.remaining_ms, 192_000);
+    }
+
+    #[test]
+    fn restart_after_an_item_edit_returns_to_the_new_target() {
+        let old = config(minutes(10));
+        let new = config(CountdownTarget::Duration { duration_ms: 450_000 });
+        let edited = item_edited(&from_item(CountdownMode::Running, 192_000), &old, &new, NOW, no_clock).unwrap();
+
+        // Two minutes in, +1 min, then Reiniciar: back to 07:30, not 10:00.
+        let later = NOW + 120_000;
+        let plus = adjusted(&edited, 60_000, later).unwrap();
+        assert_eq!(plus.duration_ms, 450_000);
+        assert_eq!(plus.remaining_ms, 450_000 - 120_000 + 60_000);
+        let again = restart(&plus, None, later, no_clock).unwrap();
+        assert_eq!(again.mode, CountdownMode::Running);
+        assert_eq!(again.remaining_ms, 450_000);
+        assert_eq!(again.target_epoch_ms, Some(later + 450_000));
     }
 }

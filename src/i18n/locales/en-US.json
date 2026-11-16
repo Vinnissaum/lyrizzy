@@ -278,6 +278,7 @@
       "close": "Close",
       "added": "Added",
       "edit": "Edit song",
+      "editCountdown": "Edit countdown",
       "reorder": "Reorder",
       "remove": "Remove",
       "onAir": "On screen — can't be removed",
@@ -315,7 +316,8 @@
       "button": "Configure / Schedule",
       "toggle": "Schedule this countdown",
       "triggerLabel": "Trigger at",
-      "pastTimeError": "This time has already passed today."
+      "pastTimeError": "This time has already passed today.",
+      "unavailableWhileCounting": "Unavailable while a countdown is running"
     },
     "modal": {
       "title": "Configure countdown",

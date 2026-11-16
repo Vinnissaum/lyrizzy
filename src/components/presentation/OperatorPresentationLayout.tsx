@@ -38,6 +38,7 @@ import { LivePreview } from "./LivePreview";
 import { LiveSongEditModal } from "./LiveSongEditModal";
 import { AnnouncementDialog } from "./AnnouncementDialog";
 import { ImageOverlayDialog } from "./ImageOverlayDialog";
+import { CountdownScheduleModal } from "../set/CountdownScheduleModal";
 import type { OutputId } from "../../types";
 
 export const OperatorPresentationLayout: React.FC<{
@@ -75,6 +76,11 @@ export const OperatorPresentationLayout: React.FC<{
   // item's song (`Editar letra`) or any song row's (P22). Local to the operator
   // layout — the presentation window is never involved (read-only invariant).
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
+
+  // Countdown set item open in the countdown dialog, if any (P23): any
+  // countdown row's, the one on the wall included. Held by id so the dialog
+  // opens on the item as the set has it now.
+  const [editingCountdownId, setEditingCountdownId] = useState<string | null>(null);
 
   // Which output the launch modal is confirming, if any. Opened from an
   // OutputSwitcher tab whose screen is not presenting yet.
@@ -159,6 +165,9 @@ export const OperatorPresentationLayout: React.FC<{
     ? itemLabel(activeItem, songs, media, t)
     : "—";
   const activeItemArtist = activeItem ? songArtist(activeItem, songs) : undefined;
+  const editingCountdown = editingCountdownId
+    ? items.find((i) => i.id === editingCountdownId && i.itemType === "countdown")
+    : undefined;
 
   const ensurePresentation = async () => {
     try {
@@ -225,6 +234,7 @@ export const OperatorPresentationLayout: React.FC<{
     onRequestStop?.();
     // Clear any open live editor so it doesn't survive as an orphaned overlay.
     setEditingSongId(null);
+    setEditingCountdownId(null);
   };
 
   const handleImportPresentation = async () => {
@@ -339,7 +349,11 @@ export const OperatorPresentationLayout: React.FC<{
             )}
           </header>
           <div className="flex-1 overflow-hidden">
-            <SetItemList editable onEditSong={setEditingSongId} />
+            <SetItemList
+              editable
+              onEditSong={setEditingSongId}
+              onEditCountdown={setEditingCountdownId}
+            />
           </div>
         </div>
 
@@ -447,6 +461,16 @@ export const OperatorPresentationLayout: React.FC<{
         songId={editingSongId}
         onClose={() => setEditingSongId(null)}
       />
+
+      {editingCountdown && state.set && (
+        <CountdownScheduleModal
+          live
+          item={editingCountdown}
+          setId={state.set.id}
+          itemIndex={items.indexOf(editingCountdown)}
+          onClose={() => setEditingCountdownId(null)}
+        />
+      )}
     </div>
   );
 };

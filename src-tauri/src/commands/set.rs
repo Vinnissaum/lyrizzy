@@ -1,10 +1,13 @@
-use crate::commands::countdown::reset_countdown_of_removed_item;
+use crate::commands::countdown::{
+    plan_countdown_item_edit, reset_countdown_of_removed_item, start_countdown_ticker,
+    today_at_local, CountdownEdit,
+};
 use crate::commands::presentation::{
     compute_item_slides, emit_state, insert_item_into_outputs, load_slide_gen_settings,
     remove_item_locked, reorder_items_locked,
 };
 use crate::commands::song::new_id;
-use crate::domain::countdown::CountdownState;
+use crate::domain::countdown::{CountdownConfig, CountdownState};
 use crate::domain::error::ErrorPayload;
 use crate::domain::events::CountdownTickPayload;
 use crate::domain::media::{MediaItemOptions, MediaKind};
@@ -535,7 +538,70 @@ pub async fn update_set_item(
     app: AppHandle,
     payload: UpdateSetItemPayload,
 ) -> Result<SetItem, ErrorPayload> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    let update = update_set_item_core(state.inner(), payload, now, today_at_local).await?;
+
+    for (output_id, snapshot) in update.presentations {
+        app.emit(
+            "state_changed",
+            crate::domain::events::StateChangedPayload::new(output_id, snapshot),
+        )
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    }
+    for edit in update.countdowns {
+        if edit.needs_ticker {
+            start_countdown_ticker(state.inner(), &app, edit.output).await;
+        }
+        let _ = app.emit("countdown_tick", CountdownTickPayload::new(edit.output, edit.state));
+    }
+
+    app.emit("set_changed", ())
+        .map_err(|e| ErrorPayload::from(e.to_string()))?;
+    Ok(update.item)
+}
+
+/// What an item update changed, for the caller to emit once every lock is gone.
+pub(crate) struct ItemUpdate {
+    pub item: SetItem,
+    pub presentations: Vec<(OutputId, PresentationState)>,
+    pub countdowns: Vec<CountdownEdit>,
+}
+
+/// Save a set item's configuration, patch it into every loaded set, and - for
+/// a countdown item - carry the edit to every countdown counting from it:
+/// restarted from the new target when the target changed, restyled and left
+/// counting otherwise (AD-093). A new clock-time target already passed today
+/// is refused with `countdown.target_passed` while the item is counting on an
+/// output; the refusal comes before the write, so nothing is half-saved.
+pub(crate) async fn update_set_item_core(
+    state: &AppState,
+    payload: UpdateSetItemPayload,
+    now_ms: u64,
+    today_at: impl Fn(u8, u8) -> Result<u64, ErrorPayload>,
+) -> Result<ItemUpdate, ErrorPayload> {
     let pool = state.db.get().expect("db initialized");
+
+    // The countdown edit is worked out, and may be refused, before the write.
+    let new_countdown: Option<CountdownConfig> = payload
+        .countdown_config
+        .as_ref()
+        .and_then(|v| serde_json::from_value(v.clone()).ok());
+    let planned = match &new_countdown {
+        Some(new) => {
+            let old = db_load_set_item(pool, &payload.id).await?.countdown_config;
+            match old {
+                Some(old) => Some(
+                    plan_countdown_item_edit(state, &payload.id, &old, new, now_ms, today_at)
+                        .await?,
+                ),
+                None => None,
+            }
+        }
+        None => None,
+    };
 
     let countdown_config_str = payload
         .countdown_config
@@ -574,30 +640,26 @@ pub async fn update_set_item(
 
     let item = db_load_set_item(pool, &payload.id).await?;
 
+    let countdowns = match planned {
+        Some(planned) => planned.commit(state).await,
+        None => Vec::new(),
+    };
+
     // Keep the loaded-for-presentation snapshot in sync: if the edited item is
     // part of the set currently loaded for presentation on any output, patch it
-    // in place and re-emit state so a live presentation picks up the new config
-    // (e.g. a countdown's position/background) without a disruptive full reload.
-    let mut snapshots = Vec::new();
+    // in place so a live presentation picks up the new config (e.g. a
+    // countdown's position/background) without a disruptive full reload.
+    let mut presentations = Vec::new();
     for output_id in OutputId::ALL {
         let mut pres = state.output(output_id).presentation.write().await;
         if let Some(set) = pres.set.as_mut() {
             if patch_item_in_set(set, &item) {
-                snapshots.push((output_id, pres.clone()));
+                presentations.push((output_id, pres.clone()));
             }
         }
     }
-    for (output_id, snapshot) in snapshots {
-        app.emit(
-            "state_changed",
-            crate::domain::events::StateChangedPayload::new(output_id, snapshot),
-        )
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    }
 
-    app.emit("set_changed", ())
-        .map_err(|e| ErrorPayload::from(e.to_string()))?;
-    Ok(item)
+    Ok(ItemUpdate { item, presentations, countdowns })
 }
 
 /// Replace the matching item in `set` in place. Returns `true` if a slot was
@@ -1875,5 +1937,232 @@ mod tests {
         reorder_set_items_core(&state, "set-1", &order(&["C", "B", "A"])).await.unwrap();
         assert_eq!(stored_order(db(&state), "set-1").await, ["C", "B", "A"]);
         assert_eq!(live_order(&state, One).await, ["C", "B", "A"]);
+    }
+
+    // ─── Countdown edit while presenting (P23) ───────────────────────────────
+
+    use crate::domain::countdown::CountdownTarget;
+
+    const EDIT_NOW: u64 = 5_000_000;
+
+    fn no_clock(_: u8, _: u8) -> Result<u64, ErrorPayload> {
+        panic!("a duration target never asks for the time of day")
+    }
+
+    fn countdown_payload(id: &str, config: serde_json::Value) -> UpdateSetItemPayload {
+        UpdateSetItemPayload {
+            id: id.into(),
+            countdown_config: Some(config),
+            webview_config: None,
+            media_options: None,
+            notes: None,
+        }
+    }
+
+    /// `output` counting from set item `source`, with `remaining_ms` left.
+    async fn count_from(state: &AppState, output: OutputId, source: &str, mode: CountdownMode, remaining_ms: u64) {
+        *state.output(output).countdown.write().await = CountdownState {
+            mode: mode.clone(),
+            duration_ms: 600_000,
+            remaining_ms,
+            target_epoch_ms: (mode == CountdownMode::Running).then_some(EDIT_NOW + remaining_ms),
+            source_item_id: Some(source.into()),
+            ..CountdownState::default()
+        };
+    }
+
+    async fn countdown(state: &AppState, output: OutputId) -> CountdownState {
+        state.output(output).countdown.read().await.clone()
+    }
+
+    #[tokio::test]
+    async fn countdown_edit_reaches_every_output_counting_from_it() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        insert_set(pool, "set-1").await;
+        seed_countdown_item(pool, "set-1", "CD", 0).await;
+        seed_countdown_item(pool, "set-1", "OTHER", 1).await;
+        present(&state, One, "set-1", (0, 0), Live, None).await;
+        present(&state, Two, "set-1", (0, 0), Live, None).await;
+        // Both screens count from CD (Simultânea): one running, one paused.
+        count_from(&state, One, "CD", CountdownMode::Running, 192_000).await;
+        count_from(&state, Two, "CD", CountdownMode::Paused, 120_000).await;
+
+        // 10:00 -> 07:30, with a new message.
+        let edited = serde_json::json!({
+            "target": {"kind": "duration", "durationMs": 450_000},
+            "message": "Já vamos começar",
+            "endBehavior": "advanceSet",
+        });
+        let update = update_set_item_core(&state, countdown_payload("CD", edited), EDIT_NOW, no_clock)
+            .await
+            .unwrap();
+
+        for output in [One, Two] {
+            let cd = countdown(&state, output).await;
+            assert_eq!(cd.mode, CountdownMode::Running, "{output:?}");
+            assert_eq!(cd.remaining_ms, 450_000, "{output:?}");
+            assert_eq!(cd.duration_ms, 450_000, "{output:?}");
+            assert_eq!(cd.target_epoch_ms, Some(EDIT_NOW + 450_000), "{output:?}");
+            assert_eq!(cd.message.as_deref(), Some("Já vamos começar"), "{output:?}");
+        }
+        let edits: Vec<(OutputId, bool)> = update.countdowns.iter().map(|e| (e.output, e.needs_ticker)).collect();
+        // The running one keeps its ticker; the paused one needs a new one.
+        assert_eq!(edits, [(One, false), (Two, true)]);
+
+        // Stored, returned and patched into both loaded sets.
+        let stored = db_load_set_item(pool, "CD").await.unwrap().countdown_config.unwrap();
+        assert_eq!(stored.target, CountdownTarget::Duration { duration_ms: 450_000 });
+        assert_eq!(stored.message.as_deref(), Some("Já vamos começar"));
+        assert_eq!(update.item.countdown_config, Some(stored.clone()));
+        assert_eq!(update.presentations.len(), 2);
+        for output in [One, Two] {
+            let set = live(&state, output).await.set.unwrap();
+            assert_eq!(set.items[0].countdown_config, Some(stored.clone()), "{output:?}");
+        }
+
+        // Tela 2 moves on to count from OTHER; editing CD again reaches Tela 1 only.
+        count_from(&state, Two, "OTHER", CountdownMode::Running, 300_000).await;
+        let again = serde_json::json!({
+            "target": {"kind": "duration", "durationMs": 60_000},
+            "endBehavior": "advanceSet",
+        });
+        let update = update_set_item_core(&state, countdown_payload("CD", again), EDIT_NOW, no_clock)
+            .await
+            .unwrap();
+        assert_eq!(countdown(&state, One).await.remaining_ms, 60_000);
+        let two = countdown(&state, Two).await;
+        assert_eq!((two.remaining_ms, two.duration_ms), (300_000, 600_000));
+        assert_eq!(two.source_item_id.as_deref(), Some("OTHER"));
+        assert_eq!(update.countdowns.len(), 1);
+        assert_eq!(update.countdowns[0].output, One);
+
+        // An item nothing counts from: saved, and no countdown moves.
+        count_from(&state, One, "OTHER", CountdownMode::Running, 300_000).await;
+        let before = (countdown(&state, One).await, countdown(&state, Two).await);
+        let idle_edit = serde_json::json!({
+            "target": {"kind": "duration", "durationMs": 120_000},
+            "endBehavior": "holdZero",
+        });
+        let update = update_set_item_core(&state, countdown_payload("CD", idle_edit), EDIT_NOW, no_clock)
+            .await
+            .unwrap();
+        assert!(update.countdowns.is_empty());
+        let after = (countdown(&state, One).await, countdown(&state, Two).await);
+        assert_eq!(after.0.remaining_ms, before.0.remaining_ms);
+        assert_eq!(after.0.target_epoch_ms, before.0.target_epoch_ms);
+        assert_eq!(after.1.remaining_ms, before.1.remaining_ms);
+        let stored = db_load_set_item(pool, "CD").await.unwrap().countdown_config.unwrap();
+        assert_eq!(stored.target, CountdownTarget::Duration { duration_ms: 120_000 });
+    }
+
+    #[tokio::test]
+    async fn countdown_edit_restyles_and_keeps_the_time_when_the_target_is_the_same() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        insert_set(pool, "set-1").await;
+        seed_countdown_item(pool, "set-1", "CD", 0).await;
+        present(&state, One, "set-1", (0, 0), Live, None).await;
+        count_from(&state, One, "CD", CountdownMode::Running, 192_000).await;
+
+        let restyled = serde_json::json!({
+            "target": {"kind": "duration", "durationMs": 600_000},
+            "message": "Bem-vindos",
+            "position": "bottom-right",
+            "endBehavior": "blackout",
+        });
+        let update = update_set_item_core(&state, countdown_payload("CD", restyled), EDIT_NOW + 1_000, no_clock)
+            .await
+            .unwrap();
+
+        let cd = countdown(&state, One).await;
+        assert_eq!(cd.mode, CountdownMode::Running);
+        assert_eq!(cd.remaining_ms, 192_000);
+        assert_eq!(cd.target_epoch_ms, Some(EDIT_NOW + 192_000));
+        assert_eq!(cd.message.as_deref(), Some("Bem-vindos"));
+        assert_eq!(cd.position, crate::domain::countdown::CountdownPosition::BottomRight);
+        assert_eq!(cd.end_behavior, crate::domain::countdown::CountdownEndBehavior::Blackout);
+        assert_eq!(update.countdowns.len(), 1);
+        assert!(!update.countdowns[0].needs_ticker);
+    }
+
+    #[tokio::test]
+    async fn countdown_edit_refuses_a_passed_clock_time_on_air() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        insert_set(pool, "set-1").await;
+        seed_countdown_item(pool, "set-1", "CD", 0).await;
+        seed_countdown_item(pool, "set-1", "OFF", 1).await;
+        present(&state, One, "set-1", (0, 0), Live, None).await;
+        count_from(&state, One, "CD", CountdownMode::Running, 192_000).await;
+        let before = countdown(&state, One).await;
+        let stored_before = db_load_set_item(pool, "CD").await.unwrap();
+        let loaded_before = live(&state, One).await;
+
+        // It is 19:40; the new target is 19:30 today.
+        let at_1930 = EDIT_NOW - 600_000;
+        let today = move |h: u8, m: u8| {
+            assert_eq!((h, m), (19, 30));
+            Ok(at_1930)
+        };
+        let until_1930 = serde_json::json!({
+            "target": {"kind": "fixedTime", "hour": 19, "minute": 30},
+            "message": "novo",
+            "endBehavior": "holdZero",
+        });
+
+        let err = update_set_item_core(&state, countdown_payload("CD", until_1930.clone()), EDIT_NOW, today)
+            .await
+            .err()
+            .expect("a passed clock time on the wall is refused");
+        assert_eq!(err.code, "countdown.target_passed");
+        // Nothing written, nothing moved.
+        assert_eq!(db_load_set_item(pool, "CD").await.unwrap().countdown_config, stored_before.countdown_config);
+        let after = countdown(&state, One).await;
+        assert_eq!((after.mode.clone(), after.remaining_ms, after.target_epoch_ms), (before.mode.clone(), before.remaining_ms, before.target_epoch_ms));
+        assert_eq!(after.message, before.message);
+        assert_eq!(live(&state, One).await, loaded_before);
+
+        // The same edit on an item nothing counts from is saved.
+        let update = update_set_item_core(&state, countdown_payload("OFF", until_1930), EDIT_NOW, today)
+            .await
+            .unwrap();
+        assert!(update.countdowns.is_empty());
+        let stored = db_load_set_item(pool, "OFF").await.unwrap().countdown_config.unwrap();
+        assert_eq!(stored.target, CountdownTarget::FixedTime { hour: 19, minute: 30 });
+        assert_eq!(countdown(&state, One).await.remaining_ms, 192_000);
+    }
+
+    #[tokio::test]
+    async fn item_update_without_a_countdown_config_touches_no_countdown() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        insert_set(pool, "set-1").await;
+        seed_countdown_item(pool, "set-1", "CD", 0).await;
+        present(&state, One, "set-1", (0, 0), Live, None).await;
+        count_from(&state, One, "CD", CountdownMode::Running, 192_000).await;
+
+        // A notes-only save of the countdown item.
+        let payload = UpdateSetItemPayload {
+            id: "CD".into(),
+            countdown_config: None,
+            webview_config: None,
+            media_options: None,
+            notes: Some("lembrar do aviso".into()),
+        };
+        let update = update_set_item_core(&state, payload, EDIT_NOW, no_clock).await.unwrap();
+
+        assert!(update.countdowns.is_empty());
+        assert_eq!(update.item.notes.as_deref(), Some("lembrar do aviso"));
+        assert_eq!(countdown(&state, One).await.remaining_ms, 192_000);
+
+        let missing = UpdateSetItemPayload {
+            id: "nope".into(),
+            countdown_config: None,
+            webview_config: None,
+            media_options: None,
+            notes: None,
+        };
+        assert_eq!(update_set_item_core(&state, missing, EDIT_NOW, no_clock).await.err().unwrap().code, "set.item_not_found");
     }
 }

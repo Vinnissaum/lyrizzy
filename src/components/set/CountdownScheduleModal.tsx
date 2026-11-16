@@ -4,6 +4,7 @@ import { updateSetItem } from "../../api/commands";
 import { useCountdownStore } from "../../stores/countdown";
 import { MediaPicker } from "../common/MediaPicker";
 import { msToDuration, durationToMs } from "./countdownDuration";
+import { formatCommandError } from "../../i18n/commandError";
 import type {
   CountdownConfig,
   CountdownEndBehavior,
@@ -16,6 +17,15 @@ interface Props {
   setId: string;
   itemIndex: number;
   onClose: () => void;
+  /**
+   * Opened from the presenter's set pane (P23, AD-093). The backend carries a
+   * save to a countdown counting from this item, so the dialog must not reset
+   * or re-arm over it: while a countdown is running or paused on the focused
+   * output the schedule fields are unavailable and the stored schedule is kept;
+   * otherwise a schedule arms as on Home, and turning this item's own armed
+   * schedule off disarms it - never another item's.
+   */
+  live?: boolean;
 }
 
 const END_BEHAVIOR_VALUES: CountdownEndBehavior[] = ["holdZero", "blackout", "advanceSet"];
@@ -27,9 +37,19 @@ const POSITION_GRID: CountdownPosition[] = [
   "bottom-left", "bottom-center", "bottom-right",
 ];
 
-export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex, onClose }) => {
+export const CountdownScheduleModal: React.FC<Props> = ({
+  item,
+  setId,
+  itemIndex,
+  onClose,
+  live = false,
+}) => {
   const { t } = useTranslation();
   const config = item.countdownConfig;
+  const countdownMode = useCountdownStore((s) => s.state.mode);
+  // An output holds one countdown: arming a schedule would replace the one
+  // counting on the wall.
+  const scheduleLocked = live && (countdownMode === "running" || countdownMode === "paused");
 
   const initMode = config?.target?.kind === "fixedTime" ? "fixedTime" : "duration";
   const configDurationMs = config?.target?.kind === "duration" ? config.target.durationMs : 600_000;
@@ -61,10 +81,13 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
   const [durationError, setDurationError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // A fixed-time target + a separate schedule trigger is contradictory.
-  const scheduleDisabled = mode === "fixedTime";
+  const scheduleDisabled = mode === "fixedTime" || scheduleLocked;
   const scheduleOn = scheduledEnabled && !scheduleDisabled;
+  // While locked the stored schedule is shown, disabled, not hidden.
+  const scheduleShown = scheduleLocked ? scheduledEnabled && mode !== "fixedTime" : scheduleOn;
 
   const timeValue = `${String(fixedTime.hour).padStart(2, "0")}:${String(fixedTime.minute).padStart(2, "0")}`;
 
@@ -84,6 +107,7 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
   const handleSave = async () => {
     setDurationError(null);
     setScheduleError(null);
+    setSaveError(null);
 
     // Build target / duration.
     let target: CountdownConfig["target"];
@@ -102,7 +126,10 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
 
     // Resolve schedule trigger (duration mode only).
     let scheduledStart: { hour: number; minute: number } | undefined;
-    if (scheduleOn) {
+    if (scheduleLocked) {
+      // Unavailable right now: what is stored stays as it is.
+      scheduledStart = mode === "fixedTime" ? undefined : config?.scheduledStart;
+    } else if (scheduleOn) {
       const parsed = parseScheduled();
       if (!parsed) {
         setScheduleError(t("countdown.schedule.pastTimeError"));
@@ -134,7 +161,20 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
     setSaving(true);
     try {
       await updateSetItem({ id: item.id, countdownConfig: newConfig });
-      if (scheduledStart) {
+      if (scheduleLocked) {
+        // The backend already carried the edit to the countdown on the wall.
+      } else if (live && !scheduledStart) {
+        // Only this item's own armed schedule is this save's to disarm.
+        const store = useCountdownStore.getState();
+        const armed = store.armedItem;
+        if (
+          store.state.mode === "scheduled" &&
+          armed?.setId === setId &&
+          armed.itemIndex === itemIndex
+        ) {
+          await store.reset();
+        }
+      } else if (scheduledStart) {
         await useCountdownStore.getState().arm({
           scheduledStart,
           durationMs,
@@ -153,6 +193,7 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
       onClose();
     } catch (err) {
       console.error("save countdown schedule failed:", err);
+      setSaveError(formatCommandError(err, t));
     } finally {
       setSaving(false);
     }
@@ -367,14 +408,14 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
             >
               <input
                 type="checkbox"
-                checked={scheduleOn}
+                checked={scheduleShown}
                 disabled={scheduleDisabled}
                 onChange={(e) => setScheduledEnabled(e.target.checked)}
                 className="accent-primary"
               />
               <span className="text-sm">{t("countdown.schedule.toggle")}</span>
             </label>
-            {scheduleOn && (
+            {scheduleShown && (
               <>
                 <label className="text-xs text-muted mb-1 block">
                   {t("countdown.schedule.triggerLabel")}
@@ -382,6 +423,7 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
                 <input
                   type="time"
                   value={scheduledTime}
+                  disabled={scheduleLocked}
                   onChange={(e) => setScheduledTime(e.target.value)}
                   className={`w-full px-3 py-1.5 bg-surface-2 border rounded text-sm focus:outline-none focus:border-primary ${
                     scheduleError ? "border-danger" : "border-border"
@@ -390,7 +432,17 @@ export const CountdownScheduleModal: React.FC<Props> = ({ item, setId, itemIndex
                 {scheduleError && <p className="text-xs text-danger mt-1">{scheduleError}</p>}
               </>
             )}
+            {scheduleLocked && (
+              <p className="text-xs text-muted mt-1">
+                {t("countdown.schedule.unavailableWhileCounting")}
+              </p>
+            )}
           </div>
+          {saveError && (
+            <p role="alert" className="text-xs text-danger">
+              {saveError}
+            </p>
+          )}
         </div>
 
         <div className="px-4 py-3 border-t border-border flex justify-end gap-2">

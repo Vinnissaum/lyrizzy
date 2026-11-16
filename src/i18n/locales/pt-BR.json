@@ -278,6 +278,7 @@
       "close": "Fechar",
       "added": "Adicionada",
       "edit": "Editar música",
+      "editCountdown": "Editar cronômetro",
       "reorder": "Reordenar",
       "remove": "Remover",
       "onAir": "No ar — não pode ser removido",
@@ -315,7 +316,8 @@
       "button": "Configurar / Agendar",
       "toggle": "Agendar este cronômetro",
       "triggerLabel": "Disparar às",
-      "pastTimeError": "Este horário já passou hoje."
+      "pastTimeError": "Este horário já passou hoje.",
+      "unavailableWhileCounting": "Indisponível enquanto um cronômetro está em andamento"
     },
     "modal": {
       "title": "Configurar cronômetro",

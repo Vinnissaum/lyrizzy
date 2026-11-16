@@ -1,7 +1,8 @@
 use crate::commands::presentation::{do_blank_presentation, do_next_slide};
 use crate::domain::countdown::{
-    adjusted, paused, restart, resumed, ticker_needed, CountdownEndBehavior, CountdownMode,
-    CountdownPosition, CountdownState, CountdownTarget, ScheduledStart,
+    adjusted, item_edited, paused, restart, resumed, ticker_needed, CountdownConfig,
+    CountdownEndBehavior, CountdownMode, CountdownPosition, CountdownState, CountdownTarget,
+    ScheduledStart,
 };
 use crate::domain::error::ErrorPayload;
 use crate::domain::presentation::PresentationState;
@@ -514,6 +515,107 @@ pub(crate) async fn reset_countdown_of_removed_item(
     }
     reset_to_idle(&mut s);
     Some(s.clone())
+}
+
+/// What an item edit does to one output's countdown, for the caller to emit
+/// and, when `needs_ticker`, to start counting with `start_countdown_ticker`.
+pub(crate) struct CountdownEdit {
+    pub output: OutputId,
+    pub state: CountdownState,
+    pub needs_ticker: bool,
+}
+
+/// An item edit worked out for every output counting from the item, holding
+/// each one's ticker lock so no control or ticker moves the countdown between
+/// the check and `commit`. Dropped without `commit`, it changes nothing.
+pub(crate) struct PlannedCountdownEdit<'a> {
+    planned: Vec<(
+        OutputId,
+        tokio::sync::MutexGuard<'a, Option<tokio::task::AbortHandle>>,
+        CountdownState,
+    )>,
+}
+
+/// Work out what saving set item `item_id` with `new` in place of `old` does to
+/// the countdowns counting from it (running, paused or finished, on any
+/// output): see `item_edited`. An error - a clock-time target already passed -
+/// means the save must be refused; nothing has been changed yet (AD-093).
+pub(crate) async fn plan_countdown_item_edit<'a>(
+    state: &'a AppState,
+    item_id: &str,
+    old: &CountdownConfig,
+    new: &CountdownConfig,
+    now_ms: u64,
+    today_at: impl Fn(u8, u8) -> Result<u64, ErrorPayload>,
+) -> Result<PlannedCountdownEdit<'a>, ErrorPayload> {
+    let mut planned = Vec::new();
+    for output in OutputId::ALL {
+        let out = state.output(output);
+        // Lock order task → countdown, as `apply_live_control` takes them.
+        let task = out.countdown_task.lock().await;
+        let current = out.countdown.read().await.clone();
+        let counting = matches!(
+            current.mode,
+            CountdownMode::Running | CountdownMode::Paused | CountdownMode::Finished
+        );
+        if !counting || current.source_item_id.as_deref() != Some(item_id) {
+            continue;
+        }
+        let next = item_edited(&current, old, new, now_ms, &today_at)?;
+        planned.push((output, task, next));
+    }
+    Ok(PlannedCountdownEdit { planned })
+}
+
+impl PlannedCountdownEdit<'_> {
+    /// Store the planned countdowns. A countdown that starts running from a
+    /// mode with no ticker has its old ticker handle dropped here; the caller
+    /// starts the new one.
+    pub(crate) async fn commit(self, state: &AppState) -> Vec<CountdownEdit> {
+        let mut edits = Vec::new();
+        for (output, mut task, next) in self.planned {
+            let before = {
+                let mut s = state.output(output).countdown.write().await;
+                std::mem::replace(&mut *s, next.clone()).mode
+            };
+            let needs_ticker = ticker_needed(&before, &next.mode);
+            if needs_ticker {
+                if let Some(handle) = task.take() {
+                    handle.abort();
+                }
+            }
+            edits.push(CountdownEdit { output, state: next, needs_ticker });
+        }
+        edits
+    }
+}
+
+/// Start `output`'s countdown ticker, replacing any it has, if the countdown
+/// is still running by the time the lock is held.
+pub(crate) async fn start_countdown_ticker(state: &AppState, app: &AppHandle, output: OutputId) {
+    let out = state.output(output);
+    let mut task = out.countdown_task.lock().await;
+    if out.countdown.read().await.mode != CountdownMode::Running {
+        return;
+    }
+    if let Some(handle) = task.take() {
+        handle.abort();
+    }
+    let pool = state.db.get().expect("db initialized").clone();
+    let join_handle = tokio::spawn(tick_countdown(
+        Arc::clone(&out.countdown),
+        app.clone(),
+        Arc::clone(&out.presentation),
+        Arc::clone(&out.presentation_slides),
+        pool,
+        output,
+    ));
+    *task = Some(join_handle.abort_handle());
+}
+
+/// Today's HH:MM:00 in local time, for callers outside this module.
+pub(crate) fn today_at_local(hour: u8, minute: u8) -> Result<u64, ErrorPayload> {
+    local_today_at(hour, minute)
 }
 
 /// Arm a scheduled countdown. The state goes to `Scheduled` and `remaining_ms`

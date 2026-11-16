@@ -13,7 +13,7 @@ import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { useSetsStore } from "../../stores/sets";
 import { launchOutputAt } from "../../utils/outputDispatch";
-import { ItemTypeIcon, itemLabel, songArtist } from "./itemMeta";
+import { ItemTypeIcon, itemLabel, songArtist, presenterSongs } from "./itemMeta";
 import type { OutputId } from "../../types";
 
 /**
@@ -38,7 +38,7 @@ export const OutputLaunchModal: React.FC<{
 }> = ({ output, onClose }) => {
   const { t } = useTranslation();
   const state = usePresentationStore((s) => s.state);
-  const songs = useLibraryStore((s) => s.songs);
+  const songs = useLibraryStore(presenterSongs);
   const media = useMediaStore((s) => s.media);
   const sets = useSetsStore((s) => s.sets);
   const refreshSets = useSetsStore((s) => s.refresh);

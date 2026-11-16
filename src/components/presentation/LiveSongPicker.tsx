@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check, X } from "lucide-react";
 import { addSetItem } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
+import { presenterSongs } from "./itemMeta";
 import { formatCommandError } from "../../i18n/commandError";
 
 /**
@@ -18,7 +19,7 @@ export const LiveSongPicker: React.FC<{
   onClose: () => void;
 }> = ({ setId, anchorItemId, onClose }) => {
   const { t } = useTranslation();
-  const songs = useLibraryStore((s) => s.songs);
+  const songs = useLibraryStore(presenterSongs);
   const [search, setSearch] = useState("");
   const [lastAddedId, setLastAddedId] = useState<string | undefined>(undefined);
   const [addedSongIds, setAddedSongIds] = useState<string[]>([]);

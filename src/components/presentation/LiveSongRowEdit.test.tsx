@@ -122,6 +122,7 @@ describe("Live song row edit", () => {
     backend();
     useLibraryStore.setState({
       songs: library,
+      allSongs: null,
       editingSongId: null,
       isLiveEdit: false,
       currentView: "home",

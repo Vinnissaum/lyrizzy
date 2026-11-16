@@ -33,6 +33,7 @@ vi.mock("../../api/commands", () => ({
   getSetting: vi.fn().mockResolvedValue(null),
   setSetting: vi.fn().mockResolvedValue(undefined),
   getPresentationState: vi.fn().mockResolvedValue({ set: null }),
+  onSongsChanged: vi.fn().mockResolvedValue(() => {}),
   OUTPUT2_LAST_SET_KEY: "output2.last_set_id",
   PRESENTATION_MONITOR_KEY: "presentation.monitor_index",
   OUTPUT2_MONITOR_KEY: "output2.monitor_index",
@@ -196,6 +197,7 @@ function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
     activeSetId: "set-1",
     setView: vi.fn(),
     refresh: vi.fn(),
+    refreshAllSongs: vi.fn(),
   } as unknown as ReturnType<typeof useLibraryStore>);
   vi.mocked(useMediaStore).mockReturnValue({
     media: [],
@@ -309,6 +311,7 @@ describe("OperatorPresentationLayout", () => {
       activeSetId: null,
       setView: vi.fn(),
       refresh: vi.fn(),
+      refreshAllSongs: vi.fn(),
     } as unknown as ReturnType<typeof useLibraryStore>);
     vi.mocked(useMediaStore).mockReturnValue({
       media: [],
@@ -353,6 +356,7 @@ describe("OperatorPresentationLayout", () => {
       activeSetId: null,
       setView: vi.fn(),
       refresh: vi.fn(),
+      refreshAllSongs: vi.fn(),
     } as unknown as ReturnType<typeof useLibraryStore>);
     vi.mocked(useMediaStore).mockReturnValue({
       media: [],
@@ -407,6 +411,7 @@ describe("OperatorPresentationLayout", () => {
       activeSetId: null,
       setView: vi.fn(),
       refresh: vi.fn(),
+      refreshAllSongs: vi.fn(),
     } as unknown as ReturnType<typeof useLibraryStore>);
     vi.mocked(useMediaStore).mockReturnValue({
       media: [],

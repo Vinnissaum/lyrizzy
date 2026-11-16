@@ -13,7 +13,7 @@ Plan: `.specs/features/phase23-presenter-video-countdown-reorder/plan.md`
 **C1** - With the Biblioteca search set to "amor", to "zzz" (no match) and to nothing, the presenter's set pane shows the title and the artist of both songs of the set [AJUNTAMENTO, O AMOR DE DEUS], never "—" (AC 1)
 Proof: `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "song rows keep their titles under a library search"`
 
-**C2** - With the Biblioteca search set to "amor" and AJUNTAMENTO on screen, the strophes header reads `Estrofes — AJUNTAMENTO — <artist>` and the remove confirmation for AJUNTAMENTO names it (AC 2)
+**C2** - With the Biblioteca search set to "amor" and AJUNTAMENTO on screen, the strophes header reads `Estrofes — AJUNTAMENTO — <artist>` and the remove confirmation for GALILEU, a song not on screen that does not match the search either, names it (AC 2)
 Proof: `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "strophes header names the song under a library search"`
 Proof: `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "remove confirmation names the song under a library search"`
 

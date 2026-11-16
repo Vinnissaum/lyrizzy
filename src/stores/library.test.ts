@@ -12,10 +12,11 @@ import {
   getOrCreateDefaultSet,
   getSet,
   getSetting,
+  listSongs,
   setSetting,
 } from "../api/commands";
 import { useLibraryStore, ACTIVE_SET_KEY } from "./library";
-import type { ServiceSet } from "../types";
+import type { ServiceSet, Song } from "../types";
 
 const mockGetOrCreateDefaultSet = vi.mocked(getOrCreateDefaultSet);
 const mockGetSet = vi.mocked(getSet);
@@ -76,5 +77,41 @@ describe("useLibraryStore — loadActiveSet / setActiveSet", () => {
     ).resolves.toBeUndefined();
 
     expect(useLibraryStore.getState().activeSetId).toBe("set-99");
+  });
+});
+
+describe("useLibraryStore — the presenter's unfiltered songs (P23)", () => {
+  const song = (id: string, title: string) => ({ id, title }) as unknown as Song;
+  const library = [song("s1", "AJUNTAMENTO"), song("s2", "O AMOR DE DEUS")];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listSongs).mockImplementation(async (params) =>
+      params?.search
+        ? library.filter((s) => s.title.toLowerCase().includes(params.search!.toLowerCase()))
+        : library,
+    );
+  });
+
+  it("loading presenter titles leaves the search and its result alone", async () => {
+    useLibraryStore.setState({ search: "amor", songs: [library[1]], allSongs: null });
+
+    await useLibraryStore.getState().refreshAllSongs();
+
+    const s = useLibraryStore.getState();
+    expect(s.search).toBe("amor");
+    expect(s.songs).toEqual([library[1]]);
+    expect(s.allSongs).toEqual(library);
+    expect(vi.mocked(listSongs)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(listSongs).mock.calls[0][0]?.search).toBeUndefined();
+  });
+
+  it("a library refresh under a search keeps the whole library current too", async () => {
+    useLibraryStore.setState({ search: "amor", songs: [], allSongs: null });
+
+    await useLibraryStore.getState().refresh();
+
+    expect(useLibraryStore.getState().songs).toEqual([library[1]]);
+    expect(useLibraryStore.getState().allSongs).toEqual(library);
   });
 });

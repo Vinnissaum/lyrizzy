@@ -24,6 +24,17 @@ function urlHost(url: string): string {
 }
 
 /**
+ * The songs the presenter labels set items from, as a library-store selector:
+ * the whole library (`allSongs`), or the Biblioteca view's list until the whole
+ * library has loaded. Never the search result once it has, so a library search
+ * cannot turn a title into the fallback dash.
+ */
+export const presenterSongs = (s: {
+  songs: Song[];
+  allSongs?: Song[] | null;
+}): Song[] => s.allSongs ?? s.songs;
+
+/**
  * Icon for a set-item type. Uses lucide (SVG) instead of emoji/Unicode glyphs,
  * which fail to render on Linux installs without a colour-emoji font.
  */

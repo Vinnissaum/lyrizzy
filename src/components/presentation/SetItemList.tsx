@@ -8,7 +8,7 @@ import { removeSetItem } from "../../api/commands";
 import { useOutputStates } from "../../hooks/useOutputStates";
 import { onScreenItemIds } from "../../utils/onScreen";
 import { formatCommandError } from "../../i18n/commandError";
-import { ItemTypeIcon, itemLabel, songArtist } from "./itemMeta";
+import { ItemTypeIcon, itemLabel, songArtist, presenterSongs } from "./itemMeta";
 import { LiveSongPicker } from "./LiveSongPicker";
 import type { SetItem } from "../../types";
 
@@ -23,7 +23,7 @@ export const SetItemList: React.FC<{
   const currentItemIndex = usePresentationStore((s) => s.state?.currentItemIndex ?? -1);
   const pendingSelection = usePresentationStore((s) => s.pendingSelection);
   const selectSlide = usePresentationStore((s) => s.selectSlide);
-  const songs = useLibraryStore((s) => s.songs);
+  const songs = useLibraryStore(presenterSongs);
   const media = useMediaStore((s) => s.media);
 
   // Optimistic highlight: prefer the pending selection target so the active
@@ -75,7 +75,7 @@ const EditableSetItemList: React.FC<{
 }> = ({ items, row, onEditSong }) => {
   const { t } = useTranslation();
   const focusedState = usePresentationStore((s) => s.state);
-  const songs = useLibraryStore((s) => s.songs);
+  const songs = useLibraryStore(presenterSongs);
   const media = useMediaStore((s) => s.media);
   const outputs = useOutputStates();
   const [picking, setPicking] = useState(false);

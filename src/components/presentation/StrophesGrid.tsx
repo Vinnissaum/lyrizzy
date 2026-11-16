@@ -4,7 +4,7 @@ import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
-import { ItemTypeIcon, itemLabel } from "./itemMeta";
+import { ItemTypeIcon, itemLabel, presenterSongs } from "./itemMeta";
 import { SlideStage } from "./SlideStage";
 import { SlideContent } from "./SlideContent";
 import { PRESET_COLORS } from "./layout";
@@ -112,7 +112,7 @@ export const StrophesGrid: React.FC = () => {
   const { state } = usePresentationStore();
   const pendingSelection = usePresentationStore((s) => s.pendingSelection);
   const selectSlide = usePresentationStore((s) => s.selectSlide);
-  const { songs } = useLibraryStore();
+  const songs = useLibraryStore(presenterSongs);
   const { media } = useMediaStore();
 
   // Build appearance from settings store once; passed down to each SlideCard.

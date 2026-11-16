@@ -9,6 +9,7 @@ import {
   getSetting,
   importPresentation,
   loadSetForPresentation,
+  onSongsChanged,
   OUTPUT2_LAST_SET_KEY,
   setAnnouncementOverlay,
   setMediaOverlay,
@@ -31,7 +32,7 @@ import { MicSwitch } from "./MicSwitch";
 import { StreamProfileSwitcher } from "./StreamProfileSwitcher";
 import { mediaUrl } from "../../api/assets";
 import { OverlayActionBar } from "./OverlayActionBar";
-import { itemLabel, songArtist } from "./itemMeta";
+import { itemLabel, songArtist, presenterSongs } from "./itemMeta";
 import { SetItemList } from "./SetItemList";
 import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
@@ -56,7 +57,8 @@ export const OperatorPresentationLayout: React.FC<{
   const mirrorEnabled = useSettingsStore((s) => s.mirrorEnabled);
   const sets = useSetsStore((s) => s.sets);
   const refreshSets = useSetsStore((s) => s.refresh);
-  const { songs, refresh: refreshSongs } = useLibraryStore();
+  const { songs: listedSongs, allSongs, refreshAllSongs } = useLibraryStore();
+  const songs = presenterSongs({ songs: listedSongs, allSongs });
   const { media, refresh: refreshMedia } = useMediaStore();
   const { activeSetId } = useLibraryStore();
 
@@ -90,12 +92,19 @@ export const OperatorPresentationLayout: React.FC<{
 
   useEffect(() => {
     refreshMedia();
-    // The library store stays empty on the home→present path (the home screen
-    // keeps its own local song list), so song items would label as "—". Pull
-    // them once when entering the operator presentation view.
-    if (songs.length === 0) refreshSongs();
+    // Song items label from the whole library, never from the Biblioteca
+    // view's search result (a search would label the other songs "—"), and the
+    // store may still be empty on the home→present path. Load it on entering.
+    refreshAllSongs();
+    // A song saved, created or deleted while presenting relabels its row.
+    const unlistenSongs = onSongsChanged(() => {
+      refreshAllSongs();
+    });
     // Multi-screen: the per-output set picker needs the list of sets.
     if (multiScreenEnabled) refreshSets();
+    return () => {
+      unlistenSongs.then((u) => u());
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

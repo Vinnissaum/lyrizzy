@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import i18n from "../../i18n";
-import { itemLabel, ItemTypeIcon, songArtist } from "./itemMeta";
+import { itemLabel, ItemTypeIcon, presenterSongs, songArtist } from "./itemMeta";
 import type { SetItem, Song, Media } from "../../types";
 
 const t = i18n.t.bind(i18n);
@@ -40,6 +40,22 @@ describe("itemLabel", () => {
   it("song: falls back to the given fallback text when the song can't be found", () => {
     const item = makeItem({ itemType: "song", songId: "missing" });
     expect(itemLabel(item, songs, media, t, "???")).toBe("???");
+  });
+
+  it("a song missing from the library falls back to the dash", () => {
+    const item = makeItem({ itemType: "song", songId: "missing" });
+    // The whole library is loaded and does not hold the song.
+    const all = presenterSongs({ songs: [], allSongs: songs });
+    expect(itemLabel(item, all, media, t)).toBe("—");
+    expect(songArtist(item, all)).toBeUndefined();
+  });
+
+  it("presenterSongs prefers the whole library over the search result", () => {
+    const other = { ...songs[0], id: "song-2", title: "Outra" };
+    expect(presenterSongs({ songs: [other], allSongs: songs })).toBe(songs);
+    // Not loaded yet: the Biblioteca list is all there is.
+    expect(presenterSongs({ songs: [other], allSongs: null })).toEqual([other]);
+    expect(presenterSongs({ songs: [other] })).toEqual([other]);
   });
 
   // (a) named countdown returns the name

@@ -16,7 +16,14 @@ export type AppView =
   | "settings";
 
 interface LibraryStore {
+  /** The Biblioteca view's list: the songs matching `search`. */
   songs: Song[];
+  /**
+   * Every song in the library, whatever `search` holds. The presenter labels
+   * set items from this one, so a library search never blanks a title.
+   * `null` until it is first loaded.
+   */
+  allSongs: Song[] | null;
   isLoading: boolean;
   search: string;
   editingSongId: string | null;
@@ -29,6 +36,8 @@ interface LibraryStore {
 
   setSearch: (search: string) => void;
   refresh: () => Promise<void>;
+  /** Loads `allSongs` only; `songs` and `search` stay as they are. */
+  refreshAllSongs: () => Promise<void>;
   openEditor: (id?: string) => void;
   closeEditor: () => void;
   openLiveEditor: (id: string) => void;
@@ -40,6 +49,7 @@ interface LibraryStore {
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   songs: [],
+  allSongs: null,
   isLoading: false,
   search: "",
   editingSongId: null,
@@ -54,11 +64,22 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   refresh: async () => {
     set({ isLoading: true });
     try {
-      const songs = await listSongs({ search: get().search || undefined });
-      set({ songs, isLoading: false });
+      const search = get().search || undefined;
+      const songs = await listSongs({ search });
+      // With no search the result already is the whole library.
+      const allSongs = search ? await listSongs() : songs;
+      set({ songs, allSongs, isLoading: false });
     } catch (err) {
       console.error("Falha ao carregar músicas:", err);
       set({ isLoading: false });
+    }
+  },
+
+  refreshAllSongs: async () => {
+    try {
+      set({ allSongs: await listSongs() });
+    } catch (err) {
+      console.error("Falha ao carregar músicas:", err);
     }
   },
 

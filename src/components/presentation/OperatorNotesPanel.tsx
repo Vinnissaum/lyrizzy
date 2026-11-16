@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useLibraryStore } from "../../stores/library";
+import { presenterSongs } from "./itemMeta";
 import { useSettingsStore } from "../../stores/settings";
 
 function useCurrentNotes(): string | null {
   const { state } = usePresentationStore();
-  const { songs } = useLibraryStore();
+  const songs = useLibraryStore(presenterSongs);
 
   if (!state) return null;
 

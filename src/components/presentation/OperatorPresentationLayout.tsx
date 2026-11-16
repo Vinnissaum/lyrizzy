@@ -25,7 +25,10 @@ import { useSetsStore } from "../../stores/sets";
 import { fanOutToMirror } from "../../utils/outputDispatch";
 import { PRESENTATION_EXTENSIONS } from "../../utils/presentationFiles";
 import { countdownOnWall } from "../../utils/countdownControls";
+import { videoOnWall } from "../../utils/videoControls";
+import { useVideoStore } from "../../stores/video";
 import { LiveCountdownControls } from "./LiveCountdownControls";
+import { VideoControls } from "./VideoControls";
 import { OutputSwitcher } from "./OutputSwitcher";
 import { OutputLaunchModal } from "./OutputLaunchModal";
 import { MicSwitch } from "./MicSwitch";
@@ -62,6 +65,8 @@ export const OperatorPresentationLayout: React.FC<{
   const songs = presenterSongs({ songs: listedSongs, allSongs });
   const { media, refresh: refreshMedia } = useMediaStore();
   const { activeSetId } = useLibraryStore();
+
+  const videoReport = useVideoStore((s) => s.reports[focusedOutput]);
 
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
 
@@ -106,10 +111,13 @@ export const OperatorPresentationLayout: React.FC<{
     const unlistenSongs = onSongsChanged(() => {
       refreshAllSongs();
     });
+    // What each wall says about the video it plays (P23).
+    const unlistenVideo = useVideoStore.getState().subscribe();
     // Multi-screen: the per-output set picker needs the list of sets.
     if (multiScreenEnabled) refreshSets();
     return () => {
       unlistenSongs.then((u) => u());
+      unlistenVideo.then((u) => u());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -329,6 +337,7 @@ export const OperatorPresentationLayout: React.FC<{
       {/* Outside the live pane, which is hidden below lg, so the controls are
           reachable at every window width. */}
       {countdownOnWall(activeItem, countdownState) && <LiveCountdownControls />}
+      {videoOnWall(videoReport, state, countdownState) && <VideoControls />}
 
       <div className="grid grid-cols-1 sm:grid-cols-[1fr] md:grid-cols-[240px_1fr] lg:grid-cols-[240px_1fr_320px] gap-2 flex-1 overflow-hidden">
         {/* Set pane */}

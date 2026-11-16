@@ -269,6 +269,18 @@
       "resume": "Retomar",
       "restart": "Reiniciar"
     },
+    "liveVideo": {
+      "label": "Vídeo",
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "restart": "Reiniciar",
+      "back10": "−10 s",
+      "forward10": "+10 s",
+      "mute": "Silenciar",
+      "unmute": "Ativar som",
+      "position": "Posição do vídeo",
+      "failed": "Não foi possível reproduzir o vídeo"
+    },
     "liveSet": {
       "addSong": "Adicionar música",
       "pickerTitle": "Adicionar música ao conjunto",

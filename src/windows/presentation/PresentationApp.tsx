@@ -320,8 +320,11 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
 
   const itemType = currentItem?.itemType ?? "blank";
 
-  // Compute a stable transition key: changes on item or slide
-  const transitionKey = `${state?.currentItemIndex ?? 0}-${state?.currentSlideIndex ?? 0}`;
+  // Compute a stable transition key: changes on item or slide. Keyed by the
+  // item's id, not its index: a live reorder, add or remove that only shifts
+  // the item's position must not re-run the transition (it would remount the
+  // content and restart a playing video).
+  const transitionKey = `${currentItem?.id ?? state?.currentItemIndex ?? 0}-${state?.currentSlideIndex ?? 0}`;
 
   let content: React.ReactNode;
 
@@ -339,6 +342,7 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
         options={currentItem?.mediaOptions}
         onEnded={next}
         frozen={frozen}
+        itemId={kind === "video" ? currentItem?.id : undefined}
       />
     ) : (
       <div className="h-screen bg-black flex items-center justify-center">

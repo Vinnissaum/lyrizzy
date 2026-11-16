@@ -24,6 +24,8 @@ import type {
   Song,
   StreamSource,
   TextCasing,
+  VideoCommand,
+  VideoReport,
   UpdateCheckResult,
   UpdateProgress,
   WebViewConfig,
@@ -627,6 +629,28 @@ export const emitForwardKeydown = (signature: string) =>
 
 export const onForwardKeydown = (cb: (sig: string) => void) =>
   listen<{ signature: string }>("forward_keydown", (e) => cb(e.payload.signature));
+
+// ─── Video playback across windows (P23, AD-094) ─────────────────────────────
+//
+// Frontend events, like `forward_keydown`: a presentation window reports the
+// video on its wall and obeys the operator's commands. No Rust state is
+// involved - the `<video>` element is the truth for playback - and the
+// presentation window still invokes no mutating command.
+
+/** Presentation window → everyone: the state of the video on its wall. */
+export const emitVideoReport = (report: VideoReport) => emit("video_report", report);
+
+export const onVideoReport = (cb: (report: VideoReport) => void) =>
+  listen<VideoReport>("video_report", (e) => cb(e.payload));
+
+/** Operator → the presentation window of `command.output`. */
+export const emitVideoCommand = (command: VideoCommand) => emit("video_command", command);
+
+/** Commands addressed to `output` only; the item check is the listener's. */
+export const onVideoCommand = (output: OutputId, cb: (command: VideoCommand) => void) =>
+  listen<VideoCommand>("video_command", (e) => {
+    if (e.payload.output === output) cb(e.payload);
+  });
 
 // ─── Updates ──────────────────────────────────────────────────────────────────
 

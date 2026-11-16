@@ -269,6 +269,18 @@
       "resume": "Resume",
       "restart": "Restart"
     },
+    "liveVideo": {
+      "label": "Video",
+      "pause": "Pause",
+      "resume": "Resume",
+      "restart": "Restart",
+      "back10": "−10 s",
+      "forward10": "+10 s",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "position": "Video position",
+      "failed": "The video could not be played"
+    },
     "liveSet": {
       "addSong": "Add song",
       "pickerTitle": "Add a song to the set",

@@ -34,6 +34,8 @@ vi.mock("../../api/commands", () => ({
   setSetting: vi.fn().mockResolvedValue(undefined),
   getPresentationState: vi.fn().mockResolvedValue({ set: null }),
   onSongsChanged: vi.fn().mockResolvedValue(() => {}),
+  onVideoReport: vi.fn().mockResolvedValue(() => {}),
+  emitVideoCommand: vi.fn().mockResolvedValue(undefined),
   listMedia: vi.fn().mockResolvedValue([]),
   importMedia: vi.fn().mockResolvedValue(undefined),
   normalizeError: (e: unknown) => ({ code: String(e) }),

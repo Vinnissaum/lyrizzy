@@ -321,6 +321,44 @@ export interface CountdownTriggeredPayload {
   output: OutputId;
 }
 
+// ── Video playback across windows (P23, AD-094) ─────────────────────────────
+
+export type VideoStatus = 'loading' | 'playing' | 'paused' | 'ended' | 'failed';
+
+/**
+ * What a presentation window says about the video set item on its wall
+ * (`video_report`). The `<video>` element is the truth for playback; this is
+ * its projection for the operator. `itemId: null` means no video is on that
+ * wall.
+ */
+export interface VideoReport {
+  output: OutputId;
+  itemId: string | null;
+  status: VideoStatus;
+  positionMs: number;
+  /** `null` until the element knows it. */
+  durationMs: number | null;
+  muted: boolean;
+}
+
+export type VideoAction =
+  | { kind: 'pause' }
+  | { kind: 'resume' }
+  | { kind: 'restart' }
+  | { kind: 'seek'; positionMs: number }
+  | { kind: 'skip'; deltaMs: number }
+  | { kind: 'mute'; muted: boolean };
+
+/**
+ * What the operator asks of the video on a wall (`video_command`). Obeyed only
+ * by the presentation window of `output` while it shows set item `itemId`.
+ */
+export interface VideoCommand {
+  output: OutputId;
+  itemId: string;
+  action: VideoAction;
+}
+
 // ── Window / monitor ─────────────────────────────────────────────────────────
 
 export interface MonitorInfo {

@@ -4,7 +4,7 @@ Mutations: 5
 Build: `npx tsc --noEmit`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
 Plan: `.specs/features/phase23-presenter-video-countdown-reorder/plan.md`
 
-65 checks in 6 slices (1 appended during the build) · 1 one-way door · 0 open
+66 checks in 6 slices (2 appended during the build) · 1 one-way door · 0 open
 
 ## Checks
 
@@ -106,6 +106,9 @@ Proof: `npx vitest run src/components/presentation/TransitionStage.test.tsx -t "
 **C28** - On the wall, leaving an item leaves nothing of it mounted after the fade: a video item, a camera item, a song with a video background and a countdown with a video background each leave no `<video>` behind a `Tela preta` item; video A → video B leaves one `<video>`, B's; returning to the video mounts a `<video>` again (AC 24, 25)
 Proof: `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "an item that left the wall leaves no media behind"`
 Proof: `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "one video replaces another and a return mounts it again"`
+
+**C66** - On the wall, a change that only shifts the current item's index (a live reorder, add or remove before it) does not re-run the transition: the content stays mounted, so a playing video's `<video>` element is the same one (AC 16; appended during the build - the transition was keyed by item index)
+Proof: `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "a shift of the current item's index leaves its content mounted"`
 
 **C29** - In Chromium, with a looping video item playing on the wall, going to a `Tela preta` item leaves no `<video>` element and nothing playing within 230 ms; going back plays the video from 00:00 (AC 24)
 Proof: walk - on the presentation window with a real video file: play the looping video item, go to the `Tela preta` item, read the page's `<video>` elements after 300 ms, then go back
@@ -250,7 +253,7 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 | AC 16 examples (4) | C moved before the current item C18 · the row on screen moved C18 · two outputs on different items C19 · frozen item moved C18 | - |
 | AC 20 examples (4) | one missing C22 · one unknown C22 · one twice C22 · a true permutation C22 | - |
 | reorder gestures (3) | pointer drag C17 · keyboard C17 · drop handler C16 | - |
-| reorder readers (4) | stored order C19 · every output C19 · navigation C20 · armed schedule reference C24 | - |
+| reorder readers (5) | stored order C19 · every output C19 · navigation C20 · armed schedule reference C24 · the wall's mounted content C66 | - |
 | items leaving the wall, AC 24-25 (5) | video item C28 · camera item C28 · song with a video background C28 · countdown with a video background C28 · video to video C28 | - |
 | transition durations (2) | 200 ms C26 · 0 ms C26 | - |
 | strip visibility, AC 27 (6) | video reported C31 · `itemId: null` C31 · mode `idle` C31 · mode `blank` C31 · overlay C31 · takeover C31 | - |
@@ -286,6 +289,7 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 
 - **Settled mid-build:** none
 - **Dispatched:** none yet
-- **Boundary:** none yet
-- **Abandoned:** none
+- **Boundary:** S1 (C1-C6) closed at `0a7c7b7`; S2 (C7-C13, C65) closed at `f15497d`; S3 (C15, C16, C18-C24) closed at `a36e35a`; S5 (C47-C60) closed at `3bd3882`. S4 is half built: the code is committed (TransitionStage two-slot rewrite, `video_report`/`video_command` wrappers, `MediaSlideRenderer` reporting and commands, `VideoControls`, `videoControls.ts`, `stores/video.ts`, the wall's transition keyed by item id) and the existing 872 Vitest tests, `tsc` and clippy pass, but **none of S4's own tests exist yet**: C26-C28, C30-C45 and C66 are open, and so are the test files `MediaSlideRenderer.test.tsx`, `VideoControls.test.tsx`, `src/utils/videoControls.test.ts`, the new cases in `TransitionStage.test.tsx`, `PresentationApp.test.tsx`, `commands.test.ts` and `OperatorPresentationLayout.test.tsx`. Also open: C14 (the `phase 23 labels in both locales` test; the labels themselves are in both locale files), the walks C17, C25, C29, C46, and all of S6 (C61-C64: version bump to 1.10.0, roadmap entry, CLAUDE.md IPC contract, push and publish - the push needs the user's go-ahead). Then `check_proofs.py`, the Verifier (5 mutations) and the gate. No capture binds, so no screens sub-agent
+- **Abandoned:** none. Corrected during the build: C2's wording named AJUNTAMENTO for the remove confirmation while it is on screen, where remove is disabled (D-88); it now names GALILEU, a song not on screen that does not match the search. The obligation (AC 2) is unchanged. Test changes that follow a changed claim or a new store field, not a weakened one: `SetItemList.test.tsx` "edit control on every song row and no other row" became "edit control on song and countdown rows and no other row" (AD-093 replaces that part of AD-091, so phase 22's C1 selector no longer exists); fixtures gained `allSongs: null`, `refreshAllSongs`, `onSongsChanged`, `listMedia`, `importMedia`, `onVideoReport` where the layout now calls them
+- **Found, outside scope:** the media store has the same flaw the song list had - `useMediaStore.media` is whatever the Mídia view last filtered or searched for, so with that filter on "Vídeos" an image item in the set labels as `Mídia` and the operator's live preview of an image overlay shows a placeholder. The `Imagem` dialog no longer depends on it; the rest is untouched
 - **Walked:** not yet

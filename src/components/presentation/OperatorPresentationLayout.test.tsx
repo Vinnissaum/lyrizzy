@@ -34,6 +34,9 @@ vi.mock("../../api/commands", () => ({
   setSetting: vi.fn().mockResolvedValue(undefined),
   getPresentationState: vi.fn().mockResolvedValue({ set: null }),
   onSongsChanged: vi.fn().mockResolvedValue(() => {}),
+  listMedia: vi.fn().mockResolvedValue([]),
+  importMedia: vi.fn().mockResolvedValue(undefined),
+  normalizeError: (e: unknown) => ({ code: String(e) }),
   OUTPUT2_LAST_SET_KEY: "output2.last_set_id",
   PRESENTATION_MONITOR_KEY: "presentation.monitor_index",
   OUTPUT2_MONITOR_KEY: "output2.monitor_index",
@@ -102,8 +105,12 @@ import { useSetsStore } from "../../stores/sets";
 import {
   enterPresentation,
   getPresentationState,
+  importMedia,
+  listMedia,
   loadSetForPresentation,
+  setMediaOverlay,
 } from "../../api/commands";
+import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { fanOutToMirror } from "../../utils/outputDispatch";
 import { useCountdownStore } from "../../stores/countdown";
 import type { CountdownState, PresentationState, ServiceSet } from "../../types";
@@ -506,6 +513,38 @@ describe("OperatorPresentationLayout", () => {
 
     fireEvent.click(screen.getByTestId("stop-button"));
     expect(screen.queryByTestId("live-song-edit-modal-stub")).not.toBeInTheDocument();
+  });
+
+  it("an image uploaded in the dialog projects on click", async () => {
+    setupDefaultMocks();
+    const uploaded = {
+      id: "img-new",
+      fileName: "foto.png",
+      displayName: "foto",
+      kind: "image",
+      mimeType: "image/png",
+      byteSize: 1,
+      createdAt: 5,
+      updatedAt: 5,
+    };
+    let library: unknown[] = [];
+    vi.mocked(listMedia).mockImplementation(async () => library as never);
+    vi.mocked(importMedia).mockImplementation(async () => {
+      library = [uploaded];
+      return uploaded as never;
+    });
+    vi.mocked(openFileDialog).mockResolvedValueOnce(["/fotos/foto.png"] as never);
+    render(<OperatorPresentationLayout />);
+
+    fireEvent.click(screen.getByRole("button", { name: /home\.overlay\.image/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /home\.overlay\.uploadImage/ }));
+    const thumb = await screen.findByRole("button", { name: "foto" });
+    expect(setMediaOverlay).not.toHaveBeenCalled();
+
+    fireEvent.click(thumb);
+
+    await waitFor(() => expect(setMediaOverlay).toHaveBeenCalledWith("img-new", "one"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("renders OverlayActionBar without an Apresentar button", () => {

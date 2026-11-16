@@ -30,7 +30,6 @@ import { OutputSwitcher } from "./OutputSwitcher";
 import { OutputLaunchModal } from "./OutputLaunchModal";
 import { MicSwitch } from "./MicSwitch";
 import { StreamProfileSwitcher } from "./StreamProfileSwitcher";
-import { mediaUrl } from "../../api/assets";
 import { OverlayActionBar } from "./OverlayActionBar";
 import { itemLabel, songArtist, presenterSongs } from "./itemMeta";
 import { SetItemList } from "./SetItemList";
@@ -38,6 +37,7 @@ import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
 import { LiveSongEditModal } from "./LiveSongEditModal";
 import { AnnouncementDialog } from "./AnnouncementDialog";
+import { ImageOverlayDialog } from "./ImageOverlayDialog";
 import type { OutputId } from "../../types";
 
 export const OperatorPresentationLayout: React.FC<{
@@ -298,8 +298,6 @@ export const OperatorPresentationLayout: React.FC<{
     );
   }
 
-  const imageMedia = media.filter((m) => m.kind === "image");
-
   return (
     <div data-testid="operator-presentation-layout" className="flex flex-col h-full">
       <OutputSwitcher
@@ -433,50 +431,12 @@ export const OperatorPresentationLayout: React.FC<{
         </div>
       )}
 
-      {/* Media picker (image overlay) */}
+      {/* Image overlay picker, with upload from the computer (P23) */}
       {showMediaPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-surface rounded-xl shadow-2xl w-[520px] max-h-[70vh] flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-semibold">{t("home.overlay.selectMedia")}</h3>
-              <button
-                onClick={() => setShowMediaPicker(false)}
-                className="text-muted hover:text-inherit"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2">
-              {imageMedia.length === 0 ? (
-                <p className="col-span-3 text-center text-muted py-8 text-sm">
-                  {t("media.picker.noMedia")}
-                </p>
-              ) : (
-                imageMedia.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => handleSelectMediaOverlay(m.id)}
-                    className="flex flex-col rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
-                  >
-                    <div className="aspect-video bg-surface-2 relative">
-                      <img
-                        src={mediaUrl(m.thumbnailFile ?? m.fileName)}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted truncate px-1 py-0.5">
-                      {m.displayName}
-                    </p>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <ImageOverlayDialog
+          onSelect={handleSelectMediaOverlay}
+          onClose={() => setShowMediaPicker(false)}
+        />
       )}
 
       {launchOutput && (

@@ -929,6 +929,9 @@
       "confirm": "Confirmar",
       "cancel": "Cancelar",
       "selectMedia": "Selecionar imagem",
+      "uploadImage": "Enviar imagem do computador",
+      "uploadFailed_one": "{{count}} arquivo não foi importado",
+      "uploadFailed_other": "{{count}} arquivos não foram importados",
       "blackout": "Tela preta"
     },
     "sidebar": {

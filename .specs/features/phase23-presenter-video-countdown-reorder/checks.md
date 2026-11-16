@@ -4,7 +4,7 @@ Mutations: 5
 Build: `npx tsc --noEmit`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
 Plan: `.specs/features/phase23-presenter-video-countdown-reorder/plan.md`
 
-64 checks in 6 slices · 1 one-way door · 0 open
+65 checks in 6 slices (1 appended during the build) · 1 one-way door · 0 open
 
 ## Checks
 
@@ -51,6 +51,9 @@ Proof: `npx vitest run src/components/presentation/ImageOverlayDialog.test.tsx -
 
 **C13** - Cancelling the file dialog sends no `import_media` and leaves the grid as it was (AC 13)
 Proof: `npx vitest run src/components/presentation/ImageOverlayDialog.test.tsx -t "cancelling the file dialog imports nothing"`
+
+**C65** - The wall shows an image imported after its window opened: when the overlay names a media id its media list does not hold, it reloads the list, and renders the image once it is there (AC 10; appended during the build - the presentation window loads media once, at mount)
+Proof: `npx vitest run src/components/presentation/QuickMediaRenderer.test.tsx -t "an overlay for media the wall has not loaded reloads the library"`
 
 **C14** - Every label this feature adds exists in pt-BR and en-US with the wording in the plan's `Assumptions`, the two locales keep identical key sets, and `set.reorder_mismatch` and `countdown.target_passed` have a message in both (AC 7, 11, 12, 14, 26, 37, 39, 46)
 Proof: `npx vitest run src/i18n/locales.test.ts -t "phase 23 labels in both locales"`
@@ -242,6 +245,7 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 | library search states, AC 1 (3) | "amor" C1 · "zzz" C1 · none C1, table-driven over all 3 | - |
 | readers of the unfiltered titles (4) | set pane row C1 · strophes header C2 · remove confirmation C2 · song picker C3 | - |
 | upload outcomes, AC 9-13 (5) | all imported C9 · importing C11 · one failed C12 · cancelled C13 · click projects C10 | - |
+| windows that must know an uploaded image (2) | operator dialog C9 · the wall C65 | - |
 | upload control states, AC 7 (2) | library with images C7 · empty library C7 | - |
 | AC 16 examples (4) | C moved before the current item C18 · the row on screen moved C18 · two outputs on different items C19 · frozen item moved C18 | - |
 | AC 20 examples (4) | one missing C22 · one unknown C22 · one twice C22 · a true permutation C22 | - |

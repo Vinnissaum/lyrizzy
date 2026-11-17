@@ -1,7 +1,7 @@
 [
   {
     "file": "src/stores/library.ts",
-    "old": "const allSongs = search ? await listSongs() : songs;",
+    "old": "const allSongs = await listSongs(WHOLE_LIBRARY);",
     "new": "const allSongs = songs;",
     "proof": "npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t \"a song saved in the live editor under a library search keeps every row titled\"",
     "label": "S1 C4: refresh() under a search stores the filtered list as allSongs"

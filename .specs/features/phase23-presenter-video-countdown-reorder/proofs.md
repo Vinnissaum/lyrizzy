@@ -1,8 +1,8 @@
 # phase23-presenter-video-countdown-reorder proofs
 
-**HEAD**: c9af3b5
+**HEAD**: f09a251
 **Tree**: clean
-**Result**: 99 pass, 3 fail; mutations 5 killed, 0 not
+**Result**: 101 pass, 3 fail; mutations 0 killed, 1 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -14,6 +14,8 @@
 | C5 | `npx vitest run src/stores/library.test.ts -t "loading presenter titles leaves the search and its result alone"` | 1 | 1 | pass |
 | C67 | `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "a song saved in the live editor under a` | 1 | 1 | pass |
 | C67 | `npx vitest run src/stores/library.test.ts -t "a library refresh under a search keeps the whole library current` | 1 | 1 | pass |
+| C73 | `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "a set song past the first 200 by title ` | 1 | 1 | pass |
+| C73 | `cargo test --manifest-path src-tauri/Cargo.toml --test songs list_songs_with_no_cap_returns_every_song` | 1 | - | pass |
 | C6 | `npx vitest run src/components/presentation/itemMeta.test.tsx -t "a song missing from the library falls back to` | 1 | 1 | pass |
 | C7 | `npx vitest run src/components/presentation/ImageOverlayDialog.test.tsx -t "upload control shows with images an` | 1 | 1 | pass |
 | C8 | `npx vitest run src/components/presentation/ImageOverlayDialog.test.tsx -t "upload opens the file dialog for im` | 1 | 1 | pass |
@@ -113,8 +115,4 @@
 
 | Mutation | Location | Killed |
 | --- | --- | --- |
-| S1 C4: refresh() under a search stores the filtered list as allSongs | `src/stores/library.ts:70` | yes |
-| S2 C65: the wall reloads its media only when its list is empty | `src/components/presentation/QuickMediaRenderer.tsx:19` | yes |
-| S3 C18: current and frozen re-pointed by the permutation instead of its inverse | `src-tauri/src/domain/presentation.rs:200` | yes |
-| S4 C27: an outgoing video keeps playing until its layer unmounts | `src/components/presentation/MediaSlideRenderer.tsx:113` | yes |
-| S5 C52: an item edit skips a finished countdown counting from the item | `src-tauri/src/commands/countdown.rs:558` | yes |
+| spec refused | `  mutation 1: const allSongs = search ? await listSon… occurs 0 times in src/s` | no |

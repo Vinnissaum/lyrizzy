@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act, within } from "@testing-library/react";
 
 vi.mock("../../stores/library", () => ({
   useLibraryStore: vi.fn(),
@@ -24,6 +24,9 @@ vi.mock("../../api/commands", () => ({
   updateSet: vi.fn(),
   importPresentation: vi.fn(),
   loadSetForPresentation: vi.fn().mockResolvedValue(undefined),
+  listMedia: vi.fn().mockResolvedValue([]),
+  getMediaReferences: vi.fn(),
+  deleteMedia: vi.fn(),
 }));
 
 const mockRequestPresentation = vi.fn().mockResolvedValue(undefined);
@@ -46,7 +49,9 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 
 vi.mock("./CountdownScheduleModal", () => ({ CountdownScheduleModal: () => null }));
 vi.mock("./WebViewSetItemEditor", () => ({ WebViewSetItemEditor: () => null }));
-vi.mock("./MediaSetItemEditor", () => ({ MediaSetItemEditor: () => null }));
+vi.mock("./MediaSetItemEditor", () => ({
+  MediaSetItemEditor: ({ item }: { item: { id: string } }) => <div data-testid="media-item-editor">{item.id}</div>,
+}));
 vi.mock("./BlankItemNotesEditor", () => ({ BlankItemNotesEditor: () => null }));
 vi.mock("./SlideshowSetItemEditor", () => ({ SlideshowSetItemEditor: () => null }));
 
@@ -54,8 +59,16 @@ import { SetBuilder, reorderIds } from "./SetBuilder";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { usePresentationStore } from "../../stores/presentation";
-import { getSet, listSongs, loadSetForPresentation, reorderSetItems } from "../../api/commands";
-import type { ServiceSet, SetItem, Song } from "../../types";
+import {
+  addSetItem,
+  getSet,
+  listMedia,
+  listSongs,
+  loadSetForPresentation,
+  onSetChanged,
+  reorderSetItems,
+} from "../../api/commands";
+import type { Media, ServiceSet, SetItem, Song } from "../../types";
 
 const baseSet: ServiceSet = {
   id: "set-1",
@@ -372,5 +385,73 @@ describe("SetBuilder — song picker search", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("SetBuilder — media dialog (P24)", () => {
+  const media = (id: string, displayName: string, kind: Media["kind"]): Media => ({
+    id, displayName, kind, fileName: `${id}.bin`, mimeType: "x", byteSize: 1, createdAt: 1, updatedAt: 1,
+  });
+  const pix = media("pix", "Pix", "image");
+  const abertura = media("abertura", "Abertura", "video");
+  const slides = media("slides", "Slides", "presentation");
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useLibraryStore).mockReturnValue({ setView: vi.fn() } as ReturnType<typeof useLibraryStore>);
+    vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
+    vi.mocked(usePresentationStore).mockReturnValue({ getState: vi.fn() } as unknown as ReturnType<typeof usePresentationStore>);
+    vi.mocked(getSet).mockResolvedValue(baseSet);
+    vi.mocked(listMedia).mockResolvedValue([pix, abertura, slides]);
+  });
+
+  it("Mídia opens the media dialog", async () => {
+    render(<SetBuilder setId="set-1" />);
+    await waitFor(() => expect(screen.getByText("Culto")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("builder.add.media"));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("builder.mediaDialog.title");
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Pix" })).toBeInTheDocument());
+    expect(listMedia).toHaveBeenCalledWith({ limit: -1 });
+  });
+
+  it("a card picked in the media dialog is added by its kind and the dialog closes", async () => {
+    let setChanged: () => void = () => {};
+    vi.mocked(onSetChanged).mockImplementation((cb) => {
+      setChanged = cb;
+      return Promise.resolve(() => {});
+    });
+    vi.mocked(addSetItem).mockImplementation(async (p) => ({
+      id: `new-${p.mediaId}`, setId: "set-1", itemType: p.itemType as SetItem["itemType"], mediaId: p.mediaId,
+      mediaKind: p.mediaId === "abertura" ? "video" : "image", sortOrder: 1,
+    }));
+    render(<SetBuilder setId="set-1" />);
+    await waitFor(() => expect(screen.getByText("Culto")).toBeInTheDocument());
+
+    const options = { loop: false, mute: false, autoAdvanceOnEnd: true };
+    const cases: Array<[Media, Record<string, unknown>]> = [
+      [pix, { setId: "set-1", itemType: "media", mediaId: "pix", mediaOptions: options }],
+      [abertura, { setId: "set-1", itemType: "media", mediaId: "abertura", mediaOptions: options }],
+      [slides, { setId: "set-1", itemType: "slide_show", mediaId: "slides" }],
+    ];
+    for (const [picked, payload] of cases) {
+      fireEvent.click(screen.getByText("builder.add.media"));
+      fireEvent.click(await screen.findByRole("button", { name: picked.displayName }));
+
+      await waitFor(() => expect(addSetItem).toHaveBeenLastCalledWith(payload));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
+
+    // The video's options open once the set holds it.
+    vi.mocked(getSet).mockResolvedValue({
+      ...baseSet,
+      items: [...baseSet.items, { id: "new-abertura", setId: "set-1", itemType: "media", mediaId: "abertura", mediaKind: "video", sortOrder: 1 }],
+    });
+    await act(async () => {
+      setChanged();
+    });
+    expect(await screen.findByTestId("media-item-editor")).toHaveTextContent("new-abertura");
   });
 });

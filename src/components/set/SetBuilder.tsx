@@ -52,7 +52,6 @@ import {
 } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
-import { mediaUrl } from "../../api/assets";
 import { listSongs } from "../../api/commands";
 import { useRequestPresentation } from "../presentation/PresentationLaunchProvider";
 import { CountdownScheduleModal } from "./CountdownScheduleModal";
@@ -61,6 +60,7 @@ import { WebViewSetItemEditor } from "./WebViewSetItemEditor";
 import { MediaSetItemEditor } from "./MediaSetItemEditor";
 import { BlankItemNotesEditor } from "./BlankItemNotesEditor";
 import { SlideshowSetItemEditor } from "./SlideshowSetItemEditor";
+import { MediaAddDialog } from "./MediaAddDialog";
 import type { Media, ServiceSet, SetItem, Song } from "../../types";
 import { matchesSongSearch } from "../../utils/songSearch";
 
@@ -137,7 +137,6 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
   const [nameInput, setNameInput] = useState("");
   const [showSongPicker, setShowSongPicker] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
-  const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [countdownModal, setCountdownModal] = useState<{ item: SetItem; itemIndex: number } | null>(
     null
@@ -392,12 +391,6 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
     if (item.itemType === "slide_show") return !mediaById(item.mediaId);
     return false;
   };
-
-  const filteredMedia = showMediaPicker
-    ? mediaFilter === "all"
-      ? media
-      : media.filter((m) => m.kind === mediaFilter)
-    : [];
 
   if (!serviceSet) {
     return (
@@ -747,72 +740,9 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
         </div>
       )}
 
-      {/* Media picker panel */}
+      {/* Media dialog: the whole library as large cards, with delete (P24) */}
       {showMediaPicker && (
-        <div className="border-t border-border flex flex-col h-64">
-          <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-            <div className="flex gap-1">
-              {(["all", "image", "video"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setMediaFilter(f)}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    mediaFilter === f
-                      ? "bg-primary text-fg-on-primary"
-                      : "bg-surface-2 text-muted hover:bg-border"
-                  }`}
-                >
-                  {f === "all"
-                    ? t("builder.mediaFilter.all")
-                    : f === "image"
-                    ? t("builder.mediaFilter.image")
-                    : t("builder.mediaFilter.video")}
-                </button>
-              ))}
-            </div>
-            <span className="flex-1" />
-            <button
-              onClick={() => setShowMediaPicker(false)}
-              className="text-muted hover:text-inherit p-1"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 gap-2">
-            {filteredMedia.length === 0 ? (
-              <p className="col-span-3 text-center text-muted py-6 text-sm">
-                {t("builder.noMedia")}
-              </p>
-            ) : (
-              filteredMedia.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => handleAddMedia(m)}
-                  className="flex flex-col rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
-                >
-                  <div className="aspect-video bg-surface relative">
-                    <img
-                      src={mediaUrl(m.thumbnailFile ?? m.fileName)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                    {m.kind === "video" && (
-                      <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-fg-on-primary px-1 rounded">
-                        VIDEO
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted truncate px-1 py-0.5">
-                    {m.displayName}
-                  </p>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+        <MediaAddDialog onPick={handleAddMedia} onClose={() => setShowMediaPicker(false)} />
       )}
 
       {/* Footer actions */}
@@ -832,9 +762,8 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
           <button
             onClick={() => {
               setShowSongPicker(false);
-              setMediaFilter("all");
               refreshMedia();
-              setShowMediaPicker((v) => !v);
+              setShowMediaPicker(true);
             }}
             className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-info inline-flex items-center justify-center gap-1.5"
           >

@@ -100,4 +100,20 @@ describe("locale key parity", () => {
       }
     }
   });
+
+  it("phase 24 labels in both locales", () => {
+    const at = (tree: unknown, path: string): unknown =>
+      path.split(".").reduce<unknown>((node, k) => (node as Record<string, unknown> | undefined)?.[k], tree);
+    const expected: Record<string, [string, string]> = {
+      "presentation.liveSet.imagePickerTitle": ["Adicionar imagem ao conjunto", "Add an image to the set"],
+      "builder.mediaDialog.title": ["Adicionar mídia ao conjunto", "Add media to the set"],
+      "builder.mediaDialog.close": ["Fechar", "Close"],
+      // A card's delete control reads "<this> <name>".
+      "media.detail.delete": ["Excluir", "Delete"],
+    };
+    for (const [key, [pt, en]] of Object.entries(expected)) {
+      expect(at(ptBR, key), `pt-BR ${key}`).toBe(pt);
+      expect(at(enUS, key), `en-US ${key}`).toBe(en);
+    }
+  });
 });

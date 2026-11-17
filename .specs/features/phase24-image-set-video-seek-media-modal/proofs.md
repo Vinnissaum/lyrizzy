@@ -1,8 +1,8 @@
 # phase24-image-set-video-seek-media-modal proofs
 
-**HEAD**: c925462
+**HEAD**: 89c0d9b
 **Tree**: clean
-**Result**: 48 pass, 3 fail; mutations 0 killed, 0 not
+**Result**: 54 pass, 3 fail; mutations 3 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -22,7 +22,13 @@
 | C7 | `cargo test --manifest-path src-tauri/Cargo.toml --test media list_media_with_no_cap_returns_every_media` | 1 | - | pass |
 | C8 | `npx vitest run src/components/presentation/LiveImagePicker.test.tsx -t "a refused add keeps the dialog open wi` | 1 | 1 | pass |
 | C9 | `walk - present a set, open Imagem with 30 images in the library at both window sizes, and measure every card's` | - | - | pass (Walked) |
+| C34 | `npx vitest run src/components/presentation/LiveImagePicker.test.tsx -t "the first pick follows the current ite` | 1 | 1 | pass |
+| C34 | `npx vitest run src/components/presentation/LiveImagePicker.test.tsx -t "a later pick still follows the first a` | 1 | 1 | pass |
+| C35 | `npx vitest run src/components/presentation/LiveMediaLabels.test.tsx -t "an upload during the service names its` | 1 | 1 | pass |
+| C36 | `npx vitest run src/components/presentation/OperatorPresentationLayout.test.tsx -t "a pick while the wall is fr` | 1 | 1 | pass |
+| C38 | `npx vitest run src/components/presentation/LiveMediaLabels.test.tsx -t "the Tela 2 launch list names an image ` | 1 | 1 | pass |
 | C10 | `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::a_range_is_answered_with_206_and` | 1 | - | pass |
+| C37 | `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::a_one_byte_range_is_answered_wit` | 1 | - | pass |
 | C11 | `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::without_a_usable_range_the_whole` | 1 | - | pass |
 | C12 | `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::a_range_past_the_end_is_answered` | 1 | - | pass |
 | C13 | `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::path_rules_hold_with_and_without` | 1 | - | pass |
@@ -57,3 +63,11 @@
 | C33 | `walk - the user, on Windows with v1.10.1, presents a set with a video and uses each control of the strip; thei` | - | - | pass (Walked) |
 | Build | `npx tsc --noEmit` | - | - | pass |
 | Build | `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` | - | - | pass |
+
+## Mutations
+
+| Mutation | Location | Killed |
+| --- | --- | --- |
+| S1 anchor: Imagem anchors on the frozen wall item, not the browsed current item (AC 2: frozen on A, browsing B -> after B) | `src/components/presentation/OperatorPresentationLayout.tsx:455` | yes |
+| S2 range: a one-byte range bytes=a-a is taken as invalid and answered 200 with the whole file (end >= start -> end > start) | `src-tauri/src/protocol/asset.rs:216` | yes |
+| S3 delete: a media used only by a song section is not counted as in use (sections dropped from the reference sum) | `src/components/set/MediaAddDialog.tsx:51` | yes |

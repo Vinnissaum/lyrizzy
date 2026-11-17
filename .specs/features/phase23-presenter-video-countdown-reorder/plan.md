@@ -340,7 +340,7 @@ Typing without accents finds the song in every song search.
 53. WHEN the operator types in Home's song search, the live `Adicionar música` picker or the Biblioteca search THEN the search SHALL ignore accents, ç and letter case, on the typed text and on each song's title and artist alike
     - "so pra" → "Só pra te Adorar"; "bencao" → "Manancial de Toda Benção"; "BENÇÃO" → "Manancial de Toda Benção"; "coracao" → "Coração Igual ao Teu"; "unico" → "Ao Único"; "joao" → a song by "João Alexandre"; "só pra" (typed with the accent) → "Só pra te Adorar", as today
 54. Each search SHALL keep where a match may start: Home's search and the live picker match anywhere in the title or artist ("cao" → "Manancial de Toda Benção", "adorar" → "Só pra te Adorar"); the Biblioteca search matches the start of a word, through its full-text index, title, artist and lyrics ("bencao" → "Manancial de Toda Benção")
-55. IF a Biblioteca search has an unbalanced quote or parenthesis THEN its fallback SHALL ignore accents, ç and case too, matching anywhere in the title or artist
+55. IF a Biblioteca search has an unbalanced quote or parenthesis THEN its fallback SHALL ignore accents, ç and case too, matching anywhere in the title or artist, with the quotes and parentheses it could not parse left out of the comparison on both sides (before, it compared them literally, so it matched no normal title)
     - `so "pra` → "Só pra te Adorar"; `bencao (` → "Manancial de Toda Benção"; `xyz (` → no song
 56. WHEN a song search is empty THEN its list SHALL show every song, and WHEN it matches nothing THEN its list SHALL show its empty message, as today
 

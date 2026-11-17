@@ -1,8 +1,8 @@
 # phase23-presenter-video-countdown-reorder proofs
 
-**HEAD**: 9ee3024
+**HEAD**: 0c8ce1c
 **Tree**: clean
-**Result**: 101 pass, 3 fail; mutations 5 killed, 0 not
+**Result**: 108 pass, 3 fail; mutations 5 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -103,6 +103,13 @@
 | C59 | `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "Parar closes the countdown dialog` | 1 | 1 | pass |
 | C60 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::restart_after_an_item_edit_ret` | 1 | - | pass |
 | C60 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_moves_the_target` | 1 | - | pass |
+| C74 | `npx vitest run src/utils/songSearch.test.ts -t "ignores accents, ç and case on both sides"` | 1 | 1 | pass |
+| C74 | `npx vitest run src/utils/songSearch.test.ts -t "folds every Portuguese accented letter"` | 1 | 1 | pass |
+| C75 | `npx vitest run src/components/setbuilder/HomeSetBuilder.test.tsx -t "song search ignores accents and ç"` | 1 | 1 | pass |
+| C76 | `npx vitest run src/components/presentation/LiveSongPicker.test.tsx -t "search ignores accents and ç"` | 1 | 1 | pass |
+| C77 | `cargo test --manifest-path src-tauri/Cargo.toml --test fts search_ignores_accents_and_cedilla` | 2 | - | pass |
+| C77 | `cargo test --manifest-path src-tauri/Cargo.toml --test fts fallback_search_ignores_accents_and_cedilla` | 1 | - | pass |
+| C78 | `cargo test --manifest-path src-tauri/Cargo.toml --lib services::fts_query::tests::fold_for_search_drops_accent` | 1 | - | pass |
 | C61 | `node scripts/check-version.mjs v1.10.0` | count unknown | - | pass |
 | C62 | `test "$(git -c core.sshCommand='ssh -p 443' ls-remote ssh://git@ssh.github.com:443/Vinnissaum/lyrizzy.git refs` | count unknown | - | **fail** |
 | C63 | `node -e "fetch('https://github.com/Vinnissaum/lyrizzy/releases/latest/download/latest.json').then(r=>r.json())` | count unknown | - | **fail** |

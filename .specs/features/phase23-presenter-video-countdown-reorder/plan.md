@@ -1,6 +1,7 @@
 # Presenter mode: song names, image upload, reorder, video controls, countdown editor
 
 **Approved**: 2026-11-16 - user: "approved, keep going"
+**Approved** (S7, added after verification): 2026-11-17 - user: "update the feature to add a filter behaviour on searching songs [...] Once finalizing these add commit everything and push the tag to create the release version"
 
 ## Problem
 
@@ -39,6 +40,16 @@ the wall; sees a video's time and pauses, restarts, seeks, skips and mutes it, a
 the moment the wall leaves it; and edits any countdown in the set from its row. All five ship
 together as release `v1.10.0`.
 
+**Song search depends on accents (added 2026-11-17).** The library is in Brazilian Portuguese, so
+titles carry accents and ç: "Só pra te Adorar", "Manancial de Toda Benção". Home's song search
+(`HomeSetBuilder.tsx:47`) and the live `Adicionar música` picker (`LiveSongPicker.tsx:27`) filter
+in the browser with `toLowerCase().includes()`, so "so pra" and "bencao" find nothing - checked:
+`"só pra te adorar".includes("so pra")` is false. The Biblioteca search goes to the full-text index
+(`songs_fts`, tokenizer `unicode61`, which drops diacritics), and there "so pra" and "bencao" already
+find both songs - checked in SQLite with the same table definition. Its fallback for a search with
+an unbalanced quote or parenthesis (`fts_query.rs`, `title LIKE ?`) does not fold accents. When
+this ships, typing without accents or ç finds the song in every song search.
+
 ## Shape
 
 This reuses `list_songs`, `import_media`, `reorder_set_items`, `update_set_item` and their stores,
@@ -65,6 +76,8 @@ wall is also walked in a real Chromium.
 12. the operator uses the edit control (new) on a countdown row in `SetItemList` (exists) -> `OperatorPresentationLayout` (exists) opens `CountdownScheduleModal` (exists) with that item; nothing is sent to the backend
 13. `Salvar` -> `updateSetItem` in `src/api/commands.ts` (exists) -> `commands/set.rs::update_set_item` (exists) persists `SetItem.countdown_config`, patches the item in every loaded set (exists), then applies the edit to every output whose `CountdownState.source_item_id` is this item: restart from the new target when the target changed, otherwise keep counting and copy the look; the rule is a pure function in `domain/countdown.rs` (exists), beside `adjusted` and `restart`
 14. out: `state_changed` and `countdown_tick` -> `CountdownRenderer` on the wall, `LiveCountdownControls` and the row label (exist)
+15. the operator types in Home's song search, in `HomeSetBuilder` (exists), or in the live picker, `LiveSongPicker` (exists) -> `matchesSongSearch` in `src/utils/songSearch.ts` (new) folds accents, ç and case on both the typed text and the song's title and artist, and matches anywhere in either, as these searches do today
+16. the operator types in the Biblioteca search -> `list_songs` (exists) -> `fts_query::sanitize` (exists): the full-text query is unchanged, its index already folds accents; the fallback for an unbalanced quote or parenthesis filters title and artist with `fold_for_search` (new), in `fts_query.rs`, instead of SQL `LIKE`
 
 ```mermaid
 flowchart TD
@@ -122,6 +135,9 @@ flowchart TD
     API -->|"13. update_set_item"| UPD
     UPD -->|"13. restart if target changed, else restyle"| DC
     DC -->|"14. state_changed, countdown_tick"| CR
+    HSB["HomeSetBuilder (exists)"] -->|"15. typed text"| MSS["matchesSongSearch, src/utils/songSearch.ts (new)"]
+    LSP["LiveSongPicker (exists)"] -->|"15. typed text"| MSS
+    LIBV["Biblioteca search"] -->|"16. list_songs (exists)"| FTSQ["fts_query::sanitize (exists), fold_for_search (new)"]
 ```
 
 **Changes underneath**
@@ -315,10 +331,27 @@ All five changes reach every installation as one release.
 51. WHEN the Verifier's findings are closed and the gate is green THEN `main` and tag `v1.10.0` SHALL be pushed, the release workflow run for the tag SHALL succeed on Windows and Linux, the draft release SHALL be published, the publish-manifest workflow run SHALL succeed, and the repository's latest-release `latest.json` SHALL serve version `1.10.0`
 52. The project roadmap (`.specs/project/ROADMAP.md`) SHALL carry a Phase 23 entry marked released as `v1.10.0`, and CLAUDE.md's IPC contract SHALL list `video_report` and `video_command`
 
+### S7: Song search ignores accents and ç (P1)
+
+Typing without accents finds the song in every song search.
+
+**Acceptance Criteria**
+
+53. WHEN the operator types in Home's song search, the live `Adicionar música` picker or the Biblioteca search THEN the search SHALL ignore accents, ç and letter case, on the typed text and on each song's title and artist alike
+    - "so pra" → "Só pra te Adorar"; "bencao" → "Manancial de Toda Benção"; "BENÇÃO" → "Manancial de Toda Benção"; "coracao" → "Coração Igual ao Teu"; "unico" → "Ao Único"; "joao" → a song by "João Alexandre"; "só pra" (typed with the accent) → "Só pra te Adorar", as today
+54. Each search SHALL keep where a match may start: Home's search and the live picker match anywhere in the title or artist ("cao" → "Manancial de Toda Benção", "adorar" → "Só pra te Adorar"); the Biblioteca search matches the start of a word, through its full-text index, title, artist and lyrics ("bencao" → "Manancial de Toda Benção")
+55. IF a Biblioteca search has an unbalanced quote or parenthesis THEN its fallback SHALL ignore accents, ç and case too, matching anywhere in the title or artist
+    - `so "pra` → "Só pra te Adorar"; `bencao (` → "Manancial de Toda Benção"; `xyz (` → no song
+56. WHEN a song search is empty THEN its list SHALL show every song, and WHEN it matches nothing THEN its list SHALL show its empty message, as today
+
 ## Out of scope
 
 | Excluded | Why |
 | --- | --- |
+| Matching inside a word in the Biblioteca search ("encao" for "Benção") | it matches word starts through the full-text index today, and the request is about accents and ç, not where a match may start |
+| Rebuilding the full-text index or changing its tokenizer | `unicode61` already folds accents and ç; nothing stored changes |
+| Typos and close spellings ("adora" for "adorar" already matches as a prefix; "adorrar" does not) | not requested |
+| The Mídia search | it searches media, not songs |
 | Video controls for a song's or a countdown's background video, and for the camera | the request names a video added to a set; a background loops silently behind text |
 | A loop toggle, a volume slider or playback speed | not requested; the user chose seek, skip and mute as the extras |
 | Keeping a video's position when the wall leaves and returns, or under blackout, an overlay or a takeover | existing behaviour: the wall unmounts the item and it plays from 00:00 on return; not requested |
@@ -342,19 +375,21 @@ All five changes reach every installation as one release.
 | A save while that countdown counts on the wall | Restart from the new target only when the duration or clock time changed; otherwise keep counting and restyle (AD-093) | user, 2026-11-16: "Restart only if time changed (Recommended)" | y |
 | After picking a new photo in the `Imagem` dialog | It is imported and shown first in the grid; the operator clicks it to project; several files may be picked | user, 2026-11-16: "Add to the grid, I click it (Recommended)" | y |
 | Video controls beyond time, bar, pause/resume and restart | Seek on the bar, `−10 s` / `+10 s`, mute/unmute (AD-094) | user, 2026-11-16: "Seek on the progress bar, Skip -10 s / +10 s, Mute / unmute" | y |
-| Cause of the "—" names | The presenter reads the Biblioteca view's search-filtered song list; the fix resolves titles from an unfiltered, uncapped list | User, 2026-11-17, after approval: "The problem occured when I just have added a new song manually creating and then present, on presenter mode the songs had the "-" all of them". Reproduced in the real app at `v1.9.0` (local harness): creating a song with an empty Biblioteca search and presenting shows every title; searching first ("tu és soberano"), creating the song and presenting shows "—" on every song the search does not match, and searching a line of the lyrics (not indexed) shows "—" on all of them. At `HEAD` all three show every title. Whether a search was set on the user's machine is not known | n |
+| Cause of the "—" names | The presenter reads the Biblioteca view's search-filtered song list; the fix resolves titles from an unfiltered, uncapped list | User, 2026-11-17, after approval: "The problem occured when I just have added a new song manually creating and then present, on presenter mode the songs had the "-" all of them". Reproduced in the real app at `v1.9.0` (local harness): creating a song with an empty Biblioteca search and presenting shows every title; searching first ("tu és soberano"), creating the song and presenting shows "—" on every song the search does not match, and a search matching none of the set's songs shows "—" on all of them (the harness stub matched title and artist only, so a lyric line did that there; the real index also holds the lyrics, so in the app a lyric line of a set song would still find that song). At `HEAD` all three show every title. Whether a search was set on the user's machine is not known | n |
 | Live reorder is saved, and the row on screen may be moved | Saved to the set and applied to every output with it loaded; any row moves, the one on screen included (AD-095) | D-88 already saves live adds and removes; moving a row never changes what a wall shows | n |
 | The schedule fields while a countdown is counting on that screen | Disabled, stored schedule kept (criterion 46) | an output holds one countdown: arming a schedule replaces the one counting on the wall, which Home's save would do | n |
 | Live video controls are run-only | Pause, position and mute are not saved; each landing starts from 00:00 with the item's saved options | as D-89 for the countdown strip | n |
 | Release version | `1.10.0` | a minor bump for new features, as `1.8.0` → `1.9.0` was | n |
 | Who publishes | The agent pushes `main` and `v1.10.0` once the gate is green and the user says go; the user publishes the draft on GitHub; the agent then checks the tag and `latest.json` | the flow the user chose for `v1.9.0` (2026-10-28: "You publish, I confirm"); a push needs its own go-ahead | n |
 | New labels | pt-BR / en-US: `Enviar imagem do computador` / `Upload image from computer`; `Importando 1/2…` / `Importing 1/2…`; `1 arquivo não foi importado` / `1 file was not imported`; drag handle `Reordenar <name>` / `Reorder <name>`; strip `Vídeo` / `Video`, `Pausar`, `Retomar`, `Reiniciar` (the countdown strip's words), `−10 s`, `+10 s`, `Silenciar` / `Mute`, `Ativar som` / `Unmute`, bar `Posição do vídeo` / `Video position`, `Não foi possível reproduzir o vídeo` / `The video could not be played`; row control `Editar cronômetro` / `Edit countdown`; `Indisponível enquanto um cronômetro está em andamento` / `Unavailable while a countdown is running` | no source draws them; they follow the neighbouring controls' wording | n |
+| Which searches ignore accents (S7) | Every song search: Home's, the live picker's and the Biblioteca's | user: "add a filter behaviour on searching songs ... disconsider these tone and special letter (ç) on search filter" | n |
 | Mutation count | 5, one per slice S1-S5 | five independent rules; the default 3 would leave two slices unprobed | n |
 
 **Open questions:** none - all resolved or logged above.
 
 ## Sources
 
+- User request, 2026-11-17 - "update the feature to add a filter behaviour on searching songs, our song library is all in Portuguese-BR so some songs has tone, link "Só pra te Adorar", "Manancial de Toda Benção", my idea is disconsider these tone and special letter (ç) on search filter, so when I search by "So pra" should match, or "bencao" should match, etc. Once finalizing these add commit everything and push the tag to create the release version" - S7, and the go-ahead for the push (AC 51)
 - User request, 2026-11-16 - "generate a new release with these features and fixes below - Fix an issue where some songs in "presenter mode" glitched, resulting in their names being replaced by a hyphen ("-"); The image button in "presenter mode" should allow for uploading a new photo from the local directory when the modal is opened, rather than being limited to previously uploaded images; Enable the ability to drag and drop items within the set in "presenter mode" to reorganize their hierarchy; When a video is added to a set and started in "presenter mode," switching to a "black screen" item causes the screen to update correctly, but the video continues to play in a loop in the background. This should not happen; changing the item should remove focus from the video and stop it immediately. Additionally, "presenter mode" lacks feedback on video progress—such as time remaining, pause, restart, etc.; Add full editing capabilities for the countdown timer while in "presenter mode."" - the scope. No capture came with it, so no screen binds
 - `.specs/project/STATE.md` D-86 (countdown source item), D-88 (live set edits on every output), D-89 (run-only countdown strip) and `.specs/STATE.md` AD-091, AD-093, AD-094, AD-095 - the decisions this conforms to
 - `docs/release.md` - the release flow criteria 50 and 51 follow

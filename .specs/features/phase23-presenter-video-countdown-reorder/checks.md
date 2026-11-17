@@ -4,7 +4,7 @@ Mutations: 5
 Build: `npx tsc --noEmit`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
 Plan: `.specs/features/phase23-presenter-video-countdown-reorder/plan.md`
 
-71 checks in 6 slices (2 appended during the build, 4 after verification, 1 after the user's report) · 1 one-way door · 0 open
+76 checks in 7 slices (2 appended during the build, 4 after verification, 1 after the user's report, 5 with S7) · 1 one-way door · 0 open
 
 ## Checks
 
@@ -249,6 +249,25 @@ Proof: `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx
 Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::restart_after_an_item_edit_returns_to_the_new_target`
 Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::live_adjust_moves_the_target`
 
+### S7 - Song search ignores accents and ç (appended with the plan's S7, 2026-11-17)
+
+**C74** - The in-browser song match ignores accents, ç and case on both sides and matches anywhere in the title or the artist: "so pra" → "Só pra te Adorar"; "bencao", "BENÇÃO" and "cao" → "Manancial de Toda Benção"; "coracao" → "Coração Igual ao Teu"; "unico" → "Ao Único"; "joao" → a song by "João Alexandre"; "só pra" → "Só pra te Adorar"; "adorar" → "Só pra te Adorar"; "xyz" → none; "" → every song; every Portuguese accented letter, lower and upper case (á à â ã é ê í ó ô õ ú ü ç), folds to its plain letter (AC 53, 54, 56)
+Proof: `npx vitest run src/utils/songSearch.test.ts -t "ignores accents, ç and case on both sides"`
+Proof: `npx vitest run src/utils/songSearch.test.ts -t "folds every Portuguese accented letter"`
+
+**C75** - In Home's song search, typing "so pra" lists "Só pra te Adorar" and not "Manancial de Toda Benção"; "bencao" lists "Manancial de Toda Benção" only; "zzz" shows the empty message; clearing it lists every song (AC 53, 54, 56)
+Proof: `npx vitest run src/components/setbuilder/HomeSetBuilder.test.tsx -t "song search ignores accents and ç"`
+
+**C76** - In the live `Adicionar música` picker, typing "so pra" lists "Só pra te Adorar" only; "bencao" lists "Manancial de Toda Benção" only; "zzz" shows `Nenhuma música corresponde à pesquisa.` (AC 53, 54, 56)
+Proof: `npx vitest run src/components/presentation/LiveSongPicker.test.tsx -t "search ignores accents and ç"`
+
+**C77** - `list_songs` with a Biblioteca search ignores accents and ç: "so pra", "bencao", "coracao" and "joao" each return only the accented song they name, through the full-text index; the fallback for an unbalanced quote or parenthesis does too, matching anywhere in title or artist: `so "pra` → "Só pra te Adorar", `bencao (` → "Manancial de Toda Benção", `xyz (` → none; an empty search returns every song (AC 53, 54, 55, 56)
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --test fts search_ignores_accents_and_cedilla`
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --test fts fallback_search_ignores_accents_and_cedilla`
+
+**C78** - The Rust fold maps every Portuguese accented letter, lower and upper case (á à â ã é ê í ó ô õ ú ü ç), to its plain lower-case letter and leaves other text as lower case: "Só pra te Adorar" → "so pra te adorar", "BENÇÃO" → "bencao" (AC 55)
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib services::fts_query::tests::fold_for_search_drops_accents_and_cedilla`
+
 ### S6 - Release v1.10.0
 
 **C61** - The version reads `1.10.0` in `package.json`, both `package-lock.json` fields, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock` (AC 50)
@@ -298,6 +317,11 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 | fields the dialog loads and saves back, AC 40 (9) | name C70 · duration C70 · clock time C70 · message C70 · message size C70 · digits size C70 · end action C70 · background C70 · position C70 · schedule C70 | - |
 | countdown dialog exits (4) | `Salvar` C49 · refused save C54 · `Cancelar` C59 · `Parar` C59 | - |
 | locales (2) | pt-BR C14 · en-US C14 | - |
+| song searches, AC 53 (3) | Home C75 · live picker C76 · Biblioteca C77 | - |
+| Biblioteca search paths (2) | full-text index C77 · unbalanced quote or parenthesis fallback C77, C78 | - |
+| AC 53 examples (7) | "so pra" C74, C75, C76, C77 · "bencao" C74, C75, C76, C77 · "BENÇÃO" C74 · "coracao" C74, C77 · "unico" C74 · "joao" (artist) C74, C77 · "só pra" C74 | - |
+| accented letters folded (13, both cases) | á à â ã é ê í ó ô õ ú ü ç - C74 (browser), C78 (Rust), table-driven over all 26 | - |
+| AC 56 states (2) | empty search C74, C75, C77 · no match C75, C76, C77 | - |
 | release artefacts, AC 50-52 (5) | five version files C61 · tag C62 · published manifest on both platforms C63 · roadmap C64 · CLAUDE.md contract C64 | - |
 
 ## Swept

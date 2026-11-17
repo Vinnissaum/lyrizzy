@@ -1,8 +1,8 @@
 # phase23-presenter-video-countdown-reorder proofs
 
-**HEAD**: f09a251
+**HEAD**: 9ee3024
 **Tree**: clean
-**Result**: 101 pass, 3 fail; mutations 0 killed, 1 not
+**Result**: 101 pass, 3 fail; mutations 5 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -115,4 +115,8 @@
 
 | Mutation | Location | Killed |
 | --- | --- | --- |
-| spec refused | `  mutation 1: const allSongs = search ? await listSon… occurs 0 times in src/s` | no |
+| S1 C4: refresh() under a search stores the filtered list as allSongs | `src/stores/library.ts:78` | yes |
+| S2 C65: the wall reloads its media only when its list is empty | `src/components/presentation/QuickMediaRenderer.tsx:19` | yes |
+| S3 C18: current and frozen re-pointed by the permutation instead of its inverse | `src-tauri/src/domain/presentation.rs:200` | yes |
+| S4 C27: an outgoing video keeps playing until its layer unmounts | `src/components/presentation/MediaSlideRenderer.tsx:113` | yes |
+| S5 C52: an item edit skips a finished countdown counting from the item | `src-tauri/src/commands/countdown.rs:558` | yes |

@@ -1,0 +1,16 @@
+<!doctype html><style>
+*{box-sizing:border-box;margin:0}
+.panel{width:VAR_Wpx;height:256px;display:flex;flex-direction:column;border-top:1px solid #ccc}
+.head{padding:8px 12px;height:41px}
+.grid{flex:1 1 0%;overflow-y:auto;padding:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.grid.fixed{grid-auto-rows:max-content}
+.card{display:flex;flex-direction:column;border-radius:8px;overflow:hidden;border:2px solid transparent;padding:0;background:none}
+.thumb{aspect-ratio:16/9;background:#333}
+.name{font-size:12px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<div class="panel"><div class="head">filters</div><div class="grid" id="g"></div></div>
+<script>
+const g=document.getElementById('g');
+if(location.hash==='#fixed')g.classList.add('fixed');
+for(let i=0;i<12;i++){const b=document.createElement('button');b.className='card';b.innerHTML='<div class="thumb"></div><p class="name">imagem '+i+'.jpg</p>';g.appendChild(b);}
+</script>

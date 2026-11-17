@@ -1,8 +1,8 @@
 # phase23-presenter-video-countdown-reorder proofs
 
-**HEAD**: 0c8ce1c
+**HEAD**: d9529b7
 **Tree**: clean
-**Result**: 108 pass, 3 fail; mutations 5 killed, 0 not
+**Result**: 109 pass, 3 fail; mutations 7 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -106,6 +106,7 @@
 | C74 | `npx vitest run src/utils/songSearch.test.ts -t "ignores accents, ç and case on both sides"` | 1 | 1 | pass |
 | C74 | `npx vitest run src/utils/songSearch.test.ts -t "folds every Portuguese accented letter"` | 1 | 1 | pass |
 | C75 | `npx vitest run src/components/setbuilder/HomeSetBuilder.test.tsx -t "song search ignores accents and ç"` | 1 | 1 | pass |
+| C79 | `npx vitest run src/components/set/SetBuilder.test.tsx -t "the song picker search ignores accents and ç"` | 1 | 1 | pass |
 | C76 | `npx vitest run src/components/presentation/LiveSongPicker.test.tsx -t "search ignores accents and ç"` | 1 | 1 | pass |
 | C77 | `cargo test --manifest-path src-tauri/Cargo.toml --test fts search_ignores_accents_and_cedilla` | 2 | - | pass |
 | C77 | `cargo test --manifest-path src-tauri/Cargo.toml --test fts fallback_search_ignores_accents_and_cedilla` | 1 | - | pass |
@@ -127,3 +128,5 @@
 | S3 C18: current and frozen re-pointed by the permutation instead of its inverse | `src-tauri/src/domain/presentation.rs:200` | yes |
 | S4 C27: an outgoing video keeps playing until its layer unmounts | `src/components/presentation/MediaSlideRenderer.tsx:113` | yes |
 | S5 C52: an item edit skips a finished countdown counting from the item | `src-tauri/src/commands/countdown.rs:558` | yes |
+| S7 C77: the fallback keeps a title's quotes and parentheses in the comparison | `src-tauri/src/commands/song.rs:510` | yes |
+| S7 C74: the typed text is lower-cased but its accents are kept | `src/utils/songSearch.ts:23` | yes |

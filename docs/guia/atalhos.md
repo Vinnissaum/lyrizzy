@@ -8,7 +8,7 @@ Durante o culto, o teclado é o jeito mais rápido de operar. Estas são as tecl
 | Slide anterior | <kbd>←</kbd> |
 | Ligar e desligar a tela preta | <kbd>B</kbd> ou <kbd>F10</kbd> |
 | Congelar o telão (e descongelar) | <kbd>F</kbd> |
-| Fechar o aviso ou a imagem / parar a apresentação | <kbd>Esc</kbd> |
+| Fechar o aviso / parar a apresentação | <kbd>Esc</kbd> |
 | Ir para o item 1, 2, 3… 9 do conjunto | <kbd>1</kbd> a <kbd>9</kbd> |
 | Pausar e retomar o cronômetro | <kbd>P</kbd> |
 | Abrir (ou reabrir) a janela do telão | <kbd>Ctrl</kbd> + <kbd>P</kbd> |
@@ -22,7 +22,7 @@ Com [duas telas](./duas-telas), os atalhos comandam a tela escolhida nas abas **
 
 <kbd>Esc</kbd> e <kbd>F10</kbd> funcionam como no PowerPoint e não podem ser trocadas:
 
-- <kbd>Esc</kbd> fecha o aviso ou a imagem que estiver no telão. Sem aviso nem imagem, para a apresentação.
+- <kbd>Esc</kbd> fecha o aviso que estiver no telão. Sem aviso, para a apresentação.
 - <kbd>F10</kbd> liga e desliga a tela preta.
 
 ## Mudar os atalhos

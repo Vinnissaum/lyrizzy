@@ -1,6 +1,6 @@
 # Aviso, imagem e tela preta
 
-Durante a apresentação, a barra de cima tem os recursos de improviso do culto: apagar o telão, mandar um aviso escrito, mostrar uma imagem ou abrir um PowerPoint que chegou na hora.
+Durante a apresentação, a barra de cima tem os recursos de improviso do culto: apagar o telão, mandar um aviso escrito, colocar uma imagem no conjunto ou abrir um PowerPoint que chegou na hora.
 
 ## Tela preta
 
@@ -31,20 +31,17 @@ O tamanho escolhido com **−** e **+** fica salvo para os próximos avisos, mes
 
 ## Imagem
 
-Para mostrar uma imagem na hora, como a chave Pix da oferta, um cartaz ou o logo da igreja:
+Para colocar uma imagem no culto na hora, como a chave Pix da oferta, um cartaz ou o logo da igreja:
 
-1. Clique em **Imagem**.
-2. Clique na imagem que quer mostrar.
+1. Clique em **Imagem**. Abre a janela **Adicionar imagem ao conjunto**.
+2. Clique na imagem. Ela entra no conjunto logo depois do item em que você está, e a miniatura ganha a marca **Adicionada**.
+3. Feche a janela e, quando for a hora, clique na imagem no painel **Conjunto** para mostrá-la no telão.
 
-Se a imagem ainda não estiver no app, clique em **Enviar imagem do computador**, escolha o arquivo e depois clique na miniatura dela para mostrar.
+Adicionar não muda o telão: ele continua no item que está mostrando. Se você clicar em mais de uma imagem, elas entram em sequência, na ordem em que você clicou.
 
-A imagem fica no telão até você clicar em **Fechar overlay** ou apertar <kbd>Esc</kbd>. Assim como no aviso, você pode navegar no conjunto enquanto ela está no ar.
+Se a imagem ainda não estiver no app, clique em **Enviar imagem do computador**, escolha o arquivo e depois clique na miniatura dela para adicioná-la.
 
-::: warning A tela preta esconde a imagem
-Com a tela preta ligada, a imagem não aparece. Desligue a tela preta primeiro.
-:::
-
-As imagens enviadas por aqui ficam guardadas na [Mídia](./midia) para as próximas vezes.
+A imagem fica salva no conjunto, como os outros itens: dá para arrastá-la para outra posição ou removê-la. As imagens enviadas por aqui ficam guardadas na [Mídia](./midia) para as próximas vezes.
 
 ## Apresentação de última hora
 
@@ -62,5 +59,4 @@ Essa conversão precisa do [LibreOffice](./programas-auxiliares#libreoffice) ins
 | --- | --- |
 | Aviso ligado | O aviso, mesmo com a tela preta ligada. |
 | Tela preta ligada (sem aviso) | Tudo preto, até por cima de uma imagem. |
-| Imagem ligada | A imagem, por cima dos slides. |
 | Cronômetro agendado começando | O cronômetro, por cima de tudo, até a contagem acabar. Veja [Cronômetro](./cronometro#agendar-para-comecar-sozinho). |

@@ -17,7 +17,7 @@ Se você usa dois telões, o app pode perguntar se deve espelhar a apresentaçã
 
 *Em cima, a barra de ações. Embaixo, os painéis Conjunto, Estrofes e Ao vivo.*
 
-- **Barra de cima:** **Parar**, **Tela preta**, **Imagem**, **Aviso** e **Apresentação**. Veja [Aviso, imagem e tela preta](./aviso-imagem-tela-preta).
+- **Barra de cima:** **Parar**, **Tela preta**, **Imagem**, **Aviso** e **Apresentação**. **Imagem** abre **Adicionar imagem ao conjunto**, que coloca a imagem no conjunto sem mudar o telão. Veja [Aviso, imagem e tela preta](./aviso-imagem-tela-preta).
 - **Conjunto** (à esquerda): os itens do culto. O que está no telão fica destacado.
 - **Estrofes** (no meio): todos os slides do item atual, cada um com o nome ou o número da estrofe. O slide que está no telão fica destacado.
 - **Ao vivo** (à direita): uma cópia do que o telão está mostrando agora. Esse painel só aparece se a janela for larga o bastante, então deixe a janela do operador maximizada.
@@ -103,7 +103,7 @@ O lápis ao lado de um **cronômetro** abre a configuração dele. Se ele estive
 Clique em **Parar** ou aperte <kbd>Esc</kbd>. A janela do telão fecha e você volta para a tela **Início**.
 
 ::: info Esc fecha primeiro o aviso
-Se houver um aviso ou uma imagem no telão, o primeiro <kbd>Esc</kbd> só fecha o aviso ou a imagem. Aperte de novo para parar a apresentação.
+Se houver um aviso no telão, o primeiro <kbd>Esc</kbd> só fecha o aviso. Aperte de novo para parar a apresentação.
 :::
 
 Com dois telões apresentando conjuntos diferentes, o app pergunta qual tela parar. Veja [Duas telas](./duas-telas#parar-com-duas-telas).

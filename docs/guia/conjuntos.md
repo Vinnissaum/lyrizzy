@@ -35,7 +35,7 @@ Use os botões na parte de baixo do conjunto:
 | Botão | O que adiciona |
 | --- | --- |
 | **Música** | Uma música da biblioteca. Abre uma busca: digite e clique na música. |
-| **Mídia** | Uma imagem, um vídeo ou uma apresentação que já está na [Mídia](./midia). Filtre por **Todos**, **Imagens** ou **Vídeos** e clique no item. |
+| **Mídia** | Uma imagem, um vídeo ou uma apresentação que já está na [Mídia](./midia). Abre a janela **Adicionar mídia ao conjunto**, com as miniaturas grandes: filtre por **Todos**, **Imagens** ou **Vídeos** e clique no item. A lixeira de cada miniatura exclui o arquivo da biblioteca, depois de confirmar; um arquivo usado por uma música ou um conjunto não é excluído, e o app avisa **Mídia em uso**. |
 | **Contagem** | Um [cronômetro](./cronometro) de contagem regressiva, que já vem com 10 minutos. |
 | **Câmera** | Uma [câmera ou página da internet](./camera). |
 | **Tela preta** | Um momento com o telão todo preto. |

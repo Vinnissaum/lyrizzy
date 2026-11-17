@@ -33,7 +33,7 @@ Para fundos e vinhetas, prefira vídeos em Full HD (1920×1080) em vez de 4K. O 
 - Use **Todos**, **Imagens** e **Vídeos** para filtrar, e **Pesquisar mídia…** para buscar pelo nome.
 - Clique em um item para abrir os **Detalhes**: nome, tipo, dimensões, duração (vídeos) e tamanho.
 - Para renomear, mude o **Nome** nos detalhes.
-- Para apagar, clique em **Excluir** nos detalhes e confirme.
+- Para apagar, clique em **Excluir** nos detalhes e confirme. Também dá para apagar sem sair do conjunto: no botão **Mídia** do conjunto, a janela **Adicionar mídia ao conjunto** tem uma lixeira em cada miniatura.
 
 Se o arquivo estiver em uso por alguma música ou conjunto, o app não deixa excluir e mostra onde ele é usado (**Mídia em uso**). Tire o arquivo desses lugares antes de excluir.
 
@@ -48,7 +48,7 @@ As miniaturas e a duração dos vídeos são geradas pelo **FFmpeg**. Sem ele, o
 | No conjunto | Botão **Mídia** no conjunto. Veja [Montar o conjunto](./conjuntos#adicionar-itens). |
 | Atrás da letra de uma música | Campo **Fundo** no editor da música. Veja [Biblioteca](./biblioteca#outras-opcoes-da-musica). |
 | Atrás do cronômetro | Opção **Fundo (vídeo)**. Veja [Cronômetro](./cronometro#opcoes). |
-| Na hora, durante o culto | Botão **Imagem**. Veja [Aviso, imagem e tela preta](./aviso-imagem-tela-preta#imagem). |
+| Na hora, durante o culto | Botão **Imagem**, que coloca a imagem no conjunto. Veja [Aviso, imagem e tela preta](./aviso-imagem-tela-preta#imagem). |
 
 ## PowerPoint e PDF
 

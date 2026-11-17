@@ -4,7 +4,7 @@ Mutations: 5
 Build: `npx tsc --noEmit`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
 Plan: `.specs/features/phase23-presenter-video-countdown-reorder/plan.md`
 
-66 checks in 6 slices (2 appended during the build) · 1 one-way door · 0 open
+70 checks in 6 slices (2 appended during the build, 4 after verification) · 1 one-way door · 0 open
 
 ## Checks
 
@@ -25,6 +25,10 @@ Proof: `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "a
 
 **C5** - Loading the presenter's titles leaves the library store's `search` text and its filtered `songs` as they were: search "amor" with 1 match stays "amor" with 1 song (AC 5)
 Proof: `npx vitest run src/stores/library.test.ts -t "loading presenter titles leaves the search and its result alone"`
+
+**C67** - A library reload under a Biblioteca search - the one the live editor runs after `Salvar` - keeps the presenter's titles whole: with the search "amor", saving O AMOR DE DEUS renamed O GRANDE AMOR DE DEUS in the dialog opened from its row relabels that row, and AJUNTAMENTO (no match) keeps its title and artist; the store's `songs` stays the 1 match and `allSongs` the whole library (AC 4; appended after verification)
+Proof: `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "a song saved in the live editor under a library search keeps every row titled"`
+Proof: `npx vitest run src/stores/library.test.ts -t "a library refresh under a search keeps the whole library current too"`
 
 **C6** - A song item whose song is not in the unfiltered list labels as "—" (AC 6)
 Proof: `npx vitest run src/components/presentation/itemMeta.test.tsx -t "a song missing from the library falls back to the dash"`
@@ -110,6 +114,16 @@ Proof: `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "one
 **C66** - On the wall, a change that only shifts the current item's index (a live reorder, add or remove before it) does not re-run the transition: the content stays mounted, so a playing video's `<video>` element is the same one (AC 16; appended during the build - the transition was keyed by item index)
 Proof: `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "a shift of the current item's index leaves its content mounted"`
 
+**C71** - A web page, a camera (rtsp and mjpeg) and a song's or countdown's video background stop in the update that replaces them on the wall, before the fade ends: the page's iframe, the camera's connection and its stream are gone at once, and the background video is paused; all are unmounted after the fade (AC 25; appended after verification)
+Proof: `npx vitest run src/components/presentation/WebViewRenderer.test.tsx -t "a web page or camera leaving the wall is dropped at once"`
+Proof: `npx vitest run src/components/presentation/SongBackground.test.tsx -t "a background video leaving the wall is paused at once"`
+
+**C72** - Moving to another slide of the same item updates the wall in place, with no crossfade: the next strophe of a song keeps the same video background element playing from where it was (12 s stays 12 s), and only a change of item crossfades (plan `Changes underneath`, the existing song background behaviour; appended during the verification fixes - the crossfade rewrite remounted each strophe)
+Proof: `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "the next strophe of a song keeps its video background playing"`
+Proof: `npx vitest run src/components/presentation/TransitionStage.test.tsx -t "a change within the same group updates in place"`
+Proof: `npx vitest run src/components/presentation/TransitionStage.test.tsx -t "returning to the group on screen drops a queued change of group"`
+Proof: `npx vitest run src/components/presentation/SongBackground.test.tsx -t "the next strophe of the same song keeps its background playing"`
+
 **C29** - In Chromium, with a looping video item playing on the wall, going to a `Tela preta` item leaves no `<video>` element and nothing playing within 230 ms; going back plays the video from 00:00 (AC 24)
 Proof: walk - on the presentation window with a real video file: play the looping video item, go to the `Tela preta` item, read the page's `<video>` elements after 300 ms, then go back
 
@@ -187,6 +201,11 @@ Proof: `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx
 **C49** - `Salvar` in that dialog sends `update_set_item` with the row's item id and the edited configuration, and the dialog closes (AC 41)
 Proof: `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "row edit saves the countdown and closes"`
 
+**C70** - The dialog opened from a countdown row loads every field the item holds, and `Salvar` with nothing changed sends each one back unchanged: a 07:30 countdown named "Abertura do culto" with message, message size 150, digits size 80, end action `Avançar conjunto`, background "Fundo azul", position bottom-right and a schedule later today; and a clock-time 19:30 countdown with end action `Tela preta` and position top-left (AC 40; appended after verification)
+Proof: `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "the dialog opened from a row loads every stored field"`
+Proof: `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "a clock-time countdown opens on its clock time"`
+Proof: `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "saving unchanged sends back every stored field"`
+
 **C50** - An item edit that leaves the target as it was keeps the countdown's mode, `remaining_ms` and `target_epoch_ms` and copies the message, sizes, position, background and end action: running at 03:12 with a new message; paused at 02:00 with a new position; running at 03:12 with the end action changed to blackout; the same 10:00 duration saved again (AC 42, 43)
 Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::item_edit_restyles_without_touching_the_time`
 
@@ -247,6 +266,7 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 | --- | --- | --- |
 | library search states, AC 1 (3) | "amor" C1 · "zzz" C1 · none C1, table-driven over all 3 | - |
 | readers of the unfiltered titles (4) | set pane row C1 · strophes header C2 · remove confirmation C2 · song picker C3 | - |
+| what reloads the library while presenting (2) | `songs_changed` C4 · the live editor's own reload after `Salvar` C67 | - |
 | upload outcomes, AC 9-13 (5) | all imported C9 · importing C11 · one failed C12 · cancelled C13 · click projects C10 | - |
 | windows that must know an uploaded image (2) | operator dialog C9 · the wall C65 | - |
 | upload control states, AC 7 (2) | library with images C7 · empty library C7 | - |
@@ -254,7 +274,8 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 | AC 20 examples (4) | one missing C22 · one unknown C22 · one twice C22 · a true permutation C22 | - |
 | reorder gestures (3) | pointer drag C17 · keyboard C17 · drop handler C16 | - |
 | reorder readers (5) | stored order C19 · every output C19 · navigation C20 · armed schedule reference C24 · the wall's mounted content C66 | - |
-| items leaving the wall, AC 24-25 (5) | video item C28 · camera item C28 · song with a video background C28 · countdown with a video background C28 · video to video C28 | - |
+| items leaving the wall, AC 24-25 (6) | video item C28, C27 · camera item C28, C71 · web page item C71 · song with a video background C28, C71 · countdown with a video background C28, C71 · video to video C28 | - |
+| changes on the wall that do not leave the item (2) | next strophe C72 · index shift by a live edit C66 | - |
 | transition durations (2) | 200 ms C26 · 0 ms C26 | - |
 | strip visibility, AC 27 (6) | video reported C31 · `itemId: null` C31 · mode `idle` C31 · mode `blank` C31 · overlay C31 · takeover C31 | - |
 | `video_command` actions, door 1 (6) | `pause` C34 · `resume` C34 · `restart` C35 · `seek` C37 · `skip` C36 · `mute` C38 | - |
@@ -269,6 +290,7 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 | outputs for a countdown edit (3) | counting from the item C52 · counting from another item C52 · nothing counting C52 | - |
 | schedule fields while presenting, AC 46-47 (4) | a countdown counting C56 · idle, schedule on C57 · idle, own schedule off C57 · idle, another's schedule armed C57 | - |
 | dialog hosts (2) | presenter C48, C56, C57 · Home C58 | - |
+| fields the dialog loads and saves back, AC 40 (9) | name C70 · duration C70 · clock time C70 · message C70 · message size C70 · digits size C70 · end action C70 · background C70 · position C70 · schedule C70 | - |
 | countdown dialog exits (4) | `Salvar` C49 · refused save C54 · `Cancelar` C59 · `Parar` C59 | - |
 | locales (2) | pt-BR C14 · en-US C14 | - |
 | release artefacts, AC 50-52 (5) | five version files C61 · tag C62 · published manifest on both platforms C63 · roadmap C64 · CLAUDE.md contract C64 | - |
@@ -288,8 +310,8 @@ Proof: `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md`
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** Verifier (independent sub-agent, fresh context) at `651c741`, 2026-11-17 - diff range `6ac65d7..651c741`; no screens sub-agent (no capture binds)
-- **Boundary:** S1 (C1-C6) closed at `0a7c7b7`; S2 (C7-C13, C65) closed at `f15497d`; S3 (C15, C16, C18-C24) closed at `a36e35a`; S5 (C47-C60) closed at `3bd3882`; S4 code at `3d28acd` and its proofs (C26-C28, C30-C45, C66) with C14 at `be3fae8`; the walks C17, C25, C29, C46 at `be3fae8` (code unchanged since); C61 at `afed102`; CLAUDE.md's half of C64 at `aefef5f`. Open: C62, C63 and the roadmap half of C64, which follow the release; the push needs the user's go-ahead
+- **Dispatched:** Verifier (independent sub-agent, fresh context) at `651c741`, 2026-11-17 - diff range `6ac65d7..651c741`; no screens sub-agent (no capture binds) - returned: FAIL, 5 findings, 2/5 mutations killed (C4, C65, C52 not); the C4 mutation's proof now names C67's live-editor test, which holds the rule it mutates (`refresh()` under a search), as the Verifier's fix proposed
+- **Boundary:** S1 (C1-C6) closed at `0a7c7b7`; S2 (C7-C13, C65) closed at `f15497d`; S3 (C15, C16, C18-C24) closed at `a36e35a`; S5 (C47-C60) closed at `3bd3882`; S4 code at `3d28acd` and its proofs (C26-C28, C30-C45, C66) with C14 at `be3fae8`; the walks C17, C25, C29, C46 at `be3fae8` (code unchanged since); C61 at `afed102`; CLAUDE.md's half of C64 at `aefef5f`; the five verification findings and C67, C70, C71, C72 at `f5a06f8`. Open: C62, C63 and the roadmap half of C64, which follow the release; the push needs the user's go-ahead
 - **Abandoned:** none. Corrected during the build: C2's wording named AJUNTAMENTO for the remove confirmation while it is on screen, where remove is disabled (D-88); it now names GALILEU, a song not on screen that does not match the search. The obligation (AC 2) is unchanged. Test changes that follow a changed claim or a new store field, not a weakened one: `SetItemList.test.tsx` "edit control on every song row and no other row" became "edit control on song and countdown rows and no other row" (AD-093 replaces that part of AD-091, so phase 22's C1 selector no longer exists); fixtures gained `allSongs: null`, `refreshAllSongs`, `onSongsChanged`, `listMedia`, `importMedia`, `onVideoReport`, `emitVideoReport`, `onVideoCommand` where the code now calls them. The video bar first committed a seek on pointer-up only; a release outside the slider would have been lost, so it also commits on the range input's native `change` (fired on release), once per drag
 - **Found, outside scope:** the media store has the same flaw the song list had - `useMediaStore.media` is whatever the Mídia view last filtered or searched for, so with that filter on "Vídeos" an image item in the set labels as `Mídia` and the operator's live preview of an image overlay shows a placeholder. The `Imagem` dialog no longer depends on it; the rest is untouched. Phase 22's release is still open in its own files (C18, C19: the `v1.9.0` draft published, its roadmap entry)
-- **Walked:** 2026-11-17 at `be3fae8` (later commits touch no code), in Chrome Headless Shell (Playwright build 1234) over CDP, with `--autoplay-policy=no-user-gesture-required`, against the real app (`src/main.tsx`) served by Vite. A local harness under `.harness/` (excluded from git) mounts it twice, as the operator window and as the presentation window, on one mocked backend whose state and events (`state_changed`, `video_report`, `video_command`) are relayed between the two pages over a BroadcastChannel; `asset.localhost` is mapped to a static server holding two real VP8 WebM files made for the walk (20 s looping "Abertura", 8 s "Vinheta"). The user reaches each state by presenting a set [AJUNTAMENTO, Regressivo, Abertura (video, loop), Tela preta, Vinheta (video), O AMOR DE DEUS]. (C29) Abertura playing at 1.55 s; the `Tela preta` row: 60 ms later the wall's video was paused, its element was gone 250 ms after the click (IPC included) and the strip with it, and 1.9 s later nothing was mounted; the Abertura row again: one video playing from 0.72 s; Abertura → Vinheta: only Vinheta mounted, playing from the start. (C46) the strip read `00:00 / 00:20` `−00:20` with `Pausar`, `Reiniciar`, `−10 s`, `+10 s`, `Silenciar`; `Pausar`: the wall stopped at 1.06 s and was still at 1.06 s a second later, the control read `Retomar`; `Retomar`: 2.06 s a second later; `Reiniciar`: 0.25 s; a real mouse click at 25% of the bar: 4.8 s (25% of 20 s, less the thumb's inset); a drag from 50% to 75%: the strip showed `00:15` while the wall stayed at 4.8 s, and the wall went to 15.2 s on release; `−10 s`: 5.2 s; `+10 s`: 15.2 s; `Silenciar`: the wall muted, the control read `Ativar som`; `Ativar som`: unmuted; playing, the strip read `00:16` `−00:04` against the wall's 16.4 s. At 1024×700 and 1536×912 the strip is one row under the action bar, and its 6 controls are all in view. (C17) a pointer drag of O AMOR DE DEUS's handle onto Regressivo sent `reorder_set_items` with [AJUNTAMENTO, O AMOR DE DEUS, Regressivo, Abertura, Tela preta, Vinheta] and no `go_to_item`, and AJUNTAMENTO stayed highlighted; focus on AJUNTAMENTO's handle, then Space, ArrowDown, Space sent [O AMOR DE DEUS, AJUNTAMENTO, …]; a plain click on the `Tela preta` row sent `go_to_item` for it. (C25) at 1024×700 and 1536×912 the set pane is 240 px wide and every row's handle, title, edit control (songs, countdown) and remove control lie inside it
+- **Walked:** 2026-11-17 at `be3fae8`, and every scene again at `f5a06f8` after the verification fix with the same results (the video element was gone 224 ms after the click there), in Chrome Headless Shell (Playwright build 1234) over CDP, with `--autoplay-policy=no-user-gesture-required`, against the real app (`src/main.tsx`) served by Vite. A local harness under `.harness/` (excluded from git) mounts it twice, as the operator window and as the presentation window, on one mocked backend whose state and events (`state_changed`, `video_report`, `video_command`) are relayed between the two pages over a BroadcastChannel; `asset.localhost` is mapped to a static server holding two real VP8 WebM files made for the walk (20 s looping "Abertura", 8 s "Vinheta"). The user reaches each state by presenting a set [AJUNTAMENTO, Regressivo, Abertura (video, loop), Tela preta, Vinheta (video), O AMOR DE DEUS]. (C29) Abertura playing at 1.55 s; the `Tela preta` row: 60 ms later the wall's video was paused, its element was gone 250 ms after the click (IPC included) and the strip with it, and 1.9 s later nothing was mounted; the Abertura row again: one video playing from 0.72 s; Abertura → Vinheta: only Vinheta mounted, playing from the start. (C46) the strip read `00:00 / 00:20` `−00:20` with `Pausar`, `Reiniciar`, `−10 s`, `+10 s`, `Silenciar`; `Pausar`: the wall stopped at 1.06 s and was still at 1.06 s a second later, the control read `Retomar`; `Retomar`: 2.06 s a second later; `Reiniciar`: 0.25 s; a real mouse click at 25% of the bar: 4.8 s (25% of 20 s, less the thumb's inset); a drag from 50% to 75%: the strip showed `00:15` while the wall stayed at 4.8 s, and the wall went to 15.2 s on release; `−10 s`: 5.2 s; `+10 s`: 15.2 s; `Silenciar`: the wall muted, the control read `Ativar som`; `Ativar som`: unmuted; playing, the strip read `00:16` `−00:04` against the wall's 16.4 s. At 1024×700 and 1536×912 the strip is one row under the action bar, and its 6 controls are all in view. (C17) a pointer drag of O AMOR DE DEUS's handle onto Regressivo sent `reorder_set_items` with [AJUNTAMENTO, O AMOR DE DEUS, Regressivo, Abertura, Tela preta, Vinheta] and no `go_to_item`, and AJUNTAMENTO stayed highlighted; focus on AJUNTAMENTO's handle, then Space, ArrowDown, Space sent [O AMOR DE DEUS, AJUNTAMENTO, …]; a plain click on the `Tela preta` row sent `go_to_item` for it. (C25) at 1024×700 and 1536×912 the set pane is 240 px wide and every row's handle, title, edit control (songs, countdown) and remove control lie inside it

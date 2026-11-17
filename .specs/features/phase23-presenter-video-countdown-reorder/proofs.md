@@ -1,8 +1,8 @@
 # phase23-presenter-video-countdown-reorder proofs
 
-**HEAD**: 651c741
+**HEAD**: ee527be
 **Tree**: clean
-**Result**: 88 pass, 3 fail; mutations 0 killed, 0 not
+**Result**: 88 pass, 3 fail; mutations 2 killed, 3 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -97,3 +97,13 @@
 | C64 | `grep -q 'video_report' CLAUDE.md && grep -q 'video_command' CLAUDE.md` | count unknown | - | pass |
 | Build | `npx tsc --noEmit` | - | - | pass |
 | Build | `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` | - | - | pass |
+
+## Mutations
+
+| Mutation | Location | Killed |
+| --- | --- | --- |
+| S1 C4: refresh() under a search stores the filtered list as allSongs | `src/stores/library.ts:70` | no |
+| S2 C65: the wall reloads its media only when its list is empty | `src/components/presentation/QuickMediaRenderer.tsx:19` | no |
+| S3 C18: current and frozen re-pointed by the permutation instead of its inverse | `src-tauri/src/domain/presentation.rs:200` | yes |
+| S4 C27: an outgoing video keeps playing until its layer unmounts | `src/components/presentation/MediaSlideRenderer.tsx:113` | yes |
+| S5 C52: an item edit skips a finished countdown counting from the item | `src-tauri/src/commands/countdown.rs:558` | no |

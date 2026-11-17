@@ -58,7 +58,7 @@ wall is also walked in a real Chromium.
 5. the operator drags a row's handle (new) in `SetItemList` (exists) -> `reorderSetItems` in `src/api/commands.ts` (exists) -> `commands/set.rs::reorder_set_items` (exists)
 6. `reorder_set_items` (exists) checks the ids are a permutation of the set's items, writes `SetItem.sort_order`, and for every output with the set loaded reorders `set.items` and `presentation_slides` and re-points `current_item_index` and `frozen_at` at the same items; the rule is a pure function in `domain/presentation.rs` (exists), beside `splice_insert` and `splice_remove`
 7. out: `set_changed` and one `state_changed` per output to both windows; no wall changes what it shows
-8. the wall changes item -> `TransitionStage` (exists) pauses the outgoing layer's media at once and unmounts that layer when its fade ends
+8. the wall changes item -> `TransitionStage` (exists) tells the outgoing layer it is leaving, so `MediaSlideRenderer`, `SongBackground` and `WebViewRenderer` (exist) stop its video, background or page at once, and unmounts that layer when its fade ends; a change within the same item (the next strophe) updates in place
 9. `MediaSlideRenderer` (exists) on the wall emits `video_report` (door 1) through `src/api/commands.ts` (exists) from its `<video>` element's events
 10. the video strip (new) in `OperatorPresentationLayout` (exists) shows the focused output's last report; a control emits `video_command` (door 1) through `src/api/commands.ts`, also to the other output while Simultânea is on (`fanOutToMirror`, exists)
 11. `MediaSlideRenderer` (exists) applies the command to its `<video>` and reports again (hop 9); the clamp and control rules are pure functions in `src/utils/` (new), as `countdownControls.ts` is
@@ -109,7 +109,9 @@ flowchart TD
     API -->|"5. reorder_set_items"| REORD
     REORD -->|"6. permute, re-point current and frozen"| DP
     DP -->|"7. set_changed, state_changed per output"| SIL
-    TS -->|"8. pause outgoing media, unmount after fade"| MSR
+    TS -->|"8. leaving: stop at once, unmount after fade"| MSR
+    TS -->|"8. leaving: pause the background"| SBG["SongBackground (exists)"]
+    TS -->|"8. leaving: drop the page or camera"| WVR["WebViewRenderer (exists)"]
     MSR -->|"9. video_report (door 1)"| API
     API -->|"10. last report"| VS
     VS -->|"10. video_command (door 1), fanOutToMirror"| API
@@ -127,7 +129,7 @@ flowchart TD
 | Front | What changes |
 | --- | --- |
 | domain | The presenter's song titles came from `useLibraryStore.songs`, which means "the Biblioteca view's current search result". They now come from an unfiltered list. Who reads `songs` today while presenting: `SetItemList`, `OperatorPresentationLayout` (strophes header), `StrophesGrid`, `OutputLaunchModal`, `LiveSongPicker`, `OperatorNotesPanel`, `SlideController`; each one that labels a set item moves to the unfiltered list. The Biblioteca view (`SongList`) keeps the filtered `songs` and its search text |
-| domain | `TransitionStage`'s back layer meant "the previous content, kept mounted until the next change". It now means "the previous content, only while it fades out". Its only user is `PresentationApp` |
+| domain | `TransitionStage`'s back layer meant "the previous content, kept mounted until the next change". It now means "the previous content, only while it fades out", and its renderers know it is leaving (`useLayerActive`): a video item pauses, a song's or countdown's video background pauses, a web page or camera is dropped. A change within the same item (the next strophe, or an index shift) now updates in place instead of crossfading - the old stage did the same in effect, reusing the front layer's elements, which is what kept a song's video background playing across strophes (C72). Both cut on screen: the incoming layer is opaque and on top at once. Its only user is `PresentationApp` |
 | domain | `reorder_set_items` wrote `sort_order` and emitted `set_changed`. It now also reorders the set in every output that has it loaded, and refuses a list that is not a permutation of the set's items. Its callers: Home's `SetBuilder` and `HomeSetBuilder`, which always send the full list |
 | domain | `update_set_item` with a `countdownConfig` patched the loaded sets. It now also restarts or restyles a countdown counting from that item (AD-093). Its callers: `CountdownScheduleModal` (Home, the scheduled widget's `Editar`, and now the presenter), `OperatorApp.handleCancelSchedule`, the item editors on Home |
 | domain | `CountdownScheduleModal` on save armed the schedule, or else reset the output's countdown. Opened while presenting it must not reset or re-arm over a countdown that is counting on the wall (criteria 39-41). On Home it arms and resets as today. On both, a refused save now shows its error in the dialog and keeps it open; it used to close nothing and log only |

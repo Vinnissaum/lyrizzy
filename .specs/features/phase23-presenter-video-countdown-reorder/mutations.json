@@ -1,0 +1,37 @@
+[
+  {
+    "file": "src/stores/library.ts",
+    "old": "const allSongs = search ? await listSongs() : songs;",
+    "new": "const allSongs = songs;",
+    "proof": "npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t \"a song saved in the live editor under a library search keeps every row titled\"",
+    "label": "S1 C4: refresh() under a search stores the filtered list as allSongs"
+  },
+  {
+    "file": "src/components/presentation/QuickMediaRenderer.tsx",
+    "old": "if (missing) refresh();",
+    "new": "if (missing && media.length === 0) refresh();",
+    "proof": "npx vitest run src/components/presentation/QuickMediaRenderer.test.tsx -t \"an overlay for media the wall has not loaded reloads the library\"",
+    "label": "S2 C65: the wall reloads its media only when its list is empty"
+  },
+  {
+    "file": "src-tauri/src/domain/presentation.rs",
+    "old": "let new_index_of = |old: usize| from.iter().position(|&o| o == old).unwrap_or(old);",
+    "new": "let new_index_of = |old: usize| from.get(old).copied().unwrap_or(old);",
+    "proof": "cargo test --manifest-path src-tauri/Cargo.toml --lib domain::presentation::tests::reorder_keeps_the_current_and_frozen_items",
+    "label": "S3 C18: current and frozen re-pointed by the permutation instead of its inverse"
+  },
+  {
+    "file": "src/components/presentation/MediaSlideRenderer.tsx",
+    "old": "if (frozen || !active) {",
+    "new": "if (frozen) {",
+    "proof": "npx vitest run src/components/presentation/TransitionStage.test.tsx -t \"an outgoing video is paused in the update that replaces it\"",
+    "label": "S4 C27: an outgoing video keeps playing until its layer unmounts"
+  },
+  {
+    "file": "src-tauri/src/commands/countdown.rs",
+    "old": "current.mode,\n            CountdownMode::Running | CountdownMode::Paused | CountdownMode::Finished",
+    "new": "current.mode,\n            CountdownMode::Running | CountdownMode::Paused",
+    "proof": "cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::countdown_edit_reaches_every_output_counting_from_it",
+    "label": "S5 C52: an item edit skips a finished countdown counting from the item"
+  }
+]

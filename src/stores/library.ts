@@ -2,6 +2,13 @@ import { create } from "zustand";
 import { getOrCreateDefaultSet, getSet, getSetting, listSongs, setSetting } from "../api/commands";
 import type { Song } from "../types";
 
+/**
+ * `list_songs` returns the first 200 songs by title unless given a limit;
+ * SQLite reads a negative one as no limit. The presenter's titles must hold
+ * every song a set can reference (src-tauri/tests/songs.rs).
+ */
+const WHOLE_LIBRARY = { limit: -1 } as const;
+
 /** Settings key for the operator's last-active set selection. */
 export const ACTIVE_SET_KEY = "ui.active_set_id";
 
@@ -66,8 +73,9 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     try {
       const search = get().search || undefined;
       const songs = await listSongs({ search });
-      // With no search the result already is the whole library.
-      const allSongs = search ? await listSongs() : songs;
+      // The Biblioteca's list is filtered by its search and capped at 200;
+      // the presenter's is neither.
+      const allSongs = await listSongs(WHOLE_LIBRARY);
       set({ songs, allSongs, isLoading: false });
     } catch (err) {
       console.error("Falha ao carregar músicas:", err);
@@ -77,7 +85,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   refreshAllSongs: async () => {
     try {
-      set({ allSongs: await listSongs() });
+      set({ allSongs: await listSongs(WHOLE_LIBRARY) });
     } catch (err) {
       console.error("Falha ao carregar músicas:", err);
     }

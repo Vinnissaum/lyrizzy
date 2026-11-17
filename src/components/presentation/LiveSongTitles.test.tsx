@@ -92,8 +92,14 @@ function backend(state: PresentationState) {
   vi.mocked(invoke).mockImplementation((cmd: string, args?: any) => {
     switch (cmd) {
       case "list_songs": {
+        // As the backend: by title, the first 200 unless a limit is given; a
+        // negative limit is no limit (src-tauri/tests/songs.rs).
         const search: string | undefined = args?.params?.search;
-        return Promise.resolve(search ? library.filter((s) => matches(s, search)) : library);
+        const limit: number = args?.params?.limit ?? 200;
+        const hits = (search ? library.filter((s) => matches(s, search)) : library)
+          .slice()
+          .sort((a, b) => a.title.localeCompare(b.title));
+        return Promise.resolve(limit < 0 ? hits : hits.slice(0, limit));
       }
       case "get_presentation_state":
         return Promise.resolve(args?.output === "two" ? { ...state, set: null, mode: "idle" } : state);
@@ -226,5 +232,29 @@ describe("Presenter song titles under a library search (P23)", () => {
     // The Biblioteca view still holds its search and what matches it.
     expect(useLibraryStore.getState().search).toBe("amor");
     expect(useLibraryStore.getState().songs.map((s) => s.id)).toEqual(["song-2"]);
+  });
+
+  it("a set song past the first 200 by title keeps its title", async () => {
+    // 250 songs sort before ZELO, the set's second song.
+    library = [
+      ...Array.from({ length: 250 }, (_, k) => song(`m-${k}`, `MÚSICA ${String(k + 1).padStart(3, "0")}`, "")),
+      song("song-1", "AJUNTAMENTO", "Jorge Camargo"),
+      song("song-2", "ZELO", "Coral"),
+    ];
+    searchedLibrary("");
+    present(twoSongSet);
+    // The presenter's own load of the library, not the Biblioteca's list.
+    await waitFor(() => expect(useLibraryStore.getState().allSongs).not.toBeNull());
+
+    await waitFor(() => expect(within(setPane()).getByText("ZELO")).toBeInTheDocument());
+    expect(within(setPane()).getByText("Coral")).toBeInTheDocument();
+    expect(within(setPane()).getByText("AJUNTAMENTO")).toBeInTheDocument();
+    expect(within(setPane()).queryByText("—")).not.toBeInTheDocument();
+
+    // The song picker holds the whole library too.
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar música" }));
+    const list = screen.getByTestId("live-song-picker-list");
+    expect(within(list).getAllByRole("button")).toHaveLength(252);
+    expect(within(list).getByText("ZELO")).toBeInTheDocument();
   });
 });

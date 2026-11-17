@@ -516,3 +516,52 @@ async fn round_trips_notes_background_author_copyright() {
     assert_eq!(updated.copyright.as_deref(), Some("Nova Letra"));
     assert!(updated.sections[0].notes.is_none(), "empty notes must normalize to NULL");
 }
+
+// P23: the presenter labels set items from the whole library. `list_songs`
+// returns the first 200 by title unless asked otherwise; a negative limit
+// (SQLite's "no limit") returns every song.
+#[tokio::test]
+async fn list_songs_with_no_cap_returns_every_song() {
+    let pool = open_test_db().await;
+    let titled = |title: String| CreateSongPayload {
+        title,
+        artist: None,
+        author: None,
+        copyright: None,
+        ccli_number: None,
+        key_signature: None,
+        language: None,
+        notes: None,
+        background_id: None,
+        scrim_opacity: None,
+        slide_config: None,
+        source: None,
+        background_mode: None,
+        background_preset: None,
+        font_family: None,
+        font_size: None,
+        text_casing: None,
+        sections: vec![],
+    };
+    for k in 1..=250 {
+        db_create_song(&pool, titled(format!("MÚSICA {k:03}"))).await.unwrap();
+    }
+    // Sorts after every other title: past the 200th.
+    let last = db_create_song(&pool, titled("ZELO".to_string())).await.unwrap();
+    let gone = db_create_song(&pool, titled("ZZ REMOVIDA".to_string())).await.unwrap();
+    db_delete_song(&pool, &gone.id).await.unwrap();
+
+    let capped = db_list_songs(&pool, ListSongsParams::default()).await.unwrap();
+    assert_eq!(capped.len(), 200);
+    assert!(capped.iter().all(|s| s.id != last.id));
+
+    let all = db_list_songs(
+        &pool,
+        ListSongsParams { search: None, limit: Some(-1), offset: None },
+    )
+    .await
+    .unwrap();
+    assert_eq!(all.len(), 251);
+    assert_eq!(all.last().unwrap().id, last.id);
+    assert!(all.iter().all(|s| s.id != gone.id));
+}

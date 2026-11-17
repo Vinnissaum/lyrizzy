@@ -17,6 +17,7 @@
 - All frontend calls go through src/api/commands.ts — never raw invoke() outside this file
 - Events emitted by Rust: "state_changed" (PresentationState), "media_library_changed", "countdown_tick", "update_progress" (UpdateProgress)
 - Both windows listen to ALL events, but only the operator window subscribes to "update_progress" — the presentation window has no update UI
+- Frontend events between the windows (no Rust involved), wrapped in src/api/commands.ts like "forward_keydown": "video_report" (VideoReport, presentation → operator: the video set item on that wall; `itemId: null` = none) and "video_command" (VideoCommand, operator → the presentation window of that `output` showing that `itemId`). The `<video>` element is the truth for playback; the presentation window still invokes no mutating command (AD-094)
 
 ## Two-Window Pattern
 - Operator window: label "operator", full UI, all commands

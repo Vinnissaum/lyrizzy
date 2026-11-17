@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { TransitionStage } from "./TransitionStage";
+import { MediaSlideRenderer } from "./MediaSlideRenderer";
+import { installFakeVideo } from "../../tests/fakeVideo";
+
+vi.mock("@tauri-apps/api/event", () => ({
+  emit: vi.fn(() => Promise.resolve()),
+  listen: vi.fn(() => Promise.resolve(() => {})),
+}));
 
 describe("TransitionStage", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -111,5 +118,99 @@ describe("TransitionStage", () => {
       </TransitionStage>
     );
     expect(screen.getByText("slide B")).toBeInTheDocument();
+  });
+
+  // ── P23: what left the wall does not keep running behind it ───────────────
+
+  it("the outgoing layer is unmounted when its fade ends", () => {
+    const { rerender } = render(
+      <TransitionStage contentKey="video" durationMs={200}>
+        <div>item A</div>
+      </TransitionStage>
+    );
+    rerender(
+      <TransitionStage contentKey="blank" durationMs={200}>
+        <div>item B</div>
+      </TransitionStage>
+    );
+    const incoming = screen.getByText("item B");
+
+    // During the fade A is still there, underneath and fading.
+    const outgoing = screen.getByText("item A");
+    expect(outgoing.closest("[data-layer]")).toHaveAttribute("data-layer", "back");
+    expect((outgoing.closest("[data-layer]") as HTMLElement).style.opacity).toBe("0");
+    expect(incoming.closest("[data-layer]")).toHaveAttribute("data-layer", "front");
+
+    act(() => {
+      vi.advanceTimersByTime(230);
+    });
+    expect(screen.queryByText("item A")).not.toBeInTheDocument();
+    // B was never remounted to change layer: it is the same element.
+    expect(screen.getByText("item B")).toBe(incoming);
+    // Nothing else is left in either layer.
+    const layers = Array.from(document.querySelectorAll("[data-layer]"));
+    expect(layers.map((l) => l.textContent).join("")).toBe("item B");
+  });
+
+  it("an instant cut unmounts the outgoing layer at once", () => {
+    const { rerender } = render(
+      <TransitionStage contentKey="video" durationMs={0}>
+        <div>item A</div>
+      </TransitionStage>
+    );
+    rerender(
+      <TransitionStage contentKey="blank" durationMs={0}>
+        <div>item B</div>
+      </TransitionStage>
+    );
+    expect(screen.queryByText("item A")).not.toBeInTheDocument();
+    expect(screen.getByText("item B")).toBeInTheDocument();
+
+    // `instant` cuts the same way, whatever the duration.
+    rerender(
+      <TransitionStage contentKey="song" durationMs={200} instant>
+        <div>item C</div>
+      </TransitionStage>
+    );
+    expect(screen.queryByText("item B")).not.toBeInTheDocument();
+  });
+
+  it("an outgoing video is paused in the update that replaces it", () => {
+    const fake = installFakeVideo();
+    try {
+      const video = (
+        <MediaSlideRenderer
+          assetUrl="asset://localhost/loop.mp4"
+          kind="video"
+          itemId="vid-1"
+          options={{ loop: true, mute: false, autoAdvanceOnEnd: false }}
+        />
+      );
+      const { rerender, container } = render(
+        <TransitionStage contentKey="vid-1-0" durationMs={200}>
+          {video}
+        </TransitionStage>
+      );
+      const el = container.querySelector("video") as HTMLVideoElement;
+      expect(el.paused).toBe(false);
+
+      rerender(
+        <TransitionStage contentKey="blank-0" durationMs={200}>
+          <div>Tela preta</div>
+        </TransitionStage>
+      );
+
+      // Still mounted while it fades, but already silent - no timer has run.
+      expect(container.querySelector("video")).toBe(el);
+      expect(el.paused).toBe(true);
+      expect(fake.pause).toHaveBeenCalled();
+
+      act(() => {
+        vi.advanceTimersByTime(230);
+      });
+      expect(container.querySelector("video")).toBeNull();
+    } finally {
+      fake.restore();
+    }
   });
 });

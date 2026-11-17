@@ -62,4 +62,42 @@ describe("locale key parity", () => {
     expect((ptBR as unknown as LiveSet).presentation.liveSet.edit).toBe("Editar música");
     expect((enUS as unknown as LiveSet).presentation.liveSet.edit).toBe("Edit song");
   });
+
+  it("phase 23 labels in both locales", () => {
+    const at = (tree: unknown, path: string): unknown =>
+      path.split(".").reduce<unknown>((node, k) => (node as Record<string, unknown> | undefined)?.[k], tree);
+    const expected: Record<string, [string, string]> = {
+      "home.overlay.uploadImage": ["Enviar imagem do computador", "Upload image from computer"],
+      "media.dropzone.uploading": ["Importando {{current}}/{{total}}…", "Importing {{current}}/{{total}}…"],
+      "home.overlay.uploadFailed_one": ["{{count}} arquivo não foi importado", "{{count}} file was not imported"],
+      "home.overlay.uploadFailed_other": ["{{count}} arquivos não foram importados", "{{count}} files were not imported"],
+      "presentation.liveSet.reorder": ["Reordenar", "Reorder"],
+      "presentation.liveSet.editCountdown": ["Editar cronômetro", "Edit countdown"],
+      "presentation.liveVideo.label": ["Vídeo", "Video"],
+      "presentation.liveVideo.pause": ["Pausar", "Pause"],
+      "presentation.liveVideo.resume": ["Retomar", "Resume"],
+      "presentation.liveVideo.restart": ["Reiniciar", "Restart"],
+      "presentation.liveVideo.back10": ["−10 s", "−10 s"],
+      "presentation.liveVideo.forward10": ["+10 s", "+10 s"],
+      "presentation.liveVideo.mute": ["Silenciar", "Mute"],
+      "presentation.liveVideo.unmute": ["Ativar som", "Unmute"],
+      "presentation.liveVideo.position": ["Posição do vídeo", "Video position"],
+      "presentation.liveVideo.failed": ["Não foi possível reproduzir o vídeo", "The video could not be played"],
+      "countdown.schedule.unavailableWhileCounting": [
+        "Indisponível enquanto um cronômetro está em andamento",
+        "Unavailable while a countdown is running",
+      ],
+    };
+    for (const [key, [pt, en]] of Object.entries(expected)) {
+      expect(at(ptBR, key), `pt-BR ${key}`).toBe(pt);
+      expect(at(enUS, key), `en-US ${key}`).toBe(en);
+    }
+    // The two refusals this phase can show have a message in both.
+    for (const key of ["error.set.reorder_mismatch", "error.countdown.target_passed"]) {
+      for (const [name, tree] of [["pt-BR", ptBR], ["en-US", enUS]] as const) {
+        const message = at(tree, key);
+        expect(typeof message === "string" && message.length > 0, `${name} ${key}`).toBe(true);
+      }
+    }
+  });
 });

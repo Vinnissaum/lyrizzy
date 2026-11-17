@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Film, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
@@ -21,14 +21,32 @@ export const VideoControls: React.FC = () => {
   const frozen = usePresentationStore((s) => s.state?.mode === "frozen");
   const report = useVideoStore((s) => s.reports[focusedOutput]);
   // Where the operator is dragging the bar to, then - once released - where
-  // the wall was asked to go, until it reports from there.
-  const [target, setTarget] = useState<{ ms: number; sent: boolean } | null>(null);
+  // the wall was asked to go, until it reports from there. Mirrored in a ref
+  // so a release handled outside React's render reads the latest value.
+  const [target, setTargetState] = useState<{ ms: number; sent: boolean } | null>(null);
+  const targetRef = useRef(target);
+  const setTarget = (next: { ms: number; sent: boolean } | null) => {
+    targetRef.current = next;
+    setTargetState(next);
+  };
+  const barRef = useRef<HTMLInputElement>(null);
+  const commitRef = useRef<() => void>(() => {});
 
   const reportedPosition = report?.positionMs;
   useEffect(() => {
     // A report after the seek was sent is the wall's answer.
-    setTarget((current) => (current?.sent ? null : current));
+    if (targetRef.current?.sent) setTarget(null);
   }, [reportedPosition]);
+
+  // A range input fires `input` while dragging and a native `change` once the
+  // operator lets go - the one moment the wall should move.
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const onRelease = () => commitRef.current();
+    bar.addEventListener("change", onRelease);
+    return () => bar.removeEventListener("change", onRelease);
+  });
 
   if (!report || report.itemId === null) return null;
   const itemId = report.itemId;
@@ -40,10 +58,20 @@ export const VideoControls: React.FC = () => {
   const shownMs = target ? target.ms : report.positionMs;
   const times = videoTimes(shownMs, report.durationMs);
 
+  /** Sends the dragged-to position once, however many release signals arrive. */
   const commitSeek = () => {
-    if (!target || target.sent) return;
-    send({ kind: "seek", positionMs: target.ms });
-    setTarget({ ms: target.ms, sent: true });
+    const t = targetRef.current;
+    if (!t || t.sent) return;
+    send({ kind: "seek", positionMs: t.ms });
+    setTarget({ ms: t.ms, sent: true });
+  };
+  commitRef.current = commitSeek;
+
+  const onDrag = (ms: number) => {
+    const t = targetRef.current;
+    // The release's own `change` repeats the last value: not a new drag.
+    if (t?.sent && t.ms === ms) return;
+    setTarget({ ms, sent: false });
   };
 
   return (
@@ -67,6 +95,7 @@ export const VideoControls: React.FC = () => {
             {times.elapsed} / {times.total}
           </span>
           <input
+            ref={barRef}
             type="range"
             aria-label={t("presentation.liveVideo.position")}
             aria-valuetext={`${times.elapsed} / ${times.total}`}
@@ -75,7 +104,7 @@ export const VideoControls: React.FC = () => {
             step={100}
             value={Math.min(shownMs, report.durationMs ?? 0)}
             disabled={!can.seek}
-            onChange={(e) => setTarget({ ms: Number(e.target.value), sent: false })}
+            onChange={(e) => onDrag(Number(e.target.value))}
             onPointerUp={commitSeek}
             onKeyUp={commitSeek}
             onBlur={commitSeek}

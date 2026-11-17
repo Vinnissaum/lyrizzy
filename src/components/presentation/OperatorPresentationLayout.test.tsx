@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { OperatorPresentationLayout } from "./OperatorPresentationLayout";
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
@@ -115,7 +115,8 @@ import {
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { fanOutToMirror } from "../../utils/outputDispatch";
 import { useCountdownStore } from "../../stores/countdown";
-import type { CountdownState, PresentationState, ServiceSet } from "../../types";
+import { useVideoStore } from "../../stores/video";
+import type { CountdownState, PresentationState, ServiceSet, VideoReport } from "../../types";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
@@ -547,6 +548,61 @@ describe("OperatorPresentationLayout", () => {
 
     await waitFor(() => expect(setMediaOverlay).toHaveBeenCalledWith("img-new", "one"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("the video strip comes and goes with the wall's video", () => {
+    const videoSet: ServiceSet = {
+      ...mockSet,
+      items: [
+        ...mockSet.items!,
+        { id: "item-v", setId: "set-1", itemType: "media", mediaId: "m-v", mediaKind: "video", sortOrder: 2 },
+      ],
+    };
+    const report: VideoReport = {
+      output: "one",
+      itemId: "item-v",
+      status: "playing",
+      positionMs: 65_000,
+      durationMs: 200_000,
+      muted: false,
+    };
+    const onVideo = (over: Partial<PresentationState> = {}) =>
+      setupDefaultMocks({ set: videoSet, currentItemIndex: 2, itemSlideCounts: [2, 1, 1], ...over });
+    const strip = () => screen.queryByTestId("video-controls");
+    useVideoStore.setState({ reports: { one: report, two: null } });
+
+    onVideo();
+    const { rerender } = render(<OperatorPresentationLayout />);
+    expect(strip()).toBeInTheDocument();
+    expect(strip()).toHaveTextContent("01:05 / 03:20");
+
+    // The wall withdraws its report: the video left it.
+    act(() => useVideoStore.setState({ reports: { one: { ...report, itemId: null }, two: null } }));
+    expect(strip()).not.toBeInTheDocument();
+    act(() => useVideoStore.setState({ reports: { one: report, two: null } }));
+    expect(strip()).toBeInTheDocument();
+
+    // Blackout, an overlay, or the operator on another item: no strip.
+    onVideo({ mode: "blank" });
+    rerender(<OperatorPresentationLayout />);
+    expect(strip()).not.toBeInTheDocument();
+    onVideo({ overlay: { type: "announcement", text: "Aviso" } });
+    rerender(<OperatorPresentationLayout />);
+    expect(strip()).not.toBeInTheDocument();
+    onVideo({ currentItemIndex: 0 });
+    rerender(<OperatorPresentationLayout />);
+    expect(strip()).not.toBeInTheDocument();
+    onVideo({ mode: "idle" });
+    rerender(<OperatorPresentationLayout />);
+    expect(strip()).not.toBeInTheDocument();
+
+    // A countdown takeover covers the video.
+    onVideo();
+    rerender(<OperatorPresentationLayout />);
+    expect(strip()).toBeInTheDocument();
+    act(() => useCountdownStore.setState({ state: countdownState("running", true) }));
+    expect(strip()).not.toBeInTheDocument();
+    useVideoStore.setState({ reports: { one: null, two: null } });
   });
 
   it("renders OverlayActionBar without an Apresentar button", () => {

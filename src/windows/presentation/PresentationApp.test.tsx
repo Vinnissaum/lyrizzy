@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import type { PresentationState, Media } from "../../types";
 
 // jsdom does not implement ResizeObserver — provide a minimal stub so SlideStage
@@ -139,6 +139,13 @@ vi.mock("../../stores/settings", () => {
 vi.mock("../../api/commands", () => ({
   onLocaleChanged: vi.fn(() => Promise.resolve(() => {})),
   onSettingChanged: vi.fn(() => Promise.resolve(() => {})),
+  emitVideoReport: vi.fn(() => Promise.resolve()),
+  onVideoCommand: vi.fn(() => Promise.resolve(() => {})),
+}));
+
+// A camera feed is a <video> too; the real renderer needs a stream proxy.
+vi.mock("../../components/presentation/WebViewRenderer", () => ({
+  WebViewRenderer: () => <video data-testid="camera-feed" />,
 }));
 
 vi.mock("../../runtime/keyboard", () => ({
@@ -147,6 +154,9 @@ vi.mock("../../runtime/keyboard", () => ({
 
 import { PresentationApp } from "./PresentationApp";
 import { forwardKeydown } from "../../runtime/keyboard";
+import { emitVideoReport } from "../../api/commands";
+import { useSettingsStore } from "../../stores/settings";
+import { installFakeVideo } from "../../tests/fakeVideo";
 
 const mediaItem = (id: string): Media =>
   ({
@@ -676,5 +686,143 @@ describe("PresentationApp — set-enter never arms (manual present)", () => {
     render(<PresentationApp />);
     expect(screen.getByText("Blessed be your name")).toBeInTheDocument();
     expect(screen.queryByText("Começa em…")).toBeNull();
+  });
+});
+
+// ── P23: nothing of an item keeps running after it left the wall ─────────────
+
+describe("PresentationApp — media that left the wall (P23)", () => {
+  const video = (id: string, file: string): Media =>
+    ({ id, fileName: file, displayName: id, kind: "video" } as Media);
+
+  const items = {
+    video: { id: "vid-1", itemType: "media", mediaId: "m-v1", mediaKind: "video",
+      mediaOptions: { loop: true, mute: false, autoAdvanceOnEnd: false } },
+    video2: { id: "vid-2", itemType: "media", mediaId: "m-v2", mediaKind: "video",
+      mediaOptions: { loop: false, mute: false, autoAdvanceOnEnd: false } },
+    blank: { id: "blank-1", itemType: "blank" },
+    camera: { id: "cam-1", itemType: "web_view", webviewConfig: { mode: "rtsp", url: "rtsp://10.0.0.5/live" } },
+    song: { id: "song-1", itemType: "song", songId: "s1" },
+    countdown: { id: "cd-1", itemType: "countdown", countdownConfig: {
+      target: { kind: "duration", durationMs: 600000 }, endBehavior: "holdZero", backgroundMediaId: "m-v1" } },
+  } as const;
+
+  /** The wall on `current`, in a set of `list`; a song carries a video background. */
+  const onWall = (list: readonly (keyof typeof items)[], current: keyof typeof items): PresentationState => ({
+    mode: "live",
+    set: { id: "set-1", name: "Set", createdAt: 0, updatedAt: 0, items: list.map((k) => items[k]) as never },
+    currentItemIndex: list.indexOf(current),
+    currentSlideIndex: 0,
+    currentSlide: { lines: current === "song" ? ["Bendito seja"] : [], sectionLabel: "", sectionId: "sec-1" },
+    background: current === "song"
+      ? { mediaKind: "video", assetUrl: "asset://localhost/bg.mp4", scrimOpacity: 35, restartOnSectionBoundary: false }
+      : undefined,
+    itemSlideCounts: list.map(() => 1),
+  });
+
+  const settings = useSettingsStore.getState() as unknown as { transitionMs: number; reduceMotion: boolean };
+  let fake: ReturnType<typeof installFakeVideo>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    fake = installFakeVideo();
+    mediaMock = [video("m-v1", "v1.mp4"), video("m-v2", "v2.mp4")];
+    cdStateMock = { mode: "running", durationMs: 600000, remainingMs: 300000, endBehavior: "holdZero", takeover: false };
+    settings.transitionMs = 200;
+    settings.reduceMotion = false;
+  });
+  afterEach(() => {
+    settings.transitionMs = 0;
+    settings.reduceMotion = true;
+    fake.restore();
+    vi.useRealTimers();
+    presStateMock = liveState;
+  });
+
+  const videos = (c: HTMLElement) => Array.from(c.querySelectorAll("video"));
+
+  it("an item that left the wall leaves no media behind", () => {
+    for (const source of ["video", "camera", "song", "countdown"] as const) {
+      const list = [source, "blank"] as const;
+      presStateMock = onWall(list, source);
+      const { container, rerender, unmount } = render(<PresentationApp />);
+      expect(videos(container), source).toHaveLength(1);
+
+      presStateMock = onWall(list, "blank");
+      rerender(<PresentationApp />);
+      act(() => {
+        vi.advanceTimersByTime(230);
+      });
+
+      expect(videos(container), `${source} left a <video> behind`).toEqual([]);
+      unmount();
+    }
+  });
+
+  it("one video replaces another and a return mounts it again", () => {
+    const list = ["video", "video2", "blank"] as const;
+    presStateMock = onWall(list, "video");
+    const { container, rerender } = render(<PresentationApp />);
+    const first = videos(container)[0];
+    expect(first.getAttribute("src")).toContain("v1.mp4");
+    expect(first.paused).toBe(false);
+
+    presStateMock = onWall(list, "video2");
+    rerender(<PresentationApp />);
+    expect(first.paused).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(230);
+    });
+    const shown = videos(container);
+    expect(shown).toHaveLength(1);
+    expect(shown[0].getAttribute("src")).toContain("v2.mp4");
+    expect(shown[0].paused).toBe(false);
+    // Only the video on the wall speaks for it.
+    const reports = vi.mocked(emitVideoReport).mock.calls.map(([r]) => r);
+    expect(reports[reports.length - 1]).toMatchObject({ output: "one", itemId: "vid-2" });
+
+    presStateMock = onWall(list, "blank");
+    rerender(<PresentationApp />);
+    act(() => {
+      vi.advanceTimersByTime(230);
+    });
+    expect(videos(container)).toEqual([]);
+    const after = vi.mocked(emitVideoReport).mock.calls.map(([r]) => r);
+    expect(after[after.length - 1]).toMatchObject({ output: "one", itemId: null });
+
+    // Back to the first video: a fresh element, playing from the start.
+    presStateMock = onWall(list, "video");
+    rerender(<PresentationApp />);
+    act(() => {
+      vi.advanceTimersByTime(230);
+    });
+    const back = videos(container);
+    expect(back).toHaveLength(1);
+    expect(back[0]).not.toBe(first);
+    expect(back[0].getAttribute("src")).toContain("v1.mp4");
+    expect(back[0].currentTime).toBe(0);
+    expect(back[0].paused).toBe(false);
+  });
+
+  it("a shift of the current item's index leaves its content mounted", () => {
+    presStateMock = onWall(["song", "video"], "video");
+    const { container, rerender } = render(<PresentationApp />);
+    const el = videos(container)[0];
+    el.currentTime = 42;
+
+    // A song added live before it: index 1 -> 2.
+    presStateMock = onWall(["blank", "song", "video"], "video");
+    rerender(<PresentationApp />);
+    // Reordered to the front: index 2 -> 0.
+    presStateMock = onWall(["video", "blank", "song"], "video");
+    rerender(<PresentationApp />);
+    act(() => {
+      vi.advanceTimersByTime(230);
+    });
+
+    expect(videos(container)).toEqual([el]);
+    expect(el.paused).toBe(false);
+    expect(el.currentTime).toBe(42);
   });
 });

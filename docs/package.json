@@ -1,0 +1,14 @@
+{
+  "name": "lyrizzy-docs",
+  "private": true,
+  "type": "module",
+  "description": "Site de documentação do Lyrizzy (guia do usuário), publicado no GitHub Pages.",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4"
+  }
+}

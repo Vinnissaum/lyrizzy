@@ -31,3 +31,6 @@ dist-ssr
 
 # Local MSVC toolchain overrides — machine-specific absolute paths, breaks CI/other machines
 .cargo/config.toml
+
+# Site de documentação (VitePress)
+docs/.vitepress/cache

@@ -53,8 +53,8 @@ wall is also walked in a real Chromium.
 
 1. the operator presents -> `OperatorPresentationLayout` (exists) loads the song titles through `useLibraryStore` (exists) from `listSongs()` with no `search`, kept apart from the Biblioteca view's filtered `songs`, and reloads them on `songs_changed`
 2. `itemLabel` and `songArtist` in `itemMeta.tsx` (exists) resolve from that unfiltered list -> `SetItemList`, the strophes header and `LiveSongPicker` (exist)
-3. the operator uses `Enviar imagem do computador` (new) in the `Imagem` dialog of `OperatorPresentationLayout` (exists) -> `open` from `@tauri-apps/plugin-dialog` (exists), image extensions, several files -> `importMedia` in `src/api/commands.ts` (exists), one call per file -> `commands/media.rs::import_media` (exists) copies the file, persists `Media` and emits `media_library_changed`
-4. `useMediaStore.refresh()` (exists) -> the dialog's grid shows the new images first; a click on one calls `setMediaOverlay` (exists), as today
+3. the operator uses `Enviar imagem do computador` (new) in `ImageOverlayDialog` (new), the `Imagem` dialog `OperatorPresentationLayout` (exists) opens -> `open` from `@tauri-apps/plugin-dialog` (exists), image extensions, several files -> `importMedia` in `src/api/commands.ts` (exists), one call per file -> `commands/media.rs::import_media` (exists) copies the file, persists `Media` and emits `media_library_changed`
+4. `ImageOverlayDialog` (new) lists the images itself with `listMedia` (exists), newest first, so the new ones lead its grid whatever the Mídia view filters; it also runs `useMediaStore.refresh()` (exists) for the rest of the operator window; a click on one calls `setMediaOverlay` (exists), as today, and the wall's `QuickMediaRenderer` (exists) reloads its own media list when the overlay names an image it has not loaded
 5. the operator drags a row's handle (new) in `SetItemList` (exists) -> `reorderSetItems` in `src/api/commands.ts` (exists) -> `commands/set.rs::reorder_set_items` (exists)
 6. `reorder_set_items` (exists) checks the ids are a permutation of the set's items, writes `SetItem.sort_order`, and for every output with the set loaded reorders `set.items` and `presentation_slides` and re-points `current_item_index` and `frozen_at` at the same items; the rule is a pure function in `domain/presentation.rs` (exists), beside `splice_insert` and `splice_remove`
 7. out: `set_changed` and one `state_changed` per output to both windows; no wall changes what it shows
@@ -73,7 +73,7 @@ flowchart TD
         LIB["useLibraryStore (exists)"]
         META["itemMeta.tsx (exists)"]
         SIL["SetItemList (exists)"]
-        UP["Enviar imagem do computador (new), in the Imagem dialog"]
+        UP["Enviar imagem do computador (new), in ImageOverlayDialog (new)"]
         DLG["@tauri-apps/plugin-dialog (exists)"]
         MST["useMediaStore.refresh() (exists)"]
         OVL["setMediaOverlay (exists)"]
@@ -91,6 +91,7 @@ flowchart TD
     end
     subgraph Presentation window
         TS["TransitionStage (exists)"]
+        QMR["QuickMediaRenderer (exists)"]
         MSR["MediaSlideRenderer (exists)"]
         CR["CountdownRenderer (exists)"]
     end
@@ -100,8 +101,10 @@ flowchart TD
     UP -->|"3. open, image extensions, several files"| DLG
     DLG -->|"3. importMedia per file"| API
     API -->|"3. import_media"| MEDIA
-    MEDIA -->|"4. media_library_changed"| MST
-    MST -->|"4. new images first; a click projects"| OVL
+    MEDIA -->|"4. listMedia, newest first"| UP
+    UP -->|"4. refresh the store"| MST
+    UP -->|"4. a click projects"| OVL
+    OVL -->|"4. overlay names an image it lacks: reload"| QMR
     SIL -->|"5. drag handle -> reorderSetItems"| API
     API -->|"5. reorder_set_items"| REORD
     REORD -->|"6. permute, re-point current and frozen"| DP
@@ -127,7 +130,10 @@ flowchart TD
 | domain | `TransitionStage`'s back layer meant "the previous content, kept mounted until the next change". It now means "the previous content, only while it fades out". Its only user is `PresentationApp` |
 | domain | `reorder_set_items` wrote `sort_order` and emitted `set_changed`. It now also reorders the set in every output that has it loaded, and refuses a list that is not a permutation of the set's items. Its callers: Home's `SetBuilder` and `HomeSetBuilder`, which always send the full list |
 | domain | `update_set_item` with a `countdownConfig` patched the loaded sets. It now also restarts or restyles a countdown counting from that item (AD-093). Its callers: `CountdownScheduleModal` (Home, the scheduled widget's `Editar`, and now the presenter), `OperatorApp.handleCancelSchedule`, the item editors on Home |
-| domain | `CountdownScheduleModal` on save armed the schedule, or else reset the output's countdown. Opened while presenting it must not reset or re-arm over a countdown that is counting on the wall (criteria 39-41). On Home it behaves as today |
+| domain | `CountdownScheduleModal` on save armed the schedule, or else reset the output's countdown. Opened while presenting it must not reset or re-arm over a countdown that is counting on the wall (criteria 39-41). On Home it arms and resets as today. On both, a refused save now shows its error in the dialog and keeps it open; it used to close nothing and log only |
+| domain | The wall's transition key was "item index + slide"; it is now "item id + slide", so a live reorder, add or remove that only shifts the current item's index no longer re-runs the transition, which would remount a playing video (C66). Its only reader is `PresentationApp` |
+| domain | The wall's media list (`useMediaStore` in the presentation window) was loaded once, when the window opened. `QuickMediaRenderer` now reloads it once when the overlay names a media id it does not hold (C65). Its readers: the image overlay and the countdown and media renderers, which only gain a fuller list |
+| domain | `useLibraryStore.refresh()` under a Biblioteca search now also reloads the unfiltered list (a second `list_songs`), so the presenter's titles stay current after a library save |
 | domain | D-89 said no live control writes `set_items.countdown_config`. The row editor is a new path that does (AD-093); the strip's `+1/+5/−1 min` stays run-only |
 | stored data | nothing to migrate. `set_items.sort_order`, `set_items.countdown_config` and `media` rows are written by the existing commands in their existing shapes |
 | readers | every output whose loaded set is reordered or holds the edited countdown, Tela 2 and a frozen wall included; Home's set builder (existing `set_changed` listener) shows the new order and the edited countdown after `Parar`; the Mídia tab shows images uploaded from the `Imagem` dialog; the scheduled-countdown widget, whose armed reference is an item index (criterion 22) |

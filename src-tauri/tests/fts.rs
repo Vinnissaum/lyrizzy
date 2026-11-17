@@ -373,4 +373,24 @@ async fn fallback_search_ignores_accents_and_cedilla() {
     assert_eq!(titles_for(&pool, "joao (").await, ["Sonda-me"]);
     assert_eq!(titles_for(&pool, "cao (").await, ["Coração Igual ao Teu", "Manancial de Toda Benção"]);
     assert!(titles_for(&pool, "xyz (").await.is_empty());
+
+    // Quotes and parentheses are left out on the title's side too: typing on
+    // the way to "Sonda-me (Ao Vivo)" keeps finding it.
+    let mut live = make_song("Sonda-me (Ao Vivo)", "letra sem relação");
+    live.artist = Some("Coral".to_string());
+    db_create_song(&pool, live).await.unwrap();
+    assert_eq!(titles_for(&pool, "sonda-me (ao vivo").await, ["Sonda-me (Ao Vivo)"]);
+    assert_eq!(titles_for(&pool, "sonda-me (ao").await, ["Sonda-me (Ao Vivo)"]);
+
+    // A title stored decomposed (base letter + combining mark) is found too.
+    let decomposed = "Ben\u{0063}\u{0327}a\u{0303}o Sobre Nós".to_string();
+    db_create_song(&pool, make_song(&decomposed, "letra sem relação")).await.unwrap();
+    assert_eq!(
+        titles_for(&pool, "bencao (").await,
+        [decomposed.clone(), "Manancial de Toda Benção".to_string()]
+    );
+    assert_eq!(
+        titles_for(&pool, "Benção (").await,
+        [decomposed, "Manancial de Toda Benção".to_string()]
+    );
 }

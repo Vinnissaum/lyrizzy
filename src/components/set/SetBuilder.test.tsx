@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 
 vi.mock("../../stores/library", () => ({
   useLibraryStore: vi.fn(),
@@ -54,8 +54,8 @@ import { SetBuilder, reorderIds } from "./SetBuilder";
 import { useLibraryStore } from "../../stores/library";
 import { useMediaStore } from "../../stores/media";
 import { usePresentationStore } from "../../stores/presentation";
-import { getSet, loadSetForPresentation, reorderSetItems } from "../../api/commands";
-import type { ServiceSet, SetItem } from "../../types";
+import { getSet, listSongs, loadSetForPresentation, reorderSetItems } from "../../api/commands";
+import type { ServiceSet, SetItem, Song } from "../../types";
 
 const baseSet: ServiceSet = {
   id: "set-1",
@@ -324,5 +324,53 @@ describe("SetBuilder — drag-end reorder calls reorderSetItems", () => {
     // Each item row should have a drag-handle button
     const handles = screen.getAllByRole("button", { name: "builder.actions.drag" });
     expect(handles).toHaveLength(3);
+  });
+});
+
+// ── P23 S7: the set builder's song picker ignores accents and ç ──────────────
+
+describe("SetBuilder — song picker search", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useLibraryStore).mockReturnValue({ setView: vi.fn() } as ReturnType<typeof useLibraryStore>);
+    vi.mocked(useMediaStore).mockReturnValue({ media: [], refresh: vi.fn() } as ReturnType<typeof useMediaStore>);
+    vi.mocked(usePresentationStore).mockReturnValue({ getState: vi.fn() } as unknown as ReturnType<typeof usePresentationStore>);
+    vi.mocked(getSet).mockResolvedValue(baseSet);
+  });
+
+  it("the song picker search ignores accents and ç", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const song = (id: string, title: string, artist: string) =>
+        ({ id, title, artist, language: "pt", scrimOpacity: 35, createdAt: 0, updatedAt: 0, sections: [] }) as Song;
+      vi.mocked(listSongs).mockResolvedValue([
+        song("s1", "Só pra te Adorar", "Diante do Trono"),
+        song("s2", "Manancial de Toda Benção", "Ministério Ipiranga"),
+      ]);
+      render(<SetBuilder setId="set-1" />);
+      await waitFor(() => expect(screen.getByText("Culto")).toBeInTheDocument());
+      fireEvent.click(screen.getByText("builder.add.song"));
+      const search = screen.getByPlaceholderText("builder.songSearch");
+      const typeAndSettle = (value: string) => {
+        fireEvent.change(search, { target: { value } });
+        act(() => {
+          vi.advanceTimersByTime(200);
+        });
+      };
+
+      typeAndSettle("so pra");
+      expect(screen.getByText("Só pra te Adorar")).toBeInTheDocument();
+      expect(screen.queryByText("Manancial de Toda Benção")).not.toBeInTheDocument();
+
+      typeAndSettle("bencao");
+      expect(screen.getByText("Manancial de Toda Benção")).toBeInTheDocument();
+      expect(screen.queryByText("Só pra te Adorar")).not.toBeInTheDocument();
+
+      typeAndSettle("");
+      expect(screen.getByText("Só pra te Adorar")).toBeInTheDocument();
+      expect(screen.getByText("Manancial de Toda Benção")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

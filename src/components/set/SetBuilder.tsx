@@ -62,6 +62,7 @@ import { MediaSetItemEditor } from "./MediaSetItemEditor";
 import { BlankItemNotesEditor } from "./BlankItemNotesEditor";
 import { SlideshowSetItemEditor } from "./SlideshowSetItemEditor";
 import type { Media, ServiceSet, SetItem, Song } from "../../types";
+import { matchesSongSearch } from "../../utils/songSearch";
 
 interface Props {
   setId: string | null;
@@ -188,14 +189,8 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
     setSongSearch(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      const lower = value.toLowerCase();
-      setFilteredSongs(
-        songs.filter(
-          (s) =>
-            s.title.toLowerCase().includes(lower) ||
-            (s.artist ?? "").toLowerCase().includes(lower)
-        )
-      );
+      // Ignores accents, ç and case: "so pra" finds "Só pra te Adorar" (P23 S7).
+      setFilteredSongs(songs.filter((s) => matchesSongSearch(s, value)));
     }, 150);
   };
 

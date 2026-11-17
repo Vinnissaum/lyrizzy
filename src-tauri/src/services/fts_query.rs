@@ -45,7 +45,13 @@ pub fn sanitize(input: &str) -> FtsQuery {
 /// index folds accents itself (`unicode61`); this is for searches that do not
 /// go through it (P23 S7).
 pub fn fold_for_search(text: &str) -> String {
-    text.chars().flat_map(char::to_lowercase).map(fold_char).collect()
+    text.chars()
+        // A title stored decomposed ("c" + a combining cedilla, as text from
+        // macOS often is) carries its accents as separate combining marks.
+        .filter(|c| !('\u{0300}'..='\u{036F}').contains(c))
+        .flat_map(char::to_lowercase)
+        .map(fold_char)
+        .collect()
 }
 
 fn fold_char(c: char) -> char {
@@ -91,6 +97,10 @@ mod tests {
         }
         assert_eq!(fold_for_search("Só pra te Adorar"), "so pra te adorar");
         assert_eq!(fold_for_search("BENÇÃO"), "bencao");
+        // Decomposed: the base letter followed by a combining mark.
+        assert_eq!(fold_for_search("Ben\u{0063}\u{0327}a\u{0303}o"), "bencao");
+        assert_eq!(fold_for_search("BENC\u{0327}A\u{0303}O"), "bencao");
+        assert_eq!(fold_for_search("So\u{0301} pra"), "so pra");
         // Other text is only lower-cased.
         assert_eq!(fold_for_search("Sonda-me (Ao Vivo) 2X"), "sonda-me (ao vivo) 2x");
         assert_eq!(fallback_key("Sonda-me (Ao Vivo) \"2X"), "sonda-me ao vivo 2x");

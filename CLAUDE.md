@@ -30,6 +30,11 @@
 - state.presentation.write().await must be dropped before calling app.emit() to avoid deadlock
 - All slide generation is pure Rust (slide_splitter); no slide logic in the frontend
 
+## User Guide (docs site)
+- The user guide is a pt-BR VitePress site in docs/ (pages in docs/guia/), published to GitHub Pages by .github/workflows/docs.yml; the English files directly in docs/ are developer docs, excluded from the site
+- A change users will notice updates its page in docs/guia/, using the exact pt-BR labels from src/i18n/locales/pt-BR.json
+- When a screen changes, regenerate its screenshots with `npm run docs:screenshots` (scenes in scripts/docs-screenshots/capture.mjs, mocked backend and sample data in app.tsx and data.ts)
+
 ## Common Gotchas
 - asset:// protocol: must be registered in tauri.conf.json security.csp AND in lib.rs
 - asset:// handler: validate paths to prevent path traversal outside the media directory

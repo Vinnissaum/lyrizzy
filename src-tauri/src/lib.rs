@@ -70,7 +70,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
-        .register_uri_scheme_protocol("asset", protocol::asset::build_handler())
+        .register_asynchronous_uri_scheme_protocol("asset", protocol::asset::build_handler())
         .on_window_event(|window, event| {
             // P10-05: structured window-lifecycle observability. The tracing
             // subscriber timestamps each line, so we log the label + event kind

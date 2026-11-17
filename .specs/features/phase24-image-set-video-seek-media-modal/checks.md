@@ -177,5 +177,6 @@ Proof: walk - the user, on Windows with v1.10.1, presents a set with a video and
 
 - **Settled mid-build:** none
 - **Dispatched:** none
-- **Boundary:** none closed
+- **Boundary:** S2 (C10-C16) closed at the commit that adds the ranged protocol (`fix(media): serve byte ranges off the UI thread`)
 - **Abandoned:** none
+- **Walked:** 2026-11-17, in Chrome Headless Shell (Playwright build 1234) over CDP, against the real app (`src/main.tsx`) served by Vite, mounted twice by the local harness under `.harness/` (excluded from git) as the operator window and the presentation window on one mocked backend, as in phase 23. (C15, C16) `asset.localhost` mapped to the ignored test `protocol::asset::tests::serve_media_for_a_walk`, which serves a directory over HTTP through `protocol::asset::answer`, the function the app's protocol answers with; the walk video is a 20 s, 7.3 MB VP8 WebM of random noise (so it cannot fit in one answer), the set's looping `Abertura` item. The wall's `seekable` read `[[0,20]]`. `Pausar` at 1.82 s; a real mouse click at 50% of the bar: 10.0 s; `+10 s`: 20.0 s; a click at 75%: 15.2 s (the thumb's inset, as in phase 23); `−10 s`: 5.2 s; `Retomar`: 6.2 s a second later, playing; `Pausar`: 6.21 s and still 6.21 s a second later; `Reiniciar`: 0.39 s and playing; `Silenciar`: muted; `Ativar som`: unmuted. The bridge logged 11 requests for the video, every one `206` and at most 1 MiB: `bytes=0-` twice, then 1048576-, 2097152-, 3145728-, 4194304-, 5242880- while loading, and 7241728-, 7110656-, 5668864-, 6717440- for the seeks

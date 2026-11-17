@@ -40,9 +40,63 @@ pub fn sanitize(input: &str) -> FtsQuery {
     FtsQuery::Fts5(query)
 }
 
+/// Lower case with every Portuguese (and common Latin-1) diacritic removed:
+/// "Manancial de Toda Benção" → "manancial de toda bencao". The full-text
+/// index folds accents itself (`unicode61`); this is for searches that do not
+/// go through it (P23 S7).
+pub fn fold_for_search(text: &str) -> String {
+    text.chars().flat_map(char::to_lowercase).map(fold_char).collect()
+}
+
+fn fold_char(c: char) -> char {
+    match c {
+        'á' | 'à' | 'â' | 'ã' | 'ä' | 'å' => 'a',
+        'ç' => 'c',
+        'é' | 'è' | 'ê' | 'ë' => 'e',
+        'í' | 'ì' | 'î' | 'ï' => 'i',
+        'ñ' => 'n',
+        'ó' | 'ò' | 'ô' | 'õ' | 'ö' => 'o',
+        'ú' | 'ù' | 'û' | 'ü' => 'u',
+        'ý' | 'ÿ' => 'y',
+        other => other,
+    }
+}
+
+/// What the fallback search compares, on the typed text and on each title and
+/// artist alike: folded, without the quotes and parentheses that sent the
+/// search to the fallback in the first place, and with the spaces they leave
+/// behind trimmed and collapsed ("bencao (" → "bencao").
+pub fn fallback_key(text: &str) -> String {
+    let kept: String = fold_for_search(text)
+        .chars()
+        .filter(|c| !matches!(c, '"' | '(' | ')'))
+        .collect();
+    kept.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fold_for_search_drops_accents_and_cedilla() {
+        let pairs = [
+            ('á', 'a'), ('à', 'a'), ('â', 'a'), ('ã', 'a'), ('é', 'e'), ('ê', 'e'), ('í', 'i'),
+            ('ó', 'o'), ('ô', 'o'), ('õ', 'o'), ('ú', 'u'), ('ü', 'u'), ('ç', 'c'),
+        ];
+        for (accented, plain) in pairs {
+            assert_eq!(fold_for_search(&accented.to_string()), plain.to_string(), "{accented}");
+            let upper: String = accented.to_uppercase().collect();
+            assert_eq!(fold_for_search(&upper), plain.to_string(), "{upper}");
+        }
+        assert_eq!(fold_for_search("Só pra te Adorar"), "so pra te adorar");
+        assert_eq!(fold_for_search("BENÇÃO"), "bencao");
+        // Other text is only lower-cased.
+        assert_eq!(fold_for_search("Sonda-me (Ao Vivo) 2X"), "sonda-me (ao vivo) 2x");
+        assert_eq!(fallback_key("Sonda-me (Ao Vivo) \"2X"), "sonda-me ao vivo 2x");
+        assert_eq!(fallback_key("bencao ("), "bencao");
+        assert_eq!(fallback_key("so ( pra"), "so pra");
+    }
 
     #[test]
     fn plain_term_gets_prefix_wildcard() {

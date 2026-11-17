@@ -1,7 +1,7 @@
 use crate::commands::presentation::refresh_song_in_outputs;
 use crate::domain::error::ErrorPayload;
 use crate::domain::song::{Song, SongSection, SectionType};
-use crate::services::fts_query::{self, FtsQuery};
+use crate::services::fts_query::{self, fallback_key, FtsQuery};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
@@ -485,23 +485,34 @@ pub async fn db_list_songs(
             .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?,
 
             FtsQuery::Like(term) => {
-                let pattern = format!("%{term}%");
-                sqlx::query(
+                // The full-text index cannot parse this search. Match anywhere
+                // in the title or artist, ignoring accents, ç and case (P23
+                // S7), which SQL `LIKE` cannot do - so filter here, then page.
+                let needle = fallback_key(&term);
+                let rows = sqlx::query(
                     "SELECT id, title, artist, author, copyright, ccli_number, key_signature,
                              language, notes, background_id, scrim_opacity, slide_config, source,
                              background_mode, background_preset, font_family, font_size, text_casing,
                              created_at, updated_at, deleted_at
                      FROM songs WHERE deleted_at IS NULL
-                       AND (title LIKE ? OR artist LIKE ?)
-                     ORDER BY title ASC LIMIT ? OFFSET ?",
+                     ORDER BY title ASC",
                 )
-                .bind(&pattern)
-                .bind(&pattern)
-                .bind(limit)
-                .bind(offset)
                 .fetch_all(pool)
                 .await
-                .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?
+                .map_err(|e| ErrorPayload::new("song.db_error").with_param("detail", e.to_string()))?;
+                // As SQLite reads them: a negative limit is no limit.
+                let take = usize::try_from(limit).unwrap_or(usize::MAX);
+                let skip = usize::try_from(offset).unwrap_or(0);
+                rows.into_iter()
+                    .filter(|row| {
+                        let title: String = row.get("title");
+                        let artist: Option<String> = row.get("artist");
+                        fallback_key(&title).contains(&needle)
+                            || artist.is_some_and(|a| fallback_key(&a).contains(&needle))
+                    })
+                    .skip(skip)
+                    .take(take)
+                    .collect()
             }
         },
         _ => sqlx::query(

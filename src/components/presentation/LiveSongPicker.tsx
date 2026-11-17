@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check, X } from "lucide-react";
 import { addSetItem } from "../../api/commands";
 import { useLibraryStore } from "../../stores/library";
+import { matchesSongSearch } from "../../utils/songSearch";
 import { presenterSongs } from "./itemMeta";
 import { formatCommandError } from "../../i18n/commandError";
 
@@ -25,15 +26,11 @@ export const LiveSongPicker: React.FC<{
   const [addedSongIds, setAddedSongIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    const lower = search.trim().toLowerCase();
-    if (!lower) return songs;
-    return songs.filter(
-      (s) =>
-        s.title.toLowerCase().includes(lower) ||
-        (s.artist ?? "").toLowerCase().includes(lower),
-    );
-  }, [songs, search]);
+  // Ignores accents, ç and case: "bencao" finds "Benção" (P23 S7).
+  const filtered = useMemo(
+    () => songs.filter((s) => matchesSongSearch(s, search)),
+    [songs, search],
+  );
 
   const pick = async (songId: string) => {
     try {

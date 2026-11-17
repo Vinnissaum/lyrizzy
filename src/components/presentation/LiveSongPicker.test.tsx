@@ -109,4 +109,23 @@ describe("LiveSongPicker", () => {
       ),
     );
   });
+
+  it("search ignores accents and ç", () => {
+    open([
+      song("a1", "Só pra te Adorar", "Diante do Trono"),
+      song("a2", "Manancial de Toda Benção", "Ministério Ipiranga"),
+    ]);
+    const list = () => screen.getByTestId("live-song-picker-list");
+
+    fireEvent.change(search(), { target: { value: "so pra" } });
+    expect(list()).toHaveTextContent("Só pra te Adorar");
+    expect(list()).not.toHaveTextContent("Manancial de Toda Benção");
+
+    fireEvent.change(search(), { target: { value: "bencao" } });
+    expect(list()).toHaveTextContent("Manancial de Toda Benção");
+    expect(list()).not.toHaveTextContent("Só pra te Adorar");
+
+    fireEvent.change(search(), { target: { value: "zzz" } });
+    expect(screen.getByText("Nenhuma música corresponde à pesquisa.")).toBeInTheDocument();
+  });
 });

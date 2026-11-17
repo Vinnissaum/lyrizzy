@@ -67,8 +67,8 @@ import { useMediaStore } from "../../stores/media";
 import { usePresentationStore } from "../../stores/presentation";
 import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
-import { getSet, loadSetForPresentation } from "../../api/commands";
-import type { ServiceSet } from "../../types";
+import { getSet, listSongs, loadSetForPresentation } from "../../api/commands";
+import type { ServiceSet, Song } from "../../types";
 
 const setActiveSet = vi.fn().mockResolvedValue(undefined);
 
@@ -250,5 +250,35 @@ describe("HomeSetBuilder", () => {
     const button = screen.getByTestId("apresentar-button");
     expect(button.className).toContain("bg-primary");
     expect(button.className).toContain("text-sm");
+  });
+
+  // ── P23 S7: accents and ç are ignored ──────────────────────────────────
+
+  it("song search ignores accents and ç", async () => {
+    const song = (id: string, title: string, artist: string) =>
+      ({ id, title, artist, language: "pt", scrimOpacity: 35, createdAt: 0, updatedAt: 0, sections: [] }) as Song;
+    vi.mocked(getSet).mockResolvedValue(baseSet);
+    vi.mocked(listSongs).mockResolvedValue([
+      song("s1", "Só pra te Adorar", "Diante do Trono"),
+      song("s2", "Manancial de Toda Benção", "Ministério Ipiranga"),
+    ]);
+    render(<HomeSetBuilder />);
+    await waitFor(() => expect(screen.getByText("Só pra te Adorar")).toBeInTheDocument());
+    const search = screen.getByPlaceholderText("home.sidebar.searchPlaceholder");
+
+    fireEvent.change(search, { target: { value: "so pra" } });
+    expect(screen.getByText("Só pra te Adorar")).toBeInTheDocument();
+    expect(screen.queryByText("Manancial de Toda Benção")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "bencao" } });
+    expect(screen.getByText("Manancial de Toda Benção")).toBeInTheDocument();
+    expect(screen.queryByText("Só pra te Adorar")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "zzz" } });
+    expect(screen.getByText("home.sidebar.empty")).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "" } });
+    expect(screen.getByText("Só pra te Adorar")).toBeInTheDocument();
+    expect(screen.getByText("Manancial de Toda Benção")).toBeInTheDocument();
   });
 });

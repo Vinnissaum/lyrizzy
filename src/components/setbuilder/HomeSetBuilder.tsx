@@ -13,6 +13,7 @@ import { SetBuilder } from "../set/SetBuilder";
 import { SetPicker } from "./SetPicker";
 import { useRequestPresentation } from "../presentation/PresentationLaunchProvider";
 import type { Song } from "../../types";
+import { matchesSongSearch } from "../../utils/songSearch";
 
 export const HomeSetBuilder: React.FC = () => {
   const { t } = useTranslation();
@@ -44,15 +45,11 @@ export const HomeSetBuilder: React.FC = () => {
     };
   }, []);
 
-  const filteredSongs = useMemo(() => {
-    const lower = sidebarSearch.toLowerCase();
-    if (!lower) return songs;
-    return songs.filter(
-      (s) =>
-        s.title.toLowerCase().includes(lower) ||
-        (s.artist ?? "").toLowerCase().includes(lower)
-    );
-  }, [songs, sidebarSearch]);
+  // Ignores accents, ç and case: "so pra" finds "Só pra te Adorar" (P23 S7).
+  const filteredSongs = useMemo(
+    () => songs.filter((s) => matchesSongSearch(s, sidebarSearch)),
+    [songs, sidebarSearch],
+  );
 
   const handleApresentar = async () => {
     if (!activeSetId) return;

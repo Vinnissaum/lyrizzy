@@ -315,3 +315,62 @@ async fn fts_search_finds_song_by_author() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].title, "Hino do Autor");
 }
+
+// ─── P23 S7: accents and ç are ignored ───────────────────────────────────────
+
+/// The four songs the S7 examples name, each with a body no search below uses.
+async fn accented_library(pool: &SqlitePool) {
+    for (title, artist) in [
+        ("Só pra te Adorar", "Diante do Trono"),
+        ("Manancial de Toda Benção", "Ministério Ipiranga"),
+        ("Coração Igual ao Teu", "Diante do Trono"),
+        ("Sonda-me", "João Alexandre"),
+    ] {
+        let mut song = make_song(title, "letra sem relação");
+        song.artist = Some(artist.to_string());
+        db_create_song(pool, song).await.unwrap();
+    }
+}
+
+async fn titles_for(pool: &SqlitePool, search: &str) -> Vec<String> {
+    let mut titles: Vec<String> = db_list_songs(
+        pool,
+        ListSongsParams { search: Some(search.to_string()), limit: None, offset: None },
+    )
+    .await
+    .unwrap()
+    .into_iter()
+    .map(|s| s.title)
+    .collect();
+    titles.sort();
+    titles
+}
+
+#[tokio::test]
+async fn search_ignores_accents_and_cedilla() {
+    let pool = open_test_db().await;
+    accented_library(&pool).await;
+
+    assert_eq!(titles_for(&pool, "so pra").await, ["Só pra te Adorar"]);
+    assert_eq!(titles_for(&pool, "So pra").await, ["Só pra te Adorar"]);
+    assert_eq!(titles_for(&pool, "bencao").await, ["Manancial de Toda Benção"]);
+    assert_eq!(titles_for(&pool, "BENÇÃO").await, ["Manancial de Toda Benção"]);
+    assert_eq!(titles_for(&pool, "coracao").await, ["Coração Igual ao Teu"]);
+    assert_eq!(titles_for(&pool, "joao").await, ["Sonda-me"]);
+    // An empty search lists every song.
+    assert_eq!(titles_for(&pool, "").await.len(), 4);
+}
+
+#[tokio::test]
+async fn fallback_search_ignores_accents_and_cedilla() {
+    let pool = open_test_db().await;
+    accented_library(&pool).await;
+
+    // An unbalanced quote or parenthesis takes the fallback, which matches
+    // anywhere in the title or artist.
+    assert_eq!(titles_for(&pool, "so \"pra").await, ["Só pra te Adorar"]);
+    assert_eq!(titles_for(&pool, "bencao (").await, ["Manancial de Toda Benção"]);
+    assert_eq!(titles_for(&pool, "joao (").await, ["Sonda-me"]);
+    assert_eq!(titles_for(&pool, "cao (").await, ["Coração Igual ao Teu", "Manancial de Toda Benção"]);
+    assert!(titles_for(&pool, "xyz (").await.is_empty());
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#064e3b"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="1650" cy="200" r="320" fill="#34d399" opacity="0.12"/>
+  <circle cx="260" cy="930" r="260" fill="#a7f3d0" opacity="0.08"/>
+  <g font-family="Ubuntu Sans, Arial, sans-serif" fill="#ecfdf5" text-anchor="middle">
+    <text x="960" y="430" font-size="120" font-weight="700">Dízimos e Ofertas</text>
+    <text x="960" y="560" font-size="60">Pix: ofertas@igrejaexemplo.org</text>
+    <text x="960" y="680" font-size="44" opacity="0.8">Obrigado por contribuir!</text>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e1b4b"/>
+      <stop offset="1" stop-color="#4c1d95"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0.5" cy="0" r="0.9">
+      <stop offset="0" stop-color="#fde68a" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#bg)"/>
+  <path d="M320 0 L120 360 L200 360 Z M320 0 L440 360 L520 360 Z M320 0 L290 360 L350 360 Z" fill="#fef3c7" opacity="0.12"/>
+  <rect width="640" height="360" fill="url(#light)"/>
+  <text x="320" y="200" font-family="Ubuntu Sans, Arial, sans-serif" font-size="40" font-weight="700" fill="#fff" text-anchor="middle" opacity="0.92">Bem-vindos</text>
+</svg>

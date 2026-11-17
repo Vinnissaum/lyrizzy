@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <rect width="640" height="360" fill="#f8fafc"/>
+  <rect width="640" height="72" fill="#4f46e5"/>
+  <g font-family="Ubuntu Sans, Arial, sans-serif">
+    <text x="36" y="48" font-size="30" font-weight="700" fill="#ffffff">Avisos da semana</text>
+    <g fill="#334155" font-size="22">
+      <text x="56" y="134">• Ensaio do coral: sábado, 16h</text>
+      <text x="56" y="184">• Escola bíblica: domingo, 9h</text>
+      <text x="56" y="234">• Campanha do agasalho</text>
+      <text x="56" y="284">• Conferência de jovens</text>
+    </g>
+  </g>
+</svg>

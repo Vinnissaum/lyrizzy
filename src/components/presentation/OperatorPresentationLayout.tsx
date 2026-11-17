@@ -12,7 +12,6 @@ import {
   onSongsChanged,
   OUTPUT2_LAST_SET_KEY,
   setAnnouncementOverlay,
-  setMediaOverlay,
   setSetting,
   addSetItem,
 } from "../../api/commands";
@@ -34,13 +33,13 @@ import { OutputLaunchModal } from "./OutputLaunchModal";
 import { MicSwitch } from "./MicSwitch";
 import { StreamProfileSwitcher } from "./StreamProfileSwitcher";
 import { OverlayActionBar } from "./OverlayActionBar";
-import { itemLabel, songArtist, presenterSongs } from "./itemMeta";
+import { itemLabel, songArtist, presenterMedia, presenterSongs } from "./itemMeta";
 import { SetItemList } from "./SetItemList";
 import { StrophesGrid } from "./StrophesGrid";
 import { LivePreview } from "./LivePreview";
 import { LiveSongEditModal } from "./LiveSongEditModal";
 import { AnnouncementDialog } from "./AnnouncementDialog";
-import { ImageOverlayDialog } from "./ImageOverlayDialog";
+import { LiveImagePicker } from "./LiveImagePicker";
 import { CountdownScheduleModal } from "../set/CountdownScheduleModal";
 import type { OutputId } from "../../types";
 
@@ -63,7 +62,10 @@ export const OperatorPresentationLayout: React.FC<{
   const refreshSets = useSetsStore((s) => s.refresh);
   const { songs: listedSongs, allSongs, refreshAllSongs } = useLibraryStore();
   const songs = presenterSongs({ songs: listedSongs, allSongs });
-  const { media, refresh: refreshMedia } = useMediaStore();
+  // Media items are named and previewed from the whole library, never from the
+  // Mídia view's filter or search (P24).
+  const mediaStore = useMediaStore();
+  const media = presenterMedia(mediaStore);
   const { activeSetId } = useLibraryStore();
 
   const videoReport = useVideoStore((s) => s.reports[focusedOutput]);
@@ -102,7 +104,9 @@ export const OperatorPresentationLayout: React.FC<{
   const autoLoadedTwoRef = useRef(false);
 
   useEffect(() => {
-    refreshMedia();
+    // The media store's own list feeds the countdown dialog's background picker.
+    mediaStore.refresh();
+    const unlistenMedia = mediaStore.subscribeAllMedia();
     // Song items label from the whole library, never from the Biblioteca
     // view's search result (a search would label the other songs "—"), and the
     // store may still be empty on the home→present path. Load it on entering.
@@ -118,6 +122,7 @@ export const OperatorPresentationLayout: React.FC<{
     return () => {
       unlistenSongs.then((u) => u());
       unlistenVideo.then((u) => u());
+      unlistenMedia.then((u) => u());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -188,19 +193,7 @@ export const OperatorPresentationLayout: React.FC<{
   };
 
   const handleOferta = () => {
-    refreshMedia();
     setShowMediaPicker(true);
-  };
-
-  const handleSelectMediaOverlay = async (mediaId: string) => {
-    setShowMediaPicker(false);
-    await ensurePresentation();
-    try {
-      await setMediaOverlay(mediaId, focusedOutput);
-    } catch (err) {
-      console.error("set media overlay failed:", err);
-    }
-    fanOutToMirror(focusedOutput, (o) => setMediaOverlay(mediaId, o));
   };
 
   const handleAvisoClick = () => {
@@ -454,10 +447,12 @@ export const OperatorPresentationLayout: React.FC<{
         </div>
       )}
 
-      {/* Image overlay picker, with upload from the computer (P23) */}
+      {/* Imagem: adds a picked image to the set after the current item, and
+          uploads from the computer (P23, P24 AD-096) */}
       {showMediaPicker && (
-        <ImageOverlayDialog
-          onSelect={handleSelectMediaOverlay}
+        <LiveImagePicker
+          setId={state.set.id}
+          anchorItemId={activeItem?.id}
           onClose={() => setShowMediaPicker(false)}
         />
       )}

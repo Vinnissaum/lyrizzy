@@ -31,6 +31,7 @@ describe("useMediaStore", () => {
     vi.mocked(invoke).mockResolvedValue([]);
     useMediaStore.setState({
       media: [],
+      allMedia: null,
       isLoading: false,
       filter: undefined,
       search: "",
@@ -101,5 +102,50 @@ describe("useMediaStore", () => {
     await unsub();
 
     expect(unlisten).toHaveBeenCalled();
+  });
+
+  // ─── The whole library, for the presenter and the wall (P24) ──────────────
+
+  it("the whole library is asked with no cap", async () => {
+    let onChanged: (() => void) | undefined;
+    vi.mocked(listen).mockImplementation((event, cb) => {
+      if (event === "media_library_changed") {
+        onChanged = () => cb({ event, id: 1, payload: undefined } as never);
+      }
+      return Promise.resolve(() => {});
+    });
+    const first = [makeMedia("a"), makeMedia("b", "video")];
+    vi.mocked(invoke).mockResolvedValue(first);
+
+    const unsub = await useMediaStore.getState().subscribeAllMedia();
+    await vi.waitFor(() => expect(useMediaStore.getState().allMedia).toEqual(first));
+
+    // No kind, no search, and a negative limit - SQLite's "no limit".
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith("list_media", { params: { limit: -1 } });
+
+    // A media_library_changed reloads it, again with no cap.
+    vi.mocked(invoke).mockClear();
+    const second = [...first, makeMedia("c")];
+    vi.mocked(invoke).mockResolvedValue(second);
+    onChanged?.();
+    await vi.waitFor(() => expect(useMediaStore.getState().allMedia).toEqual(second));
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith("list_media", { params: { limit: -1 } });
+    await unsub();
+  });
+
+  it("loading the whole library leaves the Mídia view alone", async () => {
+    // The Mídia view on "Vídeos" with the search "abc", holding one video.
+    const filtered = [makeMedia("v1", "video")];
+    useMediaStore.setState({ media: filtered, filter: "video", search: "abc" });
+    const whole = [makeMedia("i1"), makeMedia("v1", "video"), makeMedia("i2")];
+    vi.mocked(invoke).mockResolvedValue(whole);
+
+    await useMediaStore.getState().refreshAllMedia();
+
+    const s = useMediaStore.getState();
+    expect(s.allMedia).toEqual(whole);
+    expect(s.media).toEqual(filtered);
+    expect(s.filter).toBe("video");
+    expect(s.search).toBe("abc");
   });
 });

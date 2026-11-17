@@ -1442,6 +1442,92 @@ mod tests {
         assert_eq!(snapshots.len(), 2);
     }
 
+    // ─── An image picked in the presenter's `Imagem` dialog (P24, AD-096) ────
+
+    async fn seed_image(pool: &SqlitePool, id: &str) {
+        let now = now_ms();
+        crate::db::media::db_insert_media(
+            pool,
+            &crate::domain::media::Media {
+                id: id.into(),
+                file_name: format!("{id}.png"),
+                display_name: id.into(),
+                kind: MediaKind::Image,
+                mime_type: "image/png".into(),
+                width: Some(1920),
+                height: Some(1080),
+                duration_ms: None,
+                thumbnail_file: None,
+                byte_size: 1,
+                created_at: now,
+                updated_at: now,
+                deleted_at: None,
+                slide_count: None,
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    /// What the `Imagem` dialog sends for a picked image.
+    fn add_image(set_id: &str, media_id: &str, after: Option<&str>) -> AddSetItemPayload {
+        AddSetItemPayload {
+            set_id: set_id.into(),
+            item_type: "media".into(),
+            song_id: None,
+            media_id: Some(media_id.into()),
+            media_options: Some(serde_json::json!({ "loop": false, "mute": false, "autoAdvanceOnEnd": true })),
+            countdown_config: None,
+            webview_config: None,
+            after_item_id: after.map(str::to_string),
+        }
+    }
+
+    #[tokio::test]
+    async fn live_image_add_keeps_every_output_in_place() {
+        let (state, _dir) = live_state().await;
+        let pool = db(&state);
+        seed_song_set(pool, "set-1", &["A", "B", "C"]).await;
+        seed_image(pool, "pix").await;
+        seed_image(pool, "logo").await;
+        // Tela 1 live on B's slide 2, Tela 2 live on C's slide 1.
+        present(&state, One, "set-1", (1, 2), Live, None).await;
+        present(&state, Two, "set-1", (2, 1), Live, None).await;
+        let one_shows = live(&state, One).await.current_slide;
+        let two_shows = live(&state, Two).await.current_slide;
+
+        let (pix, snapshots) =
+            add_set_item_core(&state, add_image("set-1", "pix", Some("B"))).await.unwrap();
+
+        let p = pix.id.as_str();
+        assert_eq!(pix.item_type, SetItemType::Media);
+        assert_eq!(pix.media_kind, Some(MediaKind::Image));
+        assert_eq!(stored_order(pool, "set-1").await, ["A", "B", p, "C"]);
+        assert_eq!(live_order(&state, One).await, ["A", "B", p, "C"]);
+        assert_eq!(live_order(&state, Two).await, ["A", "B", p, "C"]);
+        let one = live(&state, One).await;
+        assert_eq!((one.current_item_index, one.current_slide_index), (1, 2));
+        assert_eq!(one.current_slide, one_shows);
+        let two = live(&state, Two).await;
+        assert_eq!((two.current_item_index, two.current_slide_index), (3, 1));
+        assert_eq!(two.current_slide, two_shows);
+        assert_eq!(live_slides(&state, One).await[2].len(), 1, "an image is one slide");
+        assert_eq!(snapshots.len(), 2);
+
+        // Tela 2 frozen on A's slide 1 while its operator browses B.
+        present(&state, Two, "set-1", (1, 0), Frozen, Some((0, 1))).await;
+        let frozen_shows = live(&state, Two).await.current_slide;
+
+        let (logo, _) =
+            add_set_item_core(&state, add_image("set-1", "logo", Some("B"))).await.unwrap();
+
+        let two = live(&state, Two).await;
+        assert_eq!(live_order(&state, Two).await, ["A", "B", logo.id.as_str(), p, "C"]);
+        assert_eq!(two.frozen_at, Some((0, 1)));
+        assert_eq!(two.current_slide, frozen_shows);
+        assert_eq!(two.current_item_index, 1);
+    }
+
     #[tokio::test]
     async fn live_remove_keeps_the_wall() {
         let (state, _dir) = live_state().await;

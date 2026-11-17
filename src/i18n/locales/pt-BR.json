@@ -184,6 +184,10 @@
     "itemNotes": {
       "label": "Notas",
       "placeholder": "Notas para o apresentador…"
+    },
+    "mediaDialog": {
+      "title": "Adicionar mídia ao conjunto",
+      "close": "Fechar"
     }
   },
   "presentation": {
@@ -295,7 +299,8 @@
       "remove": "Remover",
       "onAir": "No ar — não pode ser removido",
       "confirmRemove": "Remover “{{name}}” do conjunto?",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "imagePickerTitle": "Adicionar imagem ao conjunto"
     }
   },
   "countdown": {
@@ -944,7 +949,6 @@
       "announcementSizeUp": "Aumentar texto",
       "confirm": "Confirmar",
       "cancel": "Cancelar",
-      "selectMedia": "Selecionar imagem",
       "uploadImage": "Enviar imagem do computador",
       "uploadFailed_one": "{{count}} arquivo não foi importado",
       "uploadFailed_other": "{{count}} arquivos não foram importados",

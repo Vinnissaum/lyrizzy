@@ -67,19 +67,20 @@ which media a dialog lists, what a click adds and what a delete asks are fronten
 store (`vitest`). A real seek and the layout of the grid are not computed by jsdom, so both are
 also walked in Chromium.
 
-1. the operator clicks an image in the `Imagem` dialog -> `ImageOverlayDialog` (exists) -> `addSetItem` in `src/api/commands.ts` (exists) with `itemType: "media"`, the image's id, the default media options and `afterItemId` (open question 2) -> `commands/set.rs::add_set_item` (exists) inserts it and splices it into every output with the set loaded, each keeping its item, slide and frozen item (D-88); nothing is projected
-2. out: `set_changed` and `state_changed` -> `SetItemList`, the strophes header and `LivePreview` (exist) label and preview media from the whole library, `allMedia` in `useMediaStore` (exists), loaded with no filter, search or cap and reloaded on `media_library_changed`
+1. the operator clicks an image in the `Imagem` dialog -> `LiveImagePicker` (exists, renamed from `ImageOverlayDialog`; its cards in `MediaCardGrid` (new)) -> `addSetItem` in `src/api/commands.ts` (exists) with `itemType: "media"`, the image's id, the default media options and `afterItemId` (open question 2) -> `commands/set.rs::add_set_item` (exists) inserts it and splices it into every output with the set loaded, each keeping its item, slide and frozen item (D-88); nothing is projected
+2. out: `set_changed` and `state_changed` -> `SetItemList`, the strophes header, `StrophesGrid`, `LivePreview` and `OutputLaunchModal` (exist) label and preview media from the whole library, `allMedia` in `useMediaStore` (exists), loaded with no filter, search or cap and reloaded on `media_library_changed`
 3. the operator selects the new row -> `go_to_item` (exists) -> `PresentationApp` (exists) on the wall finds the image in its media list, which now holds the whole library and reloads on `media_library_changed` and whenever the current item names a media id it lacks -> `MediaSlideRenderer` (exists)
 4. a `<video>` or `<img>` in either window requests `http://asset.localhost/media/<file>` -> `protocol/asset.rs` (exists), registered as an asynchronous protocol (door 1) -> on a worker thread it checks the path as today, then answers a `Range` with `206` and only those bytes, at most 1 MiB; no `Range` with `200` and the whole file; a range past the end with `416`
 5. the operator uses the bar, `−10 s` or `+10 s` -> `VideoControls` (exists) -> `video_command` (exists) -> `MediaSlideRenderer` (exists) sets `currentTime` -> Chromium asks the bytes at that offset (hop 4) and plays from there
-6. on Home, the operator uses `Mídia` -> `SetBuilder` (exists) opens the media dialog (new) -> `listMedia` (exists) with no cap, newest first; `Todos`, `Imagens` and `Vídeos` filter it in the dialog
+6. on Home, the operator uses `Mídia` -> `SetBuilder` (exists) opens the media dialog (new), its cards in `MediaCardGrid` (new) -> `listMedia` (exists) with no cap, newest first; `Todos`, `Imagens` and `Vídeos` filter it in the dialog
 7. a card's click -> `addSetItem` (exists), as the panel does today, and the dialog closes; a card's delete control -> `getMediaReferences` (exists) -> `ConfirmDialog` (exists), `Excluir mídia` or `Mídia em uso` -> `deleteMedia` (exists) -> `commands/media.rs::delete_media` (exists) soft-deletes and emits `media_library_changed` -> the dialog drops the card
 
 ```mermaid
 flowchart TD
     subgraph Operator window
-        IOD["ImageOverlayDialog (exists)"]
-        SIL["SetItemList, strophes header, LivePreview (exist)"]
+        IOD["LiveImagePicker (exists, was ImageOverlayDialog)"]
+        SIL["SetItemList, strophes header, StrophesGrid, LivePreview, OutputLaunchModal (exist)"]
+        GRID["MediaCardGrid (new)"]
         MST["useMediaStore.allMedia (exists, new field)"]
         VC["VideoControls (exists)"]
         SB["SetBuilder (exists)"]
@@ -106,6 +107,8 @@ flowchart TD
     AP -->|"4. 206, at most 1 MiB, worker thread"| MSR
     VC -->|"5. video_command seek / skip"| MSR
     SB -->|"6. Mídia"| MD
+    GRID -->|"1, 6. large cards"| IOD
+    GRID -->|"1, 6. large cards"| MD
     MD -->|"6. listMedia, no cap"| API
     MD -->|"7. click: addSetItem"| API
     MD -->|"7. delete control: getMediaReferences"| CD
@@ -118,8 +121,8 @@ flowchart TD
 | Front | What changes |
 | --- | --- |
 | domain | The presenter's `Imagem` meant "project this image over the wall until `Fechar overlay`" (phase 23 AC 10, C10). It now means "add this image to the set" (AD-096); the wall does not change. `OperatorPresentationLayout.handleSelectMediaOverlay` is its only caller of `setMediaOverlay`; after this nothing in the UI sets a media overlay. The wall's and the preview's media-overlay branches stay, unreachable from the UI. Phase 23's C10 test changes with this claim, in the same commit |
-| domain | The operator's `useMediaStore.media` meant "the Mídia view's current filter and search result, 200 newest". The presenter's readers - `SetItemList`, the strophes header in `OperatorPresentationLayout`, `LivePreview` - move to a new `allMedia`, the whole library; the Mídia view keeps `media`, its filter and its search |
-| domain | The wall's media list meant "the 200 newest items when the window opened". It now holds the whole library and reloads on `media_library_changed` and when the current item names a media id it lacks. Its readers - `PresentationApp` (media items, countdown and takeover backgrounds) and `QuickMediaRenderer` - only gain items |
+| domain | The operator's `useMediaStore.media` meant "the Mídia view's current filter and search result, 200 newest". The presenter's readers - `SetItemList`, the strophes header in `OperatorPresentationLayout`, `StrophesGrid`, `LivePreview`, `OutputLaunchModal` - move to a new `allMedia`, the whole library; the Mídia view keeps `media`, its filter and its search. The presenter still loads `media` when it opens: the countdown dialog's background picker (`MediaPicker`) names its choice from it |
+| domain | The wall's media list meant "the 200 newest items when the window opened". It now holds the whole library and reloads on `media_library_changed` and when the current item names a media id it lacks. Its reader, `PresentationApp` (media items, countdown and takeover backgrounds), only gains items. `QuickMediaRenderer` keeps reloading the store's own list for an overlay it lacks (phase 23 C65); nothing sets a media overlay any more |
 | domain | The `asset` protocol meant "the whole file, `200`, read on the UI thread". It now answers byte ranges on a worker thread (door 1, AD-097). Its readers: every `<video>` and `<img>` in both windows - set videos and images, song and countdown backgrounds, slide-show pages, every thumbnail. A request without `Range` (images, thumbnails) still gets the whole file |
 | domain | Home's `Mídia` button meant "a 256 px panel under the set, from the media store". It now opens a dialog over the page that loads its own list of the whole library and can delete. What a click adds is unchanged |
 | stored data | nothing to migrate. A new set item is written by `add_set_item` in its existing shape; a delete is the existing soft delete (`media.deleted_at`) |

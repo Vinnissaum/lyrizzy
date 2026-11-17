@@ -4,6 +4,7 @@ import { Tv } from "lucide-react";
 import { usePresentationStore } from "../../stores/presentation";
 import { useCountdownStore } from "../../stores/countdown";
 import { useMediaStore } from "../../stores/media";
+import { presenterMedia } from "./itemMeta";
 import { useSettingsStore } from "../../stores/settings";
 import { mediaUrl } from "../../api/assets";
 import { PRESET_COLORS } from "./layout";
@@ -42,7 +43,8 @@ export const LivePreview: React.FC = () => {
   const state = usePresentationStore((s) => s.state);
   const pendingSelection = usePresentationStore((s) => s.pendingSelection);
   const countdown = useCountdownStore((s) => s.state);
-  const { media } = useMediaStore();
+  // The whole library: a filter in the Mídia view must not blank an image (P24).
+  const media = presenterMedia(useMediaStore());
 
   // Build ChipAppearance from global presentation settings.
   const presentationFontFamily = useSettingsStore((s) => s.presentationFontFamily);

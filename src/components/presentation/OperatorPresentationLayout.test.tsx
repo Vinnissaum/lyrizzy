@@ -105,14 +105,14 @@ import { useMediaStore } from "../../stores/media";
 import { useSettingsStore } from "../../stores/settings";
 import { useSetsStore } from "../../stores/sets";
 import {
+  addSetItem,
+  clearOverlay,
   enterPresentation,
   getPresentationState,
-  importMedia,
   listMedia,
   loadSetForPresentation,
   setMediaOverlay,
 } from "../../api/commands";
-import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { fanOutToMirror } from "../../utils/outputDispatch";
 import { useCountdownStore } from "../../stores/countdown";
 import { useVideoStore } from "../../stores/video";
@@ -185,9 +185,12 @@ function mockSettingsSelector() {
   });
 }
 
+/** Navigation the operator could trigger; a pick from `Imagem` must not. */
+const selectSlideMock = vi.fn();
+
 function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
   const state = makePresentationState(stateOverrides);
-  const storeShape = { state, focusedOutput: "one" as const };
+  const storeShape = { state, focusedOutput: "one" as const, selectSlide: selectSlideMock };
   vi.mocked(usePresentationStore).mockImplementation((selector: any) =>
     selector ? selector(storeShape) : storeShape,
   );
@@ -212,6 +215,7 @@ function setupDefaultMocks(stateOverrides?: Partial<PresentationState>) {
   vi.mocked(useMediaStore).mockReturnValue({
     media: [],
     refresh: vi.fn(),
+    subscribeAllMedia: vi.fn().mockResolvedValue(() => {}),
   } as unknown as ReturnType<typeof useMediaStore>);
   mockSetsSelector();
   mockSettingsSelector();
@@ -326,6 +330,7 @@ describe("OperatorPresentationLayout", () => {
     vi.mocked(useMediaStore).mockReturnValue({
       media: [],
       refresh: vi.fn(),
+      subscribeAllMedia: vi.fn().mockResolvedValue(() => {}),
     } as unknown as ReturnType<typeof useMediaStore>);
     mockSettingsSelector();
 
@@ -371,6 +376,7 @@ describe("OperatorPresentationLayout", () => {
     vi.mocked(useMediaStore).mockReturnValue({
       media: [],
       refresh: vi.fn(),
+      subscribeAllMedia: vi.fn().mockResolvedValue(() => {}),
     } as unknown as ReturnType<typeof useMediaStore>);
     mockSetsSelector([
       { id: "set-1", name: "Culto" },
@@ -426,6 +432,7 @@ describe("OperatorPresentationLayout", () => {
     vi.mocked(useMediaStore).mockReturnValue({
       media: [],
       refresh: vi.fn(),
+      subscribeAllMedia: vi.fn().mockResolvedValue(() => {}),
     } as unknown as ReturnType<typeof useMediaStore>);
     mockSetsSelector([{ id: "set-1", name: "Culto" }]);
     vi.mocked(useSettingsStore).mockImplementation((selector?: any) => {
@@ -518,36 +525,42 @@ describe("OperatorPresentationLayout", () => {
     expect(screen.queryByTestId("live-song-edit-modal-stub")).not.toBeInTheDocument();
   });
 
-  it("an image uploaded in the dialog projects on click", async () => {
-    setupDefaultMocks();
-    const uploaded = {
-      id: "img-new",
-      fileName: "foto.png",
-      displayName: "foto",
-      kind: "image",
-      mimeType: "image/png",
-      byteSize: 1,
-      createdAt: 5,
-      updatedAt: 5,
-    };
-    let library: unknown[] = [];
-    vi.mocked(listMedia).mockImplementation(async () => library as never);
-    vi.mocked(importMedia).mockImplementation(async () => {
-      library = [uploaded];
-      return uploaded as never;
-    });
-    vi.mocked(openFileDialog).mockResolvedValueOnce(["/fotos/foto.png"] as never);
+  it("a picked image is added after the current item and never projected", async () => {
+    // Live on the countdown (item-2), the second item of [item-1, item-2].
+    setupDefaultMocks({ currentItemIndex: 1 });
+    vi.mocked(listMedia).mockResolvedValue([
+      { id: "img-pix", fileName: "pix.png", displayName: "Pix", kind: "image", mimeType: "image/png",
+        byteSize: 1, createdAt: 5, updatedAt: 5 },
+    ] as never);
+    vi.mocked(addSetItem).mockResolvedValue({ id: "item-new" } as never);
     render(<OperatorPresentationLayout />);
 
     fireEvent.click(screen.getByRole("button", { name: /home\.overlay\.image/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /home\.overlay\.uploadImage/ }));
-    const thumb = await screen.findByRole("button", { name: "foto" });
+    expect(screen.getByRole("dialog")).toHaveTextContent("presentation.liveSet.imagePickerTitle");
+    fireEvent.click(await screen.findByRole("button", { name: "Pix" }));
+
+    await waitFor(() =>
+      expect(addSetItem).toHaveBeenCalledWith({
+        setId: "set-1",
+        itemType: "media",
+        mediaId: "img-pix",
+        mediaOptions: { loop: false, mute: false, autoAdvanceOnEnd: true },
+        afterItemId: "item-2",
+      }),
+    );
     expect(setMediaOverlay).not.toHaveBeenCalled();
+    // The wall stays: nothing navigates, and the dialog stays open.
+    expect(selectSlideMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
 
-    fireEvent.click(thumb);
+  it("Fechar overlay still clears an Aviso", () => {
+    setupDefaultMocks({ overlay: { type: "announcement", text: "Carro com o farol aceso" } as never });
+    render(<OperatorPresentationLayout />);
 
-    await waitFor(() => expect(setMediaOverlay).toHaveBeenCalledWith("img-new", "one"));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /home\.overlay\.closeOverlay/ }));
+
+    expect(clearOverlay).toHaveBeenCalledWith("one");
   });
 
   it("the video strip comes and goes with the wall's video", () => {

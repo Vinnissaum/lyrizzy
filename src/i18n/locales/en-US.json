@@ -184,6 +184,10 @@
     "itemNotes": {
       "label": "Notes",
       "placeholder": "Presenter notes…"
+    },
+    "mediaDialog": {
+      "title": "Add media to the set",
+      "close": "Close"
     }
   },
   "presentation": {
@@ -295,7 +299,8 @@
       "remove": "Remove",
       "onAir": "On screen — can't be removed",
       "confirmRemove": "Remove “{{name}}” from the set?",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "imagePickerTitle": "Add an image to the set"
     }
   },
   "countdown": {
@@ -944,7 +949,6 @@
       "announcementSizeUp": "Larger text",
       "confirm": "Confirm",
       "cancel": "Cancel",
-      "selectMedia": "Select image",
       "uploadImage": "Upload image from computer",
       "uploadFailed_one": "{{count}} file was not imported",
       "uploadFailed_other": "{{count}} files were not imported",

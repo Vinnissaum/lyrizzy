@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { ImageOverlayDialog, IMAGE_EXTENSIONS } from "./ImageOverlayDialog";
+import { LiveImagePicker, IMAGE_EXTENSIONS } from "./LiveImagePicker";
 import type { Media } from "../../types";
 
-// P23 S2: the Imagem dialog uploads photos from the computer. The real dialog
-// and the real media store; the backend (invoke) and the OS file dialog are
-// stubbed.
+// The presenter's Imagem dialog: it uploads photos from the computer (P23 S2)
+// and adds a clicked image to the set after the current item (P24 S1). The
+// real dialog; the backend (invoke) and the OS file dialog are stubbed.
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -39,6 +39,11 @@ let failing: Set<string>;
 let held: Array<() => void>;
 let hold: boolean;
 let clock: number;
+/** add_set_item: refused with this error when set, else held until released while `holdAdds`. */
+let addError: unknown;
+let holdAdds: boolean;
+let heldAdds: Array<() => void>;
+let addCount: number;
 
 function backend() {
   vi.mocked(invoke).mockImplementation((cmd: string, args?: any) => {
@@ -74,6 +79,12 @@ function backend() {
           });
         });
       }
+      case "add_set_item": {
+        if (addError) return Promise.reject(addError);
+        const item = { id: `added-${++addCount}`, ...args.payload };
+        if (!holdAdds) return Promise.resolve(item);
+        return new Promise((resolve) => heldAdds.push(() => resolve(item)));
+      }
       default:
         return Promise.resolve(undefined);
     }
@@ -83,16 +94,20 @@ function backend() {
 const calls = (cmd: string) => vi.mocked(invoke).mock.calls.filter(([c]) => c === cmd);
 const uploadButton = () => screen.getByRole("button", { name: /Enviar imagem do computador|Importando/ });
 const gridNames = () =>
-  within(screen.getByTestId("image-overlay-grid"))
+  within(screen.getByTestId("live-image-grid"))
     .queryAllByRole("button")
     .map((b) => b.textContent);
+/** Commands that change something: everything but the reads. */
+const changes = () =>
+  vi.mocked(invoke).mock.calls.map(([c]) => c).filter((c) => !c.startsWith("list_") && !c.startsWith("get_"));
 
-function show(onSelect = vi.fn(), onClose = vi.fn()) {
-  render(<ImageOverlayDialog onSelect={onSelect} onClose={onClose} />);
-  return { onSelect, onClose };
+/** The presenter on item B of the set "set-1". */
+function show(onClose = vi.fn()) {
+  render(<LiveImagePicker setId="set-1" anchorItemId="item-b" onClose={onClose} />);
+  return { onClose };
 }
 
-describe("ImageOverlayDialog (P23)", () => {
+describe("LiveImagePicker (P23, P24)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     library = [image("old-1", "Oferta", 10), image("old-2", "Boas-vindas", 20)];
@@ -100,17 +115,21 @@ describe("ImageOverlayDialog (P23)", () => {
     held = [];
     hold = false;
     clock = 100;
+    addError = undefined;
+    holdAdds = false;
+    heldAdds = [];
+    addCount = 0;
     backend();
   });
 
   it("upload control shows with images and with none", async () => {
     show();
-    expect(screen.getByRole("dialog")).toHaveTextContent("Selecionar imagem");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Adicionar imagem ao conjunto");
     await waitFor(() => expect(gridNames()).toHaveLength(2));
     expect(screen.getByRole("button", { name: "Enviar imagem do computador" })).toBeEnabled();
 
     library = [];
-    render(<ImageOverlayDialog onSelect={vi.fn()} onClose={vi.fn()} />);
+    render(<LiveImagePicker setId="set-1" anchorItemId="item-b" onClose={vi.fn()} />);
     await waitFor(() => expect(screen.getByText("Nenhuma mídia disponível.")).toBeInTheDocument());
     expect(screen.getAllByRole("button", { name: "Enviar imagem do computador" })).toHaveLength(2);
   });
@@ -131,7 +150,7 @@ describe("ImageOverlayDialog (P23)", () => {
 
   it("picked files are imported and listed first without projecting", async () => {
     vi.mocked(open).mockResolvedValue(["/fotos/batismo.jpg", "/fotos/ceia.png"] as never);
-    const { onSelect, onClose } = show();
+    const { onClose } = show();
     await waitFor(() => expect(gridNames()).toHaveLength(2));
 
     fireEvent.click(uploadButton());
@@ -144,20 +163,81 @@ describe("ImageOverlayDialog (P23)", () => {
     // Newest first: the two uploads lead, the last one imported on top.
     expect(gridNames()).toEqual(["ceia", "batismo", "Boas-vindas", "Oferta"]);
     expect(calls("set_media_overlay")).toHaveLength(0);
-    expect(onSelect).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("clicking a thumbnail hands its id to the host", async () => {
-    vi.mocked(open).mockResolvedValue(["/fotos/batismo.jpg"] as never);
-    const { onSelect } = show();
+  it("a clicked image is added after the anchor and marked Adicionada", async () => {
+    const { onClose } = show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Oferta" }));
+
+    await waitFor(() => expect(gridNames()).toContain("OfertaAdicionada"));
+    expect(calls("add_set_item")).toEqual([
+      [
+        "add_set_item",
+        {
+          payload: {
+            setId: "set-1",
+            itemType: "media",
+            mediaId: "old-1",
+            mediaOptions: { loop: false, mute: false, autoAdvanceOnEnd: true },
+            afterItemId: "item-b",
+          },
+        },
+      ],
+    ]);
+    // Added, never projected, and no wall moved.
+    expect(changes()).toEqual(["add_set_item"]);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("a second pick lands right after the first, even while the first is pending", async () => {
+    holdAdds = true;
+    show();
+    await waitFor(() => expect(gridNames()).toHaveLength(2));
+
+    fireEvent.click(screen.getByRole("button", { name: "Oferta" }));
+    fireEvent.click(screen.getByRole("button", { name: "Boas-vindas" }));
+    // The second waits for the item the first creates.
+    await waitFor(() => expect(calls("add_set_item")).toHaveLength(1));
+    expect((calls("add_set_item")[0][1] as any).payload.afterItemId).toBe("item-b");
+
+    heldAdds.shift()!();
+    await waitFor(() => expect(calls("add_set_item")).toHaveLength(2));
+    const second = (calls("add_set_item")[1][1] as any).payload;
+    expect(second.mediaId).toBe("old-2");
+    expect(second.afterItemId).toBe("added-1");
+
+    heldAdds.shift()!();
+    await waitFor(() => expect(gridNames()).toEqual(["Boas-vindasAdicionada", "OfertaAdicionada"]));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("uploaded images are listed first and nothing is added to the set", async () => {
+    vi.mocked(open).mockResolvedValue(["/fotos/batismo.jpg", "/fotos/ceia.png"] as never);
+    show();
+    await waitFor(() => expect(gridNames()).toHaveLength(2));
+
     fireEvent.click(uploadButton());
 
-    fireEvent.click(await screen.findByRole("button", { name: "batismo" }));
+    await waitFor(() => expect(gridNames()).toEqual(["ceia", "batismo", "Boas-vindas", "Oferta"]));
+    expect(calls("import_media")).toHaveLength(2);
+    expect(calls("add_set_item")).toHaveLength(0);
+  });
 
-    expect(onSelect).toHaveBeenCalledWith("new-batismo");
+  it("a refused add keeps the dialog open with the error", async () => {
+    addError = { code: "set.item_not_found", params: {} };
+    const { onClose } = show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Oferta" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Item não encontrado"));
+    expect(gridNames()).toEqual(["Boas-vindas", "Oferta"]);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("upload shows its progress and is disabled meanwhile", async () => {

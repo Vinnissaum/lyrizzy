@@ -35,6 +35,17 @@ export const presenterSongs = (s: {
 }): Song[] => s.allSongs ?? s.songs;
 
 /**
+ * The media the presenter and the wall label and show set items from, as a
+ * media-store selector: the whole library (`allMedia`), or the Mídia view's
+ * list until the whole library has loaded. Never that view's filter or search
+ * once it has, so a filter cannot turn an image's name into `Mídia` (P24).
+ */
+export const presenterMedia = (s: {
+  media: Media[];
+  allMedia?: Media[] | null;
+}): Media[] => s.allMedia ?? s.media;
+
+/**
  * Icon for a set-item type. Uses lucide (SVG) instead of emoji/Unicode glyphs,
  * which fail to render on Linux installs without a colour-emoji font.
  */

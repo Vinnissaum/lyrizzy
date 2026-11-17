@@ -86,11 +86,20 @@ vi.mock("../../stores/countdown", () => ({
   ),
 }));
 
+// The whole library (P24): `null` until loaded, as in the real store.
+let allMediaMock: Media[] | null = null;
+const refreshAllMediaMock = vi.fn();
+const unsubscribeAllMediaMock = vi.fn();
+const subscribeAllMediaMock = vi.fn(() => Promise.resolve(unsubscribeAllMediaMock));
+
 vi.mock("../../stores/media", () => ({
   useMediaStore: Object.assign(
     () => ({
       media: mediaMock,
+      allMedia: allMediaMock,
       refresh: vi.fn(),
+      refreshAllMedia: refreshAllMediaMock,
+      subscribeAllMedia: subscribeAllMediaMock,
     }),
     { getState: () => ({ media: mediaMock, refresh: vi.fn() }) }
   ),
@@ -847,5 +856,79 @@ describe("PresentationApp — media that left the wall (P23)", () => {
     expect(videos(container)).toEqual([bg]);
     expect(bg.paused).toBe(false);
     expect(bg.currentTime).toBe(12);
+  });
+});
+
+describe("PresentationApp — media added during the service (P24)", () => {
+  const image = (id: string): Media =>
+    ({ id, fileName: `${id}.png`, displayName: id, kind: "image" } as Media);
+  const onImage: PresentationState = {
+    mode: "live",
+    set: {
+      id: "set-1",
+      name: "Set",
+      createdAt: 0,
+      updatedAt: 0,
+      items: [
+        { id: "item-1", itemType: "song", songId: "s1" },
+        { id: "img-1", itemType: "media", mediaId: "pix", mediaKind: "image",
+          mediaOptions: { loop: false, mute: false, autoAdvanceOnEnd: true } },
+      ] as never,
+    },
+    currentItemIndex: 1,
+    currentSlideIndex: 0,
+    currentSlide: { lines: [], sectionLabel: "", sectionId: "media" },
+    itemSlideCounts: [1, 1],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mediaMock = [];
+  });
+  afterEach(() => {
+    presStateMock = liveState;
+    allMediaMock = null;
+  });
+
+  const wallImage = (c: HTMLElement) => c.querySelector("img")?.getAttribute("src") ?? null;
+
+  it("an image item the wall has not loaded reloads the library and shows it", () => {
+    presStateMock = onImage;
+    // Not loaded yet: the subscription loads it, nothing else asks.
+    allMediaMock = null;
+    const { container, rerender } = render(<PresentationApp />);
+    expect(refreshAllMediaMock).not.toHaveBeenCalled();
+
+    // Loaded when the window opened, before "pix" was uploaded.
+    allMediaMock = [image("old")];
+    rerender(<PresentationApp />);
+    expect(refreshAllMediaMock).toHaveBeenCalledTimes(1);
+    expect(wallImage(container)).toBeNull();
+
+    // The reload lands: the wall shows the image and asks nothing more.
+    allMediaMock = [image("old"), image("pix")];
+    rerender(<PresentationApp />);
+    expect(wallImage(container)).toBe("http://asset.localhost/media/pix.png");
+    expect(screen.queryByText("Mídia não encontrada")).toBeNull();
+    expect(refreshAllMediaMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("the wall reloads its media when the library changes", () => {
+    presStateMock = onImage;
+    allMediaMock = [image("old")];
+    const { container, rerender, unmount } = render(<PresentationApp />);
+    // The whole library is loaded and kept current by its subscription
+    // (`subscribeAllMedia` reloads it on every media_library_changed).
+    expect(subscribeAllMediaMock).toHaveBeenCalledTimes(1);
+
+    // media_library_changed after an upload: the reloaded list holds "pix".
+    allMediaMock = [image("old"), image("pix")];
+    rerender(<PresentationApp />);
+    expect(wallImage(container)).toBe("http://asset.localhost/media/pix.png");
+
+    unmount();
+    return Promise.resolve().then(() => {
+      expect(unsubscribeAllMediaMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

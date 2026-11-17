@@ -12,6 +12,7 @@ import { useMicAudio } from "../../hooks/useMicAudio";
 import { OutputContext } from "../../components/presentation/outputContext";
 import type { OutputId } from "../../types";
 import { PRESET_COLORS } from "../../components/presentation/layout";
+import { presenterMedia } from "../../components/presentation/itemMeta";
 import { MediaSlideRenderer } from "../../components/presentation/MediaSlideRenderer";
 import { CountdownRenderer } from "../../components/presentation/CountdownRenderer";
 import { WebViewRenderer } from "../../components/presentation/WebViewRenderer";
@@ -61,7 +62,10 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
     subscribe: subscribeCountdown,
     start: startCountdown,
   } = useCountdownStore();
-  const { refresh: refreshMedia, media } = useMediaStore();
+  const { media: listedMedia, allMedia, subscribeAllMedia, refreshAllMedia } = useMediaStore();
+  // The whole library, reloaded whenever it changes: a set item may name any
+  // media, including one uploaded after this window opened (P24).
+  const media = presenterMedia({ media: listedMedia, allMedia });
   const {
     transitionMs,
     reduceMotion,
@@ -125,7 +129,7 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
     loadPresentationSettings();
     loadOutputAudio();
     loadLocale();
-    refreshMedia();
+    const unsubMedia = subscribeAllMedia();
 
     // P10-02: Esc local-fallback timer. Cleared on unmount to avoid leaks.
     let escFallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -177,6 +181,7 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
       unsubCd.then((u) => u());
       unsubLocale.then((u) => u());
       unsubSetting.then((u) => u());
+      unsubMedia.then((u) => u());
       window.removeEventListener("keydown", keydownHandler);
       if (escFallbackTimer !== undefined) clearTimeout(escFallbackTimer);
     };
@@ -215,6 +220,18 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
       });
     }
   }, [currentItem?.id]);
+
+  // An image or video item naming media this window has not loaded yet: reload
+  // once, instead of leaving `Mídia não encontrada` on the wall.
+  const missingMediaId =
+    allMedia && currentItem?.itemType === "media" && currentItem.mediaId &&
+    !allMedia.some((m) => m.id === currentItem.mediaId)
+      ? currentItem.mediaId
+      : undefined;
+  useEffect(() => {
+    if (missingMediaId) refreshAllMedia();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missingMediaId]);
 
   const mode = state?.mode ?? "idle";
   const slide = state?.currentSlide;

@@ -300,3 +300,38 @@ async fn unique_display_name_no_collision_returns_original() {
     let name = unique_display_name(&pool, "fresh.png").await.unwrap();
     assert_eq!(name, "fresh.png");
 }
+
+/// P24 (C7): the wall and the media dialogs ask for the whole library with a
+/// negative limit, SQLite's "no limit"; without one the newest 200 come back.
+#[tokio::test]
+async fn list_media_with_no_cap_returns_every_media() {
+    // 250 inserts: skip the fsync per commit, or this test alone takes ~50 s.
+    let dir = tempdir().expect("temp dir");
+    let url = format!("sqlite://{}?mode=rwc", dir.path().join("test.db").to_string_lossy());
+    let options = SqliteConnectOptions::from_str(&url)
+        .unwrap()
+        .create_if_missing(true)
+        .synchronous(sqlx::sqlite::SqliteSynchronous::Off);
+    let pool = SqlitePool::connect_with(options).await.unwrap();
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    for i in 0..250 {
+        let mut m = make_media(&format!("m{i:03}"), &format!("f{i:03}.png"), MediaKind::Image);
+        m.created_at = 1_000_000 + i;
+        db_insert_media(&pool, &m).await.unwrap();
+    }
+    let list = |limit| ListMediaParams {
+        kind: None,
+        search: None,
+        limit,
+        offset: None,
+    };
+
+    let all = db_list_media(&pool, &list(Some(-1))).await.unwrap();
+    assert_eq!(all.len(), 250);
+    assert_eq!(all[0].id, "m249", "newest first");
+    assert_eq!(all[249].id, "m000");
+
+    let capped = db_list_media(&pool, &list(None)).await.unwrap();
+    assert_eq!(capped.len(), 200);
+    assert_eq!(capped[0].id, "m249");
+}

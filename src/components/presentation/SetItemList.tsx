@@ -26,7 +26,7 @@ import { useCountdownStore } from "../../stores/countdown";
 import { useOutputStates } from "../../hooks/useOutputStates";
 import { onScreenItemIds } from "../../utils/onScreen";
 import { formatCommandError } from "../../i18n/commandError";
-import { ItemTypeIcon, itemLabel, songArtist, presenterSongs } from "./itemMeta";
+import { ItemTypeIcon, itemLabel, songArtist, presenterMedia, presenterSongs } from "./itemMeta";
 import { LiveSongPicker } from "./LiveSongPicker";
 import type { SetItem } from "../../types";
 
@@ -44,7 +44,7 @@ export const SetItemList: React.FC<{
   const pendingSelection = usePresentationStore((s) => s.pendingSelection);
   const selectSlide = usePresentationStore((s) => s.selectSlide);
   const songs = useLibraryStore(presenterSongs);
-  const media = useMediaStore((s) => s.media);
+  const media = useMediaStore(presenterMedia);
 
   // Optimistic highlight: prefer the pending selection target so the active
   // item lights up instantly, before the authoritative state catches up.
@@ -140,7 +140,7 @@ const EditableSetItemList: React.FC<{
   const { t } = useTranslation();
   const focusedState = usePresentationStore((s) => s.state);
   const songs = useLibraryStore(presenterSongs);
-  const media = useMediaStore((s) => s.media);
+  const media = useMediaStore(presenterMedia);
   const outputs = useOutputStates();
   const [picking, setPicking] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<SetItem | null>(null);

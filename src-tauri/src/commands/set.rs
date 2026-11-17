@@ -2054,6 +2054,25 @@ mod tests {
         assert_eq!(after.1.remaining_ms, before.1.remaining_ms);
         let stored = db_load_set_item(pool, "CD").await.unwrap().countdown_config.unwrap();
         assert_eq!(stored.target, CountdownTarget::Duration { duration_ms: 120_000 });
+
+        // A countdown from CD that reached 00:00 and holds it is still on the
+        // wall: an edit with a new target restarts it, with a new ticker.
+        count_from(&state, One, "CD", CountdownMode::Finished, 0).await;
+        count_from(&state, Two, "OTHER", CountdownMode::Running, 300_000).await;
+        let finished_edit = serde_json::json!({
+            "target": {"kind": "duration", "durationMs": 90_000},
+            "endBehavior": "holdZero",
+        });
+        let update = update_set_item_core(&state, countdown_payload("CD", finished_edit), EDIT_NOW, no_clock)
+            .await
+            .unwrap();
+        let one = countdown(&state, One).await;
+        assert_eq!(one.mode, CountdownMode::Running);
+        assert_eq!((one.remaining_ms, one.duration_ms), (90_000, 90_000));
+        assert_eq!(one.target_epoch_ms, Some(EDIT_NOW + 90_000));
+        let edits: Vec<(OutputId, bool)> = update.countdowns.iter().map(|e| (e.output, e.needs_ticker)).collect();
+        assert_eq!(edits, [(One, true)]);
+        assert_eq!(countdown(&state, Two).await.remaining_ms, 300_000);
     }
 
     #[tokio::test]

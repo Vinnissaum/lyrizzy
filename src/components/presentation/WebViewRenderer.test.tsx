@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
 import { WebViewRenderer } from "./WebViewRenderer";
+import { TransitionStage } from "./TransitionStage";
 import type { StreamSource } from "../../types";
 
 vi.mock("../../utils/urlAllowlist", () => ({
@@ -167,5 +168,56 @@ describe("WebViewRenderer — legacy modes", () => {
     );
     expect(queryByTestId("stream-proxy")).toBeNull();
     expect(container.querySelector("p")?.textContent).toBeTruthy();
+  });
+});
+
+// ── P23: an item leaving the wall stops at once (AC 25) ────────────────────
+
+describe("WebViewRenderer — leaving the wall", () => {
+  it("a web page or camera leaving the wall is dropped at once", () => {
+    vi.useFakeTimers();
+    try {
+      const cases = [
+        { name: "web page", config: { mode: "iframe" as const, url: "http://192.168.1.10/painel" }, live: "iframe" },
+        { name: "camera (rtsp)", config: { mode: "rtsp" as const, url: "rtsp://192.168.1.20/main" }, live: '[data-testid="stream-proxy"]' },
+        { name: "camera (mjpeg)", config: { mode: "mjpeg" as const, url: "http://192.168.1.20/stream" }, live: "img" },
+      ];
+      for (const c of cases) {
+        const { container, rerender, unmount } = render(
+          <TransitionStage contentKey="cam-0" durationMs={200}>
+            <WebViewRenderer config={c.config} />
+          </TransitionStage>
+        );
+        expect(container.querySelector(c.live), c.name).not.toBeNull();
+
+        rerender(
+          <TransitionStage contentKey="blank-0" durationMs={200}>
+            <div>Tela preta</div>
+          </TransitionStage>
+        );
+        // The fade has not run at all, and the page, the camera's
+        // connection or its stream is already gone.
+        expect(container.querySelector(c.live), `${c.name} kept running into the fade`).toBeNull();
+        expect(container.querySelector('[data-testid="webview-left"]'), c.name).not.toBeNull();
+
+        act(() => {
+          vi.advanceTimersByTime(230);
+        });
+        expect(container.querySelector('[data-testid="webview-left"]'), c.name).toBeNull();
+        unmount();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("outside a fading layer the page is shown as before", () => {
+    const { container } = render(
+      <TransitionStage contentKey="page-0" durationMs={200}>
+        <WebViewRenderer config={{ mode: "iframe", url: "http://192.168.1.10/painel" }} />
+      </TransitionStage>
+    );
+    expect(container.querySelector("iframe")).not.toBeNull();
+    expect(container.querySelector('[data-testid="webview-left"]')).toBeNull();
   });
 });

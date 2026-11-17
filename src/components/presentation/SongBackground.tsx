@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import type { BackgroundInfo, BackgroundPreset } from "../../types";
+import { useLayerActive } from "./TransitionStage";
 
 const PRESET_BG: Record<BackgroundPreset, string> = {
   "preto-branco": "#000000",
@@ -13,15 +14,18 @@ interface Props {
 
 export const SongBackground: React.FC<Props> = ({ background, frozen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // False once this item is fading out behind the one that replaced it: the
+  // video stops then, not when the fade ends (P23, AC 25).
+  const active = useLayerActive();
 
   useEffect(() => {
     if (!videoRef.current) return;
-    if (frozen) {
+    if (frozen || !active) {
       videoRef.current.pause();
     } else {
       videoRef.current.play().catch(() => {});
     }
-  }, [frozen]);
+  }, [frozen, active]);
 
   if (background.preset) {
     return (

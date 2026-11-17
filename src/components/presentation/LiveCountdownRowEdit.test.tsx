@@ -83,6 +83,12 @@ function backend() {
         ]);
       case "get_presentation_state":
         return Promise.resolve(args?.output === "two" ? { ...state, set: null, mode: "idle" } : state);
+      case "list_media":
+        return Promise.resolve([
+          { id: "m-bg", fileName: "bg.mp4", displayName: "Fundo azul", kind: "video", mimeType: "video/mp4", byteSize: 1, createdAt: 0, updatedAt: 0 },
+        ]);
+      case "arm_countdown":
+        return Promise.resolve({ mode: "scheduled", durationMs: 450_000, remainingMs: 3_600_000, endBehavior: "advanceSet", messageScale: 150, digitsScale: 80 });
       case "update_set_item": {
         if (refuse) return Promise.reject(refuse);
         const p = args.payload;
@@ -242,5 +248,114 @@ describe("Live countdown row edit (P23)", () => {
 
     expect(screen.queryByTestId("countdown-schedule-modal")).not.toBeInTheDocument();
     expect(called("update_set_item")).toBe(false);
+  });
+
+  // ── AC 40: the dialog opens on everything the item holds ─────────────────
+
+  /** A wall-clock HH:MM later today (clamped to 23:59). */
+  function laterToday(): { hour: number; minute: number } {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 90);
+    if (d.getDate() !== new Date().getDate()) d.setHours(23, 59, 0, 0);
+    return { hour: d.getHours(), minute: d.getMinutes() };
+  }
+  const hhmm = (t: { hour: number; minute: number }) =>
+    `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
+
+  /** Present a set whose countdown item holds `config` instead. */
+  function withCountdown(config: NonNullable<SetItem["countdownConfig"]>) {
+    const next: ServiceSet = { ...set, items: [items[0], { ...items[1], countdownConfig: config }] };
+    state = { ...state, set: next };
+    usePresentationStore.setState({ state });
+  }
+
+  it("the dialog opened from a row loads every stored field", async () => {
+    const schedule = laterToday();
+    withCountdown({
+      target: { kind: "duration", durationMs: 450_000 },
+      name: "Abertura do culto",
+      message: "Já vamos começar",
+      endBehavior: "advanceSet",
+      backgroundMediaId: "m-bg",
+      position: "bottom-right",
+      scheduledStart: schedule,
+      messageScale: 150,
+      digitsScale: 80,
+    });
+    await present();
+
+    const d = openRowEditor("Abertura do culto");
+
+    expect(within(d).getByLabelText("Nome")).toHaveValue("Abertura do culto");
+    expect(within(d).getByDisplayValue("07:30")).toBeInTheDocument();
+    expect(within(d).getByDisplayValue("Já vamos começar")).toBeInTheDocument();
+    expect(within(d).getByLabelText("Tamanho da mensagem")).toHaveValue("150");
+    expect(within(d).getByLabelText("Tamanho dos dígitos")).toHaveValue("80");
+    expect(within(d).getByRole("radio", { name: "Avançar conjunto" })).toBeChecked();
+    expect(within(d).getByRole("radio", { name: "Manter 00:00" })).not.toBeChecked();
+    await waitFor(() => expect(within(d).getByText("Fundo azul")).toBeInTheDocument());
+    expect(within(d).getByRole("button", { name: "Inferior direito" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(d).getByRole("button", { name: "Centro" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(d).getByRole("checkbox")).toBeChecked();
+    expect(within(d).getByDisplayValue(hhmm(schedule))).toBeInTheDocument();
+  });
+
+  it("a clock-time countdown opens on its clock time", async () => {
+    withCountdown({
+      target: { kind: "fixedTime", hour: 19, minute: 30 },
+      name: "Até as 19:30",
+      endBehavior: "blackout",
+      position: "top-left",
+      messageScale: 120,
+      digitsScale: 200,
+    });
+    await present();
+
+    const d = openRowEditor("Até as 19:30");
+
+    expect(within(d).getByDisplayValue("19:30")).toBeInTheDocument();
+    expect(within(d).queryByPlaceholderText("10:00")).not.toBeInTheDocument();
+    expect(within(d).getByRole("radio", { name: "Tela preta" })).toBeChecked();
+    expect(within(d).getByRole("button", { name: "Superior esquerdo" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("saving unchanged sends back every stored field", async () => {
+    const durationConfig = {
+      target: { kind: "duration" as const, durationMs: 450_000 },
+      name: "Abertura do culto",
+      message: "Já vamos começar",
+      endBehavior: "advanceSet" as const,
+      backgroundMediaId: "m-bg",
+      position: "bottom-right" as const,
+      scheduledStart: laterToday(),
+      messageScale: 150,
+      digitsScale: 80,
+    };
+    const clockConfig = {
+      target: { kind: "fixedTime" as const, hour: 19, minute: 30 },
+      name: "Até as 19:30",
+      message: "Começamos às 19:30",
+      endBehavior: "blackout" as const,
+      backgroundMediaId: "m-bg",
+      position: "top-left" as const,
+      messageScale: 120,
+      digitsScale: 200,
+    };
+    for (const config of [durationConfig, clockConfig]) {
+      vi.mocked(invoke).mockClear();
+      withCountdown(config);
+      const view = await (async () => {
+        const r = render(<OperatorPresentationLayout />);
+        await waitFor(() => expect(within(setPane()).getByText("AJUNTAMENTO")).toBeInTheDocument());
+        return r;
+      })();
+      const d = openRowEditor(config.name);
+      fireEvent.click(within(d).getByText("Salvar"));
+
+      await waitFor(() => expect(callsOf("update_set_item")).toHaveLength(1));
+      const saved = (callsOf("update_set_item")[0][1] as any).payload.countdownConfig;
+      expect(saved, config.name).toEqual(config);
+      view.unmount();
+    }
   });
 });

@@ -418,6 +418,7 @@ export const PresentationApp: React.FC<{ output?: OutputId }> = ({
       <div className="h-screen overflow-hidden">
         <TransitionStage
           contentKey={transitionKey}
+          groupKey={currentItem?.id}
           durationMs={reduceMotion ? 0 : transitionMs}
         >
           {content}

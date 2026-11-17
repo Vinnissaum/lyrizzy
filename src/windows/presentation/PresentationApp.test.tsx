@@ -825,4 +825,27 @@ describe("PresentationApp — media that left the wall (P23)", () => {
     expect(el.paused).toBe(false);
     expect(el.currentTime).toBe(42);
   });
+
+  it("the next strophe of a song keeps its video background playing", () => {
+    const strophe = (k: number): PresentationState => ({
+      ...onWall(["song", "blank"], "song"),
+      currentSlideIndex: k,
+      currentSlide: { lines: [`estrofe ${k}`], sectionLabel: `Estrofe ${k}`, sectionId: `sec-${k}` },
+    });
+    presStateMock = strophe(1);
+    const { container, rerender } = render(<PresentationApp />);
+    const bg = videos(container)[0];
+    bg.currentTime = 12;
+
+    presStateMock = strophe(2);
+    rerender(<PresentationApp />);
+    act(() => {
+      vi.advanceTimersByTime(230);
+    });
+
+    expect(screen.getByText("estrofe 2")).toBeInTheDocument();
+    expect(videos(container)).toEqual([bg]);
+    expect(bg.paused).toBe(false);
+    expect(bg.currentTime).toBe(12);
+  });
 });

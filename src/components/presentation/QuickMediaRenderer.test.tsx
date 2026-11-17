@@ -49,10 +49,12 @@ describe("QuickMediaRenderer", () => {
   });
 
   it("an overlay for media the wall has not loaded reloads the library", () => {
-    // The wall's list predates the upload: m1 is not in it.
+    // The wall loaded the library when its window opened, so it holds other
+    // images - but not m1, uploaded after that.
+    const older = { ...mockImage, id: "m0", fileName: "older.jpg", displayName: "Antiga" };
     const refresh = vi.fn();
     vi.mocked(useMediaStore).mockReturnValue({
-      media: [],
+      media: [older],
       refresh,
     } as unknown as ReturnType<typeof useMediaStore>);
     const { container, rerender } = render(<QuickMediaRenderer mediaId="m1" />);
@@ -61,7 +63,7 @@ describe("QuickMediaRenderer", () => {
 
     // The reload lands: the image renders, and nothing reloads again.
     vi.mocked(useMediaStore).mockReturnValue({
-      media: [mockImage],
+      media: [older, mockImage],
       refresh,
     } as unknown as ReturnType<typeof useMediaStore>);
     rerender(<QuickMediaRenderer mediaId="m1" />);

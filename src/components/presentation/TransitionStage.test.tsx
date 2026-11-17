@@ -213,4 +213,65 @@ describe("TransitionStage", () => {
       fake.restore();
     }
   });
+
+  it("a change within the same group updates in place", () => {
+    const { rerender } = render(
+      <TransitionStage contentKey="song-1-0" groupKey="song-1" durationMs={200}>
+        <div>strophe 0</div>
+      </TransitionStage>
+    );
+    const layer = screen.getByText("strophe 0").closest("[data-layer]");
+
+    rerender(
+      <TransitionStage contentKey="song-1-1" groupKey="song-1" durationMs={200}>
+        <div>strophe 1</div>
+      </TransitionStage>
+    );
+    // No fade: the new strophe is in the same layer, and nothing is leaving.
+    expect(screen.queryByText("strophe 0")).not.toBeInTheDocument();
+    expect(screen.getByText("strophe 1").closest("[data-layer]")).toBe(layer);
+    expect(layer).toHaveAttribute("data-layer", "front");
+
+    // Another group crossfades as before.
+    rerender(
+      <TransitionStage contentKey="blank-0" groupKey="blank" durationMs={200}>
+        <div>Tela preta</div>
+      </TransitionStage>
+    );
+    expect(screen.getByText("strophe 1").closest("[data-layer]")).toHaveAttribute("data-layer", "back");
+    act(() => {
+      vi.advanceTimersByTime(230);
+    });
+    expect(screen.queryByText("strophe 1")).not.toBeInTheDocument();
+  });
+
+  it("returning to the group on screen drops a queued change of group", () => {
+    const { rerender } = render(
+      <TransitionStage contentKey="a-0" groupKey="a" durationMs={200}>
+        <div>item A</div>
+      </TransitionStage>
+    );
+    rerender(
+      <TransitionStage contentKey="b-0" groupKey="b" durationMs={200}>
+        <div>item B</div>
+      </TransitionStage>
+    );
+    // While A fades, C is queued; then the wall moves on within B.
+    rerender(
+      <TransitionStage contentKey="c-0" groupKey="c" durationMs={200}>
+        <div>item C</div>
+      </TransitionStage>
+    );
+    rerender(
+      <TransitionStage contentKey="b-1" groupKey="b" durationMs={200}>
+        <div>item B, slide 2</div>
+      </TransitionStage>
+    );
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByText("item B, slide 2")).toBeInTheDocument();
+    expect(screen.queryByText("item C")).not.toBeInTheDocument();
+    expect(screen.queryByText("item A")).not.toBeInTheDocument();
+  });
 });

@@ -43,8 +43,22 @@ vi.mock("./StreamProfileSwitcher", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 
+// jsdom lacks ResizeObserver; the live editor's preview pane uses it.
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  window.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 function song(id: string, title: string, artist: string): Song {
-  return { id, title, artist, language: "pt", scrimOpacity: 35, createdAt: 0, updatedAt: 0, sections: [] };
+  return {
+    id, title, artist, language: "pt", scrimOpacity: 35, createdAt: 0, updatedAt: 0,
+    sections: [
+      { id: `${id}-s1`, songId: id, label: "Estrofe 1", type: "verse", body: `${title} verso`, sortOrder: 0, repeatCount: 1 },
+    ],
+  };
 }
 
 function songItem(id: string, songId: string, sortOrder: number) {
@@ -83,6 +97,14 @@ function backend(state: PresentationState) {
       }
       case "get_presentation_state":
         return Promise.resolve(args?.output === "two" ? { ...state, set: null, mode: "idle" } : state);
+      case "get_song":
+        return Promise.resolve(library.find((s) => s.id === args.id));
+      case "update_song": {
+        // Saved; no `songs_changed` here, so only the editor's own reload runs.
+        const p = args.payload;
+        library = library.map((s) => (s.id === p.id ? { ...s, title: p.title } : s));
+        return Promise.resolve(library.find((s) => s.id === p.id));
+      }
       default:
         return Promise.resolve([]);
     }
@@ -180,6 +202,28 @@ describe("Presenter song titles under a library search (P23)", () => {
     await waitFor(() => expect(within(setPane()).getByText("AJUNTAMENTO 2")).toBeInTheDocument());
     expect(within(setPane()).queryByText("AJUNTAMENTO")).not.toBeInTheDocument();
     // The Biblioteca view's own list and search are not the presenter's to change.
+    expect(useLibraryStore.getState().search).toBe("amor");
+    expect(useLibraryStore.getState().songs.map((s) => s.id)).toEqual(["song-2"]);
+  });
+
+  it("a song saved in the live editor under a library search keeps every row titled", async () => {
+    searchedLibrary("amor");
+    present(twoSongSet);
+    await waitFor(() => expect(within(setPane()).getByText("AJUNTAMENTO")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar música O AMOR DE DEUS" }));
+    const dialog = await screen.findByTestId("live-song-edit-modal");
+    await waitFor(() => expect(within(dialog).getByDisplayValue("O AMOR DE DEUS")).toBeInTheDocument());
+    fireEvent.change(within(dialog).getByDisplayValue("O AMOR DE DEUS"), { target: { value: "O GRANDE AMOR DE DEUS" } });
+    fireEvent.click(within(dialog).getByText("Salvar"));
+
+    await waitFor(() => expect(screen.queryByTestId("live-song-edit-modal")).not.toBeInTheDocument());
+    await waitFor(() => expect(within(setPane()).getByText("O GRANDE AMOR DE DEUS")).toBeInTheDocument());
+    // The song that does not match the search keeps its title too.
+    expect(within(setPane()).getByText("AJUNTAMENTO")).toBeInTheDocument();
+    expect(within(setPane()).getByText("Jorge Camargo")).toBeInTheDocument();
+    expect(within(setPane()).queryByText("—")).not.toBeInTheDocument();
+    // The Biblioteca view still holds its search and what matches it.
     expect(useLibraryStore.getState().search).toBe("amor");
     expect(useLibraryStore.getState().songs.map((s) => s.id)).toEqual(["song-2"]);
   });

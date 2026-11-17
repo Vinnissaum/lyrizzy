@@ -3,6 +3,7 @@ import { isUrlAllowed } from "../../utils/urlAllowlist";
 import { iframeCropStyle, withBasicAuth } from "../../utils/webview";
 import { StreamProxyRenderer } from "./StreamProxyRenderer";
 import { useOutputId } from "./outputContext";
+import { useLayerActive } from "./TransitionStage";
 import { useSettingsStore } from "../../stores/settings";
 import { resolveActiveSource } from "../../utils/streamProfile";
 import type { StreamSource, WebViewConfig } from "../../types";
@@ -35,6 +36,8 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
   const output = useOutputId();
   const cameraAudio = useSettingsStore((s) => s.audio[output]);
   const cameraJitterBufferMs = useSettingsStore((s) => s.cameraJitterBufferMs);
+  // False once this item is fading out behind the one that replaced it.
+  const active = useLayerActive();
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,6 +99,13 @@ export const WebViewRenderer: React.FC<Props> = ({ config }) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setError("Não foi possível carregar o conteúdo");
   };
+
+  // Leaving the wall: drop the page, the camera's connection or its stream at
+  // once, so nothing of it - its sound included - runs through the fade. The
+  // item that replaced it is already drawn on top (P23, AC 25).
+  if (!active) {
+    return <div data-testid="webview-left" className="h-screen bg-black" />;
+  }
 
   if (error) {
     return (

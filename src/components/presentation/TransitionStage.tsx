@@ -4,6 +4,14 @@ interface TransitionStageProps {
   children: React.ReactNode;
   /** Key that changes when content changes. Triggers a crossfade. */
   contentKey: string;
+  /**
+   * What the content belongs to (the wall passes the set item's id). A new
+   * `contentKey` in the same group as what is on screen - the next strophe of
+   * the same song - updates in place, so what keeps running across it (a
+   * song's video background) is not remounted. Only a change of group
+   * crossfades. Without it, every new key crossfades.
+   */
+  groupKey?: string;
   /** Duration of the crossfade in ms. 0 means instant cut. */
   durationMs?: number;
   /** When true, bypasses transition entirely (instant cut). */
@@ -12,6 +20,7 @@ interface TransitionStageProps {
 
 interface Slot {
   key: string;
+  group?: string;
   content: React.ReactNode;
 }
 
@@ -40,17 +49,18 @@ export const useLayerActive = (): boolean => useContext(LayerActiveContext);
 export const TransitionStage: React.FC<TransitionStageProps> = ({
   children,
   contentKey,
+  groupKey,
   durationMs = 200,
   instant = false,
 }) => {
   const effectiveDuration = instant ? 0 : durationMs;
 
   const [stage, setStage] = useState<{ slots: [Slot, Slot]; front: 0 | 1 }>({
-    slots: [{ key: contentKey, content: children }, EMPTY],
+    slots: [{ key: contentKey, group: groupKey, content: children }, EMPTY],
     front: 0,
   });
   // Queue: next pending render (dropped if another arrives before transition ends)
-  const pendingRef = useRef<{ key: string; content: React.ReactNode } | null>(null);
+  const pendingRef = useRef<Slot | null>(null);
   const transitioning = useRef(false);
   // Fallback timer: the front layer's opacity stays at 1 and never animates, so
   // its `transitionend` never fires. We must not depend on it to advance the
@@ -76,16 +86,16 @@ export const TransitionStage: React.FC<TransitionStageProps> = ({
       slots[s.front === 0 ? 1 : 0] = EMPTY;
       return { slots, front: s.front };
     });
-    if (next) applyNext(next.key, next.content);
+    if (next) applyNext(next);
   }
 
-  function applyNext(key: string, content: React.ReactNode) {
+  function applyNext(next: Slot) {
     transitioning.current = true;
     setStage((s) => {
       const free: 0 | 1 = s.front === 0 ? 1 : 0;
       const slots: [Slot, Slot] = [s.slots[0], s.slots[1]];
       // New content shows on top; the old stays in its slot, fading out.
-      slots[free] = { key, content };
+      slots[free] = next;
       return { slots, front: free };
     });
     if (effectiveDuration === 0) {
@@ -98,12 +108,18 @@ export const TransitionStage: React.FC<TransitionStageProps> = ({
   }
 
   useEffect(() => {
-    // Skip on initial mount (same key)
-    if (contentKey === stage.slots[stage.front].key) {
-      // Content changed but key same — update in place without transition
+    const shown = stage.slots[stage.front];
+    // Same key (initial mount included), or the same group as what is on
+    // screen: update in place without a transition. A pending change of group
+    // is dropped - the latest state is back on the group on screen.
+    if (
+      contentKey === shown.key ||
+      (groupKey !== undefined && groupKey === shown.group)
+    ) {
+      pendingRef.current = null;
       setStage((s) => {
         const slots: [Slot, Slot] = [s.slots[0], s.slots[1]];
-        slots[s.front] = { ...slots[s.front], content: children };
+        slots[s.front] = { key: contentKey, group: groupKey, content: children };
         return { slots, front: s.front };
       });
       return;
@@ -111,13 +127,13 @@ export const TransitionStage: React.FC<TransitionStageProps> = ({
 
     if (transitioning.current) {
       // Drop previous pending, keep only latest
-      pendingRef.current = { key: contentKey, content: children };
+      pendingRef.current = { key: contentKey, group: groupKey, content: children };
       return;
     }
 
-    applyNext(contentKey, children);
+    applyNext({ key: contentKey, group: groupKey, content: children });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentKey, children]);
+  }, [contentKey, groupKey, children]);
 
   // Clear any pending fallback timer on unmount.
   useEffect(() => {

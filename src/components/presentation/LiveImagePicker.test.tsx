@@ -216,6 +216,32 @@ describe("LiveImagePicker (P23, P24)", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("the first pick follows the current item at the click", async () => {
+    const { rerender } = render(<LiveImagePicker setId="set-1" anchorItemId="item-b" onClose={vi.fn()} />);
+    await waitFor(() => expect(gridNames()).toHaveLength(2));
+    // The wall moved on while the dialog was open (a video ended, an arrow key).
+    rerender(<LiveImagePicker setId="set-1" anchorItemId="item-c" onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Oferta" }));
+
+    await waitFor(() => expect(calls("add_set_item")).toHaveLength(1));
+    expect((calls("add_set_item")[0][1] as any).payload.afterItemId).toBe("item-c");
+  });
+
+  it("a later pick still follows the first after the current item moves", async () => {
+    const { rerender } = render(<LiveImagePicker setId="set-1" anchorItemId="item-b" onClose={vi.fn()} />);
+    await waitFor(() => expect(gridNames()).toHaveLength(2));
+    fireEvent.click(screen.getByRole("button", { name: "Oferta" }));
+    await waitFor(() => expect(gridNames()).toContain("OfertaAdicionada"));
+
+    rerender(<LiveImagePicker setId="set-1" anchorItemId="item-c" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Boas-vindas" }));
+
+    await waitFor(() => expect(calls("add_set_item")).toHaveLength(2));
+    expect((calls("add_set_item")[0][1] as any).payload.afterItemId).toBe("item-b");
+    expect((calls("add_set_item")[1][1] as any).payload.afterItemId).toBe("added-1");
+  });
+
   it("uploaded images are listed first and nothing is added to the set", async () => {
     vi.mocked(open).mockResolvedValue(["/fotos/batismo.jpg", "/fotos/ceia.png"] as never);
     show();

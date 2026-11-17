@@ -4,7 +4,7 @@ Mutations: 3
 Build: `npx tsc --noEmit`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
 Plan: `.specs/features/phase24-image-set-video-seek-media-modal/plan.md`
 
-33 checks in 5 slices · 1 one-way door · 1 open, of which 0 block
+38 checks in 5 slices (5 appended after verification) · 1 one-way door · 1 open, of which 0 block
 
 ## Checks
 
@@ -44,10 +44,26 @@ Proof: `npx vitest run src/components/presentation/LiveImagePicker.test.tsx -t "
 **C9** - In Chromium at 1024×700 and at 1536×912, the presenter's `Imagem` dialog with 30 images shows no card overlapping another and every thumbnail at least 160 px wide (AC 9)
 Proof: walk - present a set, open `Imagem` with 30 images in the library at both window sizes, and measure every card's box and thumbnail width
 
+**C34** - A pick in `Imagem` lands after the focused output's current item as it is when the pick is made: with the dialog opened on item-b and the current item moved to item-c, the first pick sends `afterItemId` item-c; a second pick made after the current item moved still lands after the first pick's new item (AC 1, 3; appended after verification - the anchor was read once, when the dialog opened)
+Proof: `npx vitest run src/components/presentation/LiveImagePicker.test.tsx -t "the first pick follows the current item at the click"`
+Proof: `npx vitest run src/components/presentation/LiveImagePicker.test.tsx -t "a later pick still follows the first after the current item moves"`
+
+**C35** - While presenting, an image item whose media the presenter's whole library does not list yet - uploaded and added mid-service - is named `Mídia` until `media_library_changed`, and then reads "Pix" in its set pane row and in the strophes header, and the live preview shows it (AC 6, 7; appended after verification - nothing proved the operator's reload)
+Proof: `npx vitest run src/components/presentation/LiveMediaLabels.test.tsx -t "an upload during the service names its row once the library changes"`
+
+**C36** - With the focused output frozen on item-1 while the operator browses item-2, a pick in `Imagem` sends `afterItemId` item-2 (AC 2; appended after verification - the frozen anchor was proven only in Rust, with the anchor given)
+Proof: `npx vitest run src/components/presentation/OperatorPresentationLayout.test.tsx -t "a pick while the wall is frozen follows the browsed item"`
+
+**C38** - The Tela 2 launch list names the image item "Pix" from the whole library, never `Mídia` (AC 6; appended after verification - C6 named this list but none of its proofs ran it)
+Proof: `npx vitest run src/components/presentation/LiveMediaLabels.test.tsx -t "the Tela 2 launch list names an image item from the whole library"`
+
 ### S2 - Seeking a video works and loading one does not freeze the app
 
 **C10** - The asset protocol answers a `Range` with `206`, exactly the asked bytes up to 1 048 576 of them, `Content-Range: bytes <a>-<last>/<size>`, `Content-Length` equal to the body's length and `Accept-Ranges: bytes`: on a 10 MiB file `bytes=0-` gives bytes 0-1048575 with `Content-Range: bytes 0-1048575/10485760`, `bytes=5000-5999` those 1 000 bytes, `bytes=-500` the last 500, `bytes=10485759-` the last byte, `bytes=0-99999999` bytes 0-1048575; on a 300-byte file `bytes=0-` all 300 bytes with `Content-Range: bytes 0-299/300` (AC 10)
 Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::a_range_is_answered_with_206_and_those_bytes`
+
+**C37** - A one-byte range is answered with that byte: on a 10 MiB file `bytes=5000-5000` gives `206`, byte 5000, `Content-Range: bytes 5000-5000/10485760` and `Content-Length: 1`; `bytes=0-0` gives byte 0 with `Content-Range: bytes 0-0/10485760` (AC 10; appended after verification)
+Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::a_one_byte_range_is_answered_with_that_byte`
 
 **C11** - A request with no `Range`, or with `Range: items=0-5` or `bytes=5-1`, gets `200`, the whole file, `Content-Length` and `Accept-Ranges: bytes` (AC 11)
 Proof: `cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::without_a_usable_range_the_whole_file_is_answered`
@@ -137,15 +153,16 @@ Proof: walk - the user, on Windows with v1.10.1, presents a set with a video and
 
 | Set (size) | Member -> proof | Unproven |
 | --- | --- | --- |
-| AD-096 examples (4) | first pick after the current item C1, C2 · second pick after the first C3 · frozen output C2 · two outputs on different items C2 | - |
-| outputs a live image add must keep (3) | live on the anchor C2 · live on another item C2 · frozen C2 | - |
+| AD-096 examples (5) | first pick after the current item C1, C2 · second pick after the first C3 · frozen output C2, C36 · two outputs on different items C2 · the current item moves while the dialog is open C34 | - |
+| outputs a live image add must keep (3) | live on the anchor C2 · live on another item C2 · frozen C2, anchored on the browsed item C36 | - |
 | commands a pick must not send (3) | `set_media_overlay` C1 · `go_to_item` C1 · slide commands C1 | - |
-| presenter readers of the whole media library (6) | set pane row C6 · strophes header C6 · remove confirmation C6 · strophes pane card C6 · Tela 2 launch list C6 · live preview C6 | - |
+| presenter readers of the whole media library (6) | set pane row C6, C35 · strophes header C6, C35 · remove confirmation C6 · strophes pane card C6 · Tela 2 launch list C38 · live preview C6, C35 | - |
 | Mídia view states the presenter and the Home dialog ignore (2) | filter `Vídeos` C6, C19 · search "abc" C6, C19 | - |
-| wall media list sources (4) | whole library at open C7 · reload on an unknown id C7 · reload on `media_library_changed` C7 · past 200 C7 | - |
+| media list sources (5) | the wall's whole library at open C7 · the wall's reload on an unknown id C7 · the wall's reload on `media_library_changed` C7 · past 200 C7 · the operator's reload on `media_library_changed` C35 | - |
 | presenter dialog outcomes (4) | added C1 · second add C3 · upload adds nothing C4 · refused add C8 | - |
 | door 1 answers (7) | `206` C10 · `200` C11 · `416` C12 · `403` for `..` C13 · `403` for a link out C13 · `404` C13 · worker thread C14 | - |
 | AC 10 examples (6) | `bytes=0-` C10 · `bytes=5000-5999` C10 · `bytes=-500` C10 · `bytes=10485759-` C10 · `bytes=0-99999999` C10 · 300-byte file C10, table-driven over all 6 | - |
+| range widths at the boundaries (2) | one byte (`a-a`) C37 · over the 1 MiB cap C10 | - |
 | ranges answered whole (3) | no `Range` C11 · `items=0-5` C11 · `bytes=5-1` C11 | - |
 | content types (6) | mp4 C13 · webm C13 · png C13 · jpg C13 · gif C13 · webp C13, table-driven over all 6 | - |
 | strip controls over ranged answers (6) | bar C15 · `+10 s` C15 · `−10 s` C15 · `Pausar`/`Retomar` C16 · `Reiniciar` C16 · `Silenciar`/`Ativar som` C16 | - |
@@ -176,7 +193,7 @@ Proof: walk - the user, on Windows with v1.10.1, presents a set with a video and
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** Verifier (independent sub-agent, fresh context) at the commit that adds this line, 2026-11-17 - diff range `db8fcfc..HEAD`; no screens sub-agent (no capture binds)
+- **Dispatched:** Verifier (independent sub-agent, fresh context) at `ec04e4a`, 2026-11-17 - diff range `db8fcfc..ec04e4a`; no screens sub-agent (no capture binds) - returned: FAIL, 6 findings, 1/3 mutations killed (C1's frozen anchor and C10's one-byte range not)
 - **Boundary:** S2 (C10-C16) closed at `8cc00f1`; S1 (C1-C8) closed at `e9b9d7d` and C9 by the walk at that code; S3 (C17-C27) closed at `cd681de`; S4 (C28) closed at `43579d8`; C29 (version 1.10.1) at `db5e653`. Open: C30-C33 follow the push, which waits for the user's go, and the release. `proofs.md` marks C33 `pass (Walked)` only because a `**Walked:**` line exists; the user has not reported from Windows yet, so C33 is open
-- **Abandoned:** none. Corrected during the build: the presenter's `refreshMedia()` when it opens looked orphaned once its labels moved to `allMedia`, and was removed; phase 23's C70 test failed (the countdown dialog's background picker, `MediaPicker`, names its choice from that list), so it stays. Test changes that follow a changed claim, not a weakened one: phase 23's `ImageOverlayDialog.test.tsx` became `LiveImagePicker.test.tsx` with the component; its "clicking a thumbnail hands its id to the host" (phase 23 AC 10) is replaced by C1's "a clicked image is added after the anchor and marked Adicionada" (AD-096 supersedes AC 10), its title assertion reads `Adicionar imagem ao conjunto` (AC 5), and the upload tests keep their assertions with the new props and grid id; `OperatorPresentationLayout.test.tsx`'s "an image uploaded in the dialog projects on click" (phase 23 C10) is replaced by C1's host test. Fixtures gained `subscribeAllMedia`, `refreshAllMedia` and `allMedia` where the code now calls them
+- **Abandoned:** none. Corrected during the build: the presenter's `refreshMedia()` when it opens looked orphaned once its labels moved to `allMedia`, and was removed; phase 23's C70 test failed (the countdown dialog's background picker, `MediaPicker`, names its choice from that list), so it stays. Test changes that follow a changed claim, not a weakened one: phase 23's `ImageOverlayDialog.test.tsx` became `LiveImagePicker.test.tsx` with the component; its "clicking a thumbnail hands its id to the host" (phase 23 AC 10) is replaced by C1's "a clicked image is added after the anchor and marked Adicionada" (AD-096 supersedes AC 10), its title assertion reads `Adicionar imagem ao conjunto` (AC 5), and the upload tests keep their assertions with the new props and grid id; `OperatorPresentationLayout.test.tsx`'s "an image uploaded in the dialog projects on click" (phase 23 C10) is replaced by C1's host test. Fixtures gained `subscribeAllMedia`, `refreshAllMedia` and `allMedia` where the code now calls them. After verification: the `listen` stub in `LiveMediaLabels.test.tsx` gained a real unlisten (it removes the callback), so C35 fails when the presenter drops its subscription - with the old no-op stub it did not; the two mutations not killed in round 1 have their `proof` re-aimed at C36 and C37, the narrowest tests that hold the rules they change, as the Verifier's fixes proposed
 - **Walked:** 2026-11-17, in Chrome Headless Shell (Playwright build 1234) over CDP, against the real app (`src/main.tsx`) served by Vite, mounted twice by the local harness under `.harness/` (excluded from git) as the operator window and the presentation window on one mocked backend, as in phase 23. (C15, C16) `asset.localhost` mapped to the ignored test `protocol::asset::tests::serve_media_for_a_walk`, which serves a directory over HTTP through `protocol::asset::answer`, the function the app's protocol answers with; the walk video is a 20 s, 7.3 MB VP8 WebM of random noise (so it cannot fit in one answer), the set's looping `Abertura` item. The wall's `seekable` read `[[0,20]]`. `Pausar` at 1.82 s; a real mouse click at 50% of the bar: 10.0 s; `+10 s`: 20.0 s; a click at 75%: 15.2 s (the thumb's inset, as in phase 23); `−10 s`: 5.2 s; `Retomar`: 6.2 s a second later, playing; `Pausar`: 6.21 s and still 6.21 s a second later; `Reiniciar`: 0.39 s and playing; `Silenciar`: muted; `Ativar som`: unmuted. The bridge logged 11 requests for the video, every one `206` and at most 1 MiB: `bytes=0-` twice, then 1048576-, 2097152-, 3145728-, 4194304-, 5242880- while loading, and 7241728-, 7110656-, 5668864-, 6717440- for the seeks. (C9, S1 end to end, C18) with `?many=30`, the harness lists 30 images (the newest first after the two videos), every thumbnail the same 640×360 PNG served by the same bridge. Presenter on AJUNTAMENTO, `Imagem`: the dialog `Adicionar imagem ao conjunto` with 30 cards, 0 overlapping, 5 columns, thumbnails 177 px wide at 1024×700 and 183 px at 1536×912, rows 12 px apart. Clicking `Imagem 30` then `Imagem 29` sent `add_set_item` with `afterItemId` `i-ajunt` and then with the first add's new id; the set pane read [AJUNTAMENTO, Imagem 30, Imagem 29, Regressivo, …], the highlight stayed on AJUNTAMENTO, both cards read `Adicionada`, and the wall still showed AJUNTAMENTO. `Fechar`, then the `Imagem 30` row: the wall showed the image (`pic.png`). Home with the same library, `Mídia`: the dialog `Adicionar mídia ao conjunto` with 32 cards, 0 overlapping, thumbnails 177 px and 183 px wide at the two sizes; scrolled to the end (480 px and 325 px), the title, the close control, `Todos`, `Imagens`, `Vídeos` and the last card were all in view. `Excluir Imagem 1` asked `Excluir mídia` - `Excluir "Imagem 1"? Esta ação não pode ser desfeita.` with `Cancelar` and `Excluir`; `Excluir` sent `delete_media` for it and left 31 cards; clicking `Abertura` sent `add_set_item` (media, loop off, mute off, auto-advance on) and closed the dialog. How the user reaches each state: present a set, `Imagem` in the top bar; on Home, `Mídia` under the set

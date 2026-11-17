@@ -394,6 +394,24 @@ mod tests {
     }
 
     #[test]
+    fn a_one_byte_range_is_answered_with_that_byte() {
+        let big = pattern(TEN_MIB);
+        let (_tmp, media) = media_with(&[("big.mp4", big.clone())]);
+
+        for (range, at) in [("bytes=5000-5000", 5_000usize), ("bytes=0-0", 0)] {
+            let response = answer(&media, &get("/media/big.mp4", Some(range)));
+            assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT, "{range}");
+            assert_eq!(response.body().as_slice(), &big[at..=at], "{range}");
+            assert_eq!(
+                header(&response, CONTENT_RANGE),
+                Some(format!("bytes {at}-{at}/10485760").as_str()),
+                "{range}"
+            );
+            assert_eq!(header(&response, CONTENT_LENGTH), Some("1"), "{range}");
+        }
+    }
+
+    #[test]
     fn without_a_usable_range_the_whole_file_is_answered() {
         let png = pattern(4_096);
         let (_tmp, media) = media_with(&[("pic.png", png.clone())]);

@@ -16,8 +16,16 @@ import type { Media, PresentationState, ServiceSet, Song } from "../../types";
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
+const listeners = new Map<string, Array<(e: { payload: unknown }) => void>>();
+
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn().mockResolvedValue(() => {}),
+  listen: vi.fn((event: string, cb: (e: { payload: unknown }) => void) => {
+    listeners.set(event, [...(listeners.get(event) ?? []), cb]);
+    // As the real unlisten: the callback hears nothing more.
+    return Promise.resolve(() => {
+      listeners.set(event, (listeners.get(event) ?? []).filter((x) => x !== cb));
+    });
+  }),
   emit: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({
@@ -58,7 +66,8 @@ const media = (id: string, displayName: string, kind: "image" | "video", created
 
 // The video matches the Mídia view's search "abc"; the image matches neither its
 // filter nor its search, so only the whole library holds it.
-const library = [media("pix", "Pix", "image", 30), media("v1", "Vinheta abc", "video", 20)];
+const LIBRARY = [media("pix", "Pix", "image", 30), media("v1", "Vinheta abc", "video", 20)];
+let library: Media[] = LIBRARY;
 
 const set: ServiceSet = {
   id: "set-1",
@@ -119,6 +128,8 @@ const setPane = () => screen.getByText("Conjunto").closest("div")!.parentElement
 describe("Image items named from the whole media library (P24)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    listeners.clear();
+    library = LIBRARY;
     mediaViewOnVideos();
   });
 
@@ -165,6 +176,31 @@ describe("Image items named from the whole media library (P24)", () => {
     const pane = screen.getByTestId("live-pane");
     await waitFor(() =>
       expect(pane.querySelector("img")?.getAttribute("src")).toBe("http://asset.localhost/media/pix.png"),
+    );
+  });
+
+  it("an upload during the service names its row once the library changes", async () => {
+    // The image was just uploaded in Imagem and added: the backend did not list
+    // it when the presenter loaded the whole library.
+    library = [LIBRARY[1]];
+    present(1);
+    // The row's own control names it: the fallback until the library knows it.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remover Mídia" })).toBeInTheDocument());
+    expect(screen.getByTestId("live-pane").querySelector("img")).toBeNull();
+
+    // The import's media_library_changed reloads it.
+    library = LIBRARY;
+    act(() => {
+      for (const cb of listeners.get("media_library_changed") ?? []) cb({ payload: undefined });
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remover Pix" })).toBeInTheDocument());
+    expect(within(setPane()).getAllByText("Pix").length).toBeGreaterThan(0);
+    expect(screen.getByText(/^Estrofes — Pix$/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("live-pane").querySelector("img")?.getAttribute("src")).toBe(
+        "http://asset.localhost/media/pix.png",
+      ),
     );
   });
 });

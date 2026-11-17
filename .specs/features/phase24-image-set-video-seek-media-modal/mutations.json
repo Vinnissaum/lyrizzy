@@ -1,0 +1,23 @@
+[
+  {
+    "file": "src/components/presentation/OperatorPresentationLayout.tsx",
+    "old": "anchorItemId={activeItem?.id}",
+    "new": "anchorItemId={(state.mode === \"frozen\" && state.frozenAt ? items[state.frozenAt[0]] : activeItem)?.id}",
+    "proof": "npx vitest run src/components/presentation/OperatorPresentationLayout.test.tsx -t \"a pick while the wall is frozen follows the browsed item\"",
+    "label": "S1 anchor: Imagem anchors on the frozen wall item, not the browsed current item (AC 2: frozen on A, browsing B -> after B)"
+  },
+  {
+    "file": "src-tauri/src/protocol/asset.rs",
+    "old": "Ok(end) if end >= start => end,",
+    "new": "Ok(end) if end > start => end,",
+    "proof": "cargo test --manifest-path src-tauri/Cargo.toml --lib protocol::asset::tests::a_one_byte_range_is_answered_with_that_byte",
+    "label": "S2 range: a one-byte range bytes=a-a is taken as invalid and answered 200 with the whole file (end >= start -> end > start)"
+  },
+  {
+    "file": "src/components/set/MediaAddDialog.tsx",
+    "old": "pendingDelete.refs.sections.length >",
+    "new": "0 >",
+    "proof": "npx vitest run src/components/set/MediaAddDialog.test.tsx -t \"media in use is refused with Mídia em uso\"",
+    "label": "S3 delete: a media used only by a song section is not counted as in use (sections dropped from the reference sum)"
+  }
+]

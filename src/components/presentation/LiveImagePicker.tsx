@@ -35,9 +35,14 @@ export const LiveImagePicker: React.FC<{
   const [notImported, setNotImported] = useState(0);
   const [addedIds, setAddedIds] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  // The focused output's current item as of now: the wall can move while the
+  // dialog is open (a video that ends, the arrow keys), and a first pick lands
+  // after the item current when it is made, as in `Adicionar música`.
+  const anchor = useRef(anchorItemId);
+  anchor.current = anchorItemId;
   // Picks apply in the order made: each add waits for the one before, so it
   // can land right after the item that one created.
-  const lastAdd = useRef<Promise<string | undefined>>(Promise.resolve(anchorItemId));
+  const lastAdd = useRef<Promise<string | undefined>>(Promise.resolve(undefined));
 
   const load = async () => {
     try {
@@ -54,21 +59,21 @@ export const LiveImagePicker: React.FC<{
   }, []);
 
   const pick = (image: Media) => {
-    lastAdd.current = lastAdd.current.then(async (afterItemId) => {
+    lastAdd.current = lastAdd.current.then(async (previousAddedId) => {
       try {
         const item = await addSetItem({
           setId,
           itemType: "media",
           mediaId: image.id,
           mediaOptions: MEDIA_OPTIONS,
-          afterItemId,
+          afterItemId: previousAddedId ?? anchor.current,
         });
         setAddedIds((ids) => new Set(ids).add(image.id));
         setError(null);
         return item.id;
       } catch (err) {
         setError(formatCommandError(err, t));
-        return afterItemId;
+        return previousAddedId;
       }
     });
   };

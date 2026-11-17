@@ -554,6 +554,23 @@ describe("OperatorPresentationLayout", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("a pick while the wall is frozen follows the browsed item", async () => {
+    // The wall is frozen on item-1 while the operator browses item-2.
+    setupDefaultMocks({ mode: "frozen", frozenAt: [0, 0], currentItemIndex: 1 });
+    vi.mocked(listMedia).mockResolvedValue([
+      { id: "img-pix", fileName: "pix.png", displayName: "Pix", kind: "image", mimeType: "image/png",
+        byteSize: 1, createdAt: 5, updatedAt: 5 },
+    ] as never);
+    vi.mocked(addSetItem).mockResolvedValue({ id: "item-new" } as never);
+    render(<OperatorPresentationLayout />);
+
+    fireEvent.click(screen.getByRole("button", { name: /home\.overlay\.image/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pix" }));
+
+    await waitFor(() => expect(addSetItem).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(addSetItem).mock.calls[0][0].afterItemId).toBe("item-2");
+  });
+
   it("Fechar overlay still clears an Aviso", () => {
     setupDefaultMocks({ overlay: { type: "announcement", text: "Carro com o farol aceso" } as never });
     render(<OperatorPresentationLayout />);

@@ -1,8 +1,8 @@
 # phase23-presenter-video-countdown-reorder proofs
 
-**HEAD**: ee527be
+**HEAD**: c9af3b5
 **Tree**: clean
-**Result**: 88 pass, 3 fail; mutations 2 killed, 3 not
+**Result**: 99 pass, 3 fail; mutations 5 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -12,6 +12,8 @@
 | C3 | `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "the song picker lists every library son` | 1 | 1 | pass |
 | C4 | `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "a renamed song relabels its row under a` | 1 | 1 | pass |
 | C5 | `npx vitest run src/stores/library.test.ts -t "loading presenter titles leaves the search and its result alone"` | 1 | 1 | pass |
+| C67 | `npx vitest run src/components/presentation/LiveSongTitles.test.tsx -t "a song saved in the live editor under a` | 1 | 1 | pass |
+| C67 | `npx vitest run src/stores/library.test.ts -t "a library refresh under a search keeps the whole library current` | 1 | 1 | pass |
 | C6 | `npx vitest run src/components/presentation/itemMeta.test.tsx -t "a song missing from the library falls back to` | 1 | 1 | pass |
 | C7 | `npx vitest run src/components/presentation/ImageOverlayDialog.test.tsx -t "upload control shows with images an` | 1 | 1 | pass |
 | C8 | `npx vitest run src/components/presentation/ImageOverlayDialog.test.tsx -t "upload opens the file dialog for im` | 1 | 1 | pass |
@@ -40,6 +42,12 @@
 | C28 | `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "an item that left the wall leaves no medi` | 1 | 1 | pass |
 | C28 | `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "one video replaces another and a return m` | 1 | 1 | pass |
 | C66 | `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "a shift of the current item's index leave` | 1 | 1 | pass |
+| C71 | `npx vitest run src/components/presentation/WebViewRenderer.test.tsx -t "a web page or camera leaving the wall ` | 1 | 1 | pass |
+| C71 | `npx vitest run src/components/presentation/SongBackground.test.tsx -t "a background video leaving the wall is ` | 1 | 1 | pass |
+| C72 | `npx vitest run src/windows/presentation/PresentationApp.test.tsx -t "the next strophe of a song keeps its vide` | 1 | 1 | pass |
+| C72 | `npx vitest run src/components/presentation/TransitionStage.test.tsx -t "a change within the same group updates` | 1 | 1 | pass |
+| C72 | `npx vitest run src/components/presentation/TransitionStage.test.tsx -t "returning to the group on screen drops` | 1 | 1 | pass |
+| C72 | `npx vitest run src/components/presentation/SongBackground.test.tsx -t "the next strophe of the same song keeps` | 1 | 1 | pass |
 | C29 | `walk - on the presentation window with a real video file: play the looping video item, go to the Tela preta it` | - | - | pass (Walked) |
 | C30 | `npx vitest run src/components/presentation/VideoControls.test.tsx -t "shows time, bar and every control for a ` | 1 | 1 | pass |
 | C30 | `npx vitest run src/utils/videoControls.test.ts -t "formats elapsed, total, remaining and fraction"` | 1 | 1 | pass |
@@ -73,6 +81,9 @@
 | C47 | `npx vitest run src/components/presentation/SetItemList.test.tsx -t "the read-only list has no edit control"` | 1 | 1 | pass |
 | C48 | `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "row edit opens that countdown wit` | 1 | 1 | pass |
 | C49 | `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "row edit saves the countdown and ` | 1 | 1 | pass |
+| C70 | `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "the dialog opened from a row load` | 1 | 1 | pass |
+| C70 | `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "a clock-time countdown opens on i` | 1 | 1 | pass |
+| C70 | `npx vitest run src/components/presentation/LiveCountdownRowEdit.test.tsx -t "saving unchanged sends back every` | 1 | 1 | pass |
 | C50 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::item_edit_restyles_without_tou` | 1 | - | pass |
 | C51 | `cargo test --manifest-path src-tauri/Cargo.toml --lib domain::countdown::tests::item_edit_restarts_when_the_ta` | 1 | - | pass |
 | C52 | `cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::countdown_edit_reaches_every_outpu` | 1 | - | pass |
@@ -102,8 +113,8 @@
 
 | Mutation | Location | Killed |
 | --- | --- | --- |
-| S1 C4: refresh() under a search stores the filtered list as allSongs | `src/stores/library.ts:70` | no |
-| S2 C65: the wall reloads its media only when its list is empty | `src/components/presentation/QuickMediaRenderer.tsx:19` | no |
+| S1 C4: refresh() under a search stores the filtered list as allSongs | `src/stores/library.ts:70` | yes |
+| S2 C65: the wall reloads its media only when its list is empty | `src/components/presentation/QuickMediaRenderer.tsx:19` | yes |
 | S3 C18: current and frozen re-pointed by the permutation instead of its inverse | `src-tauri/src/domain/presentation.rs:200` | yes |
 | S4 C27: an outgoing video keeps playing until its layer unmounts | `src/components/presentation/MediaSlideRenderer.tsx:113` | yes |
-| S5 C52: an item edit skips a finished countdown counting from the item | `src-tauri/src/commands/countdown.rs:558` | no |
+| S5 C52: an item edit skips a finished countdown counting from the item | `src-tauri/src/commands/countdown.rs:558` | yes |

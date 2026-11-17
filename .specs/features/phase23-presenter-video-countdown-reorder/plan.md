@@ -42,8 +42,9 @@ together as release `v1.10.0`.
 
 **Song search depends on accents (added 2026-11-17).** The library is in Brazilian Portuguese, so
 titles carry accents and ç: "Só pra te Adorar", "Manancial de Toda Benção". Home's song search
-(`HomeSetBuilder.tsx:47`) and the live `Adicionar música` picker (`LiveSongPicker.tsx:27`) filter
-in the browser with `toLowerCase().includes()`, so "so pra" and "bencao" find nothing - checked:
+(`HomeSetBuilder.tsx:47`), the song picker of Home's set builder (its `Música` button,
+`SetBuilder.tsx:191`; found by the S7 Verifier) and the live `Adicionar música` picker
+(`LiveSongPicker.tsx:27`) filter in the browser with `toLowerCase().includes()`, so "so pra" and "bencao" find nothing - checked:
 `"só pra te adorar".includes("so pra")` is false. The Biblioteca search goes to the full-text index
 (`songs_fts`, tokenizer `unicode61`, which drops diacritics), and there "so pra" and "bencao" already
 find both songs - checked in SQLite with the same table definition. Its fallback for a search with
@@ -76,7 +77,7 @@ wall is also walked in a real Chromium.
 12. the operator uses the edit control (new) on a countdown row in `SetItemList` (exists) -> `OperatorPresentationLayout` (exists) opens `CountdownScheduleModal` (exists) with that item; nothing is sent to the backend
 13. `Salvar` -> `updateSetItem` in `src/api/commands.ts` (exists) -> `commands/set.rs::update_set_item` (exists) persists `SetItem.countdown_config`, patches the item in every loaded set (exists), then applies the edit to every output whose `CountdownState.source_item_id` is this item: restart from the new target when the target changed, otherwise keep counting and copy the look; the rule is a pure function in `domain/countdown.rs` (exists), beside `adjusted` and `restart`
 14. out: `state_changed` and `countdown_tick` -> `CountdownRenderer` on the wall, `LiveCountdownControls` and the row label (exist)
-15. the operator types in Home's song search, in `HomeSetBuilder` (exists), or in the live picker, `LiveSongPicker` (exists) -> `matchesSongSearch` in `src/utils/songSearch.ts` (new) folds accents, ç and case on both the typed text and the song's title and artist, and matches anywhere in either, as these searches do today
+15. the operator types in Home's song search, in `HomeSetBuilder` (exists), in the song picker of Home's set builder, `SetBuilder` (exists), or in the live picker, `LiveSongPicker` (exists) -> `matchesSongSearch` in `src/utils/songSearch.ts` (new) folds accents, ç and case on both the typed text and the song's title and artist, and matches anywhere in either, as these searches do today
 16. the operator types in the Biblioteca search -> `list_songs` (exists) -> `fts_query::sanitize` (exists): the full-text query is unchanged, its index already folds accents; the fallback for an unbalanced quote or parenthesis filters title and artist with `fold_for_search` (new), in `fts_query.rs`, instead of SQL `LIKE`
 
 ```mermaid
@@ -137,6 +138,7 @@ flowchart TD
     DC -->|"14. state_changed, countdown_tick"| CR
     HSB["HomeSetBuilder (exists)"] -->|"15. typed text"| MSS["matchesSongSearch, src/utils/songSearch.ts (new)"]
     LSP["LiveSongPicker (exists)"] -->|"15. typed text"| MSS
+    SB["SetBuilder (exists)"] -->|"15. typed text"| MSS
     LIBV["Biblioteca search"] -->|"16. list_songs (exists)"| FTSQ["fts_query::sanitize (exists), fold_for_search (new)"]
 ```
 
@@ -337,7 +339,7 @@ Typing without accents finds the song in every song search.
 
 **Acceptance Criteria**
 
-53. WHEN the operator types in Home's song search, the live `Adicionar música` picker or the Biblioteca search THEN the search SHALL ignore accents, ç and letter case, on the typed text and on each song's title and artist alike
+53. WHEN the operator types in Home's song search, the song picker of Home's set builder, the live `Adicionar música` picker or the Biblioteca search THEN the search SHALL ignore accents, ç and letter case, on the typed text and on each song's title and artist alike
     - "so pra" → "Só pra te Adorar"; "bencao" → "Manancial de Toda Benção"; "BENÇÃO" → "Manancial de Toda Benção"; "coracao" → "Coração Igual ao Teu"; "unico" → "Ao Único"; "joao" → a song by "João Alexandre"; "só pra" (typed with the accent) → "Só pra te Adorar", as today
 54. Each search SHALL keep where a match may start: Home's search and the live picker match anywhere in the title or artist ("cao" → "Manancial de Toda Benção", "adorar" → "Só pra te Adorar"); the Biblioteca search matches the start of a word, through its full-text index, title, artist and lyrics ("bencao" → "Manancial de Toda Benção")
 55. IF a Biblioteca search has an unbalanced quote or parenthesis THEN its fallback SHALL ignore accents, ç and case too, matching anywhere in the title or artist, with the quotes and parentheses it could not parse left out of the comparison on both sides (before, it compared them literally, so it matched no normal title)
@@ -365,7 +367,7 @@ Typing without accents finds the song in every song search.
 | Edit controls on media, slideshow, camera, web page and blank rows | not requested |
 | Restyling or restarting a fired schedule takeover by editing its item | a takeover is detached from its item (`source_item_id` is none, D-86); the scheduled widget's `Editar` owns it |
 | Changing the countdown dialog's fields or layout | it is reused; only its save path and its schedule fields' availability differ while presenting |
-| The song search on Biblioteca, Home's set builder and Home's song pickers | they keep their own lists; only the presenter's title resolution changes |
+| Which songs the Biblioteca's, Home's set builder's and Home's sidebar searches list (S1) | they keep their own lists; S1 changes only the presenter's titles. How they match accents and ç is S7 |
 
 ## Assumptions
 

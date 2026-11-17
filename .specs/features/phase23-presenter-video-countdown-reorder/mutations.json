@@ -33,5 +33,19 @@
     "new": "current.mode,\n            CountdownMode::Running | CountdownMode::Paused",
     "proof": "cargo test --manifest-path src-tauri/Cargo.toml --lib commands::set::tests::countdown_edit_reaches_every_output_counting_from_it",
     "label": "S5 C52: an item edit skips a finished countdown counting from the item"
+  },
+  {
+    "file": "src-tauri/src/commands/song.rs",
+    "old": "fallback_key(&title).contains(&needle)",
+    "new": "fts_query::fold_for_search(&title).contains(&needle)",
+    "proof": "cargo test --manifest-path src-tauri/Cargo.toml --test fts fallback_search_ignores_accents_and_cedilla",
+    "label": "S7 C77: the fallback keeps a title's quotes and parentheses in the comparison"
+  },
+  {
+    "file": "src/utils/songSearch.ts",
+    "old": "const q = foldForSearch(query.trim());",
+    "new": "const q = query.trim().toLowerCase();",
+    "proof": "npx vitest run src/utils/songSearch.test.ts -t \"ignores accents, ç and case on both sides\"",
+    "label": "S7 C74: the typed text is lower-cased but its accents are kept"
   }
 ]

@@ -22,6 +22,8 @@ Para usar **dois telões** (por exemplo, projetor e TV lateral), veja [Duas tela
 
 ## 2. Conheça a janela do operador
 
+Ao abrir, o Lyrizzy acende por alguns segundos o vitral da Trindade, a marca do app. Para ir direto ao trabalho, aperte qualquer tecla ou clique.
+
 Na faixa de cima ficam as áreas do app:
 
 | Menu | Para que serve |

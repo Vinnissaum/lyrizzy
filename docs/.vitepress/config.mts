@@ -19,7 +19,7 @@ export default defineConfig({
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/lyrizzy/logo.svg' }],
-    ['meta', { name: 'theme-color', content: '#6366f1' }],
+    ['meta', { name: 'theme-color', content: '#0a7bbc' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'pt_BR' }],
     ['meta', { property: 'og:site_name', content: 'Lyrizzy' }],

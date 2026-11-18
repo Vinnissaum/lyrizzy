@@ -7,8 +7,8 @@ hero:
   text: Letras, mídia e cronômetro no telão da igreja
   tagline: Guia para quem opera a projeção do culto, do primeiro uso ao domingo de casa cheia.
   image:
-    src: /logo.svg
-    alt: Ícone do Lyrizzy
+    src: /brasao.svg
+    alt: "A marca do Lyrizzy: o Escudo da Trindade em vitral, com Pai, Filho e Espírito Santo ligados a Deus"
   actions:
     - theme: brand
       text: Começar

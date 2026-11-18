@@ -291,9 +291,7 @@ A CI run near midnight gives the same result as one at midday.
 | The hour the countdown tests run at (S6) | 12:00 local on 2026-11-17, through Vitest's fake `Date` | far from midnight either way; the pattern `OperatorApp.test.tsx` uses | n |
 | Phase 22's and 23's roadmap entries | not written by this feature | their own plans owe them (phase 22 C18-C19, phase 23 C64) | n |
 
-**Open questions:**
-
-1. `open` - Did `Pausar` and `Silenciar` also do nothing on Windows? On the same answers they work in Chromium, so either the freezes held them up or a second cause exists; criterion 31, the Windows check on v1.10.1, settles it.
+**Open questions:** none - all resolved or logged above. The one left open at approval - did `Pausar` and `Silenciar` also do nothing on Windows - was settled by criterion 31: user, 2026-11-18, on v1.10.1 under Windows, every control of the strip included: "everything passes, I check it".
 
 ## Sources
 

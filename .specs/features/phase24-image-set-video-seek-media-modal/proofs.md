@@ -1,8 +1,8 @@
 # phase24-image-set-video-seek-media-modal proofs
 
-**HEAD**: 89c0d9b
+**HEAD**: 14b1401
 **Tree**: clean
-**Result**: 54 pass, 3 fail; mutations 3 killed, 0 not
+**Result**: 58 pass, 0 fail; mutations 3 killed, 0 not
 
 | Check | Proof | Ran | Passed | Result |
 | --- | --- | --- | --- | --- |
@@ -56,10 +56,11 @@
 | C27 | `npx vitest run src/i18n/locales.test.ts -t "en-US and pt-BR have identical key sets in both directions"` | 1 | 1 | pass |
 | C28 | `grep -q 'Adicionar imagem ao conjunto' docs/guia/aviso-imagem-tela-preta.md && grep -q 'Adicionar imagem ao co` | count unknown | - | pass |
 | C28 | `npm run docs:build` | count unknown | - | pass |
+| C39 | `NODE_OPTIONS="--require ./src/tests/lateNightClock.cjs" npx vitest run src/components/set/CountdownScheduleMod` | 2 | - | pass |
 | C29 | `node scripts/check-version.mjs v1.10.1` | count unknown | - | pass |
-| C30 | `test "$(git -c core.sshCommand='ssh -p 443' ls-remote ssh://git@ssh.github.com:443/Vinnissaum/lyrizzy.git refs` | count unknown | - | **fail** |
-| C31 | `node -e "fetch('https://github.com/Vinnissaum/lyrizzy/releases/latest/download/latest.json').then(r=>r.json())` | count unknown | - | **fail** |
-| C32 | `grep -Eq '^## Phase 24: .* — RELEASED \(v1\.10\.1\)$' .specs/project/ROADMAP.md` | count unknown | - | **fail** |
+| C30 | `test "$(git -c core.sshCommand='ssh -p 443' ls-remote ssh://git@ssh.github.com:443/Vinnissaum/lyrizzy.git refs` | count unknown | - | pass |
+| C31 | `node -e "fetch('https://github.com/Vinnissaum/lyrizzy/releases/latest/download/latest.json').then(r=>r.json())` | count unknown | - | pass |
+| C32 | `grep -Eq '^## Phase 24: .* — RELEASED \(v1\.10\.1\)$' .specs/project/ROADMAP.md` | count unknown | - | pass |
 | C33 | `walk - the user, on Windows with v1.10.1, presents a set with a video and uses each control of the strip; thei` | - | - | pass (Walked) |
 | Build | `npx tsc --noEmit` | - | - | pass |
 | Build | `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` | - | - | pass |

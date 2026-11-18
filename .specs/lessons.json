@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 7,
+  "next_id": 11,
   "lessons": [
     {
       "id": "L-001",
@@ -65,17 +65,19 @@
       "text": "Prove a value a parent component computes at the parent, not only in the child that receives it as a prop",
       "signal": "surviving_mutant",
       "scope": "frontend-components",
-      "status": "candidate",
+      "status": "confirmed",
       "features": [
-        "phase21-live-countdown-setlist"
+        "phase21-live-countdown-setlist",
+        "phase24-image-set-video-seek-media-modal"
       ],
-      "recurrence": 1,
+      "recurrence": 2,
       "harmful": 0,
       "evidence": [
-        "src/components/presentation/SetItemList.tsx:84 (C17) (frontend-components)"
+        "src/components/presentation/SetItemList.tsx:84 (C17) (frontend-components)",
+        "src/components/presentation/OperatorPresentationLayout.tsx:455 (finding 3, closed by C36) (frontend-components)"
       ],
       "created": "2026-10-27T00:20:39Z",
-      "last_seen": "2026-10-27T00:20:39Z"
+      "last_seen": "2026-11-18T00:53:06Z"
     },
     {
       "id": "L-005",
@@ -112,6 +114,78 @@
       ],
       "created": "2026-10-27T00:20:39Z",
       "last_seen": "2026-10-27T00:20:39Z"
+    },
+    {
+      "id": "L-007",
+      "key": "ac_gap::read the current item when a dialog s action runs not when the dialog opens the wall can move while it is open",
+      "text": "Read the current item when a dialog's action runs, not when the dialog opens; the wall can move while it is open",
+      "signal": "ac_gap",
+      "scope": "presentation",
+      "status": "candidate",
+      "features": [
+        "phase24-image-set-video-seek-media-modal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/components/presentation/LiveImagePicker.tsx:40 (finding 1, closed by C34) (presentation)"
+      ],
+      "created": "2026-11-18T00:53:06Z",
+      "last_seen": "2026-11-18T00:53:06Z"
+    },
+    {
+      "id": "L-008",
+      "key": "surviving_mutant::prove an event subscription by firing the event through a listen stub whose unlisten really removes the callback",
+      "text": "Prove an event subscription by firing the event through a listen stub whose unlisten really removes the callback",
+      "signal": "surviving_mutant",
+      "scope": "frontend-stores",
+      "status": "candidate",
+      "features": [
+        "phase24-image-set-video-seek-media-modal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/components/presentation/OperatorPresentationLayout.tsx:109 (finding 2, closed by C35) (frontend-stores)"
+      ],
+      "created": "2026-11-18T00:53:06Z",
+      "last_seen": "2026-11-18T00:53:06Z"
+    },
+    {
+      "id": "L-009",
+      "key": "surviving_mutant::test a range check at its equality boundary a one byte range whose first and last byte are the same",
+      "text": "Test a range check at its equality boundary: a one-byte range whose first and last byte are the same",
+      "signal": "surviving_mutant",
+      "scope": "asset-protocol",
+      "status": "candidate",
+      "features": [
+        "phase24-image-set-video-seek-media-modal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src-tauri/src/protocol/asset.rs:216 (finding 4, closed by C37) (asset-protocol)"
+      ],
+      "created": "2026-11-18T00:53:06Z",
+      "last_seen": "2026-11-18T00:53:06Z"
+    },
+    {
+      "id": "L-010",
+      "key": "spec_precision_gap::when a label shows in several presenter views prove each view the tela 2 launch modal included",
+      "text": "When a label shows in several presenter views, prove each view, the Tela 2 launch modal included",
+      "signal": "spec_precision_gap",
+      "scope": "frontend-components",
+      "status": "candidate",
+      "features": [
+        "phase24-image-set-video-seek-media-modal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C6, LiveMediaLabels.test.tsx Tela 2 test (finding 5, closed by C38) (frontend-components)"
+      ],
+      "created": "2026-11-18T00:53:06Z",
+      "last_seen": "2026-11-18T00:53:06Z"
     }
   ]
 }

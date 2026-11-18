@@ -248,6 +248,7 @@
       "frozen": "Frozen"
     },
     "blackoutSlide": "Blackout",
+    "titleSlide": "Title",
     "currentSlide": "Current slide",
     "blankSlide": "Black screen",
     "prev": "← Previous",
@@ -441,7 +442,8 @@
   "media": {
     "type": {
       "video": "Video",
-      "image": "Image"
+      "image": "Image",
+      "presentation": "Slideshow"
     },
     "title": "Media",
     "addButton": "Add media",

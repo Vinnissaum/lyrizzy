@@ -248,6 +248,7 @@
       "frozen": "Congelado"
     },
     "blackoutSlide": "Tela preta",
+    "titleSlide": "Título",
     "currentSlide": "Slide atual",
     "blankSlide": "Tela preta",
     "prev": "← Anterior",
@@ -441,7 +442,8 @@
   "media": {
     "type": {
       "video": "Vídeo",
-      "image": "Imagem"
+      "image": "Imagem",
+      "presentation": "Apresentação"
     },
     "title": "Mídia",
     "addButton": "Adicionar mídia",

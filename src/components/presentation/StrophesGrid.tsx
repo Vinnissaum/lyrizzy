@@ -8,6 +8,7 @@ import { ItemTypeIcon, itemLabel, presenterMedia, presenterSongs } from "./itemM
 import { SlideStage } from "./SlideStage";
 import { SlideContent } from "./SlideContent";
 import { PRESET_COLORS } from "./layout";
+import { TITLE_SLIDE_LABEL } from "./slideMeta";
 import type { ChipAppearance } from "./SlideContent";
 import type { Slide, SetItem } from "../../types";
 
@@ -57,7 +58,9 @@ const SlideCard = React.memo<SlideCardProps>(function SlideCard({
   const isBlackout = slide.sectionLabel === BLACKOUT_SENTINEL;
   const badgeLabel = isBlackout
     ? t("presentation.blackoutSlide")
-    : getSectionLabel(slide, slideIdx, itemType);
+    : slide.sectionLabel === TITLE_SLIDE_LABEL
+      ? t("presentation.titleSlide")
+      : getSectionLabel(slide, slideIdx, itemType);
 
   const bgColor = PRESET_COLORS[appearance.preset].bg;
 

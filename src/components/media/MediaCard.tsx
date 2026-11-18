@@ -1,7 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Film, Image } from "lucide-react";
-import type { Media } from "../../types";
+import { FileText, Film, Image } from "lucide-react";
+import type { Media, MediaKind } from "../../types";
+
+// Each kind wears the colour it has elsewhere: presentations are amber in the
+// set builder, videos the glass tone, images info blue.
+const KIND_BADGE: Record<MediaKind, { className: string; Icon: typeof Image }> = {
+  image: { className: "bg-info text-fg-on-primary", Icon: Image },
+  video: { className: "bg-glass text-fg-on-primary", Icon: Film },
+  presentation: { className: "bg-warning text-fg-on-warning", Icon: FileText },
+};
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -19,6 +27,7 @@ interface Props {
 
 export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
   const { t } = useTranslation();
+  const badge = KIND_BADGE[media.kind] ?? KIND_BADGE.image;
   const thumbUrl = media.thumbnailFile
     ? `http://asset.localhost/media/${media.thumbnailFile}`
     : media.kind === "image"
@@ -63,17 +72,10 @@ export const MediaCard: React.FC<Props> = ({ media, onClick, isSelected }) => {
       {/* Kind badge */}
       <div className="absolute top-1.5 left-1.5">
         <span
-          className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded font-medium ${
-            media.kind === "video"
-              ? "bg-glass text-fg-on-primary"
-              : "bg-info text-fg-on-primary"
-          }`}
+          data-testid="media-kind-badge"
+          className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded font-medium ${badge.className}`}
         >
-          {media.kind === "video" ? (
-            <Film className="w-3 h-3" />
-          ) : (
-            <Image className="w-3 h-3" />
-          )}
+          <badge.Icon className="w-3 h-3" />
           {t(`media.type.${media.kind}`)}
         </span>
       </div>

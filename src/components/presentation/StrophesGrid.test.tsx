@@ -363,6 +363,25 @@ describe("StrophesGrid", () => {
     expect(screen.getByText("Verse 1")).toBeInTheDocument();
   });
 
+  it("labels the song's title slide instead of showing its __title__ sentinel", () => {
+    const slidesWithTitle = [
+      { lines: ["Amazing Grace", "(John Newton)"], sectionLabel: "__title__", sectionId: "s-title" },
+      { lines: ["Amazing Grace"], sectionLabel: "Verse 1", sectionId: "s1" },
+    ];
+
+    setStore({
+      state: makeState({}, makeSet("song", { songId: "song-1" }), [slidesWithTitle]),
+      pendingSelection: null,
+      selectSlide: vi.fn(),
+    });
+
+    render(<StrophesGrid />);
+
+    expect(screen.getByText("presentation.titleSlide")).toBeInTheDocument();
+    expect(screen.queryByText("__title__")).not.toBeInTheDocument();
+    expect(screen.getByText("Verse 1")).toBeInTheDocument();
+  });
+
   // ── Test 8 (P11-03): pendingSelection drives the optimistic highlight ────
 
   it("highlights the pendingSelection slide even when state.currentSlideIndex differs", () => {

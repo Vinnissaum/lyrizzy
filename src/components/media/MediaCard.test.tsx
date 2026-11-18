@@ -43,6 +43,17 @@ describe("MediaCard", () => {
     expect(screen.queryByText(/thumb pend/i)).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["image", "Imagem", "bg-info"],
+    ["video", "Vídeo", "bg-glass"],
+    ["presentation", "Apresentação", "bg-warning"],
+  ] as const)("labels a %s with its own badge", (kind, label, fill) => {
+    render(<MediaCard media={{ ...baseMedia, kind }} onClick={vi.fn()} />);
+    const badge = screen.getByTestId("media-kind-badge");
+    expect(badge).toHaveTextContent(label);
+    expect(badge.className).toContain(fill);
+  });
+
   it("calls onClick when clicked", () => {
     const handleClick = vi.fn();
     render(<MediaCard media={baseMedia} onClick={handleClick} />);

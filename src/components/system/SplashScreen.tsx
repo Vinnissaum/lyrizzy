@@ -1,15 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { shieldSvg } from "../../brand/shield";
 
-const HOLD_MS = 1400;
-const FADE_MS = 350;
-const REDUCED_HOLD_MS = 600;
+export const HOLD_MS = 3400;
+export const FADE_MS = 400;
+export const REDUCED_HOLD_MS = 900;
+
+// The inscribed brand window, built once. Our own static markup (no user data),
+// with ids prefixed so its gradients cannot clash with anything in the app.
+const WINDOW_SVG = shieldSvg({ labels: true, idPrefix: "lz-splash" });
 
 /**
- * Brief branded launch splash shown on operator startup. Black backdrop with an
- * animated "Lyrizzy" wordmark in the bundled display face. Auto-dismisses; any
- * key/click skips ahead. Honors reduced-motion (static, shorter hold). Operator
- * window only — mounted in OperatorApp, never the projector.
+ * Branded launch splash shown on operator startup: the Shield of the Trinity
+ * stained-glass window is leaded and lit piece by piece (CSS in index.css, under
+ * .splash-animate), then the "Lyrizzy" wordmark rises below it. Auto-dismisses;
+ * any key/click skips ahead. Honors reduced motion (the window shows whole and
+ * still, with a shorter hold). Operator window only — mounted in OperatorApp,
+ * never the projector.
  */
 export const SplashScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const { t } = useTranslation();
@@ -54,18 +61,22 @@ export const SplashScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   return (
     <div
       data-testid="splash-screen"
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black select-none ${
-        fading ? "splash-fade-out pointer-events-none" : ""
-      }`}
+      className={`splash-screen fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden select-none ${
+        reduceMotion ? "" : "splash-animate"
+      } ${fading ? "splash-fade-out pointer-events-none" : ""}`}
     >
-      <h1
-        className={`font-brand text-6xl sm:text-7xl md:text-8xl font-bold tracking-wide bg-gradient-to-r from-primary to-[#a78bfa] bg-clip-text text-transparent ${
-          reduceMotion ? "" : "splash-wordmark-in"
-        }`}
-      >
+      <div className="relative">
+        <div className="splash-halo pointer-events-none absolute -inset-[45%]" aria-hidden="true" />
+        <div
+          data-testid="splash-window"
+          className="splash-shield relative"
+          dangerouslySetInnerHTML={{ __html: WINDOW_SVG }}
+        />
+      </div>
+      <h1 className="splash-wordmark font-brand relative mt-[5vh] text-5xl sm:text-6xl font-bold">
         Lyrizzy
       </h1>
-      <p className="mt-4 text-xs sm:text-sm tracking-[0.35em] uppercase text-muted">
+      <p className="splash-tagline relative mt-3 text-xs sm:text-sm tracking-[0.35em] uppercase">
         {t("splash.tagline")}
       </p>
     </div>

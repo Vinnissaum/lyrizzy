@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "docs:dev": "npm --prefix docs run dev",
     "docs:build": "npm --prefix docs run build",
-    "docs:screenshots": "node scripts/docs-screenshots/capture.mjs"
+    "docs:screenshots": "node scripts/docs-screenshots/capture.mjs",
+    "brand:build": "node scripts/brand/build-brand.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -40,4 +40,5 @@
 - asset:// handler: validate paths to prevent path traversal outside the media directory
 - Monitor index ordering is OS-dependent — always test on real hardware with two monitors
 - MP4/WebM work natively in WebView2; reject MKV/AVI at import with HandBrake guidance
+- Brand artwork (app icon, docs logo and hero, splash window) comes from `src/brand/shield.ts`; never edit app-icon.svg or the docs SVGs by hand — run `npm run brand:build` (rewrites them and every icon in src-tauri/icons; scripts/brand/build-brand.test.mjs fails on drift)
 - Song search: `songs_fts` (FTS5, tokenizer `unicode61`) indexes title, artist and the lyrics (`body`) and already ignores accents and ç; a search it cannot parse (unbalanced quote or parenthesis) falls back to a Rust filter on title and artist that folds them too (`services/fts_query.rs`). In-browser song filters use `matchesSongSearch` (`src/utils/songSearch.ts`) so they ignore accents and ç the same way

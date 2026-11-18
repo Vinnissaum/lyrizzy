@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
-import { SplashScreen } from "./SplashScreen";
+import { SplashScreen, HOLD_MS, FADE_MS, REDUCED_HOLD_MS } from "./SplashScreen";
 
 // matchMedia is not implemented in jsdom — default to "no reduced motion".
 function mockMatchMedia(reduced: boolean) {
@@ -25,19 +25,26 @@ describe("SplashScreen", () => {
     vi.useRealTimers();
   });
 
-  it("renders the wordmark and animates by default", () => {
+  it("renders the wordmark and the inscribed window, animated by default", () => {
     render(<SplashScreen onDone={vi.fn()} />);
-    const wordmark = screen.getByText("Lyrizzy");
-    expect(wordmark).toBeInTheDocument();
-    expect(wordmark.className).toContain("splash-wordmark-in");
+    expect(screen.getByText("Lyrizzy")).toBeInTheDocument();
+    const window = screen.getByTestId("splash-window");
+    for (const word of ["PATER", "FILIUS", "DEUS"]) {
+      expect(window.textContent).toContain(word);
+    }
+    expect(window.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByTestId("splash-screen").className).toContain("splash-animate");
   });
 
   it("calls onDone after the hold + fade", () => {
     const onDone = vi.fn();
     render(<SplashScreen onDone={onDone} />);
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS + FADE_MS - 10);
+    });
     expect(onDone).not.toHaveBeenCalled();
     act(() => {
-      vi.advanceTimersByTime(1400 + 350 + 10);
+      vi.advanceTimersByTime(20);
     });
     expect(onDone).toHaveBeenCalledTimes(1);
   });
@@ -47,18 +54,19 @@ describe("SplashScreen", () => {
     render(<SplashScreen onDone={onDone} />);
     act(() => {
       fireEvent.keyDown(window, { key: "a" });
-      vi.advanceTimersByTime(350 + 10);
+      vi.advanceTimersByTime(FADE_MS + 10);
     });
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it("omits the animation when reduced motion is preferred", () => {
+  it("shows the window still, for a shorter hold, when reduced motion is preferred", () => {
     mockMatchMedia(true);
     const onDone = vi.fn();
     render(<SplashScreen onDone={onDone} />);
-    expect(screen.getByText("Lyrizzy").className).not.toContain("splash-wordmark-in");
+    expect(screen.getByTestId("splash-screen").className).not.toContain("splash-animate");
+    expect(screen.getByTestId("splash-window").textContent).toContain("DEUS");
     act(() => {
-      vi.advanceTimersByTime(600 + 350 + 10);
+      vi.advanceTimersByTime(REDUCED_HOLD_MS + FADE_MS + 10);
     });
     expect(onDone).toHaveBeenCalledTimes(1);
   });

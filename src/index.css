@@ -1,17 +1,19 @@
 @import "tailwindcss";
 
-/* Brand display face for the launch splash wordmark. Self-hosted (Latin subset)
- * so it works offline — see src/assets/fonts/SpaceGrotesk-LICENSE.txt (SIL OFL). */
+/* Brand face: Cinzel, Roman inscriptional capitals. It sets the launch splash
+ * wordmark and the Latin inscriptions of the brand window (src/brand/shield.ts).
+ * Self-hosted (Latin subset) so it works offline — see
+ * src/assets/fonts/Cinzel-LICENSE.txt (SIL OFL). */
 @font-face {
-  font-family: "Brand";
+  font-family: "Cinzel";
   font-style: normal;
   font-weight: 700;
   font-display: block;
-  src: url("./assets/fonts/SpaceGrotesk-Bold.woff2") format("woff2");
+  src: url("./assets/fonts/Cinzel-Bold.woff2") format("woff2");
 }
 
 /*
- * Lyrizzy — semantic theme tokens (indigo accent).
+ * Lyrizzy — semantic theme tokens (stained-glass azure accent).
  *
  * The @theme tokens below don't hold colour values directly: each points at a
  * role variable (--app-*). That indirection is deliberate — Tailwind v4 resolves
@@ -53,17 +55,19 @@
 :root {
   color-scheme: dark;
 
-  /* Surfaces — deep slate / charcoal */
-  --app-bg:             #0F1115;
-  --app-surface:        #171A21;
-  --app-surface-2:      #1F232C;
-  --app-border:         #2A2F3A;
-  --app-muted:          #8A91A0;
-  --app-fg:             #ECEEF2;
+  /* Surfaces — night blue, the dark around a lit window */
+  --app-bg:             #0A0F15;
+  --app-surface:        #111821;
+  --app-surface-2:      #18212C;
+  --app-border:         #253140;
+  --app-muted:          #8A97A8;
+  --app-fg:             #E8EEF4;
 
-  /* Accent — indigo / violet */
-  --app-primary:        #6366F1;
-  --app-primary-hover:  #4F46E5;
+  /* Accent — azure glass (BRAND.azure family in src/brand/shield.ts). Deep
+     enough that white text on it passes 4.5:1, since --app-fg-on-primary is
+     also the text on every other solid fill (danger, success, info). */
+  --app-primary:        #0A7BBC;
+  --app-primary-hover:  #08679E;
   --app-fg-on-primary:  #FFFFFF;
 
   /* Status — mid-tones that work as text/icon/border on dark AND as solid button
@@ -86,17 +90,17 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  /* Surfaces — soft off-white / paper */
-  --app-bg:             #F7F8FA;
+  /* Surfaces — cool off-white / paper */
+  --app-bg:             #F5F8FB;
   --app-surface:        #FFFFFF;
-  --app-surface-2:      #F0F2F5;
-  --app-border:         #D7DBE2;
-  --app-muted:          #5B6472;
-  --app-fg:             #1A1D23;
+  --app-surface-2:      #EDF2F7;
+  --app-border:         #D3DCE6;
+  --app-muted:          #566273;
+  --app-fg:             #15202B;
 
-  /* Accent — indigo, slightly deeper so it holds contrast on light */
-  --app-primary:        #5457EC;
-  --app-primary-hover:  #4338CA;
+  /* Accent — cobalt-leaning azure, deeper so it holds contrast on light */
+  --app-primary:        #0A6FAE;
+  --app-primary-hover:  #075A8E;
 
   /* Status — *-bg fills become light tints */
   --app-danger-bg:      #FCE9EA;
@@ -127,24 +131,104 @@
 }
 
 /* ── Launch splash ──────────────────────────────────────────────────────────
- * The animated wordmark shown briefly on operator startup (SplashScreen.tsx).
- * Animations are skipped when the user prefers reduced motion (also gated in JS). */
-.font-brand {
-  font-family: "Brand", ui-sans-serif, system-ui, sans-serif;
+ * SplashScreen.tsx: the brand window (src/brand/shield.ts) is built in the dark
+ * and then lit: the ring is leaded, Deus kindles, the "est" spokes reach the
+ * three persons, the "non est" arcs join them, light floods the glass and the
+ * wordmark rises. Everything runs under .splash-animate, which the component
+ * sets only when the user has not asked for reduced motion; without it the
+ * window renders whole and still. Brand colours are artwork, not theme roles:
+ * the splash looks the same in every theme. */
+.splash-screen {
+  --brand-night: #03070C;
+  --brand-cyan: #1EB8EC;
+  --brand-glow: #4FD6FF;
+  --brand-pale: #BDF3FF;
+  --brand-mist: #8DB6CB;
+  --lz-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  background: radial-gradient(
+    circle at 50% 42%,
+    #0A1F31 0%,
+    #071422 30%,
+    #050D17 52%,
+    #04090F 72%,
+    var(--brand-night) 100%
+  );
 }
 
-@keyframes splash-in {
+.splash-halo {
+  opacity: 0.75;
+  background: radial-gradient(
+    circle,
+    rgba(30, 184, 236, 0.34) 0%,
+    rgba(11, 126, 192, 0.15) 32%,
+    rgba(11, 126, 192, 0.05) 52%,
+    rgba(11, 126, 192, 0) 70%
+  );
+}
+
+.splash-shield {
+  width: min(52vh, 62vw);
+  aspect-ratio: 1;
+  filter: drop-shadow(0 0 14px rgba(79, 214, 255, 0.5)) drop-shadow(0 0 48px rgba(30, 184, 236, 0.3));
+}
+
+.splash-shield svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.font-brand {
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+}
+
+.splash-wordmark {
+  background-image: linear-gradient(180deg, #ECFBFF 10%, var(--brand-pale) 45%, var(--brand-glow) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.16em;
+  filter: drop-shadow(0 0 22px rgba(79, 214, 255, 0.35));
+}
+
+.splash-tagline {
+  color: var(--brand-mist);
+}
+
+@keyframes lz-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes lz-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lz-kindle {
+  0% { opacity: 0; transform: scale(0.55); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes lz-halo {
+  0% { opacity: 0; transform: scale(0.6); }
+  55% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0.75; transform: scale(1); }
+}
+
+@keyframes lz-rise {
   0% {
     opacity: 0;
-    transform: scale(0.92);
-    filter: blur(8px);
-    letter-spacing: 0.4em;
+    transform: translateY(14px);
+    letter-spacing: 0.42em;
+    filter: blur(6px) drop-shadow(0 0 0 rgba(79, 214, 255, 0));
   }
   100% {
     opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
-    letter-spacing: 0.06em;
+    transform: translateY(0);
+    letter-spacing: 0.16em;
+    filter: blur(0) drop-shadow(0 0 22px rgba(79, 214, 255, 0.35));
   }
 }
 
@@ -153,12 +237,59 @@
   100% { opacity: 0; }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .splash-wordmark-in {
-    animation: splash-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
+.splash-animate .lz-draw {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 1;
+  animation: lz-draw var(--lz-dur) var(--lz-ease) var(--lz-delay) forwards;
+}
+
+.splash-animate .lz-ring { --lz-delay: 80ms; --lz-dur: 1000ms; }
+.splash-animate .lz-spoke { --lz-delay: calc(850ms + var(--i) * 110ms); --lz-dur: 420ms; }
+.splash-animate .lz-arc { --lz-delay: calc(1550ms + var(--i) * 110ms); --lz-dur: 560ms; }
+
+.splash-animate .lz-ring-sheen,
+.splash-animate .lz-ring-bars {
+  opacity: 0;
+  animation: lz-fade 400ms ease 900ms forwards;
+}
+
+.splash-animate .lz-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: lz-kindle 620ms cubic-bezier(0.2, 0.9, 0.3, 1.2) var(--lz-delay) forwards;
+}
+
+/* Deus kindles first; the persons follow once their "est" spoke reaches them. */
+.splash-animate .lz-deus { --lz-delay: 450ms; }
+.splash-animate .lz-person { --lz-delay: calc(1150ms + var(--i) * 150ms); }
+
+.splash-animate .lz-fill {
+  opacity: 0;
+  animation: lz-fade 700ms ease 1950ms forwards;
+}
+
+.splash-animate .lz-spoke .lz-label,
+.splash-animate .lz-arc .lz-label {
+  opacity: 0;
+  animation: lz-fade 350ms ease calc(var(--lz-delay) + var(--lz-dur)) forwards;
+}
+
+.splash-animate .splash-halo {
+  opacity: 0;
+  animation: lz-halo 1400ms ease 1900ms forwards;
+}
+
+.splash-animate .splash-wordmark {
+  opacity: 0;
+  animation: lz-rise 900ms cubic-bezier(0.22, 1, 0.36, 1) 2150ms forwards;
+}
+
+.splash-animate .splash-tagline {
+  opacity: 0;
+  animation: lz-fade 600ms ease 2600ms forwards;
 }
 
 .splash-fade-out {
-  animation: splash-out 350ms ease forwards;
+  animation: splash-out 400ms ease forwards;
 }

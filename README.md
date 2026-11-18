@@ -1,3 +1,5 @@
+<p align="center"><img src="app-icon.svg" width="128" alt="Ícone do Lyrizzy: o Escudo da Trindade em vitral"></p>
+
 # Lyrizzy
 
 Aplicativo de projeção para igrejas: organize a biblioteca de músicas, monte o

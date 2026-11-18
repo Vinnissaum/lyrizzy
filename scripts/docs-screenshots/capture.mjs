@@ -81,7 +81,7 @@ const scenes = [
     name: "camera-editor",
     size: { width: 1280, height: 1500 }, // the whole editor, both profiles included
     // The camera item's summary line ("Câmera — rtsp://…") opens its editor.
-    steps: [`__docs.clickSel("p.text-purple-400")`, `__docs.waitText("Perfis de transmissão", "*")`],
+    steps: [`__docs.clickSel("p.text-glass")`, `__docs.waitText("Perfis de transmissão", "*")`],
     clip: `__docs.itemOf("Perfis de transmissão")`,
     pad: { top: 12, left: 12, right: 12, bottom: 0 },
   },

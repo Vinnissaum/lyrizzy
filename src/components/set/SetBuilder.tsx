@@ -453,7 +453,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
           ? wv.url.replace(/^https?:\/\//, "").slice(0, 30)
           : t("builder.noUrl");
         return (
-          <p className="text-sm text-purple-400 font-medium truncate">
+          <p className="text-sm text-glass font-medium truncate">
             {isCamera ? t("builder.add.webView") : "Web"} — {urlShort}
           </p>
         );
@@ -777,7 +777,7 @@ export const SetBuilder: React.FC<Props> = ({ setId, hidePresentButton }) => {
           </button>
           <button
             onClick={handleAddWebView}
-            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-purple-400 inline-flex items-center justify-center gap-1.5"
+            className="px-2 py-1.5 text-xs bg-surface-2 hover:bg-border rounded-lg font-medium transition-colors text-glass inline-flex items-center justify-center gap-1.5"
           >
             <Globe size={14} className="shrink-0" /> {t("builder.add.webView")}
           </button>

@@ -462,3 +462,20 @@
 | S4 — Every screen agrees | AC 23–27 | Adds and removes reach every output with the set loaded, each keeping its item, slide and frozen item |
 
 **Gate at completion:** 812 Vitest + 1 skipped, 428 Rust (1 ignored), `tsc --noEmit` clean, `cargo clippy --all-targets -D warnings` clean; 62/62 proofs and 3/3 mutations killed at `8547048`. Hardware walk still open (two screens, live presentation).
+
+## Phase 24: Presenter Image to the Set, Video Seeking on Windows, Home Media Dialog — RELEASED (`v1.10.1`)
+
+**Goal:** Fix what the user found testing v1.10.0 on Windows: the presenter's `Imagem` projected an overlay instead of adding to the set, every seek of a video on the wall went back to 00:00, and Home's `Mídia` picker overlapped its small thumbnails.
+**Completed:** 2026-11-17. **Released:** `v1.10.1` (published 2026-11-18; `publish-manifest` green, `latest.json` serves 1.10.1 for every platform).
+**Plan:** `.specs/features/phase24-image-set-video-seek-media-modal/plan.md` (32 criteria, 6 slices) · **Checks:** `checks.md` (C1–C39) · **Proofs:** `proofs.md` · **Verification:** `verification.md` (independent Verifier, 6 findings; 5 closed in `3eb4fcd`, the user's Windows check open).
+
+| Slice | Criteria | Scope |
+|-------|----------|-------|
+| S1 — A picked image joins the set | AC 1–9 | `Imagem` adds the image right after the current item, later picks after the previous one; the dialog stays open and marks `Adicionada`; no wall moves (AD-096). The presenter and the wall name and show media from the whole library |
+| S2 — Seeking works | AC 10–16 | The `asset` protocol answers byte ranges (`206`, at most 1 MiB, `416` past the end) on a worker thread instead of the UI thread (AD-097) |
+| S3 — Home's media dialog | AC 17–26 | `Adicionar mídia ao conjunto`: large cards that never overlap, the whole library, a delete control with the Mídia tab's confirmation and in-use rule |
+| S4 — User guide | AC 27 | `docs/guia` pages for `Imagem` and the `Mídia` dialog |
+| S5 — Release | AC 28–31 | `v1.10.1`; the user's check of the video strip on Windows |
+| S6 — Countdown tests at any hour | AC 32 | The schedule tests pin the clock at midday; they failed on the tag's CI in the minute before midnight |
+
+**Gate at completion:** 954 Vitest + 1 skipped, 460 Rust (2 ignored), `tsc --noEmit` clean, `cargo clippy --all-targets -D warnings` clean; proofs green and 3/3 mutations killed except the user's Windows check (C33), which stays open until the user reports.

@@ -1,6 +1,7 @@
 # Presenter image to the set, video seeking on Windows, Home media dialog
 
 **Approved**: 2026-11-17 - user: "approved, keep going"
+**Approved** (S6, added after the release): 2026-11-18 - user: "published the release, fix the countdown tests too"
 
 ## Problem
 
@@ -47,12 +48,20 @@ they are 75 px and do not overlap. The presenter's `Imagem` dialog uses the same
 search narrows it, and never more than the 200 newest items. Deleting a media item means leaving the
 set for the Mídia tab, finding it and opening its details.
 
+**The countdown-schedule tests fail in the minute before midnight (added 2026-11-18).** CI on the
+tag `v1.10.1` failed (run 44203910896) in four tests of `CountdownScheduleModal.test.tsx` and
+`LiveCountdownRowEdit.test.tsx`, while `main`'s CI on the same commit passed. Their helpers
+(`futureHHMM`, `laterToday`) pick the scheduled time from the wall clock - now + 90 min, capped at
+23:59 - and the dialog refuses a time at or before now (`CountdownScheduleModal.tsx:142`), so from
+23:59 to midnight the save is refused and nothing is armed; the tag's job ran from 23:58 to 00:00
+UTC. Reproduced with the process clock at 23:59:30: the same four tests fail, the other 25 pass.
+
 When this ships, a click on an image in the presenter's `Imagem` dialog adds it to the set and the
 wall stays on the item it shows; selecting the new row shows the image on the wall. Seeking,
 skipping and restarting a video on the wall go to the asked position on Windows, and a large video
 no longer freezes the app while it loads. Home's `Mídia` button opens a dialog with large
 thumbnails that never overlap, over the whole library, where a media item is deleted with the Mídia
-tab's confirmation.
+tab's confirmation. The countdown-schedule tests give the same result at any hour.
 
 ## Shape
 
@@ -65,7 +74,9 @@ reach: the byte-range answer is a pure Rust function of the file and the `Range`
 `protocol/asset.rs` (`cargo test`); the insert position is `add_set_item_core` (exists, tested);
 which media a dialog lists, what a click adds and what a delete asks are frontend components and a
 store (`vitest`). A real seek and the layout of the grid are not computed by jsdom, so both are
-also walked in Chromium.
+also walked in Chromium. S6 changes tests only: the two countdown-schedule test files pin the clock
+at midday with Vitest's fake `Date`, as `OperatorApp.test.tsx` already does; nothing in the
+product changes.
 
 1. the operator clicks an image in the `Imagem` dialog -> `LiveImagePicker` (exists, renamed from `ImageOverlayDialog`; its cards in `MediaCardGrid` (new)) -> `addSetItem` in `src/api/commands.ts` (exists) with `itemType: "media"`, the image's id, the default media options and `afterItemId` (open question 2) -> `commands/set.rs::add_set_item` (exists) inserts it and splices it into every output with the set loaded, each keeping its item, slide and frozen item (D-88); nothing is projected
 2. out: `set_changed` and `state_changed` -> `SetItemList`, the strophes header, `StrophesGrid`, `LivePreview` and `OutputLaunchModal` (exist) label and preview media from the whole library, `allMedia` in `useMediaStore` (exists), loaded with no filter, search or cap and reloaded on `media_library_changed`
@@ -237,6 +248,15 @@ The fixes reach the user's Windows machine, where the video controls are confirm
 30. The project roadmap (`.specs/project/ROADMAP.md`) SHALL carry a Phase 24 entry marked released as `v1.10.1`
 31. WHEN v1.10.1 runs on the user's Windows machine THEN each control of the video strip - the bar, `−10 s`, `+10 s`, `Pausar`/`Retomar`, `Reiniciar`, `Silenciar`/`Ativar som` - SHALL drive the wall's video, and the bar and the skips SHALL NOT send it to 00:00 (settles open question 1)
 
+### S6: The countdown-schedule tests pass at any hour (P1)
+
+A CI run near midnight gives the same result as one at midday.
+
+**Acceptance Criteria**
+
+32. The tests in `CountdownScheduleModal.test.tsx` and `LiveCountdownRowEdit.test.tsx` SHALL give the same result whatever the hour they run at
+    - process clock at 23:59:30 local → 29 of 29 pass, the four that failed on the tag's CI included; at midday → 29 of 29 pass
+
 ## Out of scope
 
 | Excluded | Why |
@@ -250,6 +270,7 @@ The fixes reach the user's Windows machine, where the video controls are confirm
 | Home's set rows reading media from the Mídia view's list (`⚠ Referência inválida` while the Mídia view filters) | existing, found in phase 23; not requested |
 | Multi-range answers (`multipart/byteranges`) | a media element asks one range at a time; only the first range is answered |
 | Seeking on Linux's webview (WebKitGTK) beyond what the same `206` answers give | the report is from Windows; the answers are the same on both |
+| Other tests that read the wall clock (S6) | `ScheduledCountdownWidget.test.tsx` formats a fixed 19:30, whatever the hour; `OperatorApp.test.tsx` already pins `Date` |
 
 ## Assumptions
 
@@ -267,6 +288,7 @@ The fixes reach the user's Windows machine, where the video controls are confirm
 | A `Range` that does not parse | ignored: `200` with the whole file | RFC 9110 lets a server ignore a Range it cannot parse; `416` is for a range past the end | n |
 | New labels | pt-BR / en-US: `Adicionar imagem ao conjunto` / `Add an image to the set`; `Adicionar mídia ao conjunto` / `Add media to the set`; delete control `Excluir <name>` / `Delete <name>`; `Adicionada` / `Added` and every confirmation reuse existing labels | no source draws them; they follow `Adicionar música ao conjunto` and the Mídia tab | n |
 | Mutation count | 3, one per slice S1-S3 | three independent rules: the insert anchor, the byte range, the dialog's add and delete; S4 and S5 hold no rule to mutate | n |
+| The hour the countdown tests run at (S6) | 12:00 local on 2026-11-17, through Vitest's fake `Date` | far from midnight either way; the pattern `OperatorApp.test.tsx` uses | n |
 | Phase 22's and 23's roadmap entries | not written by this feature | their own plans owe them (phase 22 C18-C19, phase 23 C64) | n |
 
 **Open questions:**
@@ -276,6 +298,7 @@ The fixes reach the user's Windows machine, where the video controls are confirm
 ## Sources
 
 - User request, 2026-11-17 - "When add an image on presenter mode, the image should be add on the set and not on overlay. And without changing the current set item, keep on the item, just add the image; - The video control buttons does not work any of them, when click in the video, it resets; PS: I am using windows; - On home (set edit) I have the image button which opens a box to choose the image from library. I want to things: an easier way to delete from library there, and a better UX, now the images small pic (thumbnail) overflows each other and are too small, my idea is open a modal with scrolling or carousel;" - the scope. No capture came with it, so no screen binds
+- User request, 2026-11-18 - "published the release, fix the countdown tests too" - S6; the CI run on the tag (44203910896) and its annotations name the four tests
 - `repro/probe.mjs` with `repro/server.mjs` - the seek reproduction: seekable `[[0,0]]` and seeks to 0 when served like the handler, `[[0,20]]` and seeks to 10 s and 20 s with byte ranges
 - `repro/grid-probe.mjs` with `repro/grid.html` - the overlap measurement: 44 px rows for 75 px cards, 75 px rows with `max-content`
 - `.specs/project/STATE.md` D-45 (overlay precedence), D-88 (live set edits on every output) and `.specs/STATE.md` AD-092 (grid rows sized to their cards), AD-094 (video playback lives in the wall's `<video>`) - the decisions this conforms to

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { SetItem } from "../../types";
 
@@ -70,6 +70,17 @@ function futureHHMM(): string {
   }
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
+
+// The schedule tests pick a time "later today" from the clock (now + 90 min,
+// capped at 23:59), and the dialog refuses a time already passed. Pin the clock
+// at midday, so a run in the minute before midnight gives the same result.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 10, 17, 12, 0, 0, 0));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("CountdownScheduleModal", () => {
   beforeEach(() => {

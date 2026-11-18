@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import { OperatorPresentationLayout } from "./OperatorPresentationLayout";
 import { usePresentationStore } from "../../stores/presentation";
@@ -123,6 +123,17 @@ function openRowEditor(name = "Regressivo") {
   fireEvent.click(screen.getByRole("button", { name: `Editar cronômetro ${name}` }));
   return dialog();
 }
+
+// The schedule tests pick a time "later today" from the clock (now + 90 min,
+// capped at 23:59), and the dialog refuses a time already passed. Pin the clock
+// at midday, so a run in the minute before midnight gives the same result.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 10, 17, 12, 0, 0, 0));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("Live countdown row edit (P23)", () => {
   beforeEach(() => {
